@@ -1,1 +1,91 @@
 
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comitê Atletas Energisa - Admin</title>
+  
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="css/admin.css" />
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="left">
+      <img src="assets/logo-energisa-branca.svg" alt="Energisa" class="logo" />
+      <span class="portal-nome">Gestão do Comitê</span>
+    </div>
+    <div class="right">
+      <span id="userGroupBadge" style="background: #e63946;">Administrador</span>
+      <button id="theme-toggle" class="btn-topo"><i data-lucide="moon"></i></button>
+      <button id="logoutBtn" class="btn-topo"><i data-lucide="log-out"></i> Sair</button>
+    </div>
+  </header>
+
+  <nav class="menu-flutuante">
+    <div class="menu-item active" data-section="dashboard">
+      <i data-lucide="layout-dashboard"></i><span>Visão Geral</span>
+    </div>
+    <div class="menu-item" data-section="aprovacoes">
+      <i data-lucide="user-check"></i><span>Aprovações</span>
+    </div>
+    <div class="menu-item" data-section="membros">
+      <i data-lucide="users"></i><span>Atletas</span>
+    </div>
+    <div class="menu-item" data-section="configuracoes">
+      <i data-lucide="settings"></i><span>Configurações</span>
+    </div>
+  </nav>
+
+  <main>
+    <section id="dashboard" class="active-section">
+      <div class="header-acao"><h2>Resumo do Programa</h2></div>
+      <div class="cards" id="dashboardCards">
+        <div class="card"><i data-lucide="users"></i><h3>Total de Atletas</h3><p id="totalAtletas">0</p></div>
+        <div class="card"><i data-lucide="user-plus" style="color: var(--accent);"></i><h3>Aguardando Aprovação</h3><p id="totalPendentes">0</p></div>
+        <div class="card"><i data-lucide="activity" style="color: var(--secondary);"></i><h3>Treinos para Validar</h3><p id="totalTreinos">0</p></div>
+      </div>
+    </section>
+
+    <section id="aprovacoes">
+      <div class="header-acao">
+        <h2>Solicitações de Acesso</h2>
+      </div>
+      <div class="tabela-container">
+        <table class="tabela-simples">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>E-mail</th>
+              <th>Modalidade (Bike/Corrida)</th>
+              <th>Data do Cadastro</th>
+              <th>Ação</th>
+            </tr>
+          </thead>
+          <tbody id="listaAprovacoes">
+            <tr><td colspan='5' style='text-align:center;'>Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="configuracoes">
+      <div class="header-acao"><h2>Configurações Globais</h2></div>
+      <div class="config-card">
+        <h3><i data-lucide="shield"></i> Controle de Cadastros</h3>
+        <p style="font-size: 0.9rem; margin-bottom: 15px;">Defina se novos atletas podem solicitar acesso ao portal.</p>
+        <select id="statusCadastroAberto" style="max-width: 300px;">
+          <option value="aberto">Permitir novos cadastros</option>
+          <option value="fechado">Bloquear novos cadastros</option>
+        </select>
+        <button id="btnSalvarConfig" class="btn-primario" style="display: block; margin-top: 10px;">Salvar Configuração</button>
+      </div>
+    </section>
+    
+  </main>
+
+  <script type="module" src="js/admin.js"></script>
+</body>
+</html>
