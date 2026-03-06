@@ -40,7 +40,8 @@
         <h2>Visão Geral do Programa</h2>
       </div>
       <div class="cards">
-        <div class="card"><i data-lucide="users"></i><h3>Total Ativos</h3><p id="totalAtletas">0</p></div>
+        <div class="card"><i data-lucide="users"></i><h3>Total Pessoas</h3><p id="totalAtletas">0</p></div>
+        <div class="card"><i data-lucide="shield-check" style="color: #e63946;"></i><h3>Comitê</h3><p id="totalComite">0</p></div>
         <div class="card"><i data-lucide="bike" style="color: var(--primary);"></i><h3>Bicicleta</h3><p id="totalBike">0</p></div>
         <div class="card"><i data-lucide="footprints" style="color: var(--secondary);"></i><h3>Corrida</h3><p id="totalCorrida">0</p></div>
       </div>
@@ -60,67 +61,91 @@
 
     <section id="gestao" class="active-section">
       
-      <div class="header-acao" style="margin-top: 10px;">
-        <h2>1. Aprovações de Acesso</h2>
-      </div>
-      <div class="tabela-container" style="margin-bottom: 40px;">
-        <table class="tabela-simples">
-          <thead>
-            <tr>
-              <th>Nome</th>
-              <th>E-mail</th>
-              <th>Definir Modalidade</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody id="listaAprovacoes">
-            <tr><td colspan='4' style='text-align:center;'>Buscando dados...</td></tr>
-          </tbody>
-        </table>
+      <div class="sub-menu">
+        <button class="sub-tab active admin-only-tab" data-target="sub-aprovacoes"><i data-lucide="user-plus"></i> Aprovações</button>
+        <button class="sub-tab" data-target="sub-equipes"><i data-lucide="users"></i> Equipes Ativas</button>
+        <button class="sub-tab" data-target="sub-regras"><i data-lucide="list-checks"></i> Regras de Pontuação</button>
       </div>
 
-      <div class="header-acao">
-        <h2>2. Equipes Ativas</h2>
-      </div>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 40px;">
-        
-        <div class="tabela-container" style="border-top: 4px solid var(--primary);">
-          <h3 style="padding: 15px; margin: 0; background: rgba(0,155,193,0.05); display: flex; align-items: center; gap: 8px;">
-            <i data-lucide="bike" style="color: var(--primary);"></i> Equipe Bicicleta
-          </h3>
-          <table class="tabela-simples">
-            <tbody id="listaBicicleta"></tbody>
-          </table>
+      <div id="sub-aprovacoes" class="sub-content active">
+        <div class="header-acao">
+          <h2>Aprovações de Acesso</h2>
+          <p style="color: var(--text-light); font-size: 0.9rem;">Novos cadastros aguardando liberação para usar o portal.</p>
         </div>
-
-        <div class="tabela-container" style="border-top: 4px solid var(--secondary);">
-          <h3 style="padding: 15px; margin: 0; background: rgba(0,179,126,0.05); display: flex; align-items: center; gap: 8px;">
-            <i data-lucide="footprints" style="color: var(--secondary);"></i> Equipe Corrida
-          </h3>
+        <div class="tabela-container">
           <table class="tabela-simples">
-            <tbody id="listaCorrida"></tbody>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>E-mail</th>
+                <th>Definir Modalidade</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="listaAprovacoes">
+              <tr><td colspan='4' style='text-align:center;'>Buscando dados...</td></tr>
+            </tbody>
           </table>
         </div>
       </div>
 
-      <div class="header-acao">
-        <h2>3. Regras e Itens de Pontuação</h2>
-        <button id="abrirModalRegra" class="btn-primario"><i data-lucide="plus"></i> Nova Regra</button>
+      <div id="sub-equipes" class="sub-content">
+        <div class="header-acao">
+          <h2>Equipes Ativas e Comitê</h2>
+          <p style="color: var(--text-light); font-size: 0.9rem;">Membros aprovados organizados por modalidade ou nível de acesso.</p>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 40px;">
+          
+          <div class="tabela-container" style="border-top: 4px solid #e63946;">
+            <h3 style="padding: 15px; margin: 0; background: rgba(230,57,70,0.05); display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="shield" style="color: #e63946;"></i> Comitê / Admins
+            </h3>
+            <table class="tabela-simples">
+              <tbody id="listaComite"></tbody>
+            </table>
+          </div>
+
+          <div class="tabela-container" style="border-top: 4px solid var(--primary);">
+            <h3 style="padding: 15px; margin: 0; background: rgba(0,155,193,0.05); display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="bike" style="color: var(--primary);"></i> Equipe Bicicleta
+            </h3>
+            <table class="tabela-simples">
+              <tbody id="listaBicicleta"></tbody>
+            </table>
+          </div>
+
+          <div class="tabela-container" style="border-top: 4px solid var(--secondary);">
+            <h3 style="padding: 15px; margin: 0; background: rgba(0,179,126,0.05); display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="footprints" style="color: var(--secondary);"></i> Equipe Corrida
+            </h3>
+            <table class="tabela-simples">
+              <tbody id="listaCorrida"></tbody>
+            </table>
+          </div>
+
+        </div>
       </div>
-      <div class="tabela-container">
-        <table class="tabela-simples">
-          <thead>
-            <tr>
-              <th>Descrição (Ex: 1km percorrido)</th>
-              <th>Modalidade Aplicável</th>
-              <th>Pontos Ganhos</th>
-              <th>Ação</th>
-            </tr>
-          </thead>
-          <tbody id="listaRegras">
-            <tr><td colspan='4' style='text-align:center;'>Nenhuma regra definida ainda.</td></tr>
-          </tbody>
-        </table>
+
+      <div id="sub-regras" class="sub-content">
+        <div class="header-acao">
+          <h2>Regras e Itens de Pontuação</h2>
+          <button id="abrirModalRegra" class="btn-primario"><i data-lucide="plus"></i> Nova Regra</button>
+        </div>
+        <div class="tabela-container">
+          <table class="tabela-simples">
+            <thead>
+              <tr>
+                <th>Descrição (Ex: 1km percorrido)</th>
+                <th>Modalidade Aplicável</th>
+                <th>Pontos Ganhos</th>
+                <th>Ação</th>
+              </tr>
+            </thead>
+            <tbody id="listaRegras">
+              <tr><td colspan='4' style='text-align:center;'>Nenhuma regra definida ainda.</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
     </section>
