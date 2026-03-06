@@ -54,6 +54,16 @@ input, select, textarea {
   margin-bottom: 10px;
 }
 
+/* CORREÇÃO PARA OS CHECKBOXES DA TABELA DE PONTOS */
+input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  margin: 0 auto;
+  display: block;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
 input:focus, select:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(0, 155, 193, 0.15);
@@ -223,47 +233,16 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
    📑 SUB-ABAS (Novo Menu Interno de Gestão)
 ======================================================= */
 .sub-menu {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 25px;
-  border-bottom: 2px solid var(--border);
-  padding-bottom: 10px;
-  overflow-x: auto;
+  display: flex; gap: 10px; margin-bottom: 25px; 
+  border-bottom: 2px solid var(--border); padding-bottom: 10px; overflow-x: auto;
 }
-
 .sub-tab {
-  background: transparent;
-  color: var(--text-light);
-  font-weight: 600;
-  padding: 10px 20px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: 0.3s ease;
-  white-space: nowrap;
+  background: transparent; color: var(--text-light); font-weight: 600;
+  padding: 10px 20px; border-radius: 8px; display: flex; align-items: center; 
+  gap: 8px; transition: 0.3s ease; white-space: nowrap;
 }
-
 .sub-tab i { width: 18px; height: 18px; }
-
-.sub-tab:hover {
-  background: rgba(0, 155, 193, 0.05);
-  color: var(--primary);
-}
-
-.sub-tab.active {
-  background: var(--primary);
-  color: white;
-  box-shadow: 0 4px 10px rgba(0, 155, 193, 0.2);
-}
-
-/* Ocultar conteúdo das sub-abas que não estão ativas */
-.sub-content {
-  display: none;
-  animation: fadeIn 0.3s ease;
-}
-
-/* Mostrar apenas a sub-aba ativa */
-.sub-content.active {
-  display: block;
-}
+.sub-tab:hover { background: rgba(0, 155, 193, 0.05); color: var(--primary); }
+.sub-tab.active { background: var(--primary); color: white; box-shadow: 0 4px 10px rgba(0, 155, 193, 0.2); }
+.sub-content { display: none; animation: fadeIn 0.3s ease; }
+.sub-content.active { display: block; }
