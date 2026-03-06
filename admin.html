@@ -40,8 +40,8 @@
         <h2>Visão Geral do Programa</h2>
       </div>
       <div class="cards">
-        <div class="card"><i data-lucide="users"></i><h3>Total Pessoas</h3><p id="totalAtletas">0</p></div>
-        <div class="card"><i data-lucide="shield-check" style="color: #e63946;"></i><h3>Comitê</h3><p id="totalComite">0</p></div>
+        <div class="card"><i data-lucide="users"></i><h3>Total Atletas</h3><p id="totalAtletas">0</p></div>
+        <div class="card" id="cardComite"><i data-lucide="shield-check" style="color: #e63946;"></i><h3>Comitê</h3><p id="totalComite">0</p></div>
         <div class="card"><i data-lucide="bike" style="color: var(--primary);"></i><h3>Bicicleta</h3><p id="totalBike">0</p></div>
         <div class="card"><i data-lucide="footprints" style="color: var(--secondary);"></i><h3>Corrida</h3><p id="totalCorrida">0</p></div>
       </div>
@@ -50,54 +50,51 @@
     <section id="contabilizacao">
       <div class="header-acao">
         <h2>Contabilização de Pontuação</h2>
-        <p style="color: var(--text-light); font-size: 0.9rem;">Área para validar treinos e calcular o ranking das equipas.</p>
+        <p style="color: var(--text-light); font-size: 0.9rem;">Área para validar treinos e calcular o ranking.</p>
       </div>
       <div class="card" style="text-align: center; padding: 40px;">
         <i data-lucide="hammer" style="width: 48px; height: 48px; color: var(--text-light); margin-bottom: 15px;"></i>
         <h3 style="color: var(--text-light);">Módulo em construção</h3>
-        <p>Aguardando a definição das regras de pontuação na aba de Gestão.</p>
       </div>
     </section>
 
     <section id="gestao" class="active-section">
-      
       <div class="sub-menu">
-        <button class="sub-tab active admin-only-tab" data-target="sub-aprovacoes"><i data-lucide="user-plus"></i> Aprovações</button>
-        <button class="sub-tab" data-target="sub-equipes"><i data-lucide="users"></i> Equipes Ativas</button>
+        <button class="sub-tab active" data-target="sub-cadastrar"><i data-lucide="user-plus"></i> Cadastrar Pessoa</button>
+        <button class="sub-tab" data-target="sub-equipes"><i data-lucide="users"></i> Pessoas e Equipes</button>
         <button class="sub-tab" data-target="sub-regras"><i data-lucide="list-checks"></i> Regras de Pontuação</button>
       </div>
 
-      <div id="sub-aprovacoes" class="sub-content active">
+      <div id="sub-cadastrar" class="sub-content active">
         <div class="header-acao">
-          <h2>Aprovações de Acesso</h2>
-          <p style="color: var(--text-light); font-size: 0.9rem;">Novos cadastros aguardando liberação para usar o portal.</p>
+          <h2>Cadastrar Novo Membro</h2>
+          <p style="color: var(--text-light); font-size: 0.9rem;">Adicione atletas diretamente às equipes.</p>
         </div>
-        <div class="tabela-container">
-          <table class="tabela-simples">
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>E-mail</th>
-                <th>Definir Modalidade</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-            <tbody id="listaAprovacoes">
-              <tr><td colspan='4' style='text-align:center;'>Buscando dados...</td></tr>
-            </tbody>
-          </table>
+        <div class="card" style="max-width: 500px;">
+          <label>Nome Completo</label>
+          <input type="text" id="novoNome" placeholder="Ex: João da Silva" />
+
+          <label>E-mail (Opcional, para contato)</label>
+          <input type="email" id="novoEmail" placeholder="joao@email.com" />
+
+          <label>Equipe / Função</label>
+          <select id="novoPapel">
+            <option value="Bicicleta">Atleta - Bicicleta</option>
+            <option value="Corrida">Atleta - Corrida</option>
+            <option value="Comitê" class="admin-only-option">Membro do Comitê</option>
+          </select>
+
+          <button id="btnCadastrarPessoa" class="btn-primario" style="width: 100%; margin-top: 15px; justify-content: center;">Adicionar ao Sistema</button>
         </div>
       </div>
 
       <div id="sub-equipes" class="sub-content">
         <div class="header-acao">
           <h2>Equipes Ativas e Comitê</h2>
-          <p style="color: var(--text-light); font-size: 0.9rem;">Membros aprovados organizados por modalidade ou nível de acesso.</p>
         </div>
-        
         <div style="display: flex; flex-direction: column; gap: 30px; margin-bottom: 40px;">
           
-          <div class="tabela-container" style="border-top: 4px solid #e63946;">
+          <div id="containerComite" class="tabela-container" style="border-top: 4px solid #e63946;">
             <h3 style="padding: 15px; margin: 0; background: rgba(230,57,70,0.05); display: flex; align-items: center; gap: 8px;">
               <i data-lucide="shield" style="color: #e63946;"></i> Comitê / Admins
             </h3>
@@ -123,7 +120,6 @@
               <tbody id="listaCorrida"></tbody>
             </table>
           </div>
-
         </div>
       </div>
 
@@ -135,12 +131,7 @@
         <div class="tabela-container">
           <table class="tabela-simples">
             <thead>
-              <tr>
-                <th>Descrição (Ex: 1km percorrido)</th>
-                <th>Modalidade Aplicável</th>
-                <th>Pontos Ganhos</th>
-                <th>Ação</th>
-              </tr>
+              <tr><th>Descrição</th><th>Modalidade</th><th>Pontos</th><th>Ação</th></tr>
             </thead>
             <tbody id="listaRegras">
               <tr><td colspan='4' style='text-align:center;'>Nenhuma regra definida ainda.</td></tr>
@@ -148,27 +139,22 @@
           </table>
         </div>
       </div>
-
     </section>
   </main>
 
   <div id="modalRegra" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; justify-content: center; align-items: center;">
     <div style="background: white; padding: 30px; border-radius: 12px; width: 90%; max-width: 400px;">
       <h3 style="color: var(--primary); margin-top: 0;">Nova Regra de Pontuação</h3>
-      
-      <label>Descrição (Ex: Participação em Evento)</label>
-      <input type="text" id="regraDescricao" placeholder="Digite a descrição da regra" />
-      
+      <label>Descrição</label>
+      <input type="text" id="regraDescricao" placeholder="Ex: Treino de Sábado" />
       <label>Modalidade</label>
       <select id="regraModalidade">
-        <option value="Ambas">Ambas (Geral)</option>
+        <option value="Ambas">Ambas</option>
         <option value="Bicicleta">Apenas Bicicleta</option>
         <option value="Corrida">Apenas Corrida</option>
       </select>
-      
       <label>Pontos Gerados</label>
       <input type="number" id="regraPontos" placeholder="Ex: 10" />
-
       <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
         <button id="fecharModalRegra" style="background: #f0f0f0; color: #333; padding: 10px 15px; border-radius: 8px;">Cancelar</button>
         <button id="salvarRegraBtn" class="btn-primario">Salvar Regra</button>
