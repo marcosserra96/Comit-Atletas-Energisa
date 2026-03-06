@@ -70,21 +70,34 @@
           <h2>Cadastrar Novo Membro</h2>
           <p style="color: var(--text-light); font-size: 0.9rem;">Adicione atletas diretamente às equipes.</p>
         </div>
-        <div class="card" style="max-width: 500px;">
-          <label>Nome Completo</label>
-          <input type="text" id="novoNome" placeholder="Ex: João da Silva" />
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px;">
+          
+          <div class="card">
+            <label>Nome Completo</label>
+            <input type="text" id="novoNome" placeholder="Ex: João da Silva" />
 
-          <label>E-mail (Opcional, para contato)</label>
-          <input type="email" id="novoEmail" placeholder="joao@email.com" />
+            <label>E-mail (Opcional, para contato)</label>
+            <input type="email" id="novoEmail" placeholder="joao@email.com" />
 
-          <label>Equipe / Função</label>
-          <select id="novoPapel">
-            <option value="Bicicleta">Atleta - Bicicleta</option>
-            <option value="Corrida">Atleta - Corrida</option>
-            <option value="Comitê" class="admin-only-option">Membro do Comitê</option>
-          </select>
+            <label>Equipe / Função</label>
+            <select id="novoPapel">
+              <option value="Bicicleta">Atleta - Bicicleta</option>
+              <option value="Corrida">Atleta - Corrida</option>
+              <option value="Comitê" class="admin-only-option">Membro do Comitê</option>
+            </select>
 
-          <button id="btnCadastrarPessoa" class="btn-primario" style="width: 100%; margin-top: 15px; justify-content: center;">Adicionar ao Sistema</button>
+            <button id="btnCadastrarPessoa" class="btn-primario" style="width: 100%; margin-top: 15px; justify-content: center;">Adicionar ao Sistema</button>
+          </div>
+
+          <div class="card" style="background: rgba(0, 155, 193, 0.03); border: 2px dashed rgba(0, 155, 193, 0.2); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+            <i data-lucide="info" style="width: 48px; height: 48px; color: var(--primary); opacity: 0.6; margin-bottom: 15px;"></i>
+            <h3 style="color: var(--primary); margin-bottom: 10px;">Gestão Centralizada</h3>
+            <p style="font-size: 0.95rem; color: var(--text-light); line-height: 1.6; margin: 0;">
+              Ao clicar em <strong>Adicionar ao Sistema</strong>, a pessoa será imediatamente colocada na sua equipe e já estará disponível para receber pontos na aba de Contabilização.
+            </p>
+          </div>
+
         </div>
       </div>
 
