@@ -93,17 +93,17 @@ document.getElementById("loginBtn").addEventListener("click", async (e) => {
   }
 });
 
-// --- LÓGICA DE SOLICITAÇÃO DE ACESSO (CADASTRO DE NOVOS ATLETAS) ---
+// --- LÓGICA DE SOLICITAÇÃO DE ACESSO (CADASTRO) ---
 document.getElementById("registerBtn").addEventListener("click", async (e) => {
   e.preventDefault();
   const nome = document.getElementById("nameRegister").value.trim();
   const email = document.getElementById("emailRegister").value.trim();
   const pass = document.getElementById("passwordRegister").value.trim();
-  const grupo = document.getElementById("teamRegister").value;
   const btn = e.target;
 
-  if (!nome || !email || !pass || !grupo) {
-    return showToast("Preencha todos os campos e escolha uma modalidade!", "error");
+  // Removida a validação de modalidade/grupo
+  if (!nome || !email || !pass) {
+    return showToast("Preencha todos os campos!", "error");
   }
 
   btn.textContent = "Enviando...";
@@ -117,7 +117,6 @@ document.getElementById("registerBtn").addEventListener("click", async (e) => {
     await setDoc(doc(db, "atletas", cred.user.uid), {
       nome: nome,
       email: email,
-      grupo: grupo,
       status: "Pendente", // Bloqueia a entrada até aprovação
       role: "atleta",     // Nível padrão de acesso
       criadoEm: new Date().toISOString()
