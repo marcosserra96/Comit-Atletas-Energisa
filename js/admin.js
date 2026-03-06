@@ -3,13 +3,17 @@ import {
   onAuthStateChanged, signOut, query, where, orderBy 
 } from "./firebase.js";
 
+let userRole = "atleta";
+
 // =====================================================
 // 🔒 INICIALIZAÇÃO E SEGURANÇA
 // =====================================================
 onAuthStateChanged(auth, async (user) => {
   if (user) {
     const docSnap = await getDoc(doc(db, "atletas", user.uid));
-    if (docSnap.exists() && docSnap.data().role === "admin") {
+    
+    if (docSnap.exists() && (docSnap.data().role === "admin" || docSnap.data().role === "comite")) {
+      userRole = docSnap.data().role;
       iniciarPainelAdmin();
     } else {
       alert("Acesso Negado! Área restrita ao Comitê.");
@@ -22,6 +26,7 @@ onAuthStateChanged(auth, async (user) => {
 
 function iniciarPainelAdmin() {
   setupNavigation();
+  setupSubTabs();
   configurarLogout();
   setupModalRegras();
   atualizarTelas();
@@ -29,7 +34,7 @@ function iniciarPainelAdmin() {
 }
 
 // =====================================================
-// 🧭 NAVEGAÇÃO
+// 🧭 NAVEGAÇÃO PRINCIPAL E SECUNDÁRIA
 // =====================================================
 function setupNavigation() {
   document.querySelectorAll(".menu-item").forEach(item => {
@@ -47,6 +52,24 @@ function setupNavigation() {
   });
 }
 
+function setupSubTabs() {
+  const tabAprovacoes = document.querySelector(".admin-only-tab");
+  if (userRole !== "admin" && tabAprovacoes) {
+    tabAprovacoes.style.display = "none";
+    document.querySelector('[data-target="sub-equipes"]').click();
+  }
+
+  document.querySelectorAll(".sub-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".sub-tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".sub-content").forEach(c => c.classList.remove("active"));
+      
+      tab.classList.add("active");
+      document.getElementById(tab.dataset.target).classList.add("active");
+    });
+  });
+}
+
 function configurarLogout() {
   document.getElementById("logoutBtn").addEventListener("click", async () => {
     if(confirm("Deseja realmente sair?")) {
@@ -58,7 +81,7 @@ function configurarLogout() {
 }
 
 function atualizarTelas() {
-  carregarAprovacoes();
+  if (userRole === "admin") carregarAprovacoes();
   carregarEquipes();
   carregarRegras();
 }
@@ -76,7 +99,7 @@ async function carregarAprovacoes() {
   tbody.innerHTML = "";
   
   if (snap.empty) {
-    tbody.innerHTML = "<tr><td colspan='4' style='text-align:center;'>Nenhuma solicitação pendente.</td></tr>";
+    tbody.innerHTML = "<tr><td colspan='4' style='text-align:center; padding: 20px;'>Nenhuma solicitação pendente. 🎉</td></tr>";
     return;
   }
 
@@ -106,14 +129,13 @@ async function carregarAprovacoes() {
   
   lucide.createIcons();
 
-  // Aprovar Atleta (Requer a escolha da modalidade!)
   document.querySelectorAll(".btn-aprovar-atleta").forEach(btn => {
     btn.addEventListener("click", async (e) => {
       const id = e.currentTarget.dataset.id;
       const selectEquipe = document.getElementById(`mod-${id}`);
       
       if (selectEquipe.value === "") {
-        alert("Por favor, selecione se o atleta será da equipe de Bicicleta ou Corrida antes de aprovar.");
+        alert("Selecione se o atleta será da equipe de Bicicleta ou Corrida.");
         selectEquipe.focus();
         return;
       }
@@ -122,14 +144,13 @@ async function carregarAprovacoes() {
         await updateDoc(doc(db, "atletas", id), { 
           status: "Aprovado", 
           role: "atleta",
-          equipe: selectEquipe.value // Salva a equipa escolhida pelo admin
+          equipe: selectEquipe.value 
         });
         atualizarTelas();
       }
     });
   });
 
-  // Rejeitar
   document.querySelectorAll(".btn-reprovar").forEach(btn => {
     btn.addEventListener("click", async (e) => {
       const id = e.currentTarget.dataset.id;
@@ -142,52 +163,62 @@ async function carregarAprovacoes() {
 }
 
 // =====================================================
-// 👥 2. EQUIPES ATIVAS (Separadas por Modalidade)
+// 👥 2. EQUIPES ATIVAS E COMITÊ (Nova Separação)
 // =====================================================
 async function carregarEquipes() {
   const tbBike = document.getElementById("listaBicicleta");
   const tbCorrida = document.getElementById("listaCorrida");
+  const tbComite = document.getElementById("listaComite");
   
   const q = query(collection(db, "atletas"), where("status", "==", "Aprovado"));
   const snap = await getDocs(q);
   
   let htmlBike = "";
   let htmlCorrida = "";
-  let contBike = 0;
-  let contCorrida = 0;
+  let htmlComite = "";
+  let contBike = 0, contCorrida = 0, contComite = 0;
 
   snap.forEach(d => {
     const u = d.data();
     const isDono = auth.currentUser.uid === d.id;
-    const btnExcluir = !isDono ? `<button class="btn-acao btn-excluir-membro" data-id="${d.id}" style="color: red; border: 0; padding: 2px;"><i data-lucide="x-circle"></i></button>` : '';
+    const btnExcluir = (!isDono && userRole === "admin") ? `<button class="btn-acao btn-excluir-membro" data-id="${d.id}" style="color: red; border: 0; padding: 2px;" title="Remover"><i data-lucide="x-circle"></i></button>` : '';
     
+    // Tag visual para identificar você mesmo
+    const tagVoce = isDono ? `<span style="font-size: 0.75rem; color: #999; margin-left: 5px;">(Você)</span>` : "";
+
     const linha = `
       <tr>
-        <td style="padding: 10px;">${u.nome} ${u.role === 'admin' ? '<strong style="color:red; font-size:0.8rem;">(Admin)</strong>' : ''}</td>
+        <td style="padding: 10px;">
+          <strong>${u.nome}</strong> ${tagVoce}
+        </td>
         <td style="text-align: right; padding: 10px;">${btnExcluir}</td>
       </tr>`;
 
-    // Filtra para as tabelas corretas (Admins que ainda não têm equipa vão para a bicicleta por padrão visual, mas o ideal é que todos tenham equipa)
-    if (u.equipe === "Corrida") {
+    // A MÁGICA DA SEPARAÇÃO ACONTECE AQUI
+    if (u.role === "admin" || u.role === "comite") {
+      htmlComite += linha;
+      contComite++;
+    } else if (u.equipe === "Corrida") {
       htmlCorrida += linha;
       contCorrida++;
-    } else {
+    } else if (u.equipe === "Bicicleta") {
       htmlBike += linha;
       contBike++;
     }
   });
 
+  tbComite.innerHTML = htmlComite || "<tr><td colspan='2' style='text-align:center;'>Nenhum membro no comitê.</td></tr>";
   tbBike.innerHTML = htmlBike || "<tr><td colspan='2' style='text-align:center;'>Nenhum membro na bicicleta.</td></tr>";
   tbCorrida.innerHTML = htmlCorrida || "<tr><td colspan='2' style='text-align:center;'>Nenhum membro na corrida.</td></tr>";
   
-  // Atualiza também os cartões da Visão Geral
+  // Atualiza as métricas da Visão Geral
+  document.getElementById("totalComite").textContent = contComite;
   document.getElementById("totalBike").textContent = contBike;
   document.getElementById("totalCorrida").textContent = contCorrida;
-  document.getElementById("totalAtletas").textContent = contBike + contCorrida;
+  document.getElementById("totalAtletas").textContent = contBike + contCorrida + contComite;
 
   lucide.createIcons();
 
-  // Excluir Membro
   document.querySelectorAll(".btn-excluir-membro").forEach(btn => {
     btn.addEventListener("click", async (e) => {
       const id = e.currentTarget.dataset.id;
@@ -215,14 +246,14 @@ async function carregarRegras() {
 
   snap.forEach(d => {
     const r = d.data();
+    const btnExcluir = (userRole === "admin") ? `<button class="btn-acao btn-excluir-regra" data-id="${d.id}" style="color: var(--danger); border-color: var(--danger);">Excluir</button>` : '';
+
     tbody.innerHTML += `
       <tr>
         <td><strong>${r.descricao}</strong></td>
         <td>${r.modalidade}</td>
         <td><strong style="color: var(--primary); font-size: 1.1rem;">+ ${r.pontos}</strong></td>
-        <td>
-          <button class="btn-acao btn-excluir-regra" data-id="${d.id}" style="color: var(--danger); border-color: var(--danger);">Excluir</button>
-        </td>
+        <td>${btnExcluir}</td>
       </tr>`;
   });
 
@@ -243,6 +274,8 @@ function setupModalRegras() {
   document.getElementById("fecharModalRegra").addEventListener("click", () => modal.style.display = "none");
   
   document.getElementById("salvarRegraBtn").addEventListener("click", async () => {
+    if (userRole !== "admin") return alert("Apenas administradores podem criar regras.");
+
     const desc = document.getElementById("regraDescricao").value.trim();
     const mod = document.getElementById("regraModalidade").value;
     const pts = document.getElementById("regraPontos").value.trim();
