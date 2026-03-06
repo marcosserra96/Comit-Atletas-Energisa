@@ -11,12 +11,10 @@ let userRole = "atleta";
 onAuthStateChanged(auth, async (user) => {
   if (user) {
     const docSnap = await getDoc(doc(db, "atletas", user.uid));
-    
     if (docSnap.exists() && (docSnap.data().role === "admin" || docSnap.data().role === "comite")) {
       userRole = docSnap.data().role;
       iniciarPainelAdmin();
     } else {
-      alert("Acesso Negado! Área restrita ao Comitê.");
       window.location.href = "index.html";
     }
   } else {
@@ -28,20 +26,17 @@ function iniciarPainelAdmin() {
   setupNavigation();
   setupSubTabs();
   configurarLogout();
+  setupCadastrarPessoa();
   setupModalRegras();
   atualizarTelas();
   lucide.createIcons();
 }
 
-// =====================================================
-// 🧭 NAVEGAÇÃO PRINCIPAL E SECUNDÁRIA
-// =====================================================
 function setupNavigation() {
   document.querySelectorAll(".menu-item").forEach(item => {
     item.addEventListener("click", () => {
       document.querySelectorAll(".menu-item").forEach(btn => btn.classList.remove("active"));
       item.classList.add("active");
-      
       const target = item.dataset.section;
       document.querySelectorAll("main section").forEach(sec => {
         sec.classList.remove("active-section");
@@ -53,17 +48,19 @@ function setupNavigation() {
 }
 
 function setupSubTabs() {
-  const tabAprovacoes = document.querySelector(".admin-only-tab");
-  if (userRole !== "admin" && tabAprovacoes) {
-    tabAprovacoes.style.display = "none";
-    document.querySelector('[data-target="sub-equipes"]').click();
+  if (userRole !== "admin") {
+    // Esconde opções e tabelas do comitê para quem não é Admin Geral
+    document.querySelectorAll(".admin-only-option").forEach(el => el.style.display = "none");
+    const containerComite = document.getElementById("containerComite");
+    const cardComite = document.getElementById("cardComite");
+    if (containerComite) containerComite.style.display = "none";
+    if (cardComite) cardComite.style.display = "none";
   }
 
   document.querySelectorAll(".sub-tab").forEach(tab => {
     tab.addEventListener("click", () => {
       document.querySelectorAll(".sub-tab").forEach(t => t.classList.remove("active"));
       document.querySelectorAll(".sub-content").forEach(c => c.classList.remove("active"));
-      
       tab.classList.add("active");
       document.getElementById(tab.dataset.target).classList.add("active");
     });
@@ -81,89 +78,67 @@ function configurarLogout() {
 }
 
 function atualizarTelas() {
-  if (userRole === "admin") carregarAprovacoes();
   carregarEquipes();
   carregarRegras();
 }
 
 // =====================================================
-// ✅ 1. APROVAÇÕES (Definição de Modalidade)
+// ✅ 1. CADASTRAR PESSOA (Adição Direta)
 // =====================================================
-async function carregarAprovacoes() {
-  const tbody = document.getElementById("listaAprovacoes");
-  if (!tbody) return;
+function setupCadastrarPessoa() {
+  document.getElementById("btnCadastrarPessoa").addEventListener("click", async (e) => {
+    const nome = document.getElementById("novoNome").value.trim();
+    const email = document.getElementById("novoEmail").value.trim();
+    const papel = document.getElementById("novoPapel").value;
+    const btn = e.target;
 
-  tbody.innerHTML = "<tr><td colspan='4' style='text-align:center;'>Buscando...</td></tr>";
-  const q = query(collection(db, "atletas"), where("status", "==", "Pendente"), orderBy("criadoEm", "desc"));
-  const snap = await getDocs(q);
-  tbody.innerHTML = "";
-  
-  if (snap.empty) {
-    tbody.innerHTML = "<tr><td colspan='4' style='text-align:center; padding: 20px;'>Nenhuma solicitação pendente. 🎉</td></tr>";
-    return;
-  }
+    if (!nome) return alert("Por favor, preencha pelo menos o nome da pessoa!");
 
-  snap.forEach(d => {
-    const u = d.data();
-    tbody.innerHTML += `
-      <tr>
-        <td><strong>${u.nome}</strong></td>
-        <td>${u.email}</td>
-        <td>
-          <select class="select-modalidade" id="mod-${d.id}" style="margin: 0; padding: 6px; width: 100%;">
-            <option value="">Selecione a Equipe...</option>
-            <option value="Bicicleta">Bicicleta</option>
-            <option value="Corrida">Corrida</option>
-          </select>
-        </td>
-        <td style="display: flex; gap: 8px;">
-          <button class="btn-acao btn-aprovar-atleta" data-id="${d.id}" style="color: var(--secondary); border-color: var(--secondary);" title="Aprovar Atleta">
-            Aprovar
-          </button>
-          <button class="btn-acao btn-reprovar" data-id="${d.id}" style="color: var(--danger); border-color: var(--danger);" title="Excluir">
-            <i data-lucide="trash"></i>
-          </button>
-        </td>
-      </tr>`;
-  });
-  
-  lucide.createIcons();
+    let role = "atleta";
+    let equipe = papel;
 
-  document.querySelectorAll(".btn-aprovar-atleta").forEach(btn => {
-    btn.addEventListener("click", async (e) => {
-      const id = e.currentTarget.dataset.id;
-      const selectEquipe = document.getElementById(`mod-${id}`);
+    if (papel === "Comitê") {
+      role = "comite";
+      equipe = "Nenhuma";
+    }
+
+    try {
+      btn.textContent = "Salvando...";
+      btn.disabled = true;
+
+      await addDoc(collection(db, "atletas"), {
+        nome: nome,
+        email: email,
+        role: role,
+        equipe: equipe,
+        status: "Aprovado", // Já entra direto e ativo
+        criadoEm: new Date().toISOString()
+      });
+
+      alert(`${nome} adicionado com sucesso!`);
       
-      if (selectEquipe.value === "") {
-        alert("Selecione se o atleta será da equipe de Bicicleta ou Corrida.");
-        selectEquipe.focus();
-        return;
-      }
+      // Limpa os campos
+      document.getElementById("novoNome").value = "";
+      document.getElementById("novoEmail").value = "";
+      btn.textContent = "Adicionar ao Sistema";
+      btn.disabled = false;
+      
+      atualizarTelas();
+      
+      // Muda a aba automaticamente para mostrar as equipes atualizadas
+      document.querySelector('[data-target="sub-equipes"]').click();
 
-      if(confirm(`Deseja aprovar este atleta para a equipe de ${selectEquipe.value}?`)) {
-        await updateDoc(doc(db, "atletas", id), { 
-          status: "Aprovado", 
-          role: "atleta",
-          equipe: selectEquipe.value 
-        });
-        atualizarTelas();
-      }
-    });
-  });
-
-  document.querySelectorAll(".btn-reprovar").forEach(btn => {
-    btn.addEventListener("click", async (e) => {
-      const id = e.currentTarget.dataset.id;
-      if(confirm("Excluir esta solicitação?")) {
-        await deleteDoc(doc(db, "atletas", id));
-        atualizarTelas();
-      }
-    });
+    } catch (error) {
+      console.error(error);
+      alert("Erro ao cadastrar. Tente novamente.");
+      btn.textContent = "Adicionar ao Sistema";
+      btn.disabled = false;
+    }
   });
 }
 
 // =====================================================
-// 👥 2. EQUIPES ATIVAS E COMITÊ (Nova Separação)
+// 👥 2. EQUIPES ATIVAS
 // =====================================================
 async function carregarEquipes() {
   const tbBike = document.getElementById("listaBicicleta");
@@ -173,28 +148,21 @@ async function carregarEquipes() {
   const q = query(collection(db, "atletas"), where("status", "==", "Aprovado"));
   const snap = await getDocs(q);
   
-  let htmlBike = "";
-  let htmlCorrida = "";
-  let htmlComite = "";
+  let htmlBike = "", htmlCorrida = "", htmlComite = "";
   let contBike = 0, contCorrida = 0, contComite = 0;
 
   snap.forEach(d => {
     const u = d.data();
     const isDono = auth.currentUser.uid === d.id;
     const btnExcluir = (!isDono && userRole === "admin") ? `<button class="btn-acao btn-excluir-membro" data-id="${d.id}" style="color: red; border: 0; padding: 2px;" title="Remover"><i data-lucide="x-circle"></i></button>` : '';
-    
-    // Tag visual para identificar você mesmo
     const tagVoce = isDono ? `<span style="font-size: 0.75rem; color: #999; margin-left: 5px;">(Você)</span>` : "";
 
     const linha = `
       <tr>
-        <td style="padding: 10px;">
-          <strong>${u.nome}</strong> ${tagVoce}
-        </td>
+        <td style="padding: 10px;"><strong>${u.nome}</strong> ${tagVoce}</td>
         <td style="text-align: right; padding: 10px;">${btnExcluir}</td>
       </tr>`;
 
-    // A MÁGICA DA SEPARAÇÃO ACONTECE AQUI
     if (u.role === "admin" || u.role === "comite") {
       htmlComite += linha;
       contComite++;
@@ -207,23 +175,21 @@ async function carregarEquipes() {
     }
   });
 
-  tbComite.innerHTML = htmlComite || "<tr><td colspan='2' style='text-align:center;'>Nenhum membro no comitê.</td></tr>";
-  tbBike.innerHTML = htmlBike || "<tr><td colspan='2' style='text-align:center;'>Nenhum membro na bicicleta.</td></tr>";
-  tbCorrida.innerHTML = htmlCorrida || "<tr><td colspan='2' style='text-align:center;'>Nenhum membro na corrida.</td></tr>";
+  if(tbComite) tbComite.innerHTML = htmlComite || "<tr><td colspan='2' style='text-align:center;'>Nenhum membro no comitê.</td></tr>";
+  if(tbBike) tbBike.innerHTML = htmlBike || "<tr><td colspan='2' style='text-align:center;'>Nenhuma pessoa cadastrada.</td></tr>";
+  if(tbCorrida) tbCorrida.innerHTML = htmlCorrida || "<tr><td colspan='2' style='text-align:center;'>Nenhuma pessoa cadastrada.</td></tr>";
   
-  // Atualiza as métricas da Visão Geral
-  document.getElementById("totalComite").textContent = contComite;
+  if(document.getElementById("totalComite")) document.getElementById("totalComite").textContent = contComite;
   document.getElementById("totalBike").textContent = contBike;
   document.getElementById("totalCorrida").textContent = contCorrida;
-  document.getElementById("totalAtletas").textContent = contBike + contCorrida + contComite;
+  document.getElementById("totalAtletas").textContent = contBike + contCorrida; // Exclui comitê do total de atletas
 
   lucide.createIcons();
 
   document.querySelectorAll(".btn-excluir-membro").forEach(btn => {
     btn.addEventListener("click", async (e) => {
-      const id = e.currentTarget.dataset.id;
-      if(confirm("Remover este membro da equipe definitivamente?")) {
-        await deleteDoc(doc(db, "atletas", id));
+      if(confirm("Deseja realmente remover esta pessoa do sistema?")) {
+        await deleteDoc(doc(db, "atletas", e.currentTarget.dataset.id));
         atualizarTelas();
       }
     });
@@ -235,7 +201,6 @@ async function carregarEquipes() {
 // =====================================================
 async function carregarRegras() {
   const tbody = document.getElementById("listaRegras");
-  
   const snap = await getDocs(collection(db, "regras_pontuacao"));
   tbody.innerHTML = "";
   
