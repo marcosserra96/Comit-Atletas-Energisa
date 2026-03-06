@@ -26,10 +26,10 @@
     <div class="menu-item" data-section="visao-geral">
       <i data-lucide="layout-dashboard"></i><span>Visão Geral</span>
     </div>
-    <div class="menu-item" data-section="contabilizacao">
+    <div class="menu-item active" data-section="contabilizacao">
       <i data-lucide="calculator"></i><span>Contabilização</span>
     </div>
-    <div class="menu-item active" data-section="gestao">
+    <div class="menu-item" data-section="gestao">
       <i data-lucide="settings-2"></i><span>Gestão Base</span>
     </div>
   </nav>
@@ -47,18 +47,53 @@
       </div>
     </section>
 
-    <section id="contabilizacao">
+    <section id="contabilizacao" class="active-section">
       <div class="header-acao">
         <h2>Contabilização de Pontuação</h2>
-        <p style="color: var(--text-light); font-size: 0.9rem;">Área para validar treinos e calcular o ranking.</p>
+        <p style="color: var(--text-light); font-size: 0.9rem;">Área para validar treinos em massa e registrar pontos nas equipes.</p>
       </div>
-      <div class="card" style="text-align: center; padding: 40px;">
-        <i data-lucide="hammer" style="width: 48px; height: 48px; color: var(--text-light); margin-bottom: 15px;"></i>
-        <h3 style="color: var(--text-light);">Módulo em construção</h3>
+      
+      <div class="card" style="margin-bottom: 25px;">
+        <h3 style="color: var(--primary); margin-top: 0; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 15px;">
+          <i data-lucide="clipboard-list"></i> Novo Registro de Evento/Treino
+        </h3>
+        
+        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 15px; align-items: end;">
+          <div>
+            <label>Descrição (Ex: Treinão de Sábado)</label>
+            <input type="text" id="descTreino" placeholder="Qual foi a atividade?" />
+          </div>
+          <div>
+            <label>Data</label>
+            <input type="date" id="dataTreino" />
+          </div>
+          <div>
+            <label>Modalidade</label>
+            <select id="modTreino">
+              <option value="">Selecione...</option>
+              <option value="Bicicleta">Bicicleta</option>
+              <option value="Corrida">Corrida</option>
+            </select>
+          </div>
+          <div>
+            <button id="btnGerarLista" class="btn-primario" style="height: 46px; margin-bottom: 10px;">Gerar Lista</button>
+          </div>
+        </div>
       </div>
+
+      <div id="areaTabelaPontuacao" style="display: none; animation: fadeIn 0.4s ease;">
+        <div class="tabela-container">
+          <table class="tabela-simples" id="tabelaPontuacao">
+            </table>
+        </div>
+        <button id="btnSalvarPontuacao" class="btn-primario" style="width: 100%; justify-content: center; padding: 15px; font-size: 1.1rem; background: var(--secondary);">
+          <i data-lucide="check-circle"></i> Salvar Pontuações nas Contas
+        </button>
+      </div>
+
     </section>
 
-    <section id="gestao" class="active-section">
+    <section id="gestao">
       <div class="sub-menu">
         <button class="sub-tab active" data-target="sub-cadastrar"><i data-lucide="user-plus"></i> Cadastrar Pessoa</button>
         <button class="sub-tab" data-target="sub-equipes"><i data-lucide="users"></i> Pessoas e Equipes</button>
@@ -72,21 +107,17 @@
         </div>
         
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px;">
-          
           <div class="card">
             <label>Nome Completo</label>
             <input type="text" id="novoNome" placeholder="Ex: João da Silva" />
-
             <label>E-mail (Opcional, para contato)</label>
             <input type="email" id="novoEmail" placeholder="joao@email.com" />
-
             <label>Equipe / Função</label>
             <select id="novoPapel">
               <option value="Bicicleta">Atleta - Bicicleta</option>
               <option value="Corrida">Atleta - Corrida</option>
               <option value="Comitê" class="admin-only-option">Membro do Comitê</option>
             </select>
-
             <button id="btnCadastrarPessoa" class="btn-primario" style="width: 100%; margin-top: 15px; justify-content: center;">Adicionar ao Sistema</button>
           </div>
 
@@ -97,7 +128,6 @@
               Ao clicar em <strong>Adicionar ao Sistema</strong>, a pessoa será imediatamente colocada na sua equipe e já estará disponível para receber pontos na aba de Contabilização.
             </p>
           </div>
-
         </div>
       </div>
 
@@ -106,7 +136,6 @@
           <h2>Equipes Ativas e Comitê</h2>
         </div>
         <div style="display: flex; flex-direction: column; gap: 30px; margin-bottom: 40px;">
-          
           <div id="containerComite" class="tabela-container" style="border-top: 4px solid #e63946;">
             <h3 style="padding: 15px; margin: 0; background: rgba(230,57,70,0.05); display: flex; align-items: center; gap: 8px;">
               <i data-lucide="shield" style="color: #e63946;"></i> Comitê / Admins
