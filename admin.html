@@ -23,10 +23,10 @@
   </header>
 
   <nav class="menu-flutuante">
-    <div class="menu-item" data-section="visao-geral">
+    <div class="menu-item active" data-section="visao-geral">
       <i data-lucide="layout-dashboard"></i><span>Visão Geral</span>
     </div>
-    <div class="menu-item active" data-section="contabilizacao">
+    <div class="menu-item" data-section="contabilizacao">
       <i data-lucide="calculator"></i><span>Contabilização</span>
     </div>
     <div class="menu-item" data-section="gestao">
@@ -35,19 +35,49 @@
   </nav>
 
   <main>
-    <section id="visao-geral">
+    <section id="visao-geral" class="active-section">
       <div class="header-acao">
         <h2>Visão Geral do Programa</h2>
       </div>
+      
       <div class="cards">
-        <div class="card"><i data-lucide="users"></i><h3>Total Atletas</h3><p id="totalAtletas">0</p></div>
+        <div class="card"><i data-lucide="hourglass" style="color: var(--accent);"></i><h3>Na Fila</h3><p id="totalFila">0</p></div>
         <div class="card" id="cardComite"><i data-lucide="shield-check" style="color: #e63946;"></i><h3>Comitê</h3><p id="totalComite">0</p></div>
         <div class="card"><i data-lucide="bike" style="color: var(--primary);"></i><h3>Bicicleta</h3><p id="totalBike">0</p></div>
         <div class="card"><i data-lucide="footprints" style="color: var(--secondary);"></i><h3>Corrida</h3><p id="totalCorrida">0</p></div>
       </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 30px;">
+        
+        <div class="card" style="margin-bottom: 0;">
+          <h3 style="color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+            <i data-lucide="swords"></i> Duelo de Equipes
+          </h3>
+          <div style="margin-top: 20px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 600;">
+              <span style="color: var(--primary);">🚴 Bike (<span id="ptsBikeTxt">0</span> pts)</span>
+              <span style="color: var(--secondary);">🏃 Corrida (<span id="ptsCorridaTxt">0</span> pts)</span>
+            </div>
+            <div style="width: 100%; height: 24px; background: var(--border); border-radius: 12px; overflow: hidden; display: flex;">
+              <div id="barBike" style="width: 50%; background: var(--primary); height: 100%; transition: width 0.8s ease;"></div>
+              <div id="barCorrida" style="width: 50%; background: var(--secondary); height: 100%; transition: width 0.8s ease;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom: 0;">
+          <h3 style="color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+            <i data-lucide="award"></i> Top 5 Atletas
+          </h3>
+          <ul id="listaPodio" style="list-style: none; padding: 0; margin: 15px 0 0 0;">
+            <li style="text-align: center; color: #999;">Aguardando pontuações...</li>
+          </ul>
+        </div>
+
+      </div>
     </section>
 
-    <section id="contabilizacao" class="active-section">
+    <section id="contabilizacao">
       <div class="header-acao">
         <h2>Contabilização de Pontuação</h2>
         <p style="color: var(--text-light); font-size: 0.9rem;">Área para validar treinos em massa e registrar pontos nas equipes.</p>
@@ -59,18 +89,12 @@
         </h3>
         
         <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 15px; align-items: end; margin-bottom: 15px;">
+          <div><label>Descrição</label><input type="text" id="descTreino" placeholder="Ex: Treinão de Sábado" /></div>
+          <div><label>Data</label><input type="date" id="dataTreino" /></div>
           <div>
-            <label>Descrição (Ex: Treinão de Sábado)</label>
-            <input type="text" id="descTreino" placeholder="Qual foi a atividade?" />
-          </div>
-          <div>
-            <label>Data</label>
-            <input type="date" id="dataTreino" />
-          </div>
-          <div>
-            <label>Equipe / Modalidade</label>
+            <label>Equipe</label>
             <select id="modTreino">
-              <option value="">Selecione para carregar regras...</option>
+              <option value="">Selecione...</option>
               <option value="Bicicleta">Bicicleta</option>
               <option value="Corrida">Corrida</option>
             </select>
@@ -79,8 +103,7 @@
 
         <div id="areaSelecaoRegras" style="display: none; background: rgba(0,0,0,0.02); padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px dashed var(--border);">
           <label style="margin-bottom: 10px; color: var(--primary); font-weight: 600;">Quais itens vão pontuar neste evento?</label>
-          <div id="listaRegrasTreino" style="display: flex; flex-wrap: wrap; gap: 10px;">
-            </div>
+          <div id="listaRegrasTreino" style="display: flex; flex-wrap: wrap; gap: 10px;"></div>
         </div>
 
         <div style="display: flex; justify-content: flex-end;">
@@ -89,10 +112,7 @@
       </div>
 
       <div id="areaTabelaPontuacao" style="display: none; animation: fadeIn 0.4s ease;">
-        <div class="tabela-container">
-          <table class="tabela-simples" id="tabelaPontuacao">
-            </table>
-        </div>
+        <div class="tabela-container"><table class="tabela-simples" id="tabelaPontuacao"></table></div>
         <button id="btnSalvarPontuacao" class="btn-primario" style="width: 100%; justify-content: center; padding: 15px; font-size: 1.1rem; background: var(--secondary);">
           <i data-lucide="check-circle"></i> Salvar Pontuações nas Contas
         </button>
@@ -109,19 +129,20 @@
       <div id="sub-cadastrar" class="sub-content active">
         <div class="header-acao">
           <h2>Cadastrar Novo Membro</h2>
-          <p style="color: var(--text-light); font-size: 0.9rem;">Adicione atletas diretamente às equipes.</p>
+          <p style="color: var(--text-light); font-size: 0.9rem;">Adicione atletas diretamente às equipes ou à fila de espera.</p>
         </div>
         
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px;">
           <div class="card">
             <label>Nome Completo</label>
             <input type="text" id="novoNome" placeholder="Ex: João da Silva" />
-            <label>E-mail (Opcional, para contato)</label>
+            <label>E-mail (Opcional)</label>
             <input type="email" id="novoEmail" placeholder="joao@email.com" />
             <label>Equipe / Função</label>
             <select id="novoPapel">
               <option value="Bicicleta">Atleta - Bicicleta</option>
               <option value="Corrida">Atleta - Corrida</option>
+              <option value="Fila de Espera" style="font-weight: bold; color: var(--accent);">⏳ Fila de Espera (Aguardando vaga)</option>
               <option value="Comitê" class="admin-only-option">Membro do Comitê</option>
             </select>
             <button id="btnCadastrarPessoa" class="btn-primario" style="width: 100%; margin-top: 15px; justify-content: center;">Adicionar ao Sistema</button>
@@ -131,33 +152,45 @@
             <i data-lucide="info" style="width: 48px; height: 48px; color: var(--primary); opacity: 0.6; margin-bottom: 15px;"></i>
             <h3 style="color: var(--primary); margin-bottom: 10px;">Gestão Centralizada</h3>
             <p style="font-size: 0.95rem; color: var(--text-light); line-height: 1.6; margin: 0;">
-              Ao clicar em <strong>Adicionar ao Sistema</strong>, a pessoa será imediatamente colocada na sua equipe e já estará disponível para receber pontos na aba de Contabilização.
+              Se escolher <strong>Fila de Espera</strong>, a pessoa ficará reservada numa lista especial. Quando houver vaga, você poderá movê-la com 1 clique para a Bicicleta ou Corrida.
             </p>
           </div>
         </div>
       </div>
 
       <div id="sub-equipes" class="sub-content">
-        <div class="header-acao"><h2>Equipes Ativas e Comitê</h2></div>
+        <div class="header-acao"><h2>Equipes Ativas, Fila e Comitê</h2></div>
+        
         <div style="display: flex; flex-direction: column; gap: 30px; margin-bottom: 40px;">
-          <div id="containerComite" class="tabela-container" style="border-top: 4px solid #e63946;">
-            <h3 style="padding: 15px; margin: 0; background: rgba(230,57,70,0.05); display: flex; align-items: center; gap: 8px;">
-              <i data-lucide="shield" style="color: #e63946;"></i> Comitê / Admins
+          
+          <div class="tabela-container" style="border-top: 4px solid var(--accent);">
+            <h3 style="padding: 15px; margin: 0; background: rgba(243, 112, 33, 0.05); display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="hourglass" style="color: var(--accent);"></i> Fila de Espera
             </h3>
-            <table class="tabela-simples"><tbody id="listaComite"></tbody></table>
+            <table class="tabela-simples"><tbody id="listaFila"></tbody></table>
           </div>
+
           <div class="tabela-container" style="border-top: 4px solid var(--primary);">
             <h3 style="padding: 15px; margin: 0; background: rgba(0,155,193,0.05); display: flex; align-items: center; gap: 8px;">
               <i data-lucide="bike" style="color: var(--primary);"></i> Equipe Bicicleta
             </h3>
             <table class="tabela-simples"><tbody id="listaBicicleta"></tbody></table>
           </div>
+
           <div class="tabela-container" style="border-top: 4px solid var(--secondary);">
             <h3 style="padding: 15px; margin: 0; background: rgba(0,179,126,0.05); display: flex; align-items: center; gap: 8px;">
               <i data-lucide="footprints" style="color: var(--secondary);"></i> Equipe Corrida
             </h3>
             <table class="tabela-simples"><tbody id="listaCorrida"></tbody></table>
           </div>
+
+          <div id="containerComite" class="tabela-container" style="border-top: 4px solid #e63946;">
+            <h3 style="padding: 15px; margin: 0; background: rgba(230,57,70,0.05); display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="shield" style="color: #e63946;"></i> Comitê / Admins
+            </h3>
+            <table class="tabela-simples"><tbody id="listaComite"></tbody></table>
+          </div>
+
         </div>
       </div>
 
