@@ -23,81 +23,132 @@
   </header>
 
   <nav class="menu-flutuante">
-    <div class="menu-item active" data-section="dashboard">
+    <div class="menu-item" data-section="visao-geral">
       <i data-lucide="layout-dashboard"></i><span>Visão Geral</span>
     </div>
-    <div class="menu-item" data-section="aprovacoes">
-      <i data-lucide="user-check"></i><span>Aprovações</span>
+    <div class="menu-item" data-section="contabilizacao">
+      <i data-lucide="calculator"></i><span>Contabilização</span>
     </div>
-    <div class="menu-item" data-section="membros">
-      <i data-lucide="users"></i><span>Equipe Ativa</span>
+    <div class="menu-item active" data-section="gestao">
+      <i data-lucide="settings-2"></i><span>Gestão Base</span>
     </div>
   </nav>
 
   <main>
-    <section id="dashboard" class="active-section">
+    <section id="visao-geral">
       <div class="header-acao">
-        <h2>Resumo do Programa</h2>
-        <p style="color: var(--text-light); font-size: 0.9rem; margin-top: 5px;">Acompanhe os números do Atletas Energisa.</p>
+        <h2>Visão Geral do Programa</h2>
       </div>
-      <div class="cards" id="dashboardCards">
-        <div class="card">
-          <h3><i data-lucide="users"></i> Atletas Ativos</h3>
-          <p id="totalAtletas">Carregando...</p>
-        </div>
-        <div class="card">
-          <h3 style="color: var(--accent);"><i data-lucide="user-plus"></i> Pendentes</h3>
-          <p id="totalPendentes" style="color: var(--accent);">Carregando...</p>
-        </div>
+      <div class="cards">
+        <div class="card"><i data-lucide="users"></i><h3>Total Ativos</h3><p id="totalAtletas">0</p></div>
+        <div class="card"><i data-lucide="bike" style="color: var(--primary);"></i><h3>Bicicleta</h3><p id="totalBike">0</p></div>
+        <div class="card"><i data-lucide="footprints" style="color: var(--secondary);"></i><h3>Corrida</h3><p id="totalCorrida">0</p></div>
       </div>
     </section>
 
-    <section id="aprovacoes">
+    <section id="contabilizacao">
       <div class="header-acao">
-        <h2>Solicitações de Acesso</h2>
-        <p style="color: var(--text-light); font-size: 0.9rem; margin-top: 5px;">Novos cadastros aguardando liberação para usar o portal.</p>
+        <h2>Contabilização de Pontuação</h2>
+        <p style="color: var(--text-light); font-size: 0.9rem;">Área para validar treinos e calcular o ranking das equipas.</p>
       </div>
-      <div class="tabela-container">
+      <div class="card" style="text-align: center; padding: 40px;">
+        <i data-lucide="hammer" style="width: 48px; height: 48px; color: var(--text-light); margin-bottom: 15px;"></i>
+        <h3 style="color: var(--text-light);">Módulo em construção</h3>
+        <p>Aguardando a definição das regras de pontuação na aba de Gestão.</p>
+      </div>
+    </section>
+
+    <section id="gestao" class="active-section">
+      
+      <div class="header-acao" style="margin-top: 10px;">
+        <h2>1. Aprovações de Acesso</h2>
+      </div>
+      <div class="tabela-container" style="margin-bottom: 40px;">
         <table class="tabela-simples">
           <thead>
             <tr>
               <th>Nome</th>
               <th>E-mail</th>
-              <th>Modalidade</th>
-              <th>Data</th>
+              <th>Definir Modalidade</th>
               <th>Ações</th>
             </tr>
           </thead>
           <tbody id="listaAprovacoes">
-            <tr><td colspan='5' style='text-align:center;'>Buscando dados...</td></tr>
+            <tr><td colspan='4' style='text-align:center;'>Buscando dados...</td></tr>
           </tbody>
         </table>
       </div>
-    </section>
 
-    <section id="membros">
       <div class="header-acao">
-        <h2>Equipe Ativa</h2>
-        <p style="color: var(--text-light); font-size: 0.9rem; margin-top: 5px;">Gerencie os atletas e administradores já aprovados.</p>
+        <h2>2. Equipes Ativas</h2>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 40px;">
+        
+        <div class="tabela-container" style="border-top: 4px solid var(--primary);">
+          <h3 style="padding: 15px; margin: 0; background: rgba(0,155,193,0.05); display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="bike" style="color: var(--primary);"></i> Equipe Bicicleta
+          </h3>
+          <table class="tabela-simples">
+            <tbody id="listaBicicleta"></tbody>
+          </table>
+        </div>
+
+        <div class="tabela-container" style="border-top: 4px solid var(--secondary);">
+          <h3 style="padding: 15px; margin: 0; background: rgba(0,179,126,0.05); display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="footprints" style="color: var(--secondary);"></i> Equipe Corrida
+          </h3>
+          <table class="tabela-simples">
+            <tbody id="listaCorrida"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="header-acao">
+        <h2>3. Regras e Itens de Pontuação</h2>
+        <button id="abrirModalRegra" class="btn-primario"><i data-lucide="plus"></i> Nova Regra</button>
       </div>
       <div class="tabela-container">
         <table class="tabela-simples">
           <thead>
             <tr>
-              <th>Nome</th>
-              <th>E-mail</th>
-              <th>Nível</th>
+              <th>Descrição (Ex: 1km percorrido)</th>
+              <th>Modalidade Aplicável</th>
+              <th>Pontos Ganhos</th>
               <th>Ação</th>
             </tr>
           </thead>
-          <tbody id="listaMembrosAtivos">
-            <tr><td colspan='4' style='text-align:center;'>Buscando dados...</td></tr>
+          <tbody id="listaRegras">
+            <tr><td colspan='4' style='text-align:center;'>Nenhuma regra definida ainda.</td></tr>
           </tbody>
         </table>
       </div>
+
     </section>
-    
   </main>
+
+  <div id="modalRegra" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 30px; border-radius: 12px; width: 90%; max-width: 400px;">
+      <h3 style="color: var(--primary); margin-top: 0;">Nova Regra de Pontuação</h3>
+      
+      <label>Descrição (Ex: Participação em Evento)</label>
+      <input type="text" id="regraDescricao" placeholder="Digite a descrição da regra" />
+      
+      <label>Modalidade</label>
+      <select id="regraModalidade">
+        <option value="Ambas">Ambas (Geral)</option>
+        <option value="Bicicleta">Apenas Bicicleta</option>
+        <option value="Corrida">Apenas Corrida</option>
+      </select>
+      
+      <label>Pontos Gerados</label>
+      <input type="number" id="regraPontos" placeholder="Ex: 10" />
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+        <button id="fecharModalRegra" style="background: #f0f0f0; color: #333; padding: 10px 15px; border-radius: 8px;">Cancelar</button>
+        <button id="salvarRegraBtn" class="btn-primario">Salvar Regra</button>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="js/admin.js"></script>
 </body>
