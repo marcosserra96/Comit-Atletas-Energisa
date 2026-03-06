@@ -28,7 +28,7 @@ function iniciarPainelAdmin() {
   configurarLogout();
   setupCadastrarPessoa();
   setupModalRegras();
-  setupContabilizacao(); // NOVA FUNÇÃO INICIALIZADA AQUI!
+  setupContabilizacao();
   atualizarTelas();
   lucide.createIcons();
 }
@@ -83,84 +83,128 @@ function atualizarTelas() {
 }
 
 // =====================================================
-// 💯 MÓDULO DE CONTABILIZAÇÃO (O Coração do Portal)
+// 💯 MÓDULO DE CONTABILIZAÇÃO (Filtros e Tabela Inteligente)
 // =====================================================
 function setupContabilizacao() {
-  // Configura campo de data para hoje por padrão
   document.getElementById("dataTreino").valueAsDate = new Date();
 
-  // Botão que gera a Tabela de Checkboxes
+  // MÁGICA 1: Carrega as Regras dinamicamente ao escolher a Modalidade
+  document.getElementById("modTreino").addEventListener("change", async (e) => {
+    const mod = e.target.value;
+    const areaRegras = document.getElementById("areaSelecaoRegras");
+    const listaRegras = document.getElementById("listaRegrasTreino");
+    const btnGerar = document.getElementById("btnGerarLista");
+    
+    document.getElementById("areaTabelaPontuacao").style.display = "none"; // Esconde tabela anterior
+
+    if (!mod) {
+      areaRegras.style.display = "none";
+      btnGerar.style.display = "none";
+      return;
+    }
+
+    listaRegras.innerHTML = "<span style='font-size: 0.85rem; color: #999;'>Buscando regras...</span>";
+    areaRegras.style.display = "block";
+
+    const qRegras = query(collection(db, "regras_pontuacao"), where("modalidade", "in", ["Ambas", mod]));
+    const snapRegras = await getDocs(qRegras);
+    
+    if (snapRegras.empty) {
+      listaRegras.innerHTML = "<span style='font-size: 0.85rem; color: var(--danger);'>Nenhuma regra cadastrada para esta equipe.</span>";
+      btnGerar.style.display = "none";
+      return;
+    }
+
+    listaRegras.innerHTML = ""; // Limpa para injetar as Chips
+    
+    snapRegras.forEach(d => {
+      const r = d.data();
+      const chip = document.createElement("label");
+      chip.className = "regra-chip";
+      chip.innerHTML = `
+        <input type="checkbox" value="${d.id}" data-desc="${r.descricao}" data-pontos="${r.pontos}">
+        ${r.descricao} <strong style="color:var(--secondary);">+${r.pontos}</strong>
+      `;
+      
+      // Efeito visual ao clicar no Chip
+      chip.querySelector("input").addEventListener("change", (ev) => {
+        if(ev.target.checked) chip.classList.add("selected");
+        else chip.classList.remove("selected");
+      });
+      
+      listaRegras.appendChild(chip);
+    });
+
+    btnGerar.style.display = "inline-flex";
+  });
+
+  // MÁGICA 2: Gera a tabela apenas com as regras (colunas) escolhidas
   document.getElementById("btnGerarLista").addEventListener("click", async () => {
     const desc = document.getElementById("descTreino").value.trim();
     const data = document.getElementById("dataTreino").value;
     const mod = document.getElementById("modTreino").value;
+    
+    // Pega os itens que foram selecionados nos Chips
+    const regrasSelecionadas = [];
+    document.querySelectorAll("#listaRegrasTreino input:checked").forEach(chk => {
+      regrasSelecionadas.push({
+        id: chk.value,
+        descricao: chk.dataset.desc,
+        pontos: parseInt(chk.dataset.pontos)
+      });
+    });
 
     if (!desc || !data || !mod) return alert("Preencha a descrição, data e modalidade do treino!");
+    if (regrasSelecionadas.length === 0) return alert("Selecione pelo menos um item (regra) que irá pontuar neste evento!");
 
     const btn = document.getElementById("btnGerarLista");
     btn.textContent = "Gerando...";
     btn.disabled = true;
 
-    await gerarTabelaContabilizacao(mod);
+    await gerarTabelaContabilizacao(mod, regrasSelecionadas);
 
-    btn.textContent = "Gerar Lista";
+    btn.textContent = "Gerar Tabela de Lançamento";
     btn.disabled = false;
     document.getElementById("areaTabelaPontuacao").style.display = "block";
   });
 
-  // Botão que injeta a pontuação na conta dos atletas
   document.getElementById("btnSalvarPontuacao").addEventListener("click", salvarPontuacoes);
 }
 
-async function gerarTabelaContabilizacao(modalidade) {
+async function gerarTabelaContabilizacao(modalidade, regras) {
   const tabela = document.getElementById("tabelaPontuacao");
   
-  // 1. Busca Regras (Que sejam exclusivas da modalidade OU regras gerais 'Ambas')
-  const qRegras = query(collection(db, "regras_pontuacao"), where("modalidade", "in", ["Ambas", modalidade]));
-  const snapRegras = await getDocs(qRegras);
-  let regras = [];
-  snapRegras.forEach(d => regras.push({id: d.id, ...d.data()}));
-
-  // 2. Busca Atletas que pertencem à modalidade escolhida
   const qAtletas = query(collection(db, "atletas"), where("status", "==", "Aprovado"), where("equipe", "==", modalidade));
   const snapAtletas = await getDocs(qAtletas);
   let atletas = [];
   snapAtletas.forEach(d => atletas.push({id: d.id, ...d.data()}));
 
-  // Validações
-  if (regras.length === 0) {
-    tabela.innerHTML = "<tr><td style='text-align:center; padding: 20px;'>Nenhuma regra de pontuação cadastrada para esta modalidade. Adicione na aba de Gestão Base.</td></tr>";
-    return;
-  }
   if (atletas.length === 0) {
     tabela.innerHTML = `<tr><td style='text-align:center; padding: 20px;'>Ainda não existem atletas cadastrados na equipe de ${modalidade}.</td></tr>`;
     return;
   }
 
-  // 3. Monta o Cabeçalho da Tabela (Colunas = Regras)
+  // Cabeçalho adaptável baseado apenas nas regras selecionadas
   let thead = `<thead><tr>
-                <th style="min-width: 200px;">Nome do Atleta</th>`;
+                <th style="min-width: 200px; max-width: 300px;">Nome do Atleta</th>`;
   
   regras.forEach(r => {
-    thead += `<th style="text-align: center; min-width: 120px;" title="${r.descricao}">
-                <div style="font-size: 0.85rem; line-height: 1.2; margin-bottom: 5px;">${r.descricao}</div>
-                <strong style="color: var(--secondary); font-size: 1.1rem;">+${r.pontos} pts</strong>
+    thead += `<th style="text-align: center; min-width: 100px;" title="${r.descricao}">
+                <div style="font-size: 0.8rem; line-height: 1.2; margin-bottom: 5px; font-weight: 500;">${r.descricao}</div>
+                <strong style="color: var(--secondary); font-size: 1rem;">+${r.pontos} pts</strong>
               </th>`;
   });
   thead += "</tr></thead>";
 
-  // 4. Monta o Corpo da Tabela (Linhas = Atletas)
+  // Corpo da Tabela
   let tbody = "<tbody>";
   atletas.forEach(a => {
-    // Busca a pontuação total atual para mostrar do lado do nome (puramente visual)
     const ptsAtuais = a.pontuacaoTotal || 0;
-    
     tbody += `<tr>
                 <td><strong>${a.nome}</strong> <br><small style="color: #999;">Atual: ${ptsAtuais} pts</small></td>`;
     
-    // Injeta os Checkboxes
     regras.forEach(r => {
-      tbody += `<td style="text-align: center;">
+      tbody += `<td style="text-align: center; vertical-align: middle;">
                   <input type="checkbox" class="check-ponto" data-atleta-id="${a.id}" data-regra-id="${r.id}" data-pontos="${r.pontos}">
                 </td>`;
     });
@@ -176,10 +220,7 @@ async function salvarPontuacoes() {
   const data = document.getElementById("dataTreino").value;
   const checks = document.querySelectorAll(".check-ponto:checked");
 
-  if (checks.length === 0) {
-    return alert("Você não marcou nenhuma caixinha de pontuação!");
-  }
-
+  if (checks.length === 0) return alert("Você não marcou nenhuma caixinha de pontuação!");
   if (!confirm(`Confirmar e salvar a pontuação de ${checks.length} marcações de atletas?`)) return;
 
   const btn = document.getElementById("btnSalvarPontuacao");
@@ -189,26 +230,18 @@ async function salvarPontuacoes() {
   try {
     let pontosPorAtleta = {};
 
-    // 1. Agrupa quantos pontos cada atleta ganhou neste lançamento
     for (let check of checks) {
       const aId = check.dataset.atletaId;
       const pts = parseInt(check.dataset.pontos);
       
-      // Guarda o "recibo" no histórico
       await addDoc(collection(db, "historico_pontos"), {
-        atletaId: aId,
-        regraId: check.dataset.regraId,
-        pontos: pts,
-        descTreino: desc,
-        dataTreino: data,
-        criadoEm: new Date().toISOString()
+        atletaId: aId, regraId: check.dataset.regraId, pontos: pts, descTreino: desc, dataTreino: data, criadoEm: new Date().toISOString()
       });
 
       if (!pontosPorAtleta[aId]) pontosPorAtleta[aId] = 0;
       pontosPorAtleta[aId] += pts;
     }
 
-    // 2. Atualiza a pontuação total na "Ficha" principal de cada atleta
     for (let aId in pontosPorAtleta) {
       const atletaRef = doc(db, "atletas", aId);
       const atletaSnap = await getDoc(atletaRef);
@@ -220,10 +253,13 @@ async function salvarPontuacoes() {
 
     alert("🏆 Pontuações distribuídas com sucesso!");
     
-    // Reseta a tela para um novo lançamento
     document.getElementById("areaTabelaPontuacao").style.display = "none";
+    document.getElementById("areaSelecaoRegras").style.display = "none";
+    document.getElementById("btnGerarLista").style.display = "none";
     document.getElementById("descTreino").value = "";
     document.getElementById("modTreino").value = "";
+    
+    atualizarTelas(); // Atualiza painel Gestão para mostrar pontos novos
     
   } catch (error) {
     console.error(error);
@@ -236,7 +272,7 @@ async function salvarPontuacoes() {
 }
 
 // =====================================================
-// ✅ 1. CADASTRAR PESSOA (Gestão Base)
+// ✅ 1. CADASTRAR PESSOA E GESTÃO BASE
 // =====================================================
 function setupCadastrarPessoa() {
   document.getElementById("btnCadastrarPessoa").addEventListener("click", async (e) => {
@@ -247,29 +283,22 @@ function setupCadastrarPessoa() {
 
     if (!nome) return alert("Por favor, preencha pelo menos o nome da pessoa!");
 
-    let role = "atleta";
-    let equipe = papel;
+    let role = "atleta"; let equipe = papel;
     if (papel === "Comitê") { role = "comite"; equipe = "Nenhuma"; }
 
     try {
-      btn.textContent = "Salvando...";
-      btn.disabled = true;
+      btn.textContent = "Salvando..."; btn.disabled = true;
       await addDoc(collection(db, "atletas"), {
         nome: nome, email: email, role: role, equipe: equipe, status: "Aprovado", pontuacaoTotal: 0, criadoEm: new Date().toISOString()
       });
-
       alert(`${nome} adicionado com sucesso!`);
-      document.getElementById("novoNome").value = "";
-      document.getElementById("novoEmail").value = "";
-      btn.textContent = "Adicionar ao Sistema";
-      btn.disabled = false;
+      document.getElementById("novoNome").value = ""; document.getElementById("novoEmail").value = "";
+      btn.textContent = "Adicionar ao Sistema"; btn.disabled = false;
       atualizarTelas();
       document.querySelector('[data-target="sub-equipes"]').click();
     } catch (error) {
-      console.error(error);
-      alert("Erro ao cadastrar.");
-      btn.textContent = "Adicionar ao Sistema";
-      btn.disabled = false;
+      console.error(error); alert("Erro ao cadastrar.");
+      btn.textContent = "Adicionar ao Sistema"; btn.disabled = false;
     }
   });
 }
@@ -291,7 +320,7 @@ async function carregarEquipes() {
   snap.forEach(d => {
     const u = d.data();
     const isDono = auth.currentUser.uid === d.id;
-    const pts = u.pontuacaoTotal || 0; // Exibe os pontos na Gestão Base também!
+    const pts = u.pontuacaoTotal || 0; 
     
     const btnExcluir = (!isDono && userRole === "admin") ? `<button class="btn-acao btn-excluir-membro" data-id="${d.id}" style="color: red; border: 0; padding: 2px;" title="Remover"><i data-lucide="x-circle"></i></button>` : '';
     const tagVoce = isDono ? `<span style="font-size: 0.75rem; color: #999; margin-left: 5px;">(Você)</span>` : "";
@@ -323,7 +352,7 @@ async function carregarEquipes() {
 
   document.querySelectorAll(".btn-excluir-membro").forEach(btn => {
     btn.addEventListener("click", async (e) => {
-      if(confirm("Deseja realmente remover esta pessoa do sistema? Todo o histórico dela será perdido.")) {
+      if(confirm("Deseja remover esta pessoa do sistema? O histórico será perdido.")) {
         await deleteDoc(doc(db, "atletas", e.currentTarget.dataset.id));
         atualizarTelas();
       }
