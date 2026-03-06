@@ -6,10 +6,10 @@
   --bg-card: #ffffff;
   --text: #222;
   --text-light: #666;
-  --primary: #009bc1;       /* Azul Energisa */
+  --primary: #009bc1;
   --primary-hover: #0080a4;
-  --secondary: #00b37e;     /* Verde Energisa */
-  --accent: #f37021;        /* Laranja Energisa */
+  --secondary: #00b37e;
+  --accent: #f37021;
   --danger: #e63946;
   --border: #e3e6eb;
   --radius: 12px;
@@ -116,7 +116,7 @@ button {
 .btn-topo:hover { background: rgba(255,255,255,0.3); }
 
 /* =======================================================
-   🧭 MENU
+   🧭 MENU PRINCIPAL (Flutuante)
 ======================================================= */
 .menu-flutuante {
   position: fixed;
@@ -172,9 +172,9 @@ section { display: none; animation: fadeIn 0.4s ease; }
 
 .header-acao {
   display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 25px; flex-wrap: wrap; gap: 10px;
+  margin-bottom: 20px; flex-wrap: wrap; gap: 10px;
 }
-h2 { margin: 0; color: var(--primary); }
+h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
 
 .cards {
   display: grid;
@@ -182,7 +182,7 @@ h2 { margin: 0; color: var(--primary); }
   gap: 20px;
 }
 
-.card, .config-card {
+.card {
   background: var(--bg-card);
   border-radius: var(--radius);
   padding: 24px;
@@ -192,15 +192,14 @@ h2 { margin: 0; color: var(--primary); }
   margin-bottom: 20px;
 }
 .card:hover { transform: translateY(-3px); }
-[data-theme="dark"] .card { border-color: #333; }
 
 .card h3 { margin: 0 0 10px 0; font-size: 1rem; color: var(--text); display: flex; align-items: center; gap: 8px; }
 .card p { margin: 0; font-size: 1.5rem; font-weight: 700; color: var(--text-light); }
 .card i { width: 24px; height: 24px; color: var(--primary); }
 
 /* TABELAS */
-.tabela-container { overflow-x: auto; border-radius: var(--radius); box-shadow: var(--shadow); }
-.tabela-simples { width: 100%; border-collapse: collapse; background: var(--bg-card); min-width: 600px; }
+.tabela-container { overflow-x: auto; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 20px; background: var(--bg-card);}
+.tabela-simples { width: 100%; border-collapse: collapse; min-width: 600px; }
 .tabela-simples th { background: rgba(0,155,193,0.1); color: var(--primary); padding: 15px; text-align: left; }
 .tabela-simples td { padding: 15px; border-bottom: 1px solid var(--border); color: var(--text); }
 
@@ -219,3 +218,52 @@ h2 { margin: 0; color: var(--primary); }
   display: inline-flex; align-items: center; gap: 5px;
 }
 .btn-acao:hover { border-color: var(--primary); color: var(--primary); }
+
+/* =======================================================
+   📑 SUB-ABAS (Novo Menu Interno de Gestão)
+======================================================= */
+.sub-menu {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 25px;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 10px;
+  overflow-x: auto;
+}
+
+.sub-tab {
+  background: transparent;
+  color: var(--text-light);
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: 0.3s ease;
+  white-space: nowrap;
+}
+
+.sub-tab i { width: 18px; height: 18px; }
+
+.sub-tab:hover {
+  background: rgba(0, 155, 193, 0.05);
+  color: var(--primary);
+}
+
+.sub-tab.active {
+  background: var(--primary);
+  color: white;
+  box-shadow: 0 4px 10px rgba(0, 155, 193, 0.2);
+}
+
+/* Ocultar conteúdo das sub-abas que não estão ativas */
+.sub-content {
+  display: none;
+  animation: fadeIn 0.3s ease;
+}
+
+/* Mostrar apenas a sub-aba ativa */
+.sub-content.active {
+  display: block;
+}
