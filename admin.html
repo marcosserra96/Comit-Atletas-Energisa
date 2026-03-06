@@ -58,7 +58,7 @@
           <i data-lucide="clipboard-list"></i> Novo Registro de Evento/Treino
         </h3>
         
-        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 15px; align-items: end;">
+        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 15px; align-items: end; margin-bottom: 15px;">
           <div>
             <label>Descrição (Ex: Treinão de Sábado)</label>
             <input type="text" id="descTreino" placeholder="Qual foi a atividade?" />
@@ -68,16 +68,23 @@
             <input type="date" id="dataTreino" />
           </div>
           <div>
-            <label>Modalidade</label>
+            <label>Equipe / Modalidade</label>
             <select id="modTreino">
-              <option value="">Selecione...</option>
+              <option value="">Selecione para carregar regras...</option>
               <option value="Bicicleta">Bicicleta</option>
               <option value="Corrida">Corrida</option>
             </select>
           </div>
-          <div>
-            <button id="btnGerarLista" class="btn-primario" style="height: 46px; margin-bottom: 10px;">Gerar Lista</button>
-          </div>
+        </div>
+
+        <div id="areaSelecaoRegras" style="display: none; background: rgba(0,0,0,0.02); padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px dashed var(--border);">
+          <label style="margin-bottom: 10px; color: var(--primary); font-weight: 600;">Quais itens vão pontuar neste evento?</label>
+          <div id="listaRegrasTreino" style="display: flex; flex-wrap: wrap; gap: 10px;">
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end;">
+          <button id="btnGerarLista" class="btn-primario" style="height: 46px; display: none;">Gerar Tabela de Lançamento</button>
         </div>
       </div>
 
@@ -90,7 +97,6 @@
           <i data-lucide="check-circle"></i> Salvar Pontuações nas Contas
         </button>
       </div>
-
     </section>
 
     <section id="gestao">
@@ -132,35 +138,25 @@
       </div>
 
       <div id="sub-equipes" class="sub-content">
-        <div class="header-acao">
-          <h2>Equipes Ativas e Comitê</h2>
-        </div>
+        <div class="header-acao"><h2>Equipes Ativas e Comitê</h2></div>
         <div style="display: flex; flex-direction: column; gap: 30px; margin-bottom: 40px;">
           <div id="containerComite" class="tabela-container" style="border-top: 4px solid #e63946;">
             <h3 style="padding: 15px; margin: 0; background: rgba(230,57,70,0.05); display: flex; align-items: center; gap: 8px;">
               <i data-lucide="shield" style="color: #e63946;"></i> Comitê / Admins
             </h3>
-            <table class="tabela-simples">
-              <tbody id="listaComite"></tbody>
-            </table>
+            <table class="tabela-simples"><tbody id="listaComite"></tbody></table>
           </div>
-
           <div class="tabela-container" style="border-top: 4px solid var(--primary);">
             <h3 style="padding: 15px; margin: 0; background: rgba(0,155,193,0.05); display: flex; align-items: center; gap: 8px;">
               <i data-lucide="bike" style="color: var(--primary);"></i> Equipe Bicicleta
             </h3>
-            <table class="tabela-simples">
-              <tbody id="listaBicicleta"></tbody>
-            </table>
+            <table class="tabela-simples"><tbody id="listaBicicleta"></tbody></table>
           </div>
-
           <div class="tabela-container" style="border-top: 4px solid var(--secondary);">
             <h3 style="padding: 15px; margin: 0; background: rgba(0,179,126,0.05); display: flex; align-items: center; gap: 8px;">
               <i data-lucide="footprints" style="color: var(--secondary);"></i> Equipe Corrida
             </h3>
-            <table class="tabela-simples">
-              <tbody id="listaCorrida"></tbody>
-            </table>
+            <table class="tabela-simples"><tbody id="listaCorrida"></tbody></table>
           </div>
         </div>
       </div>
@@ -172,12 +168,8 @@
         </div>
         <div class="tabela-container">
           <table class="tabela-simples">
-            <thead>
-              <tr><th>Descrição</th><th>Modalidade</th><th>Pontos</th><th>Ação</th></tr>
-            </thead>
-            <tbody id="listaRegras">
-              <tr><td colspan='4' style='text-align:center;'>Nenhuma regra definida ainda.</td></tr>
-            </tbody>
+            <thead><tr><th>Descrição</th><th>Modalidade</th><th>Pontos</th><th>Ação</th></tr></thead>
+            <tbody id="listaRegras"><tr><td colspan='4' style='text-align:center;'>Nenhuma regra definida ainda.</td></tr></tbody>
           </table>
         </div>
       </div>
