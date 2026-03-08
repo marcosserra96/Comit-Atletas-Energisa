@@ -115,8 +115,11 @@ document.getElementById("btnExportarPDF").addEventListener("click", () => {
   const canvasLinha = document.getElementById('graficoTendencia');
   if(canvasLinha) { document.getElementById('pdfImgTendencia').src = canvasLinha.toDataURL("image/png", 1.0); }
 
-  const template = document.getElementById("pdfTemplateOculto");
-  template.style.display = "block";
+  const modalPdf = document.getElementById("pdfOverlay");
+  const printArea = document.getElementById("pdfPrintArea");
+  
+  // Exibe a sobreposição temporária visível
+  modalPdf.style.display = "block";
 
   const opt = {
     margin: 0, filename: `Report_Atletas_${document.getElementById("pdfDataHoje").textContent.replace(/\//g, '-')}.pdf`,
@@ -124,7 +127,13 @@ document.getElementById("btnExportarPDF").addEventListener("click", () => {
     jsPDF: { unit: 'px', format: [1122, 794], orientation: 'landscape' }
   };
 
-  html2pdf().set(opt).from(template).save().then(() => { template.style.display = "none"; showToast("PDF Baixado!", "success"); });
+  // Dá um pequeno tempo para o canvas atualizar na DOM antes de capturar
+  setTimeout(() => {
+    html2pdf().set(opt).from(printArea).save().then(() => { 
+      modalPdf.style.display = "none"; 
+      showToast("PDF Baixado com Sucesso!", "success"); 
+    });
+  }, 500);
 });
 
 // =====================================================
@@ -224,7 +233,9 @@ async function carregarEquipesEDashboard() {
 
   titulares.forEach(u => {
     const pts = Number(u.pontuacaoTotal) || 0; const ativo = u.ativo !== false;
-    const btnPerm = (u.role === 'comite' && userRole === 'admin') ? `<button class="btn-acao btn-permissoes" data-id="${u.id}" data-nome="${u.nome}" style="color: #f39c12; border-color:#f39c12; padding: 4px; margin-left: 5px;"><i data-lucide="key" style="width: 16px;"></i></button>` : '';
+    
+    // Botão de permissão bem destacado para Comitê
+    const btnPerm = (u.role === 'comite' && userRole === 'admin') ? `<button class="btn-primario btn-permissoes" data-id="${u.id}" data-nome="${u.nome}" style="background: #f39c12; padding: 6px 10px; font-size: 0.8rem; margin-left: 5px;"><i data-lucide="key" style="width: 14px;"></i> Acessos</button>` : '';
     const btnEditar = `<button class="btn-acao btn-editar-membro" data-id="${u.id}" data-nome="${u.nome}" data-email="${u.email}" data-eq="${u.equipe}" style="color: var(--warning); border-color: var(--warning); padding: 4px; margin-left: 5px;"><i data-lucide="edit-2" style="width: 16px;"></i></button>`;
     const btnExcluir = (auth.currentUser.uid !== u.id && userRole === "admin") ? `<button class="btn-acao btn-excluir-membro" data-id="${u.id}" style="color: red; border: 0; padding: 4px; margin-left: 5px;"><i data-lucide="x-circle" style="width: 18px;"></i></button>` : '';
     const linha = `<tr><td class="${!ativo ? 'inativo-txt' : ''}"><strong>${u.nome}</strong><br><small style="color: var(--primary);">🏆 ${pts} pts</small></td><td style="text-align: right; display:flex; justify-content:flex-end; align-items:center;">${btnPerm} ${btnEditar} ${btnExcluir}</td></tr>`;
@@ -372,8 +383,8 @@ async function gerarTabelaContabilizacao(modalidade, regras) {
 
   let tbody = "<tbody>";
   atletas.forEach(a => {
-    tbody += `<tr><td><strong>${a.nome}</strong></td><td style="text-align:center; background: rgba(243,112,33,0.05);"><input type="checkbox" class="check-falta" data-atleta-id="${a.id}"></td>`;
-    regras.forEach(r => { tbody += `<td style="text-align:center;"><input type="checkbox" class="check-ponto" data-atleta-id="${a.id}" data-regra-id="${r.id}" data-regra-desc="${r.descricao}" data-pontos="${r.pontos}"></td>`; });
+    tbody += `<tr><td><strong>${a.nome}</strong></td><td style="text-align:center; background: rgba(243,112,33,0.05);"><input type="checkbox" class="check-falta" data-atleta-id="${a.id}" data-atleta-nome="${a.nome}" data-atleta-equipe="${a.equipe}"></td>`;
+    regras.forEach(r => { tbody += `<td style="text-align:center;"><input type="checkbox" class="check-ponto" data-atleta-id="${a.id}" data-atleta-nome="${a.nome}" data-atleta-equipe="${a.equipe}" data-regra-id="${r.id}" data-regra-desc="${r.descricao}" data-pontos="${r.pontos}"></td>`; });
     tbody += `</tr>`;
   });
   tbody += "</tbody>"; tabela.innerHTML = thead + tbody;
@@ -392,10 +403,12 @@ async function salvarPontuacoesEmLote() {
 
   try {
     const batch = writeBatch(db); let pontosPorAtleta = {};
-    for (let f of checksFaltas) { batch.set(doc(collection(db, "historico_pontos")), { atletaId: f.dataset.atletaId, regraId: "falta_just", regraDesc: "Falta Justificada", pontos: 0, descTreino: desc, dataTreino: data, criadoEm: new Date().toISOString() }); }
+    for (let f of checksFaltas) { 
+      batch.set(doc(collection(db, "historico_pontos")), { atletaId: f.dataset.atletaId, atletaNome: f.dataset.atletaNome, atletaEquipe: f.dataset.atletaEquipe, regraId: "falta_just", regraDesc: "Falta Justificada", pontos: 0, descTreino: desc, dataTreino: data, criadoEm: new Date().toISOString() }); 
+    }
     for (let check of checksPontos) {
       const aId = check.dataset.atletaId; const pts = Number(check.dataset.pontos) || 0;
-      batch.set(doc(collection(db, "historico_pontos")), { atletaId: aId, regraId: check.dataset.regraId, regraDesc: check.dataset.regraDesc, pontos: pts, descTreino: desc, dataTreino: data, criadoEm: new Date().toISOString() });
+      batch.set(doc(collection(db, "historico_pontos")), { atletaId: aId, atletaNome: check.dataset.atletaNome, atletaEquipe: check.dataset.atletaEquipe, regraId: check.dataset.regraId, regraDesc: check.dataset.regraDesc, pontos: pts, descTreino: desc, dataTreino: data, criadoEm: new Date().toISOString() });
       if (!pontosPorAtleta[aId]) pontosPorAtleta[aId] = 0; pontosPorAtleta[aId] += pts;
     }
     for (let aId in pontosPorAtleta) { batch.update(doc(db, "atletas", aId), { pontuacaoTotal: increment(pontosPorAtleta[aId]) }); }
@@ -414,21 +427,52 @@ async function carregarHistorico() {
 }
 
 function filtrarHistorico() {
-  const mes = document.getElementById("filtroMesHistorico").value; const eq = document.getElementById("filtroEquipeHistorico").value; const nome = document.getElementById("filtroNomeHistorico").value.toLowerCase();
-  const dados = historicoCompleto.filter(h => { const atleta = mapAtletas[h.atletaId] || { nome: "", equipe: "" }; return (!mes || (h.dataTreino||"").startsWith(mes)) && (!eq || atleta.equipe === eq) && (!nome || (atleta.nome && atleta.nome.toLowerCase().includes(nome))); });
+  const mes = document.getElementById("filtroMesHistorico").value; 
+  const eq = document.getElementById("filtroEquipeHistorico").value; 
+  const nomeBusca = document.getElementById("filtroNomeHistorico").value.toLowerCase();
+  const statusFiltro = document.getElementById("filtroStatusHistorico").value;
+
+  const dados = historicoCompleto.filter(h => { 
+    const atleta = mapAtletas[h.atletaId]; 
+    const isAtivo = atleta ? (atleta.ativo !== false) : false;
+    
+    // Filtro de Status
+    if (statusFiltro === "ativos" && !isAtivo) return false;
+
+    // Memória de Nomes (Resolve o problema do atleta excluído)
+    const nomeFiltro = h.atletaNome || (atleta ? atleta.nome : "");
+    const eqFiltro = h.atletaEquipe || (atleta ? atleta.equipe : "");
+
+    return (!mes || (h.dataTreino||"").startsWith(mes)) && 
+           (!eq || eqFiltro === eq) && 
+           (!nomeBusca || nomeFiltro.toLowerCase().includes(nomeBusca)); 
+  });
+
   const tbody = document.getElementById("listaHistorico"); tbody.innerHTML = "";
   if (dados.length === 0) { tbody.innerHTML = `<tr><td colspan='6' style='text-align:center;'>Nenhum registro.</td></tr>`; return; }
 
   dados.forEach(h => {
-    const atleta = mapAtletas[h.atletaId]; let ptsV = h.pontos === 0 ? `<span style="color:var(--accent);">Justificada</span>` : `+${h.pontos}`;
+    const atleta = mapAtletas[h.atletaId]; 
+    
+    let nomeDisplay = h.atletaNome || (atleta ? atleta.nome : "Desconhecido");
+    let eqDisplay = h.atletaEquipe || (atleta ? atleta.equipe : "-");
+    
+    if (atleta && atleta.ativo === false) {
+      nomeDisplay += " <small style='color:var(--danger); font-weight:bold;'>(Inativo)</small>";
+    } else if (!atleta) {
+      nomeDisplay += " <small style='color:#999; font-weight:bold;'>(Excluído)</small>";
+    }
+
+    let ptsV = h.pontos === 0 ? `<span style="color:var(--accent);">Justificada</span>` : `+${h.pontos}`;
     const btnEstorno = (userRole === "admin") ? `<button class="btn-acao btn-estornar" data-id="${h.id}" data-atleta="${h.atletaId}" data-pontos="${h.pontos}" style="color:var(--danger); border-color:var(--danger);"><i data-lucide="undo-2" style="width:16px;"></i></button>` : '';
-    tbody.innerHTML += `<tr><td>${(h.dataTreino?new Date(h.dataTreino+"T00:00:00").toLocaleDateString('pt-BR'):"-")}</td><td><strong>${atleta?atleta.nome:"Inativo"}</strong></td><td>${atleta?atleta.equipe:"-"}</td><td>${h.descTreino}<br><small style="color:var(--primary);">${h.regraDesc}</small></td><td style="text-align:center; color:var(--secondary); font-weight:bold;">${ptsV}</td><td style="text-align:right;">${btnEstorno}</td></tr>`;
+    tbody.innerHTML += `<tr><td>${(h.dataTreino?new Date(h.dataTreino+"T00:00:00").toLocaleDateString('pt-BR'):"-")}</td><td><strong>${nomeDisplay}</strong></td><td>${eqDisplay}</td><td>${h.descTreino}<br><small style="color:var(--primary);">${h.regraDesc}</small></td><td style="text-align:center; color:var(--secondary); font-weight:bold;">${ptsV}</td><td style="text-align:right;">${btnEstorno}</td></tr>`;
   });
   lucide.createIcons();
   document.querySelectorAll(".btn-estornar").forEach(btn => { btn.addEventListener("click", async (e) => { const histId = e.currentTarget.dataset.id, atlId = e.currentTarget.dataset.atleta, pts = parseInt(e.currentTarget.dataset.pontos); if(!confirm(`Estornar?`)) return; try { if (mapAtletas[atlId] && pts > 0) { await updateDoc(doc(db, "atletas", atlId), { pontuacaoTotal: increment(-pts) }); } await deleteDoc(doc(db, "historico_pontos", histId)); showToast("Estornado!", "success"); atualizarTelas(); } catch (err) { showToast("Erro.", "error"); } }); });
 }
-["filtroMesHistorico", "filtroEquipeHistorico", "filtroNomeHistorico"].forEach(id => { document.getElementById(id).addEventListener("input", filtrarHistorico); });
-document.getElementById("btnLimparFiltrosExtrato").addEventListener("click", () => { document.getElementById("filtroMesHistorico").value = ""; document.getElementById("filtroEquipeHistorico").value = ""; document.getElementById("filtroNomeHistorico").value = ""; filtrarHistorico(); });
+
+["filtroMesHistorico", "filtroEquipeHistorico", "filtroNomeHistorico", "filtroStatusHistorico"].forEach(id => { document.getElementById(id).addEventListener("input", filtrarHistorico); });
+document.getElementById("btnLimparFiltrosExtrato").addEventListener("click", () => { document.getElementById("filtroMesHistorico").value = ""; document.getElementById("filtroEquipeHistorico").value = ""; document.getElementById("filtroNomeHistorico").value = ""; document.getElementById("filtroStatusHistorico").value = "ativos"; filtrarHistorico(); });
 
 function setupRelatorioConsolidado() {
   document.getElementById("filtroAnoRelatorio").value = new Date().getFullYear();
