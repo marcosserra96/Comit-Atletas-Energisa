@@ -12,6 +12,7 @@ let graficoLinhaInstancia = null;
 let graficoEngajBike = null;
 let graficoEngajCorrida = null;
 let gastoTotalGlobal = 0; 
+let cacheEventos = [];
 
 function showToast(message, type = "info") {
   const container = document.getElementById("toastContainer"); if (!container) return;
@@ -94,79 +95,106 @@ function setupSubTabs() {
 
 async function atualizarTelas() {
   if (userRole === "admin") setupAprovacoes();
+  await carregarAgenda(); // Agenda precisa carregar antes do financeiro para o dropdown
   await carregarHistorico(); 
   await carregarFinanceiro(); 
   await carregarEquipesEDashboard(); 
   await carregarRegras();
-  await carregarAgenda();
 }
 
 // =====================================================
-// 📊 DASHBOARD & GERADOR DE PDF BI (3 COLUNAS)
+// 📊 DASHBOARD & GERADOR DE PDF BI 
 // =====================================================
 document.getElementById("btnExportarPDF").addEventListener("click", () => {
   showToast("Montando painel corporativo...", "info");
   
-  document.getElementById("pdfDataHoje").textContent = new Date().toLocaleDateString('pt-BR');
-  document.getElementById("pdfAtivos").textContent = document.getElementById("totalAtivosGeral").textContent;
-  document.getElementById("pdfBike").textContent = document.getElementById("totalBike").textContent;
-  document.getElementById("pdfCorrida").textContent = document.getElementById("totalCorrida").textContent;
-  document.getElementById("pdfInvest").textContent = document.getElementById("totalInvestimento").textContent;
-  document.getElementById("pdfRoi").textContent = document.getElementById("roiAtleta").textContent;
-  document.getElementById("pdfMediaBike").textContent = document.getElementById("mediaBike").textContent;
-  document.getElementById("pdfMediaCorrida").textContent = document.getElementById("mediaCorrida").textContent;
-  
-  // Clona o Top 5 inteiro (Sem cortar)
-  const topUl = document.getElementById("listaPodio").cloneNode(true);
-  document.getElementById("pdfTop5").innerHTML = topUl.innerHTML;
-
-  // Clona e limpa a Agenda de Eventos Futuros
-  const agendaClone = document.getElementById("listaEventosAgenda").cloneNode(true);
-  agendaClone.querySelectorAll("button").forEach(b => b.remove()); // Remove lixeiras do PDF
-  document.getElementById("pdfProximosEventos").innerHTML = agendaClone.innerHTML;
-
-  // Processa a inteligência de "Últimos Eventos e Adesão" lendo o histórico de pontos
-  const eventosPassados = {};
-  historicoCompleto.forEach(h => {
-    if(!h.dataTreino || !h.descTreino || h.descTreino.toLowerCase().includes("falta")) return;
-    const key = `${h.dataTreino}::${h.descTreino}`;
-    if(!eventosPassados[key]) eventosPassados[key] = { data: h.dataTreino, desc: h.descTreino, atletas: new Set() };
-    eventosPassados[key].atletas.add(h.atletaId);
-  });
-  
-  const listaUltimos = Object.values(eventosPassados).sort((a,b) => new Date(b.data) - new Date(a.data)).slice(0, 4); // Pega os 4 últimos
-  let htmlUltimos = "";
-  listaUltimos.forEach(e => {
-     const d = new Date(e.data + "T00:00:00").toLocaleDateString('pt-BR').substring(0,5);
-     htmlUltimos += `<div style="display:flex; justify-content:space-between; margin-bottom:8px; border-bottom:1px solid #f5f5f5; padding-bottom:4px;">
-       <span style="color:#666;"><strong>${d}</strong> - ${e.desc}</span>
-       <strong style="color:var(--primary);">${e.atletas.size} <span style="font-size:12px;">👤</span></strong>
-     </div>`;
-  });
-  document.getElementById("pdfUltimosEventos").innerHTML = htmlUltimos || "<p style='color:#999; text-align:center;'>Nenhum evento processado.</p>";
-
-  // Captura o Gráfico
-  const canvasLinha = document.getElementById('graficoTendencia');
-  if(canvasLinha) { document.getElementById('pdfImgTendencia').src = canvasLinha.toDataURL("image/png", 1.0); }
-
-  const modalPdf = document.getElementById("pdfOverlay");
-  const printArea = document.getElementById("pdfPrintArea");
-  modalPdf.style.display = "flex";
+  const temaAtual = document.body.getAttribute("data-theme");
+  if (temaAtual === "dark") {
+    document.body.removeAttribute("data-theme");
+    Chart.defaults.color = '#666';
+    if(graficoLinhaInstancia) graficoLinhaInstancia.update();
+  }
 
   setTimeout(() => {
-    const opt = {
-      margin: 0, 
-      filename: `Report_Atletas_${document.getElementById("pdfDataHoje").textContent.replace(/\//g, '-')}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 }, 
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
-    };
+    document.getElementById("pdfDataHoje").textContent = new Date().toLocaleDateString('pt-BR');
+    document.getElementById("pdfAtivos").textContent = document.getElementById("totalAtivosGeral").textContent;
+    document.getElementById("pdfBike").textContent = document.getElementById("totalBike").textContent;
+    document.getElementById("pdfCorrida").textContent = document.getElementById("totalCorrida").textContent;
+    document.getElementById("pdfInvest").textContent = document.getElementById("totalInvestimento").textContent;
+    document.getElementById("pdfRoi").textContent = document.getElementById("roiAtleta").textContent;
+    document.getElementById("pdfMediaBike").textContent = document.getElementById("mediaBike").textContent;
+    document.getElementById("pdfMediaCorrida").textContent = document.getElementById("mediaCorrida").textContent;
+    
+    // Clona o Ranking Dividido
+    document.getElementById("pdfTopBike").innerHTML = document.getElementById("listaPodioBike").innerHTML;
+    document.getElementById("pdfTopCorrida").innerHTML = document.getElementById("listaPodioCorrida").innerHTML;
 
-    html2pdf().set(opt).from(printArea).save().then(() => { 
-      modalPdf.style.display = "none"; 
-      showToast("Download Concluído!", "success"); 
+    const agendaClone = document.getElementById("listaEventosAgenda").cloneNode(true);
+    agendaClone.querySelectorAll("button").forEach(b => b.remove()); 
+    document.getElementById("pdfProximosEventos").innerHTML = agendaClone.innerHTML;
+
+    const eventosPassados = {};
+    historicoCompleto.forEach(h => {
+      if(!h.dataTreino || !h.descTreino || h.descTreino.toLowerCase().includes("falta")) return;
+      const key = `${h.dataTreino}::${h.descTreino}`;
+      if(!eventosPassados[key]) eventosPassados[key] = { data: h.dataTreino, desc: h.descTreino, atletas: new Set() };
+      eventosPassados[key].atletas.add(h.atletaId);
     });
-  }, 600);
+    
+    const listaUltimos = Object.values(eventosPassados).sort((a,b) => new Date(b.data) - new Date(a.data)).slice(0, 4);
+    let htmlUltimos = "";
+    listaUltimos.forEach(e => {
+       const d = new Date(e.data + "T00:00:00").toLocaleDateString('pt-BR').substring(0,5);
+       htmlUltimos += `<div style="display:flex; justify-content:space-between; margin-bottom:8px; border-bottom:1px solid #f5f5f5; padding-bottom:4px;">
+         <span style="color:#666;"><strong>${d}</strong> - ${e.desc}</span>
+         <strong style="color:var(--primary);">${e.atletas.size} <span style="font-size:12px;">👤</span></strong>
+       </div>`;
+    });
+    document.getElementById("pdfUltimosEventos").innerHTML = htmlUltimos || "<p style='color:#999; text-align:center;'>Nenhum evento processado.</p>";
+
+    // Congela dimensões do gráfico para evitar distorção no PDF
+    const canvasLinha = document.getElementById('graficoTendencia');
+    const widthOriginal = canvasLinha.style.width;
+    const heightOriginal = canvasLinha.style.height;
+    if(canvasLinha) { 
+      canvasLinha.style.width = '800px'; 
+      canvasLinha.style.height = '250px'; 
+      if(graficoLinhaInstancia) graficoLinhaInstancia.resize();
+      document.getElementById('pdfImgTendencia').src = canvasLinha.toDataURL("image/png", 1.0); 
+    }
+
+    const modalPdf = document.getElementById("pdfOverlay");
+    const printArea = document.getElementById("pdfPrintArea");
+    modalPdf.style.display = "flex";
+
+    setTimeout(() => {
+      const opt = {
+        margin: 0, 
+        filename: `Report_Atletas_${document.getElementById("pdfDataHoje").textContent.replace(/\//g, '-')}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 }, 
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
+      };
+
+      html2pdf().set(opt).from(printArea).save().then(() => { 
+        modalPdf.style.display = "none"; 
+        
+        // Descongela gráfico
+        if(canvasLinha) {
+          canvasLinha.style.width = widthOriginal; 
+          canvasLinha.style.height = heightOriginal; 
+          if(graficoLinhaInstancia) graficoLinhaInstancia.resize();
+        }
+
+        if (temaAtual === "dark") {
+          document.body.setAttribute("data-theme", "dark");
+          Chart.defaults.color = '#aaa';
+          if(graficoLinhaInstancia) graficoLinhaInstancia.update();
+        }
+        showToast("Download Concluído!", "success"); 
+      });
+    }, 600);
+  }, 150); 
 });
 
 // =====================================================
@@ -187,10 +215,22 @@ function setupFinanceiro() {
   if(!btnSalvar) return;
   btnSalvar.addEventListener("click", async () => {
     const desc = document.getElementById("descDespesa").value.trim(), cat = document.getElementById("catDespesa").value, val = document.getElementById("valorDespesa").value, data = document.getElementById("dataDespesa").value;
-    if (!desc || !val || !data) return showToast("Preencha tudo!", "error");
+    const eventoId = document.getElementById("vincularEventoDespesa").value;
+    
+    let nomeEvento = "";
+    if (eventoId) {
+      const eventoEncontrado = cacheEventos.find(e => e.id === eventoId);
+      if(eventoEncontrado) nomeEvento = eventoEncontrado.titulo;
+    }
+
+    if (!desc || !val || !data) return showToast("Preencha descrição, valor e data!", "error");
+    
     btnSalvar.textContent = "Salvando..."; btnSalvar.disabled = true;
-    try { await addDoc(collection(db, "despesas"), { descricao: desc, categoria: cat, valor: parseFloat(val), data: data }); document.getElementById("descDespesa").value = ""; document.getElementById("valorDespesa").value = ""; showToast("Despesa registrada!", "success"); atualizarTelas(); } 
-    catch(err) { showToast("Erro.", "error"); } finally { btnSalvar.textContent = "Registrar Gasto"; btnSalvar.disabled = false; }
+    try { 
+      await addDoc(collection(db, "despesas"), { descricao: desc, categoria: cat, valor: parseFloat(val), data: data, eventoId: eventoId, eventoNome: nomeEvento, criadoEm: new Date().toISOString() }); 
+      document.getElementById("descDespesa").value = ""; document.getElementById("valorDespesa").value = ""; document.getElementById("vincularEventoDespesa").value = "";
+      showToast("Despesa registrada!", "success"); atualizarTelas(); 
+    } catch(err) { showToast("Erro.", "error"); } finally { btnSalvar.textContent = "Registrar Gasto"; btnSalvar.disabled = false; }
   });
 }
 
@@ -205,7 +245,9 @@ async function carregarFinanceiro() {
   snap.forEach(d => {
     const desp = d.data(); gastoTotalGlobal += desp.valor;
     const btnExcluir = canEdit ? `<button class="btn-acao btn-excluir-despesa" data-id="${d.id}" style="color:red; border:0; padding:0;"><i data-lucide="trash" style="width:16px;"></i></button>` : '';
-    html += `<tr><td>${new Date(desp.data + "T00:00:00").toLocaleDateString('pt-BR')}</td><td>${desp.descricao}</td><td style="color:var(--danger); font-weight:bold;">${desp.valor.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</td><td style="text-align:right;">${btnExcluir}</td></tr>`;
+    
+    const tagEvento = desp.eventoNome ? `<br><small style="color: var(--primary);"><i data-lucide="calendar" style="width:12px;"></i> ${desp.eventoNome}</small>` : '';
+    html += `<tr><td>${new Date(desp.data + "T00:00:00").toLocaleDateString('pt-BR')}</td><td><strong>${desp.descricao}</strong>${tagEvento}</td><td style="color:var(--danger); font-weight:bold;">${desp.valor.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</td><td style="text-align:right;">${btnExcluir}</td></tr>`;
   });
   
   if(document.getElementById("listaDespesas")) document.getElementById("listaDespesas").innerHTML = html || `<tr><td colspan='4'>Sem registros.</td></tr>`;
@@ -223,16 +265,24 @@ function setupAgenda() {
     const titulo = document.getElementById("eventoTitulo").value.trim(), local = document.getElementById("eventoLocal").value.trim(), mod = document.getElementById("eventoModalidade").value, data = document.getElementById("eventoData").value;
     if (!titulo || !data) return showToast("Título e Data são obrigatórios!", "error");
     await addDoc(collection(db, "agenda_eventos"), { titulo: titulo, local: local, modalidade: mod, data: data, criadoEm: new Date().toISOString() });
-    modal.style.display = "none"; document.getElementById("eventoTitulo").value = ""; document.getElementById("eventoLocal").value = ""; showToast("Evento agendado!", "success"); carregarAgenda();
+    modal.style.display = "none"; document.getElementById("eventoTitulo").value = ""; document.getElementById("eventoLocal").value = ""; showToast("Evento agendado!", "success"); atualizarTelas();
   });
 }
 
 async function carregarAgenda() {
   const snap = await getDocs(query(collection(db, "agenda_eventos")));
-  let eventos = []; snap.forEach(d => eventos.push({id: d.id, ...d.data()}));
-  eventos.sort((a,b) => new Date(a.data) - new Date(b.data)); 
+  cacheEventos = []; snap.forEach(d => cacheEventos.push({id: d.id, ...d.data()}));
+  cacheEventos.sort((a,b) => new Date(a.data) - new Date(b.data)); 
+  
+  // Alimenta Dropdown Financeiro
+  const selEventos = document.getElementById("vincularEventoDespesa");
+  if(selEventos) {
+    selEventos.innerHTML = '<option value="">Nenhum (Despesa Avulsa)</option>';
+    cacheEventos.forEach(e => { selEventos.innerHTML += `<option value="${e.id}">${e.titulo} (${new Date(e.data+"T00:00:00").toLocaleDateString('pt-BR')})</option>`; });
+  }
+
   const hoje = new Date().toISOString().split('T')[0];
-  const futuros = eventos.filter(e => e.data >= hoje).slice(0, 4); 
+  const futuros = cacheEventos.filter(e => e.data >= hoje).slice(0, 4); 
   let html = "";
   futuros.forEach(e => {
     const d = new Date(e.data + "T00:00:00"); const mes = d.toLocaleString('pt-BR', {month: 'short'}).replace('.',''); const dia = d.getDate().toString().padStart(2, '0');
@@ -242,7 +292,7 @@ async function carregarAgenda() {
   });
   if(document.getElementById("listaEventosAgenda")) document.getElementById("listaEventosAgenda").innerHTML = html || `<div class="empty-state" style="padding:10px;"><p style="font-size:0.85rem;">Nenhum evento agendado.</p></div>`;
   lucide.createIcons();
-  document.querySelectorAll(".btn-excluir-evento").forEach(btn => { btn.addEventListener("click", async (e) => { if(confirm("Cancelar evento?")) { await deleteDoc(doc(db, "agenda_eventos", e.currentTarget.dataset.id)); carregarAgenda(); } }); });
+  document.querySelectorAll(".btn-excluir-evento").forEach(btn => { btn.addEventListener("click", async (e) => { if(confirm("Cancelar evento?")) { await deleteDoc(doc(db, "agenda_eventos", e.currentTarget.dataset.id)); atualizarTelas(); } }); });
 }
 
 // =====================================================
@@ -255,17 +305,23 @@ async function carregarEquipesEDashboard() {
   let todosAtletas = []; mapAtletas = {}; 
 
   let listaOrdenada = []; snap.forEach(d => { mapAtletas[d.id] = { id: d.id, ...d.data() }; listaOrdenada.push(mapAtletas[d.id]); });
-  const filaEspera = listaOrdenada.filter(u => u.equipe && u.equipe.startsWith("Fila"));
-  const titulares = listaOrdenada.filter(u => !u.equipe || !u.equipe.startsWith("Fila"));
+  
+  // Separar exatamente por string exata para não haver confusão
+  const filaEspera = listaOrdenada.filter(u => u.equipe === "Fila - Bicicleta" || u.equipe === "Fila - Corrida" || u.equipe === "Fila de Espera");
+  const titulares = listaOrdenada.filter(u => u.equipe !== "Fila - Bicicleta" && u.equipe !== "Fila - Corrida" && u.equipe !== "Fila de Espera");
   
   filaEspera.sort((a, b) => new Date(a.criadoEm || 0) - new Date(b.criadoEm || 0));
   titulares.sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || "")));
 
   filaEspera.forEach((u, index) => {
-    let badgeFila = u.equipe.includes("Bike") ? `🚴 Bike` : `🏃 Corrida`;
+    let badgeFila = `<span style="color:#999;">Indefinida</span>`;
+    let btnDestinoEq = "Corrida"; // Default safe fallback
+    if(u.equipe === "Fila - Bicicleta") { badgeFila = `🚴 Bike`; btnDestinoEq = "Bicicleta"; }
+    else if(u.equipe === "Fila - Corrida") { badgeFila = `🏃 Corrida`; btnDestinoEq = "Corrida"; }
+
     const strikes = u.recusas || 0;
     const badgeStrike = strikes > 0 ? `<span class="strike-badge">⚠️ ${strikes}/3</span>` : '';
-    const btnAprovar = `<button class="btn-acao btn-aprovar-fila" data-id="${u.id}" data-eq="${u.equipe.includes('Bike') ? 'Bicicleta' : 'Corrida'}" style="color:var(--secondary); padding:4px;"><i data-lucide="check" style="width:16px;"></i></button>`;
+    const btnAprovar = `<button class="btn-acao btn-aprovar-fila" data-id="${u.id}" data-eq="${btnDestinoEq}" style="color:var(--secondary); padding:4px;"><i data-lucide="check" style="width:16px;"></i></button>`;
     const btnPular = `<button class="btn-acao btn-pular-fila" data-id="${u.id}" data-strikes="${strikes}" style="color:#f39c12; padding:4px;"><i data-lucide="skip-forward" style="width:16px;"></i></button>`;
     htmlFila += `<tr><td><strong>${index+1}º - ${u.nome}</strong> <small>(${badgeFila})</small> ${badgeStrike}</td><td style="text-align: right; display:flex; justify-content:flex-end; gap:5px;">${btnAprovar} ${btnPular}</td></tr>`;
     contFila++;
@@ -277,7 +333,10 @@ async function carregarEquipesEDashboard() {
     const btnPerm = (u.role === 'comite' && userRole === 'admin') ? `<button class="btn-primario btn-permissoes" data-id="${u.id}" data-nome="${u.nome}" style="background: #f39c12; padding: 6px 10px; font-size: 0.8rem; margin-left: 5px;"><i data-lucide="key" style="width: 14px;"></i> Acessos</button>` : '';
     const btnEditar = `<button class="btn-acao btn-editar-membro" data-id="${u.id}" data-nome="${u.nome}" data-email="${u.email}" data-eq="${u.equipe}" style="color: var(--warning); border-color: var(--warning); padding: 4px; margin-left: 5px;"><i data-lucide="edit-2" style="width: 16px;"></i></button>`;
     const btnExcluir = (auth.currentUser.uid !== u.id && userRole === "admin") ? `<button class="btn-acao btn-excluir-membro" data-id="${u.id}" style="color: red; border: 0; padding: 4px; margin-left: 5px;"><i data-lucide="x-circle" style="width: 18px;"></i></button>` : '';
-    const linha = `<tr><td class="${!ativo ? 'inativo-txt' : ''}"><strong>${u.nome}</strong><br><small style="color: var(--primary);">🏆 ${pts} pts</small></td><td style="text-align: right; display:flex; justify-content:flex-end; align-items:center;">${btnPerm} ${btnEditar} ${btnExcluir}</td></tr>`;
+    
+    // Oculta pontos se for da organização
+    const displayPts = u.role === 'atleta' ? `<br><small style="color: var(--primary);">🏆 ${pts} pts</small>` : '';
+    const linha = `<tr><td class="${!ativo ? 'inativo-txt' : ''}"><strong>${u.nome}</strong>${displayPts}</td><td style="text-align: right; display:flex; justify-content:flex-end; align-items:center;">${btnPerm} ${btnEditar} ${btnExcluir}</td></tr>`;
     
     if (u.role === "admin" || u.role === "comite") { htmlComite += linha; contComite++; }
     else if (u.equipe === "Corrida") { htmlCorrida += linha; contCorrida++; ptsCorrida += pts; todosAtletas.push({nome: u.nome, pts: pts, eq: u.equipe, id: u.id}); }
@@ -294,18 +353,7 @@ async function carregarEquipesEDashboard() {
   if(document.getElementById("totalBike")) document.getElementById("totalBike").textContent = contBike;
   if(document.getElementById("totalCorrida")) document.getElementById("totalCorrida").textContent = contCorrida;
 
-  renderizarGraficosDashboard(ptsBike, ptsCorrida, todosAtletas, contBike, contCorrida);
-
-  todosAtletas.sort((a, b) => b.pts - a.pts);
-  const podio = todosAtletas.slice(0, 5); // Garante Top 5 exato
-  const listaPodio = document.getElementById("listaPodio");
-  if(listaPodio) {
-    listaPodio.innerHTML = "";
-    podio.forEach((atleta, index) => {
-      let medalha = "🏅"; if(index===0) medalha = "🥇"; if(index===1) medalha = "🥈"; if(index===2) medalha = "🥉";
-      listaPodio.innerHTML += `<li style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border);"><span>${medalha} <strong>${atleta.nome}</strong> <small style="color:${atleta.eq === 'Bicicleta' ? 'var(--primary)' : 'var(--secondary)'};">${atleta.eq}</small></span><strong>${atleta.pts} pts</strong></li>`;
-    });
-  }
+  renderGraficosETop(ptsBike, ptsCorrida, todosAtletas, contBike, contCorrida);
   lucide.createIcons();
 
   document.querySelectorAll(".btn-aprovar-fila").forEach(btn => { btn.addEventListener("click", async (e) => { if(confirm(`Aprovar atleta?`)) { await updateDoc(doc(db, "atletas", e.currentTarget.dataset.id), { equipe: e.currentTarget.dataset.eq, recusas: 0 }); atualizarTelas(); }}); });
@@ -336,7 +384,7 @@ function setupPermissoesModal() {
   });
 }
 
-async function renderizarGraficosDashboard(ptsBike, ptsCorrida, arrayAtletas, totalBike, totalCorrida) {
+async function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike, totalCorrida) {
   const snapMeta = await getDoc(doc(db, "configuracoes", "metas"));
   const metaValor = snapMeta.exists() ? snapMeta.data().valor : 0;
   const cardMeta = document.getElementById("cardMeta");
@@ -347,6 +395,18 @@ async function renderizarGraficosDashboard(ptsBike, ptsCorrida, arrayAtletas, to
 
   document.getElementById("mediaBike").textContent = totalBike > 0 ? Math.round(ptsBike / totalBike) : 0;
   document.getElementById("mediaCorrida").textContent = totalCorrida > 0 ? Math.round(ptsCorrida / totalCorrida) : 0;
+
+  // Lógica do Top 3 Dividido
+  const bikeAtletas = arrayAtletas.filter(a => a.eq === 'Bicicleta').sort((a,b) => b.pts - a.pts).slice(0,3);
+  const corridaAtletas = arrayAtletas.filter(a => a.eq === 'Corrida').sort((a,b) => b.pts - a.pts).slice(0,3);
+  
+  const htmlPodio = (arr) => {
+    if(arr.length===0) return "<li style='color:#999; font-size:0.85rem;'>Sem pontos</li>";
+    return arr.map((a,i) => `<li style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border);"><span>${i===0?'🥇':i===1?'🥈':'🥉'} <strong>${a.nome}</strong></span><strong>${a.pts}</strong></li>`).join('');
+  };
+  
+  if(document.getElementById("listaPodioBike")) document.getElementById("listaPodioBike").innerHTML = htmlPodio(bikeAtletas);
+  if(document.getElementById("listaPodioCorrida")) document.getElementById("listaPodioCorrida").innerHTML = htmlPodio(corridaAtletas);
 
   const anoAtual = new Date().getFullYear().toString();
   const idsQuePontuaram = new Set();
@@ -512,7 +572,6 @@ function setupRelatorioConsolidado() {
   
   document.getElementById("btnExportarExcel").addEventListener("click", () => {
     const tbody = document.getElementById("listaRelatorio");
-    // Correção: Agora verifica se realmente tem dados ou só uma mensagem vazia
     if(tbody.innerText.includes("Clique em Filtrar") || tbody.innerText.includes("Nenhum atleta")) return showToast("Gere o relatório primeiro!", "error");
     
     const rows = document.getElementById("tabelaConsolidada").querySelectorAll("tr"); 
