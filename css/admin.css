@@ -1,5 +1,5 @@
 /* =======================================================
-   🌈 VARIÁVEIS DE TEMA (Claro e Escuro)
+   🎨 VARIÁVEIS DE TEMA (Claro e Escuro)
 ======================================================= */
 :root {
   --bg: #f5f7fa; --bg-card: #ffffff; --text: #222; --text-light: #666;
@@ -15,30 +15,25 @@
 }
 
 /* =======================================================
-   🧱 BASE GERAL E RESPONSIVIDADE
+   ⚙️ BASE GERAL E RESPONSIVIDADE
 ======================================================= */
 body { margin: 0; font-family: var(--font-main); background: var(--bg); color: var(--text); transition: background 0.3s, color 0.3s; overflow-x: hidden; overflow-y: scroll; padding-bottom: 80px; }
+html { font-size: 16px; transition: font-size 0.3s ease; } /* Para o controle de Zoom */
 
-input, select, textarea {
-  font-family: var(--font-main); border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 8px; padding: 12px; font-size: 0.95rem; width: 100%; box-sizing: border-box; outline: none; transition: 0.2s;
-}
+input, select, textarea { font-family: var(--font-main); border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 8px; padding: 12px; font-size: 0.95rem; width: 100%; box-sizing: border-box; outline: none; transition: 0.2s; }
 input[type="checkbox"].check-ponto, input[type="checkbox"].check-falta { width: 24px; height: 24px; margin: 0 auto; display: block; cursor: pointer; accent-color: var(--primary); }
 input[type="checkbox"].check-falta { accent-color: var(--accent); }
 input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0, 155, 193, 0.15); }
 label { display: block; font-size: 0.9rem; font-weight: 500; color: var(--text-light); margin-bottom: 4px; }
 button { cursor: pointer; font-family: var(--font-main); border: none; }
 
-/* CHIPS */
+/* CHIPS & SWITCHES */
 .regra-chip { display: inline-flex; align-items: center; gap: 8px; background: var(--bg-card); border: 1px solid var(--border); padding: 8px 14px; border-radius: 30px; cursor: pointer; font-size: 0.85rem; color: var(--text-light); transition: all 0.2s ease; user-select: none; }
 .regra-chip:hover { border-color: var(--primary); }
 .regra-chip input[type="checkbox"] { margin: 0; width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary); }
 .regra-chip.selected { background: rgba(0, 155, 193, 0.1); border-color: var(--primary); color: var(--primary); font-weight: 600; }
-
-/* ESTADO VAZIO */
 .empty-state { text-align: center; padding: 30px; color: var(--text-light); display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .empty-state i { width: 48px; height: 48px; color: var(--border); }
-
-/* INTERRUPTOR ATIVO/INATIVO (SWITCH) */
 .switch { position: relative; display: inline-block; width: 40px; height: 22px; margin: 0; }
 .switch input { opacity: 0; width: 0; height: 0; }
 .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border); transition: .4s; border-radius: 34px; }
@@ -48,24 +43,24 @@ input:checked + .slider:before { transform: translateX(18px); }
 .inativo-txt { text-decoration: line-through; opacity: 0.5; }
 
 /* =======================================================
-   🟢 TOPO E MENU
+   🌟 TOPO E MENU
 ======================================================= */
 .topbar { position: fixed; top: 0; left: 0; width: 100%; background: linear-gradient(90deg, #007b91, #00a693); color: white; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; box-sizing: border-box; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
 .topbar .left { display: flex; align-items: center; gap: 12px; }
 .topbar .logo { height: 24px; filter: brightness(0) invert(1); }
 .portal-nome { font-weight: 600; font-size: 1.1rem; }
 .topbar .right { display: flex; align-items: center; gap: 12px; }
-#userGroupBadge { font-size: 0.75rem; padding: 4px 8px; border-radius: 6px; font-weight: 600; text-transform: uppercase; color: white; }
+#userGroupBadge { font-size: 0.75rem; padding: 4px 8px; border-radius: 6px; font-weight: 600; text-transform: uppercase; color: white; transition: background 0.3s; }
 .btn-topo { background: rgba(255,255,255,0.2); color: white; border-radius: 8px; padding: 6px 12px; display: flex; align-items: center; gap: 6px; transition: 0.2s; }
 .btn-topo:hover { background: rgba(255,255,255,0.3); }
 
-.menu-flutuante { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--bg-card); border-radius: 50px; box-shadow: var(--shadow); display: flex; gap: 8px; padding: 8px 12px; z-index: 900; }
+.menu-flutuante { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--bg-card); border-radius: 50px; box-shadow: var(--shadow); display: flex; gap: 8px; padding: 8px 12px; z-index: 900; overflow-x: auto; max-width: 95vw; }
 .menu-item { display: flex; align-items: center; gap: 8px; padding: 10px 16px; cursor: pointer; border-radius: 30px; color: var(--text-light); font-weight: 500; font-size: 0.9rem; transition: 0.2s; white-space: nowrap; }
 .menu-item:hover { color: var(--primary); background: rgba(0, 155, 193, 0.05); }
 .menu-item.active { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(0, 155, 193, 0.3); }
 
 /* =======================================================
-   📊 LAYOUT E TABELAS
+   📐 LAYOUT, TABELAS E COMPONENTES
 ======================================================= */
 main { padding: 90px 20px 100px; max-width: 1200px; margin: 0 auto; }
 section { display: none; animation: fadeIn 0.4s ease; }
@@ -75,7 +70,7 @@ section { display: none; animation: fadeIn 0.4s ease; }
 .header-acao { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; min-height: 40px; }
 h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
 
-.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
 .card { background: var(--bg-card); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); transition: transform 0.2s; border: 1px solid transparent; margin-bottom: 20px; }
 .card h3 { margin: 0 0 10px 0; font-size: 1rem; color: var(--text); display: flex; align-items: center; gap: 8px; }
 .card p { margin: 0; font-size: 1.5rem; font-weight: 700; color: var(--text-light); }
@@ -90,7 +85,17 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
 .btn-acao { background: transparent; border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 8px; font-size: 0.9rem; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
 .btn-acao:hover { border-color: var(--primary); color: var(--primary); }
 
-/* ABAS PRINCIPAIS E TERCIÁRIAS (SUB-ABAS) */
+/* DASHBOARD ESTRATÉGICO */
+.dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-top: 20px; }
+.agenda-item { display: flex; gap: 15px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.agenda-item:last-child { border-bottom: none; }
+.agenda-data { background: rgba(0, 155, 193, 0.1); color: var(--primary); padding: 10px; border-radius: 8px; text-align: center; min-width: 50px; }
+.agenda-data span { display: block; font-size: 0.8rem; text-transform: uppercase; font-weight: bold; }
+.agenda-data strong { display: block; font-size: 1.2rem; line-height: 1; }
+.agenda-info h4 { margin: 0 0 4px 0; color: var(--text); font-size: 0.95rem; }
+.agenda-info p { margin: 0; color: var(--text-light); font-size: 0.8rem; }
+
+/* ABAS PRINCIPAIS E TERCIÁRIAS */
 .sub-menu, .tertiary-menu { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 2px solid var(--border); padding-bottom: 10px; overflow-x: auto; min-height: 44px; align-items: center; }
 .tertiary-menu { border-bottom: 0; margin-bottom: 15px; }
 .sub-tab, .t-tab { background: transparent; color: var(--text-light); font-weight: 600; padding: 10px 20px; border-radius: 8px; display: flex; align-items: center; gap: 8px; transition: 0.3s ease; white-space: nowrap; }
@@ -100,7 +105,7 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
 .sub-content.active, .t-content.active { display: block; }
 
 /* =======================================================
-   🍞 TOASTS
+   🔔 TOASTS
 ======================================================= */
 #toastContainer { position: fixed; top: 80px; right: 20px; display: flex; flex-direction: column; gap: 12px; z-index: 9999; }
 .toast { padding: 14px 20px; border-radius: 12px; color: #fff; font-weight: 500; box-shadow: 0 8px 20px rgba(0,0,0,0.25); opacity: 0; animation: toastIn 0.4s forwards; display: flex; align-items: center; gap: 10px; min-width: 250px; }
@@ -109,11 +114,23 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
 .toast.info { background: linear-gradient(135deg, var(--primary), #007fa0); }
 @keyframes toastIn { to { opacity: 1; transform: translateY(0); } }
 
-/* RESPONSIVIDADE MOBILE */
+/* =======================================================
+   📱 RESPONSIVIDADE (MOBILE)
+======================================================= */
+@media (max-width: 900px) {
+  .dashboard-grid { grid-template-columns: 1fr; } /* Empilha colunas do Dashboard */
+}
+
 @media (max-width: 768px) {
-  .menu-item span { display: none; }
+  .menu-item span { display: none; } /* Oculta texto do menu inferior */
   .menu-item { padding: 12px; border-radius: 50%; }
-  .topbar .portal-nome { display: none; }
-  .cards { grid-template-columns: 1fr; }
+  .topbar .portal-nome { display: none; } /* Oculta nome no topo para dar espaço */
+  
+  .card { padding: 16px; } /* Ganha espaço lateral */
+  .tabela-simples th, .tabela-simples td { padding: 10px 8px; font-size: 0.85rem; }
   .header-acao { flex-direction: column; align-items: flex-start; }
+  
+  /* Centraliza Toasts */
+  #toastContainer { right: 5%; left: 5%; top: 70px; align-items: center; }
+  .toast { width: 100%; justify-content: center; }
 }
