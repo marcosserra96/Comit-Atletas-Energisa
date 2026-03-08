@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gestão do Comitê | Atletas Energisa ⚡️</title>
-  
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -21,20 +20,15 @@
     </div>
     <div class="right">
       <span id="userGroupBadge" style="background: #e63946;">Administrador</span>
+      <button id="themeToggle" class="btn-topo" title="Alternar Tema Escuro"><i data-lucide="moon"></i></button>
       <button id="logoutBtn" class="btn-topo" title="Sair do sistema"><i data-lucide="log-out"></i> Sair</button>
     </div>
   </header>
 
   <nav class="menu-flutuante">
-    <div class="menu-item active" data-section="visao-geral">
-      <i data-lucide="layout-dashboard"></i><span>Visão Geral</span>
-    </div>
-    <div class="menu-item" data-section="contabilizacao">
-      <i data-lucide="calculator"></i><span>Contabilização</span>
-    </div>
-    <div class="menu-item" data-section="gestao">
-      <i data-lucide="settings-2"></i><span>Gestão Base</span>
-    </div>
+    <div class="menu-item active" data-section="visao-geral"><i data-lucide="layout-dashboard"></i><span>Visão Geral</span></div>
+    <div class="menu-item" data-section="contabilizacao"><i data-lucide="calculator"></i><span>Contabilização</span></div>
+    <div class="menu-item" data-section="gestao"><i data-lucide="settings-2"></i><span>Gestão Base</span></div>
   </nav>
 
   <main>
@@ -48,10 +42,8 @@
       </div>
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; margin-top: 30px;">
         <div class="card" style="margin-bottom: 0;">
-          <h3 style="color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 10px;"><i data-lucide="bar-chart-2"></i> Evolução Global (Pontos)</h3>
-          <div style="position: relative; height: 200px; margin-top: 20px;">
-            <canvas id="graficoEvolucao"></canvas>
-          </div>
+          <h3 style="color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 10px;"><i data-lucide="bar-chart-2"></i> Evolução Global</h3>
+          <div style="position: relative; height: 200px; margin-top: 20px;"><canvas id="graficoEvolucao"></canvas></div>
         </div>
         <div class="card" style="margin-bottom: 0;">
           <h3 style="color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 10px;"><i data-lucide="award"></i> Top 5 Atletas</h3>
@@ -63,127 +55,59 @@
     <section id="contabilizacao">
       <div class="sub-menu">
         <button class="sub-tab active" data-target="sub-lancar"><i data-lucide="clipboard-list"></i> Lançar Treino</button>
-        <button class="sub-tab" data-target="sub-historico"><i data-lucide="history"></i> Extrato de Lançamentos</button>
-        <button class="sub-tab" data-target="sub-relatorio"><i data-lucide="bar-chart-2"></i> Visão Consolidada</button>
+        <button class="sub-tab" data-target="sub-historico"><i data-lucide="history"></i> Extrato</button>
+        <button class="sub-tab" data-target="sub-relatorio"><i data-lucide="bar-chart-2"></i> Relatório Consolidado</button>
       </div>
 
       <div id="sub-lancar" class="sub-content active">
-        <div class="header-acao">
-          <h2>Registro de Pontuação e Faltas</h2>
-        </div>
-        
+        <div class="header-acao"><h2>Registro de Pontuação e Faltas</h2></div>
         <div class="card" style="margin-bottom: 25px;">
-          <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 15px; align-items: end; margin-bottom: 15px;">
-            <div><label>Descrição (Ex: Treinão de Sábado)</label><input type="text" id="descTreino" style="margin-bottom: 0;" /></div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; align-items: end; margin-bottom: 15px;">
+            <div><label>Descrição</label><input type="text" id="descTreino" style="margin-bottom: 0;" /></div>
             <div><label>Data</label><input type="date" id="dataTreino" style="margin-bottom: 0;" /></div>
-            <div>
-              <label>Equipe</label>
-              <select id="modTreino" style="margin-bottom: 0;">
-                <option value="">Selecione...</option>
-                <option value="Bicicleta">Bicicleta</option>
-                <option value="Corrida">Corrida</option>
-              </select>
-            </div>
+            <div><label>Equipe</label><select id="modTreino" style="margin-bottom: 0;"><option value="">Selecione...</option><option value="Bicicleta">Bicicleta</option><option value="Corrida">Corrida</option></select></div>
           </div>
-
           <div id="areaSelecaoRegras" style="display: none; background: rgba(0,0,0,0.02); padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px dashed var(--border);">
             <label style="margin-bottom: 10px; color: var(--primary); font-weight: 600;">Quais itens vão pontuar neste evento?</label>
             <div id="listaRegrasTreino" style="display: flex; flex-wrap: wrap; gap: 10px;"></div>
           </div>
-
-          <div style="display: flex; justify-content: flex-end;">
-            <button id="btnGerarLista" class="btn-primario" style="height: 46px; display: none;">Gerar Tabela de Lançamento</button>
-          </div>
+          <div style="display: flex; justify-content: flex-end;"><button id="btnGerarLista" class="btn-primario" style="height: 46px; display: none;">Gerar Tabela</button></div>
         </div>
-
         <div id="areaTabelaPontuacao" style="display: none; animation: fadeIn 0.4s ease;">
           <div class="tabela-container"><table class="tabela-simples" id="tabelaPontuacao"></table></div>
-          <button id="btnSalvarPontuacao" class="btn-primario" style="width: 100%; justify-content: center; padding: 15px; font-size: 1.1rem; background: var(--secondary);">
-            <i data-lucide="check-circle"></i> Salvar Lançamentos e Faltas
-          </button>
+          <button id="btnSalvarPontuacao" class="btn-primario" style="width: 100%; justify-content: center; padding: 15px; font-size: 1.1rem; background: var(--secondary);"><i data-lucide="check-circle"></i> Salvar Lançamentos e Faltas</button>
         </div>
       </div>
 
       <div id="sub-historico" class="sub-content">
-        <div class="header-acao">
-          <h2>Extrato de Lançamentos</h2>
-          <p style="color: var(--text-light); font-size: 0.9rem;">Auditoria de todos os pontos e faltas justificadas. Pode estornar lançamentos aqui.</p>
-        </div>
+        <div class="header-acao"><h2>Extrato de Lançamentos</h2></div>
         <div class="card" style="margin-bottom: 20px;">
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; align-items: end;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; align-items: end;">
             <div><label>Mês / Ano</label><input type="month" id="filtroMesHistorico" style="margin-bottom: 0;" /></div>
-            <div>
-              <label>Equipe</label>
-              <select id="filtroEquipeHistorico" style="margin-bottom: 0;">
-                <option value="">Todas</option><option value="Bicicleta">Bicicleta</option><option value="Corrida">Corrida</option>
-              </select>
-            </div>
-            <div><label>Buscar Atleta</label><input type="text" id="filtroNomeHistorico" placeholder="Digite o nome..." style="margin-bottom: 0;" /></div>
+            <div><label>Equipe</label><select id="filtroEquipeHistorico" style="margin-bottom: 0;"><option value="">Todas</option><option value="Bicicleta">Bicicleta</option><option value="Corrida">Corrida</option></select></div>
+            <div><label>Buscar Atleta</label><input type="text" id="filtroNomeHistorico" placeholder="Nome..." style="margin-bottom: 0;" /></div>
+            <div><button id="btnLimparFiltrosExtrato" class="btn-acao" style="height: 44px; width: 100%; justify-content: center;"><i data-lucide="filter-x"></i> Limpar</button></div>
           </div>
         </div>
-        <div class="tabela-container">
-          <table class="tabela-simples">
-            <thead>
-              <tr><th>Data</th><th>Atleta</th><th>Equipe</th><th>Evento / Regra</th><th style="text-align: center;">Pontos</th><th style="text-align: right;">Ações</th></tr>
-            </thead>
-            <tbody id="listaHistorico"><tr><td colspan='6' style='text-align:center;'>Carregando...</td></tr></tbody>
-          </table>
-        </div>
+        <div class="tabela-container"><table class="tabela-simples"><thead><tr><th>Data</th><th>Atleta</th><th>Equipe</th><th>Evento / Regra</th><th style="text-align: center;">Pontos</th><th style="text-align: right;">Ações</th></tr></thead><tbody id="listaHistorico"><tr><td colspan='6' style='text-align:center;'>Carregando...</td></tr></tbody></table></div>
       </div>
 
       <div id="sub-relatorio" class="sub-content">
         <div class="header-acao">
-          <div>
-            <h2>Relatório Consolidado</h2>
-            <p style="color: var(--text-light); font-size: 0.9rem;">Visão global de pontos mês a mês.</p>
-          </div>
-          <button id="btnExportarExcel" class="btn-primario" style="background: #107c41; box-shadow: 0 4px 10px rgba(16,124,65,0.3);">
-            <i data-lucide="sheet"></i> Exportar para Excel
-          </button>
+          <div><h2>Relatório Consolidado</h2></div>
+          <button id="btnExportarExcel" class="btn-primario" style="background: #107c41;"><i data-lucide="sheet"></i> Exportar para Excel</button>
         </div>
-
         <div class="card" style="margin-bottom: 20px;">
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; align-items: end;">
-            <div>
-              <label>Ano Base</label>
-              <input type="number" id="filtroAnoRelatorio" min="2020" max="2100" style="margin-bottom: 0;" />
-            </div>
-            <div>
-              <label>Equipe</label>
-              <select id="filtroEquipeRelatorio" style="margin-bottom: 0;">
-                <option value="">Todas</option><option value="Bicicleta">Bicicleta</option><option value="Corrida">Corrida</option>
-              </select>
-            </div>
-            <div>
-              <button id="btnGerarRelatorio" class="btn-primario" style="height: 46px; width: 100%; justify-content: center; margin-bottom: 0;">Filtrar</button>
-            </div>
+            <div><label>Ano Base</label><input type="number" id="filtroAnoRelatorio" min="2020" max="2100" style="margin-bottom: 0;" /></div>
+            <div><label>Equipe</label><select id="filtroEquipeRelatorio" style="margin-bottom: 0;"><option value="">Todas</option><option value="Bicicleta">Bicicleta</option><option value="Corrida">Corrida</option></select></div>
+            <div><button id="btnGerarRelatorio" class="btn-primario" style="height: 46px; width: 100%; justify-content: center; margin-bottom: 0;">Filtrar</button></div>
           </div>
         </div>
-
         <div class="tabela-container" style="max-height: 500px; overflow-y: auto;">
           <table class="tabela-simples" id="tabelaConsolidada" style="font-size: 0.85rem;">
-            <thead>
-              <tr>
-                <th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Atleta</th>
-                <th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Equipe</th>
-                <th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Jan</th>
-                <th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Fev</th>
-                <th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Mar</th>
-                <th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Abr</th>
-                <th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Mai</th>
-                <th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Jun</th>
-                <th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Jul</th>
-                <th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Ago</th>
-                <th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Set</th>
-                <th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Out</th>
-                <th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Nov</th>
-                <th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Dez</th>
-                <th style="position: sticky; top: 0; background: #e0f2f1; z-index: 10; color: var(--primary);">Total</th>
-              </tr>
-            </thead>
-            <tbody id="listaRelatorio">
-              <tr><td colspan='15' style='text-align:center;'>Clique em Filtrar para carregar os dados.</td></tr>
-            </tbody>
+            <thead><tr><th style="position: sticky; top: 0; z-index: 10;">Atleta</th><th style="position: sticky; top: 0; z-index: 10;">Equipe</th><th style="position: sticky; top: 0; z-index: 10;">Jan</th><th style="position: sticky; top: 0; z-index: 10;">Fev</th><th style="position: sticky; top: 0; z-index: 10;">Mar</th><th style="position: sticky; top: 0; z-index: 10;">Abr</th><th style="position: sticky; top: 0; z-index: 10;">Mai</th><th style="position: sticky; top: 0; z-index: 10;">Jun</th><th style="position: sticky; top: 0; z-index: 10;">Jul</th><th style="position: sticky; top: 0; z-index: 10;">Ago</th><th style="position: sticky; top: 0; z-index: 10;">Set</th><th style="position: sticky; top: 0; z-index: 10;">Out</th><th style="position: sticky; top: 0; z-index: 10;">Nov</th><th style="position: sticky; top: 0; z-index: 10;">Dez</th><th style="position: sticky; top: 0; z-index: 10; color: var(--primary);">Total</th></tr></thead>
+            <tbody id="listaRelatorio"><tr><td colspan='15' style='text-align:center;'>Clique em Filtrar para carregar os dados.</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -191,101 +115,93 @@
 
     <section id="gestao">
       <div class="sub-menu">
-        <button class="sub-tab active" data-target="sub-cadastrar"><i data-lucide="user-plus"></i> Cadastrar Pessoa</button>
+        <button class="sub-tab admin-only-tab" data-target="sub-aprovacoes"><i data-lucide="shield-alert"></i> Aprovações</button>
+        <button class="sub-tab active" data-target="sub-cadastrar"><i data-lucide="user-plus"></i> Adicionar Manual</button>
         <button class="sub-tab" data-target="sub-equipes"><i data-lucide="users"></i> Pessoas e Equipes</button>
         <button class="sub-tab" data-target="sub-regras"><i data-lucide="list-checks"></i> Regras de Pontuação</button>
       </div>
 
+      <div id="sub-aprovacoes" class="sub-content">
+        <div class="header-acao"><h2>Aprovações de Comitê</h2></div>
+        <div class="tabela-container">
+          <table class="tabela-simples">
+            <thead><tr><th>Nome</th><th>E-mail</th><th>Status</th><th>Ações</th></tr></thead>
+            <tbody id="listaAprovacoes"><tr><td colspan='4' style='text-align:center;'>Nenhuma solicitação pendente.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
       <div id="sub-cadastrar" class="sub-content active">
-        <div class="header-acao"><h2>Cadastrar Novo Membro</h2></div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px;">
-          <div class="card">
-            <label>Nome Completo</label><input type="text" id="novoNome" placeholder="Ex: João da Silva" />
-            <label>E-mail (Opcional)</label><input type="email" id="novoEmail" placeholder="joao@email.com" />
-            <label>Equipe / Função</label>
-            <select id="novoPapel">
-              <option value="Bicicleta">Atleta - Bicicleta</option><option value="Corrida">Atleta - Corrida</option>
-              <option value="Fila de Espera" style="font-weight: bold; color: var(--accent);">⏳ Fila de Espera</option>
-              <option value="Comitê" class="admin-only-option">Membro do Comitê</option>
-            </select>
-            <button id="btnCadastrarPessoa" class="btn-primario" style="width: 100%; margin-top: 15px; justify-content: center;">Adicionar ao Sistema</button>
-          </div>
-          <div class="card" style="background: rgba(0, 155, 193, 0.03); border: 2px dashed rgba(0, 155, 193, 0.2); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
-            <i data-lucide="info" style="width: 48px; height: 48px; color: var(--primary); opacity: 0.6; margin-bottom: 15px;"></i>
-            <h3 style="color: var(--primary); margin-bottom: 10px;">Gestão Centralizada</h3>
-            <p style="font-size: 0.95rem; color: var(--text-light); line-height: 1.6; margin: 0;">Se escolher <strong>Fila de Espera</strong>, a pessoa ficará reservada numa lista especial.</p>
-          </div>
+        <div class="header-acao"><h2>Cadastrar Novo Membro Manual</h2></div>
+        <div class="card" style="max-width: 500px; margin: 0 auto;">
+          <label>Nome Completo</label><input type="text" id="novoNome" placeholder="Ex: João da Silva" />
+          <label>E-mail (Opcional)</label><input type="email" id="novoEmail" placeholder="joao@email.com" />
+          <label>Equipe / Função</label>
+          <select id="novoPapel">
+            <option value="Bicicleta">Atleta - Bicicleta</option><option value="Corrida">Atleta - Corrida</option><option value="Fila de Espera" style="color: var(--accent);">Fila de Espera</option><option value="Comitê" class="admin-only-option">Membro do Comitê</option>
+          </select>
+          <button id="btnCadastrarPessoa" class="btn-primario" style="width: 100%; margin-top: 15px; justify-content: center;">Adicionar ao Sistema</button>
         </div>
       </div>
 
       <div id="sub-equipes" class="sub-content">
         <div class="header-acao" style="display: flex; justify-content: space-between; align-items: center;">
-          <h2>Equipes Ativas, Fila e Comitê</h2>
-          <input type="text" id="buscaEquipes" placeholder="🔍 Buscar nome..." style="max-width: 300px; margin: 0;" />
+          <h2>Pessoas e Equipes</h2>
+          <input type="text" id="buscaEquipes" placeholder="🔍 Buscar nome..." style="max-width: 250px; margin: 0;" />
         </div>
-        <div style="display: flex; flex-direction: column; gap: 30px; margin-bottom: 40px;">
-          <div class="tabela-container" style="border-top: 4px solid var(--accent);">
-            <h3 style="padding: 15px; margin: 0; background: rgba(243, 112, 33, 0.05); display: flex; align-items: center; gap: 8px;"><i data-lucide="hourglass" style="color: var(--accent);"></i> Fila de Espera</h3>
-            <table class="tabela-simples"><tbody id="listaFila"></tbody></table>
-          </div>
-          <div class="tabela-container" style="border-top: 4px solid var(--primary);">
-            <h3 style="padding: 15px; margin: 0; background: rgba(0,155,193,0.05); display: flex; align-items: center; gap: 8px;"><i data-lucide="bike" style="color: var(--primary);"></i> Equipe Bicicleta</h3>
-            <table class="tabela-simples"><tbody id="listaBicicleta"></tbody></table>
-          </div>
-          <div class="tabela-container" style="border-top: 4px solid var(--secondary);">
-            <h3 style="padding: 15px; margin: 0; background: rgba(0,179,126,0.05); display: flex; align-items: center; gap: 8px;"><i data-lucide="footprints" style="color: var(--secondary);"></i> Equipe Corrida</h3>
-            <table class="tabela-simples"><tbody id="listaCorrida"></tbody></table>
-          </div>
-          <div id="containerComite" class="tabela-container" style="border-top: 4px solid #e63946;">
-            <h3 style="padding: 15px; margin: 0; background: rgba(230,57,70,0.05); display: flex; align-items: center; gap: 8px;"><i data-lucide="shield" style="color: #e63946;"></i> Comitê / Admins</h3>
-            <table class="tabela-simples"><tbody id="listaComite"></tbody></table>
-          </div>
+        
+        <div class="tertiary-menu">
+          <button class="t-tab active" data-target="tab-fila">Fila de Espera</button>
+          <button class="t-tab" data-target="tab-bike">Bicicleta</button>
+          <button class="t-tab" data-target="tab-corrida">Corrida</button>
+          <button class="t-tab admin-only-tab" data-target="tab-comite">Comitê / Admins</button>
+        </div>
+
+        <div id="tab-fila" class="t-content active">
+          <div class="tabela-container" style="border-top: 4px solid var(--accent);"><table class="tabela-simples"><thead><tr><th>Nome</th><th style="text-align:right;">Ações</th></tr></thead><tbody id="listaFila"></tbody></table></div>
+        </div>
+        <div id="tab-bike" class="t-content">
+          <div class="tabela-container" style="border-top: 4px solid var(--primary);"><table class="tabela-simples"><thead><tr><th>Atleta (Ativo/Inativo)</th><th style="text-align:right;">Ações</th></tr></thead><tbody id="listaBicicleta"></tbody></table></div>
+        </div>
+        <div id="tab-corrida" class="t-content">
+          <div class="tabela-container" style="border-top: 4px solid var(--secondary);"><table class="tabela-simples"><thead><tr><th>Atleta (Ativo/Inativo)</th><th style="text-align:right;">Ações</th></tr></thead><tbody id="listaCorrida"></tbody></table></div>
+        </div>
+        <div id="tab-comite" class="t-content">
+          <div class="tabela-container" style="border-top: 4px solid #e63946;"><table class="tabela-simples"><thead><tr><th>Membro</th><th style="text-align:right;">Ações</th></tr></thead><tbody id="listaComite"></tbody></table></div>
         </div>
       </div>
 
       <div id="sub-regras" class="sub-content">
-        <div class="header-acao">
-          <h2>Regras e Itens de Pontuação</h2>
-          <button id="abrirModalRegra" class="btn-primario"><i data-lucide="plus"></i> Nova Regra</button>
-        </div>
-        <div class="tabela-container">
-          <table class="tabela-simples">
-            <thead><tr><th>Descrição</th><th>Modalidade</th><th>Pontos</th><th>Ação</th></tr></thead>
-            <tbody id="listaRegras"><tr><td colspan='4' style='text-align:center;'>Nenhuma regra definida ainda.</td></tr></tbody>
-          </table>
+        <div class="header-acao"><h2>Regras de Pontuação</h2><button id="abrirModalRegra" class="btn-primario"><i data-lucide="plus"></i> Nova Regra</button></div>
+        <div class="tabela-container"><table class="tabela-simples"><thead><tr><th>Descrição</th><th>Modalidade</th><th>Pontos</th><th>Ação</th></tr></thead><tbody id="listaRegras"></tbody></table></div>
+        
+        <div class="admin-only-tab" style="margin-top: 50px; text-align: center; border-top: 1px solid var(--border); padding-top: 20px;">
+          <h3 style="color: var(--danger);">Zona de Perigo (Apenas Admin)</h3>
+          <button id="btnLimparBase" class="btn-acao" style="color: var(--danger); border-color: var(--danger);"><i data-lucide="trash-2"></i> Limpar Toda a Base de Dados</button>
         </div>
       </div>
     </section>
   </main>
 
   <div id="modalRegra" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; justify-content: center; align-items: center;">
-    <div style="background: white; padding: 30px; border-radius: 12px; width: 90%; max-width: 400px;">
-      <h3 style="color: var(--primary); margin-top: 0;">Nova Regra de Pontuação</h3>
-      <label>Descrição</label><input type="text" id="regraDescricao" placeholder="Ex: Treino de Sábado" />
-      <label>Modalidade</label>
-      <select id="regraModalidade"><option value="Ambas">Ambas</option><option value="Bicicleta">Apenas Bicicleta</option><option value="Corrida">Apenas Corrida</option></select>
-      <label>Pontos Gerados</label><input type="number" id="regraPontos" placeholder="Ex: 10" />
-      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-        <button id="fecharModalRegra" style="background: #f0f0f0; color: #333; padding: 10px 15px; border-radius: 8px;">Cancelar</button>
-        <button id="salvarRegraBtn" class="btn-primario">Salvar Regra</button>
-      </div>
+    <div style="background: var(--bg-card); padding: 30px; border-radius: 12px; width: 90%; max-width: 400px;">
+      <h3 style="color: var(--primary); margin-top: 0;">Nova Regra</h3>
+      <label>Descrição</label><input type="text" id="regraDescricao" />
+      <label>Modalidade</label><select id="regraModalidade"><option value="Ambas">Ambas</option><option value="Bicicleta">Bicicleta</option><option value="Corrida">Corrida</option></select>
+      <label>Pontos</label><input type="number" id="regraPontos" />
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;"><button id="fecharModalRegra" style="background: var(--border); padding: 10px 15px; border-radius: 8px;">Cancelar</button><button id="salvarRegraBtn" class="btn-primario">Salvar</button></div>
     </div>
   </div>
 
   <div id="modalEditarAtleta" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; justify-content: center; align-items: center;">
-    <div style="background: white; padding: 30px; border-radius: 12px; width: 90%; max-width: 400px;">
+    <div style="background: var(--bg-card); padding: 30px; border-radius: 12px; width: 90%; max-width: 400px;">
       <h3 style="color: var(--warning); margin-top: 0;">Editar Membro</h3>
       <input type="hidden" id="editId" />
       <label>Nome Completo</label><input type="text" id="editNome" />
       <label>E-mail</label><input type="email" id="editEmail" />
       <label>Mudar de Equipe</label>
-      <select id="editPapel">
-        <option value="Bicicleta">Bicicleta</option><option value="Corrida">Corrida</option><option value="Fila de Espera">Fila de Espera</option><option value="Comitê">Comitê</option>
-      </select>
-      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-        <button id="fecharModalEdit" style="background: #f0f0f0; padding: 10px 15px; border-radius: 8px;">Cancelar</button>
-        <button id="salvarEditBtn" class="btn-primario" style="background: var(--warning); color: #333;">Atualizar Cadastro</button>
-      </div>
+      <select id="editPapel"><option value="Bicicleta">Bicicleta</option><option value="Corrida">Corrida</option><option value="Fila de Espera">Fila de Espera</option><option value="Comitê">Comitê</option></select>
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;"><button id="fecharModalEdit" style="background: var(--border); padding: 10px 15px; border-radius: 8px;">Cancelar</button><button id="salvarEditBtn" class="btn-primario" style="background: var(--warning); color: #333;">Atualizar</button></div>
     </div>
   </div>
 
