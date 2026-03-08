@@ -50,6 +50,15 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
 .progress-bar-fill { height: 100%; transition: width 1s ease-in-out; }
 .strike-badge { background: #fee2e2; color: #ef4444; font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 8px; }
 
+/* Agenda e Notificações */
+.agenda-item { display: flex; gap: 15px; padding: 12px 0; border-bottom: 1px solid var(--border); align-items: center; }
+.agenda-item:last-child { border-bottom: none; }
+.agenda-data { background: rgba(0, 155, 193, 0.1); color: var(--primary); padding: 10px; border-radius: 8px; text-align: center; min-width: 50px; }
+.agenda-data span { display: block; font-size: 0.8rem; text-transform: uppercase; font-weight: bold; }
+.agenda-data strong { display: block; font-size: 1.2rem; line-height: 1; }
+.agenda-info h4 { margin: 0 0 4px 0; color: var(--text); font-size: 0.95rem; }
+.agenda-info p { margin: 0; color: var(--text-light); font-size: 0.8rem; }
+
 .tabela-container { overflow-x: auto; overflow-y: auto; max-height: 65vh; border-radius: var(--radius); box-shadow: var(--shadow); background: var(--bg-card);}
 .tabela-simples { width: 100%; border-collapse: collapse; min-width: 600px; }
 .tabela-simples th { background: var(--table-header); color: var(--primary); padding: 15px; text-align: left; position: sticky; top: 0; z-index: 10; }
@@ -67,10 +76,18 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
 .sub-content, .t-content { display: none; }
 .sub-content.active, .t-content.active { display: block; animation: fadeIn 0.3s ease; }
 
+/* Chips de Regra no Lançamento */
+.regra-chip { display: inline-flex; align-items: center; gap: 8px; background: var(--bg-card); border: 1px solid var(--border); padding: 8px 14px; border-radius: 30px; cursor: pointer; font-size: 0.85rem; color: var(--text-light); transition: all 0.2s ease; user-select: none; }
+.regra-chip:hover { border-color: var(--primary); }
+.regra-chip input[type="checkbox"] { margin: 0; width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary); }
+.regra-chip.selected { background: rgba(0, 155, 193, 0.1); border-color: var(--primary); color: var(--primary); font-weight: 600; }
+
+/* Toasts */
 .toast { padding: 14px 20px; border-radius: 12px; color: #fff; font-weight: 500; box-shadow: 0 8px 20px rgba(0,0,0,0.25); opacity: 0; animation: toastIn 0.4s forwards; display: flex; align-items: center; gap: 10px; min-width: 250px; }
 .toast.success { background: linear-gradient(135deg, var(--secondary), #009e6d); }
 .toast.error { background: linear-gradient(135deg, var(--danger), #c53030); }
 .toast.info { background: linear-gradient(135deg, var(--primary), #007fa0); }
+@keyframes toastIn { to { opacity: 1; transform: translateY(0); } }
 
 /* =======================================================
    📄 TEMPLATE OCULTO PARA PDF (MOLDE A4 PERFEITO)
@@ -85,21 +102,12 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
   font-family: Arial, sans-serif;
   z-index: -1;
 }
-
-#pdfTemplateOculto .pdf-header {
-  display: flex; justify-content: space-between; border-bottom: 3px solid #009bc1; padding-bottom: 15px; margin-bottom: 25px;
-}
-#pdfTemplateOculto .pdf-cards {
-  display: flex; gap: 15px; margin-bottom: 25px;
-}
-#pdfTemplateOculto .pdf-card {
-  flex: 1; border: 1px solid #e3e6eb; border-radius: 8px; padding: 15px; text-align: center;
-}
+#pdfTemplateOculto .pdf-header { display: flex; justify-content: space-between; border-bottom: 3px solid #009bc1; padding-bottom: 15px; margin-bottom: 25px; }
+#pdfTemplateOculto .pdf-cards { display: flex; gap: 15px; margin-bottom: 25px; }
+#pdfTemplateOculto .pdf-card { flex: 1; border: 1px solid #e3e6eb; border-radius: 8px; padding: 15px; text-align: center; }
 #pdfTemplateOculto .pdf-card h3 { margin: 0; font-size: 14px; color: #666; font-weight: normal; }
 #pdfTemplateOculto .pdf-card p { margin: 5px 0 0 0; font-size: 24px; font-weight: bold; color: #009bc1; }
-#pdfTemplateOculto .pdf-row {
-  display: flex; gap: 20px;
-}
+#pdfTemplateOculto .pdf-row { display: flex; gap: 20px; }
 #pdfTemplateOculto .pdf-col { flex: 1; border: 1px solid #e3e6eb; border-radius: 8px; padding: 15px; }
 
 /* Lista de Permissões */
