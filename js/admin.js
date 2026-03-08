@@ -143,9 +143,69 @@ async function setupAprovacoes() {
 // =====================================================
 document.getElementById("btnExportarPDF").addEventListener("click", () => {
   const elemento = document.getElementById("areaRelatorioPDF");
-  const opt = { margin: 0.5, filename: 'Report_Atletas_Energisa.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } };
-  showToast("Gerando PDF, aguarde...", "info");
-  html2pdf().set(opt).from(elemento).save().then(() => { showToast("PDF baixado com sucesso!", "success"); });
+
+  // 1. Aplica a classe que limpa o design (Modo Executivo)
+  elemento.classList.add("pdf-executivo");
+  
+  // 2. Injeta um cabeçalho corporativo temporário
+  const dataHoje = new Date().toLocaleDateString('pt-BR');
+  const headerHTML = `
+    <div id="cabecalhoPDF" style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid var(--primary); padding-bottom: 10px; margin-bottom: 25px;">
+      <div>
+        <h1 style="margin: 0; color: var(--primary); font-size: 1.8rem;">Relatório Estratégico</h1>
+        <p style="margin: 5px 0 0 0; color: #666; font-size: 1rem;">Programa Comitê Atletas Energisa</p>
+      </div>
+      <div style="text-align: right;">
+        <p style="margin: 0; color: #999; font-size: 0.9rem;">Gerado em: <strong style="color: #333;">${dataHoje}</strong></p>
+      </div>
+    </div>
+  `;
+  elemento.insertAdjacentHTML('afterbegin', headerHTML);
+
+  // 3. Força o Tema Claro durante a impressão para os gráficos ficarem nítidos
+  const temaAtual = document.body.getAttribute("data-theme");
+  if (temaAtual === "dark") {
+    document.body.removeAttribute("data-theme");
+    Chart.defaults.color = '#666';
+    if(graficoLinhaInstancia) graficoLinhaInstancia.update();
+    if(graficoRoscaInstancia) graficoRoscaInstancia.update();
+  }
+
+  // 4. Configurações Profissionais (Orientação Paisagem e Largura Forçada)
+  const opt = {
+    margin:       0.4,
+    filename:     `Report_Atletas_${dataHoje.replace(/\//g, '-')}.pdf`,
+    image:        { type: 'jpeg', quality: 1 },
+    html2canvas:  { 
+      scale: 2, 
+      useCORS: true, 
+      windowWidth: 1200
+    },
+    jsPDF:        { 
+      unit: 'in', 
+      format: 'a4', 
+      orientation: 'landscape' // Folha deitada
+    } 
+  };
+
+  showToast("Gerando Report Executivo, aguarde...", "info");
+
+  // 5. Gera o PDF e limpa o layout
+  html2pdf().set(opt).from(elemento).save().then(() => {
+    const cabecalho = document.getElementById("cabecalhoPDF");
+    if(cabecalho) cabecalho.remove();
+    elemento.classList.remove("pdf-executivo");
+    
+    // Devolve o Tema Escuro
+    if (temaAtual === "dark") {
+      document.body.setAttribute("data-theme", "dark");
+      Chart.defaults.color = '#aaa';
+      if(graficoLinhaInstancia) graficoLinhaInstancia.update();
+      if(graficoRoscaInstancia) graficoRoscaInstancia.update();
+    }
+    
+    showToast("Relatório baixado com sucesso!", "success");
+  });
 });
 
 function setupPesquisaEquipes() {
