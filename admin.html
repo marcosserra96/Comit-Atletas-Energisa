@@ -74,9 +74,8 @@
         <div style="display: flex; flex-direction: column; gap: 20px;">
           <div class="card" style="margin: 0; text-align: center;">
             <h3 style="color: #34495e; border-bottom: 1px solid var(--border); padding-bottom: 10px;"><i data-lucide="swords"></i> Força: Média (Pts/Atleta)</h3>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+            <div style="display: flex; justify-content: space-around; align-items: center; margin-top: 15px;">
               <div><span style="font-size: 1.5rem;">🚴</span><br><strong id="mediaBike" style="color: var(--primary);">0</strong></div>
-              <div style="font-size: 1rem; color: #ccc;">VS</div>
               <div><span style="font-size: 1.5rem;">🏃</span><br><strong id="mediaCorrida" style="color: var(--secondary);">0</strong></div>
             </div>
           </div>
@@ -111,19 +110,31 @@
       
       <div id="sub-lancar" class="sub-content active">
         <div class="card" style="margin-bottom: 25px;">
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-            <div><label>Descrição</label><input type="text" id="descTreino" /></div>
-            <div><label>Data</label><input type="date" id="dataTreino" /></div>
-            <div><label>Equipe</label><select id="modTreino"><option value="">Selecione...</option><option value="Bicicleta">Bicicleta</option><option value="Corrida">Corrida</option></select></div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; align-items: end;">
+            <div style="flex: 1;">
+              <label style="color: #8e44ad; font-weight: bold;"><i data-lucide="calendar" style="width: 14px;"></i> Vincular a Evento</label>
+              <select id="lancarEventoSelect" style="border-color: #8e44ad;"><option value="">Nenhum (Lançamento Avulso)</option></select>
+            </div>
+            <div style="flex: 1.5;"><label>Descrição do Treino</label><input type="text" id="descTreino" placeholder="Ex: Treino de Sábado" /></div>
+            <div style="flex: 1;"><label>Data</label><input type="date" id="dataTreino" /></div>
+            <div style="flex: 1;"><label>Equipe Alvo</label><select id="modTreino"><option value="">Selecione...</option><option value="Bicicleta">Bicicleta</option><option value="Corrida">Corrida</option></select></div>
           </div>
-          <div id="areaSelecaoRegras" style="display: none; background: rgba(0,0,0,0.02); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-            <label>Quais itens vão pontuar?</label><div id="listaRegrasTreino" style="display: flex; flex-wrap: wrap; gap: 10px;"></div>
+          
+          <div id="areaSelecaoRegras" style="display: none; background: rgba(0,0,0,0.02); padding: 15px; border-radius: 8px; margin-top: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <label style="margin: 0; color: var(--primary); font-weight: 600;">Quais itens vão pontuar?</label>
+              <label style="margin: 0; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text);">
+                <input type="checkbox" id="checkSelecionarTodasRegras"> Selecionar Todas
+              </label>
+            </div>
+            <div id="listaRegrasTreino" style="display: flex; flex-wrap: wrap; gap: 10px;"></div>
           </div>
-          <div style="text-align: right;"><button id="btnGerarLista" class="btn-primario" style="display: none;">Gerar Tabela</button></div>
+          
+          <div style="text-align: right; margin-top: 15px;"><button id="btnGerarLista" class="btn-primario" style="display: none;">Gerar Tabela de Atletas</button></div>
         </div>
         <div id="areaTabelaPontuacao" style="display: none;">
           <div class="tabela-container"><table class="tabela-simples" id="tabelaPontuacao"></table></div>
-          <button id="btnSalvarPontuacao" class="btn-primario" style="width: 100%; justify-content: center; padding: 15px; background: var(--secondary);">Salvar Lote</button>
+          <button id="btnSalvarPontuacao" class="btn-primario" style="width: 100%; justify-content: center; padding: 15px; background: var(--secondary);">Salvar Lançamentos em Lote</button>
         </div>
       </div>
       
@@ -147,12 +158,12 @@
       </div>
       
       <div id="sub-relatorio" class="sub-content">
-        <div class="header-acao"><button id="btnExportarExcel" class="btn-primario" style="background: #107c41;"><i data-lucide="sheet"></i> Excel</button></div>
+        <div class="header-acao"><button id="btnExportarExcel" class="btn-primario" style="background: #107c41;"><i data-lucide="sheet"></i> Exportar Excel</button></div>
         <div class="card" style="margin-bottom: 20px;">
           <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: end;">
-            <div style="flex:1"><label>Ano</label><input type="number" id="filtroAnoRelatorio" /></div>
+            <div style="flex:1"><label>Ano Base</label><input type="number" id="filtroAnoRelatorio" /></div>
             <div style="flex:1"><label>Equipe</label><select id="filtroEquipeRelatorio"><option value="">Todas</option><option value="Bicicleta">Bike</option><option value="Corrida">Corrida</option></select></div>
-            <div><label style="visibility:hidden;">Ação</label><button id="btnGerarRelatorio" class="btn-primario" style="margin-bottom:10px;">Filtrar</button></div>
+            <div><label style="visibility:hidden;">Ação</label><button id="btnGerarRelatorio" class="btn-primario" style="margin-bottom:10px;">Filtrar Dados</button></div>
           </div>
         </div>
         <div class="tabela-container"><table class="tabela-simples" id="tabelaConsolidada"><thead><tr><th>Atleta</th><th>Eq</th><th>Jan</th><th>Fev</th><th>Mar</th><th>Abr</th><th>Mai</th><th>Jun</th><th>Jul</th><th>Ago</th><th>Set</th><th>Out</th><th>Nov</th><th>Dez</th><th>Total</th></tr></thead><tbody id="listaRelatorio"></tbody></table></div>
@@ -184,9 +195,9 @@
     <section id="gestao">
       <div class="sub-menu">
         <button class="sub-tab admin-only-element" data-target="sub-aprovacoes"><i data-lucide="shield-alert"></i> Aprovações</button>
-        <button class="sub-tab active" data-target="sub-cadastrar"><i data-lucide="user-plus"></i> Novo</button>
-        <button class="sub-tab" data-target="sub-equipes"><i data-lucide="users"></i> Equipes</button>
-        <button class="sub-tab admin-only-element" data-target="sub-regras"><i data-lucide="list-checks"></i> Regras</button>
+        <button class="sub-tab active" data-target="sub-cadastrar"><i data-lucide="user-plus"></i> Novo Membro</button>
+        <button class="sub-tab" data-target="sub-equipes"><i data-lucide="users"></i> Equipes e Filas</button>
+        <button class="sub-tab admin-only-element" data-target="sub-regras"><i data-lucide="list-checks"></i> Regras de Pontos</button>
       </div>
 
       <div id="sub-aprovacoes" class="sub-content"><div class="tabela-container"><table class="tabela-simples"><tbody id="listaAprovacoes"></tbody></table></div></div>
@@ -196,23 +207,36 @@
           <input type="text" id="novoNome" placeholder="Nome Completo" />
           <input type="email" id="novoEmail" placeholder="E-mail" />
           <select id="novoPapel">
-            <option value="Bicicleta">Bike</option>
-            <option value="Corrida">Corrida</option>
-            <option value="Fila - Bicicleta">Fila - Bike</option>
-            <option value="Fila - Corrida">Fila - Corrida</option>
+            <option value="Bicicleta">Atleta - Bike</option>
+            <option value="Corrida">Atleta - Corrida</option>
+            <option value="Fila - Bicicleta">Fila de Espera - Bike</option>
+            <option value="Fila - Corrida">Fila de Espera - Corrida</option>
           </select>
-          <button id="btnCadastrarPessoa" class="btn-primario" style="width:100%; justify-content:center;">Adicionar</button>
+          <button id="btnCadastrarPessoa" class="btn-primario" style="width:100%; justify-content:center;">Adicionar ao Sistema</button>
         </div>
       </div>
 
       <div id="sub-equipes" class="sub-content">
         <div class="tertiary-menu">
-          <button class="t-tab active" data-target="tab-fila">Fila</button>
+          <button class="t-tab active" data-target="tab-fila">Fila de Espera</button>
           <button class="t-tab" data-target="tab-bike">Bicicleta</button>
           <button class="t-tab" data-target="tab-corrida">Corrida</button>
           <button class="t-tab admin-only-element" data-target="tab-comite">Comitê</button>
         </div>
-        <div id="tab-fila" class="t-content active"><div class="tabela-container"><table class="tabela-simples"><tbody id="listaFila"></tbody></table></div></div>
+        
+        <div id="tab-fila" class="t-content active">
+          <div style="display: flex; flex-direction: column; gap: 20px;">
+            <div>
+              <h4 style="color: var(--primary); margin: 0 0 10px 0; display:flex; align-items:center; gap:5px;"><i data-lucide="bike" style="width:18px;"></i> Fila - Bicicleta</h4>
+              <div class="tabela-container"><table class="tabela-simples"><tbody id="listaFilaBike"></tbody></table></div>
+            </div>
+            <div>
+              <h4 style="color: var(--secondary); margin: 0 0 10px 0; display:flex; align-items:center; gap:5px;"><i data-lucide="footprints" style="width:18px;"></i> Fila - Corrida</h4>
+              <div class="tabela-container"><table class="tabela-simples"><tbody id="listaFilaCorrida"></tbody></table></div>
+            </div>
+          </div>
+        </div>
+
         <div id="tab-bike" class="t-content"><div class="tabela-container"><table class="tabela-simples"><tbody id="listaBicicleta"></tbody></table></div></div>
         <div id="tab-corrida" class="t-content"><div class="tabela-container"><table class="tabela-simples"><tbody id="listaCorrida"></tbody></table></div></div>
         <div id="tab-comite" class="t-content"><div class="tabela-container"><table class="tabela-simples"><tbody id="listaComite"></tbody></table></div></div>
@@ -250,77 +274,91 @@
     </section>
   </main>
 
-  <div id="pdfOverlay">
-    <div id="pdfPrintArea">
-      <div style="flex: 0 0 auto; display: flex; justify-content: space-between; border-bottom: 3px solid #009bc1; padding-bottom: 8px; margin-bottom: 15px;">
+  <div id="pdfOverlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:#555; z-index:10000; align-items:center; justify-content:center;">
+    <div id="pdfPrintArea" style="width: 297mm; height: 210mm; background: #fff; padding: 12mm 15mm; box-sizing: border-box; margin: auto; font-family: sans-serif; display: flex; flex-direction: column;">
+      
+      <div style="flex: 0 0 auto; display: flex; justify-content: space-between; border-bottom: 3px solid #009bc1; padding-bottom: 8px; margin-bottom: 12px;">
          <div style="display: flex; align-items: center; gap: 15px;">
            <div style="background: #009bc1; color: white; font-weight: bold; font-size: 24px; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">⚡️</div>
            <div>
-             <h1 style="margin: 0; color: #009bc1; font-size: 22px;">Relatório Estratégico</h1>
-             <p style="margin: 5px 0 0 0; color: #666; font-size: 13px;">Programa Comitê Atletas Energisa</p>
+             <h1 style="margin: 0; color: #009bc1; font-size: 20px;">Relatório Estratégico</h1>
+             <p style="margin: 3px 0 0 0; color: #666; font-size: 12px;">Programa Comitê Atletas Energisa</p>
            </div>
          </div>
          <div style="text-align: right; display: flex; flex-direction: column; justify-content: flex-end;">
-           <p style="margin: 0; color: #999; font-size: 12px;">Gerado em: <strong id="pdfDataHoje" style="color: #333;"></strong></p>
+           <p style="margin: 0; color: #999; font-size: 11px;">Data de Extração: <strong id="pdfDataHoje" style="color: #333;"></strong></p>
          </div>
       </div>
-      <div style="flex: 0 0 auto; display: flex; gap: 15px; margin-bottom: 15px;">
-         <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 8px; padding: 10px; text-align: center;">
-           <h3 style="margin: 0; font-size: 11px; color: #666; font-weight: normal;">Atletas Ativos</h3>
-           <p id="pdfAtivos" style="margin: 5px 0 0 0; font-size: 20px; font-weight: bold; color: #009bc1;">0</p>
+
+      <div style="flex: 0 0 auto; display: flex; gap: 12px; margin-bottom: 12px;">
+         <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 6px; padding: 8px; text-align: center;">
+           <h3 style="margin: 0; font-size: 10px; color: #666; font-weight: normal;">Base Ativa</h3>
+           <p id="pdfAtivos" style="margin: 3px 0 0 0; font-size: 18px; font-weight: bold; color: #009bc1;">0</p>
          </div>
-         <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 8px; padding: 10px; text-align: center;">
-           <h3 style="margin: 0; font-size: 11px; color: #666; font-weight: normal;">Equipe Bike</h3>
-           <p id="pdfBike" style="margin: 5px 0 0 0; font-size: 20px; font-weight: bold; color: #009bc1;">0</p>
+         <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 6px; padding: 8px; text-align: center;">
+           <h3 style="margin: 0; font-size: 10px; color: #666; font-weight: normal;">Equipe Bike</h3>
+           <p id="pdfBike" style="margin: 3px 0 0 0; font-size: 18px; font-weight: bold; color: #009bc1;">0</p>
          </div>
-         <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 8px; padding: 10px; text-align: center;">
-           <h3 style="margin: 0; font-size: 11px; color: #666; font-weight: normal;">Equipe Corrida</h3>
-           <p id="pdfCorrida" style="margin: 5px 0 0 0; font-size: 20px; font-weight: bold; color: #009bc1;">0</p>
+         <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 6px; padding: 8px; text-align: center;">
+           <h3 style="margin: 0; font-size: 10px; color: #666; font-weight: normal;">Equipe Corrida</h3>
+           <p id="pdfCorrida" style="margin: 3px 0 0 0; font-size: 18px; font-weight: bold; color: #009bc1;">0</p>
          </div>
-         <div style="flex: 1; border: 1px solid #27ae60; background: rgba(39,174,96,0.05); border-radius: 8px; padding: 10px; text-align: center;">
-           <h3 style="margin: 0; font-size: 11px; color: #27ae60; font-weight: normal;">Investimento Total</h3>
-           <p id="pdfInvest" style="margin: 5px 0 0 0; font-size: 20px; font-weight: bold; color: #27ae60;">R$ 0,00</p>
+         <div style="flex: 1; border: 1px solid #27ae60; background: rgba(39,174,96,0.05); border-radius: 6px; padding: 8px; text-align: center;">
+           <h3 style="margin: 0; font-size: 10px; color: #27ae60; font-weight: normal;">Investimento Total</h3>
+           <p id="pdfInvest" style="margin: 3px 0 0 0; font-size: 18px; font-weight: bold; color: #27ae60;">R$ 0,00</p>
          </div>
-         <div style="flex: 1; border: 1px solid #27ae60; background: rgba(39,174,96,0.05); border-radius: 8px; padding: 10px; text-align: center;">
-           <h3 style="margin: 0; font-size: 11px; color: #27ae60; font-weight: normal;">Custo p/ Atleta</h3>
-           <p id="pdfRoi" style="margin: 5px 0 0 0; font-size: 20px; font-weight: bold; color: #27ae60;">R$ 0,00</p>
+         <div style="flex: 1; border: 1px solid #27ae60; background: rgba(39,174,96,0.05); border-radius: 6px; padding: 8px; text-align: center;">
+           <h3 style="margin: 0; font-size: 10px; color: #27ae60; font-weight: normal;">Custo p/ Atleta</h3>
+           <p id="pdfRoi" style="margin: 3px 0 0 0; font-size: 18px; font-weight: bold; color: #27ae60;">R$ 0,00</p>
          </div>
       </div>
-      <div style="flex: 1 1 auto; display: flex; gap: 15px; min-height: 0;">
-         <div style="flex: 1.2; display: flex; flex-direction: column; gap: 15px;">
-           <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 8px; padding: 12px; display: flex; flex-direction: column;">
-             <h3 style="color: #009bc1; margin:0 0 10px 0; border-bottom: 1px solid #eee; padding-bottom:5px; font-size: 13px;">Evolução de Pontos</h3>
+
+      <div style="flex: 1; display: flex; gap: 15px; min-height: 0;">
+         
+         <div style="flex: 1.8; display: flex; flex-direction: column; gap: 12px;">
+           
+           <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 6px; padding: 10px; display: flex; flex-direction: column;">
+             <h3 style="color: #009bc1; margin:0 0 8px 0; border-bottom: 1px solid #eee; padding-bottom:4px; font-size: 12px; text-transform: uppercase;">Evolução de Engajamento</h3>
              <div style="flex: 1; overflow: hidden; display: flex; align-items: center; justify-content: center;">
                <img id="pdfImgTendencia" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
              </div>
            </div>
-           <div style="flex: 0 0 auto; border: 1px solid #e3e6eb; border-radius: 8px; padding: 12px; display: flex; justify-content: space-around; align-items: center;">
-             <div style="text-align:center;"><span style="font-size:18px;">🚴</span><br><strong id="pdfMediaBike" style="color:#009bc1; font-size:16px;">0</strong> <small style="font-size:11px;">pts/atleta</small></div>
-             <div style="text-align:center;"><span style="font-size:18px;">🏃</span><br><strong id="pdfMediaCorrida" style="color:#00b37e; font-size:16px;">0</strong> <small style="font-size:11px;">pts/atleta</small></div>
-           </div>
-         </div>
-         <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 8px; padding: 12px;">
-           <h3 style="color: #f37021; margin:0 0 10px 0; border-bottom: 1px solid #eee; padding-bottom:5px; font-size: 13px;">Ranking Pódio</h3>
-           <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 10px;">
-             <div>
-               <h4 style="color: #009bc1; margin: 0 0 5px 0; font-size: 12px;">🚴 Bike</h4>
-               <ul id="pdfTopBike" style="list-style: none; padding: 0; margin: 0; font-size: 11px;"></ul>
+           
+           <div style="flex: 0.8; display: flex; gap: 12px;">
+             <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 6px; padding: 10px; overflow: hidden;">
+               <h3 style="color: #34495e; margin:0 0 8px 0; border-bottom: 1px solid #eee; padding-bottom:4px; font-size: 12px; text-transform: uppercase;">Últimos Eventos Realizados</h3>
+               <div id="pdfUltimosEventos" style="font-size: 10px; line-height: 1.4;"></div>
              </div>
-             <div>
-               <h4 style="color: #00b37e; margin: 0 0 5px 0; font-size: 12px;">🏃 Corrida</h4>
-               <ul id="pdfTopCorrida" style="list-style: none; padding: 0; margin: 0; font-size: 11px;"></ul>
+             <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 6px; padding: 10px; overflow: hidden;">
+               <h3 style="color: #8e44ad; margin:0 0 8px 0; border-bottom: 1px solid #eee; padding-bottom:4px; font-size: 12px; text-transform: uppercase;">Agenda Futura</h3>
+               <div id="pdfProximosEventos" style="font-size: 10px; line-height: 1.4;"></div>
              </div>
            </div>
+
          </div>
-         <div style="flex: 1; display: flex; flex-direction: column; gap: 15px;">
-           <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 8px; padding: 12px; overflow: hidden;">
-             <h3 style="color: #34495e; margin:0 0 10px 0; border-bottom: 1px solid #eee; padding-bottom:5px; font-size: 13px;">Últimos Eventos (Adesão)</h3>
-             <div id="pdfUltimosEventos" style="font-size: 11px;"></div>
+
+         <div style="flex: 1; display: flex; flex-direction: column; gap: 12px;">
+           
+           <div style="flex: 0 0 auto; border: 1px solid #e3e6eb; border-radius: 6px; padding: 10px; display: flex; justify-content: space-around; align-items: center; background: #fafafa;">
+             <div style="text-align:center;"><span style="font-size:16px;">🚴 Bike</span><br><strong id="pdfMediaBike" style="color:#009bc1; font-size:16px;">0</strong> <small style="font-size:10px;">pts/atleta</small></div>
+             <div style="width: 1px; height: 30px; background: #ddd;"></div>
+             <div style="text-align:center;"><span style="font-size:16px;">🏃 Corrida</span><br><strong id="pdfMediaCorrida" style="color:#00b37e; font-size:16px;">0</strong> <small style="font-size:10px;">pts/atleta</small></div>
            </div>
-           <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 8px; padding: 12px; overflow: hidden;">
-             <h3 style="color: #8e44ad; margin:0 0 10px 0; border-bottom: 1px solid #eee; padding-bottom:5px; font-size: 13px;">Próximos Eventos</h3>
-             <div id="pdfProximosEventos" style="font-size: 11px;"></div>
+           
+           <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 6px; padding: 10px;">
+             <h3 style="color: #f37021; margin:0 0 10px 0; border-bottom: 1px solid #eee; padding-bottom:4px; font-size: 12px; text-transform: uppercase;">Ranking Pódio (Top 3)</h3>
+             <div style="display: flex; flex-direction: column; gap: 10px;">
+               <div>
+                 <h4 style="color: #009bc1; margin: 0 0 4px 0; font-size: 11px;">Bicicleta</h4>
+                 <ul id="pdfTopBike" style="list-style: none; padding: 0; margin: 0; font-size: 10px;"></ul>
+               </div>
+               <div>
+                 <h4 style="color: #00b37e; margin: 0 0 4px 0; font-size: 11px;">Corrida</h4>
+                 <ul id="pdfTopCorrida" style="list-style: none; padding: 0; margin: 0; font-size: 10px;"></ul>
+               </div>
+             </div>
            </div>
+
          </div>
       </div>
     </div>
