@@ -109,14 +109,13 @@ function configurarLogout() {
   });
 }
 
-// 🛡️ A ORDEM CERTA DAS CHAMADAS DE DADOS
+// 🛡️ A ORDEM CERTA DAS CHAMADAS
 async function atualizarTelas() {
   if (userRole === "admin") setupAprovacoes();
   await carregarEquipesEDashboard(); 
   await carregarRegras();
   await carregarHistorico(); 
   
-  // Atualiza também o Relatório caso o utilizador esteja lá
   if (document.getElementById("sub-relatorio").classList.contains("active")) {
     gerarRelatorioConsolidado();
   }
@@ -185,7 +184,9 @@ async function carregarEquipesEDashboard() {
 
   let listaOrdenada = [];
   snap.forEach(d => { mapAtletas[d.id] = { id: d.id, ...d.data() }; listaOrdenada.push(mapAtletas[d.id]); });
-  listaOrdenada.sort((a, b) => a.nome.localeCompare(b.nome));
+  
+  // BLINDAGEM CONTRA FALHAS NA ORDENAÇÃO: Se faltar o nome na DB, não trava o sistema
+  listaOrdenada.sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || "")));
 
   listaOrdenada.forEach(u => {
     const isDono = auth.currentUser.uid === u.id;
@@ -357,7 +358,9 @@ async function gerarTabelaContabilizacao(modalidade, regras) {
   const snapAtletas = await getDocs(qAtletas);
   let atletas = [];
   snapAtletas.forEach(d => { if(d.data().ativo !== false) atletas.push({id: d.id, ...d.data()}); });
-  atletas.sort((a, b) => a.nome.localeCompare(b.nome));
+  
+  // BLINDAGEM CONTRA FALHAS NA ORDENAÇÃO
+  atletas.sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || "")));
 
   if (atletas.length === 0) { tabela.innerHTML = `<tr><td style='text-align:center; padding: 20px;'><div class="empty-state"><i data-lucide="ghost"></i><p>Nenhum atleta ativo na equipe de ${modalidade}.</p></div></td></tr>`; lucide.createIcons(); return; }
 
@@ -425,21 +428,16 @@ async function salvarPontuacoes() {
 }
 
 // =====================================================
-// 📜 EXTRATO E LIMPAR FILTROS (BLINDADO CONTRA ERROS DO FIREBASE)
+// 📜 EXTRATO E LIMPAR FILTROS
 // =====================================================
 async function carregarHistorico() {
   try {
-    // Busca Pura - Sem OrderBy para evitar erro de Missing Index no Firebase
     const snap = await getDocs(collection(db, "historico_pontos"));
     historicoCompleto = [];
     snap.forEach(d => { historicoCompleto.push({ id: d.id, ...d.data() }); });
     
-    // Ordena do mais recente para o mais antigo via Javascript
-    historicoCompleto.sort((a, b) => {
-      const dataA = a.criadoEm || "";
-      const dataB = b.criadoEm || "";
-      return dataB.localeCompare(dataA);
-    });
+    // ORDENAÇÃO BLINDADA: Evita falhas se faltar a data de criação
+    historicoCompleto.sort((a, b) => String(b.criadoEm || "").localeCompare(String(a.criadoEm || "")));
     
     const inputMes = document.getElementById("filtroMesHistorico");
     if(!inputMes.value) {
@@ -449,7 +447,7 @@ async function carregarHistorico() {
     filtrarHistorico();
   } catch (error) {
     console.error("Erro ao carregar histórico:", error);
-    document.getElementById("listaHistorico").innerHTML = `<tr><td colspan='6'><div class="empty-state"><i data-lucide="alert-triangle"></i><p>Erro de conexão ao buscar histórico.</p></div></td></tr>`;
+    document.getElementById("listaHistorico").innerHTML = `<tr><td colspan='6'><div class="empty-state"><i data-lucide="alert-triangle"></i><p>Erro ao buscar histórico.</p></div></td></tr>`;
     lucide.createIcons();
   }
 }
@@ -551,7 +549,6 @@ function gerarRelatorioConsolidado() {
   atletasRelatorio.forEach(atleta => {
     atleta.totalAnoTemp = 0; atleta.ptsMesTemp = [0,0,0,0,0,0,0,0,0,0,0,0];
     histAno.filter(h => h.atletaId === atleta.id).forEach(lancamento => {
-      // BLINDAGEM NO CÁLCULO
       if(lancamento.dataTreino && lancamento.dataTreino.includes("-")) {
         const mesInt = parseInt(lancamento.dataTreino.split("-")[1], 10); 
         if(!isNaN(mesInt) && mesInt >= 1 && mesInt <= 12) {
