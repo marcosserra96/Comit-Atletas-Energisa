@@ -80,9 +80,14 @@
               <div><span style="font-size: 1.5rem;">🏃</span><br><strong id="mediaCorrida" style="color: var(--secondary);">0</strong></div>
             </div>
           </div>
-          <div class="card" style="margin: 0; flex: 1;">
+          <div class="card" style="margin: 0;">
             <h3 style="color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 10px;"><i data-lucide="award"></i> Top 5 Geral</h3>
             <ul id="listaPodio" style="list-style: none; padding: 0; margin: 15px 0 0 0;"></ul>
+          </div>
+          <div class="card" style="margin: 0; flex: 1;">
+            <h3 style="color: #8e44ad; border-bottom: 1px solid var(--border); padding-bottom: 10px;"><i data-lucide="calendar"></i> Próximos Eventos</h3>
+            <div id="listaEventosAgenda" style="margin-top: 15px;"></div>
+            <button id="abrirModalEvento" class="btn-acao admin-only-element" style="width: 100%; margin-top: 15px; justify-content: center;"><i data-lucide="plus-circle"></i> Novo Evento</button>
           </div>
         </div>
       </div>
@@ -113,10 +118,11 @@
       </div>
       <div id="sub-historico" class="sub-content">
         <div class="card" style="margin-bottom: 20px;">
-          <div style="display: flex; gap: 15px; align-items: end;">
+          <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: end;">
             <div style="flex:1"><label>Mês</label><input type="month" id="filtroMesHistorico" /></div>
             <div style="flex:1"><label>Equipe</label><select id="filtroEquipeHistorico"><option value="">Todas</option><option value="Bicicleta">Bicicleta</option><option value="Corrida">Corrida</option></select></div>
             <div style="flex:1"><label>Atleta</label><input type="text" id="filtroNomeHistorico" /></div>
+            <div><button id="btnLimparFiltrosExtrato" class="btn-acao" style="padding: 12px;"><i data-lucide="filter-x"></i> Limpar</button></div>
           </div>
         </div>
         <div class="tabela-container"><table class="tabela-simples"><thead><tr><th>Data</th><th>Atleta</th><th>Eq.</th><th>Regra</th><th>Pts</th><th>Ação</th></tr></thead><tbody id="listaHistorico"></tbody></table></div>
@@ -124,7 +130,7 @@
       <div id="sub-relatorio" class="sub-content">
         <div class="header-acao"><button id="btnExportarExcel" class="btn-primario" style="background: #107c41;"><i data-lucide="sheet"></i> Excel</button></div>
         <div class="card" style="margin-bottom: 20px;">
-          <div style="display: flex; gap: 15px; align-items: end;">
+          <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: end;">
             <div style="flex:1"><label>Ano</label><input type="number" id="filtroAnoRelatorio" /></div>
             <div style="flex:1"><label>Equipe</label><select id="filtroEquipeRelatorio"><option value="">Todas</option><option value="Bicicleta">Bike</option><option value="Corrida">Corrida</option></select></div>
             <button id="btnGerarRelatorio" class="btn-primario">Filtrar</button>
@@ -136,7 +142,7 @@
 
     <section id="financeiro">
       <div class="dashboard-grid">
-        <div class="card" style="margin: 0; align-self: start;">
+        <div class="card admin-only-element" style="margin: 0; align-self: start;">
           <h3 style="color: #27ae60;"><i data-lucide="plus-circle"></i> Nova Despesa</h3>
           <label>Descrição</label><input type="text" id="descDespesa" />
           <label>Categoria</label><select id="catDespesa"><option value="Eventos">Eventos e Inscrições</option><option value="Uniformes">Uniformes/Materiais</option><option value="Premiações">Premiações</option><option value="Outros">Outros</option></select>
@@ -186,8 +192,33 @@
       </div>
 
       <div id="sub-regras" class="sub-content">
-        <button id="abrirModalRegra" class="btn-primario" style="margin-bottom:15px;">Nova Regra</button>
+        <button id="abrirModalRegra" class="btn-primario admin-only-element" style="margin-bottom:15px;">Nova Regra</button>
         <div class="tabela-container"><table class="tabela-simples"><tbody id="listaRegras"></tbody></table></div>
+      </div>
+    </section>
+
+    <section id="configuracoes">
+      <div class="header-acao"><h2>Configurações do Portal</h2></div>
+      <div class="dashboard-grid">
+        <div class="card" style="margin: 0;">
+          <h3 style="color: var(--primary);"><i data-lucide="monitor"></i> Aparência</h3>
+          <div style="display: flex; gap: 10px; margin: 15px 0 20px;">
+            <button id="btnTemaClaro" class="btn-acao" style="flex: 1;"><i data-lucide="sun"></i> Claro</button>
+            <button id="btnTemaEscuro" class="btn-acao" style="flex: 1;"><i data-lucide="moon"></i> Escuro</button>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button class="btn-acao btn-zoom" data-size="14px" style="flex: 1;">A- Pequeno</button>
+            <button class="btn-acao btn-zoom" data-size="16px" style="flex: 1;">A Padrão</button>
+            <button class="btn-acao btn-zoom" data-size="18px" style="flex: 1;">A+ Grande</button>
+          </div>
+        </div>
+        <div class="card" style="margin: 0;">
+          <h3 style="color: var(--secondary);"><i data-lucide="user-cog"></i> Minha Conta</h3>
+          <input type="password" id="confSenhaAtual" placeholder="Senha Atual (Obrigatório para mudar dados)" />
+          <input type="email" id="confNovoEmail" placeholder="Novo E-mail (Opcional)" />
+          <input type="password" id="confNovaSenha" placeholder="Nova Senha (Opcional)" />
+          <button id="btnSalvarConta" class="btn-primario" style="width: 100%; justify-content: center;">Salvar Alterações</button>
+        </div>
       </div>
     </section>
   </main>
@@ -202,7 +233,6 @@
         <p style="margin: 0; color: #999; font-size: 14px;">Gerado em: <strong id="pdfDataHoje" style="color: #333;"></strong></p>
       </div>
     </div>
-    
     <div class="pdf-cards">
       <div class="pdf-card"><h3>Atletas Ativos</h3><p id="pdfAtivos">0</p></div>
       <div class="pdf-card"><h3>Equipe Bike</h3><p id="pdfBike">0</p></div>
@@ -210,7 +240,6 @@
       <div class="pdf-card"><h3>Investimento</h3><p id="pdfInvest" style="color:#27ae60;">R$ 0</p></div>
       <div class="pdf-card"><h3>Custo p/ Atleta</h3><p id="pdfRoi" style="color:#27ae60;">R$ 0</p></div>
     </div>
-
     <div class="pdf-row">
       <div class="pdf-col" style="flex: 1.5;">
         <h3 style="color: #009bc1; margin-top:0; border-bottom: 1px solid #eee; padding-bottom:10px;">Evolução de Pontos (Ano)</h3>
@@ -238,21 +267,39 @@
     </div>
   </div>
 
+  <div id="modalEditarAtleta" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:2000; justify-content:center; align-items:center;">
+    <div style="background: var(--bg-card); padding: 30px; border-radius: 12px; width: 90%; max-width: 400px;">
+      <h3 style="color: var(--warning); margin-top: 0;">Editar Membro</h3>
+      <input type="hidden" id="editId" />
+      <input type="text" id="editNome" />
+      <input type="email" id="editEmail" />
+      <select id="editPapel"><option value="Bicicleta">Bicicleta</option><option value="Corrida">Corrida</option><option value="Fila - Bicicleta">Fila - Bike</option><option value="Fila - Corrida">Fila - Corrida</option><option value="Comitê">Comitê</option></select>
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;"><button id="fecharModalEdit" style="background: var(--border); padding: 10px;">Cancelar</button><button id="salvarEditBtn" class="btn-primario" style="background: var(--warning); color: #333;">Atualizar</button></div>
+    </div>
+  </div>
+
   <div id="modalPermissoes" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:2000; justify-content:center; align-items:center;">
     <div style="background: var(--bg-card); padding: 30px; border-radius: 12px; width: 90%; max-width: 400px;">
-      <h3 style="color: var(--warning); margin-top: 0;"><i data-lucide="shield"></i> Permissões de Acesso</h3>
+      <h3 style="color: var(--warning); margin-top: 0;"><i data-lucide="shield"></i> Permissões</h3>
       <p id="permNomeUsuario" style="font-weight:bold; margin-bottom:15px;"></p>
       <input type="hidden" id="permUserId" />
-      
-      <div class="perm-item"><label style="margin:0; font-size:1rem; color:var(--text);">📊 Visão Estratégica</label><input type="checkbox" class="chk-perm" value="visao-geral" /></div>
-      <div class="perm-item"><label style="margin:0; font-size:1rem; color:var(--text);">📝 Contabilização</label><input type="checkbox" class="chk-perm" value="contabilizacao" /></div>
-      <div class="perm-item"><label style="margin:0; font-size:1rem; color:var(--text);">💰 Financeiro</label><input type="checkbox" class="chk-perm" value="financeiro" /></div>
-      <div class="perm-item"><label style="margin:0; font-size:1rem; color:var(--text);">⚙️ Gestão de Base</label><input type="checkbox" class="chk-perm" value="gestao" /></div>
-      
-      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px;">
-        <button id="fecharModalPermissoes" style="background: var(--border); padding: 10px 15px; border-radius: 8px;">Cancelar</button>
-        <button id="salvarPermissoesBtn" class="btn-primario" style="background: var(--warning); color: #333;">Salvar Acessos</button>
-      </div>
+      <div class="perm-item"><label style="margin:0;">📊 Estratégico</label><input type="checkbox" class="chk-perm" value="visao-geral" /></div>
+      <div class="perm-item"><label style="margin:0;">📝 Contabilização</label><input type="checkbox" class="chk-perm" value="contabilizacao" /></div>
+      <div class="perm-item"><label style="margin:0;">💰 Financeiro</label><input type="checkbox" class="chk-perm" value="financeiro" /></div>
+      <div class="perm-item"><label style="margin:0;">⚙️ Gestão Base</label><input type="checkbox" class="chk-perm" value="gestao" /></div>
+      <div class="perm-item"><label style="margin:0;">⚙️ Configurações</label><input type="checkbox" class="chk-perm" value="configuracoes" /></div>
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px;"><button id="fecharModalPermissoes" style="background: var(--border); padding: 10px;">Cancelar</button><button id="salvarPermissoesBtn" class="btn-primario">Salvar Acessos</button></div>
+    </div>
+  </div>
+
+  <div id="modalEvento" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:2000; justify-content:center; align-items:center;">
+    <div style="background: var(--bg-card); padding: 30px; border-radius: 12px; width: 90%; max-width: 400px;">
+      <h3 style="color: #8e44ad; margin-top: 0;">Agendar Evento</h3>
+      <input type="text" id="eventoTitulo" placeholder="Ex: Corrida Rústica 10k" />
+      <input type="text" id="eventoLocal" placeholder="Local / Encontro" />
+      <select id="eventoModalidade"><option value="Ambas">Ambas</option><option value="Bicicleta">Bicicleta</option><option value="Corrida">Corrida</option></select>
+      <input type="date" id="eventoData" />
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;"><button id="fecharModalEvento" style="background: var(--border); padding: 10px;">Cancelar</button><button id="salvarEventoBtn" class="btn-primario" style="background: #8e44ad;">Salvar Evento</button></div>
     </div>
   </div>
 
