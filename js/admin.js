@@ -27,7 +27,6 @@ onAuthStateChanged(auth, async (user) => {
     const docSnap = await getDoc(doc(db, "atletas", user.uid));
     if (docSnap.exists() && (docSnap.data().role === "admin" || docSnap.data().role === "comite")) {
       userRole = docSnap.data().role;
-      // Admin recebe tudo. Se for comitê, lê do banco.
       userPermissoes = userRole === "admin" ? 
         ["visao-geral", "contabilizacao", "financeiro_view", "financeiro_edit", "gestao", "configuracoes"] : 
         (docSnap.data().permissoes || ["visao-geral", "configuracoes"]);
@@ -103,12 +102,11 @@ async function atualizarTelas() {
 }
 
 // =====================================================
-// 📊 DASHBOARD & GERADOR DE PDF IMPECÁVEL (A4 Paisagem)
+// 📊 DASHBOARD & GERADOR DE PDF BI (3 COLUNAS)
 // =====================================================
 document.getElementById("btnExportarPDF").addEventListener("click", () => {
-  showToast("Preparando relatório. Aguarde...", "info");
+  showToast("Montando painel corporativo...", "info");
   
-  // 1. Popula o Molde Invisível
   document.getElementById("pdfDataHoje").textContent = new Date().toLocaleDateString('pt-BR');
   document.getElementById("pdfAtivos").textContent = document.getElementById("totalAtivosGeral").textContent;
   document.getElementById("pdfBike").textContent = document.getElementById("totalBike").textContent;
@@ -118,34 +116,57 @@ document.getElementById("btnExportarPDF").addEventListener("click", () => {
   document.getElementById("pdfMediaBike").textContent = document.getElementById("mediaBike").textContent;
   document.getElementById("pdfMediaCorrida").textContent = document.getElementById("mediaCorrida").textContent;
   
+  // Clona o Top 5 inteiro (Sem cortar)
   const topUl = document.getElementById("listaPodio").cloneNode(true);
-  topUl.querySelectorAll('li').forEach((li, idx) => { if(idx > 2) li.remove(); }); 
-  document.getElementById("pdfTop3").innerHTML = topUl.innerHTML;
+  document.getElementById("pdfTop5").innerHTML = topUl.innerHTML;
 
-  // Foto do Canvas
+  // Clona e limpa a Agenda de Eventos Futuros
+  const agendaClone = document.getElementById("listaEventosAgenda").cloneNode(true);
+  agendaClone.querySelectorAll("button").forEach(b => b.remove()); // Remove lixeiras do PDF
+  document.getElementById("pdfProximosEventos").innerHTML = agendaClone.innerHTML;
+
+  // Processa a inteligência de "Últimos Eventos e Adesão" lendo o histórico de pontos
+  const eventosPassados = {};
+  historicoCompleto.forEach(h => {
+    if(!h.dataTreino || !h.descTreino || h.descTreino.toLowerCase().includes("falta")) return;
+    const key = `${h.dataTreino}::${h.descTreino}`;
+    if(!eventosPassados[key]) eventosPassados[key] = { data: h.dataTreino, desc: h.descTreino, atletas: new Set() };
+    eventosPassados[key].atletas.add(h.atletaId);
+  });
+  
+  const listaUltimos = Object.values(eventosPassados).sort((a,b) => new Date(b.data) - new Date(a.data)).slice(0, 4); // Pega os 4 últimos
+  let htmlUltimos = "";
+  listaUltimos.forEach(e => {
+     const d = new Date(e.data + "T00:00:00").toLocaleDateString('pt-BR').substring(0,5);
+     htmlUltimos += `<div style="display:flex; justify-content:space-between; margin-bottom:8px; border-bottom:1px solid #f5f5f5; padding-bottom:4px;">
+       <span style="color:#666;"><strong>${d}</strong> - ${e.desc}</span>
+       <strong style="color:var(--primary);">${e.atletas.size} <span style="font-size:12px;">👤</span></strong>
+     </div>`;
+  });
+  document.getElementById("pdfUltimosEventos").innerHTML = htmlUltimos || "<p style='color:#999; text-align:center;'>Nenhum evento processado.</p>";
+
+  // Captura o Gráfico
   const canvasLinha = document.getElementById('graficoTendencia');
   if(canvasLinha) { document.getElementById('pdfImgTendencia').src = canvasLinha.toDataURL("image/png", 1.0); }
 
-  // 2. Exibe Sobreposição
   const modalPdf = document.getElementById("pdfOverlay");
   const printArea = document.getElementById("pdfPrintArea");
   modalPdf.style.display = "flex";
 
-  // 3. Aguarda re-render do CSS e converte para PDF em milímetros
   setTimeout(() => {
     const opt = {
       margin: 0, 
       filename: `Report_Atletas_${document.getElementById("pdfDataHoje").textContent.replace(/\//g, '-')}.pdf`,
       image: { type: 'jpeg', quality: 0.98 }, 
       html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } // A4 Landscape Perfeito
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
     };
 
     html2pdf().set(opt).from(printArea).save().then(() => { 
       modalPdf.style.display = "none"; 
-      showToast("PDF Baixado com Sucesso!", "success"); 
+      showToast("Download Concluído!", "success"); 
     });
-  }, 500);
+  }, 600);
 });
 
 // =====================================================
@@ -177,7 +198,6 @@ async function carregarFinanceiro() {
   const snap = await getDocs(query(collection(db, "despesas"), orderBy("data", "desc")));
   let html = ""; gastoTotalGlobal = 0;
   
-  // VERIFICA PERMISSÃO DE EDIÇÃO FINANCEIRA
   const canEdit = userRole === "admin" || userPermissoes.includes("financeiro_edit");
   const cardAdd = document.getElementById("cardNovaDespesa");
   if(cardAdd) cardAdd.style.display = canEdit ? "block" : "none";
@@ -254,7 +274,6 @@ async function carregarEquipesEDashboard() {
   titulares.forEach(u => {
     const pts = Number(u.pontuacaoTotal) || 0; const ativo = u.ativo !== false;
     
-    // BOTÃO PERMISSÕES (SOMENTE ADMIN VÊ E APENAS PARA COMITÊ)
     const btnPerm = (u.role === 'comite' && userRole === 'admin') ? `<button class="btn-primario btn-permissoes" data-id="${u.id}" data-nome="${u.nome}" style="background: #f39c12; padding: 6px 10px; font-size: 0.8rem; margin-left: 5px;"><i data-lucide="key" style="width: 14px;"></i> Acessos</button>` : '';
     const btnEditar = `<button class="btn-acao btn-editar-membro" data-id="${u.id}" data-nome="${u.nome}" data-email="${u.email}" data-eq="${u.equipe}" style="color: var(--warning); border-color: var(--warning); padding: 4px; margin-left: 5px;"><i data-lucide="edit-2" style="width: 16px;"></i></button>`;
     const btnExcluir = (auth.currentUser.uid !== u.id && userRole === "admin") ? `<button class="btn-acao btn-excluir-membro" data-id="${u.id}" style="color: red; border: 0; padding: 4px; margin-left: 5px;"><i data-lucide="x-circle" style="width: 18px;"></i></button>` : '';
@@ -278,7 +297,7 @@ async function carregarEquipesEDashboard() {
   renderizarGraficosDashboard(ptsBike, ptsCorrida, todosAtletas, contBike, contCorrida);
 
   todosAtletas.sort((a, b) => b.pts - a.pts);
-  const podio = todosAtletas.slice(0, 5);
+  const podio = todosAtletas.slice(0, 5); // Garante Top 5 exato
   const listaPodio = document.getElementById("listaPodio");
   if(listaPodio) {
     listaPodio.innerHTML = "";
@@ -299,7 +318,6 @@ async function carregarEquipesEDashboard() {
       const b = e.currentTarget; document.getElementById("permNomeUsuario").textContent = b.dataset.nome; document.getElementById("permUserId").value = b.dataset.id;
       const permissoesDB = mapAtletas[b.dataset.id].permissoes || ["visao-geral"];
       document.querySelectorAll(".chk-perm").forEach(chk => { 
-        // Trata permissões antigas para manter compatibilidade
         chk.checked = permissoesDB.includes(chk.value) || (permissoesDB.includes("financeiro") && chk.value.startsWith("financeiro")); 
       });
       document.getElementById("modalPermissoes").style.display = "flex";
@@ -406,7 +424,6 @@ async function gerarTabelaContabilizacao(modalidade, regras) {
 
   let tbody = "<tbody>";
   atletas.forEach(a => {
-    // Adicionado os data-atleta-nome e equipe para o histórico salvar e lembrar caso o atleta seja excluído
     tbody += `<tr><td><strong>${a.nome}</strong></td><td style="text-align:center; background: rgba(243,112,33,0.05);"><input type="checkbox" class="check-falta" data-atleta-id="${a.id}" data-atleta-nome="${a.nome}" data-atleta-equipe="${a.equipe}"></td>`;
     regras.forEach(r => { tbody += `<td style="text-align:center;"><input type="checkbox" class="check-ponto" data-atleta-id="${a.id}" data-atleta-nome="${a.nome}" data-atleta-equipe="${a.equipe}" data-regra-id="${r.id}" data-regra-desc="${r.descricao}" data-pontos="${r.pontos}"></td>`; });
     tbody += `</tr>`;
@@ -459,17 +476,10 @@ function filtrarHistorico() {
   const dados = historicoCompleto.filter(h => { 
     const atleta = mapAtletas[h.atletaId]; 
     const isAtivo = atleta ? (atleta.ativo !== false) : false;
-    
-    // Filtro de Status
     if (statusFiltro === "ativos" && !isAtivo) return false;
-
-    // Memória de Nomes (Resolve o problema do atleta excluído ou sem nome atrelado)
     const nomeFiltro = h.atletaNome || (atleta ? atleta.nome : "");
     const eqFiltro = h.atletaEquipe || (atleta ? atleta.equipe : "");
-
-    return (!mes || (h.dataTreino||"").startsWith(mes)) && 
-           (!eq || eqFiltro === eq) && 
-           (!nomeBusca || nomeFiltro.toLowerCase().includes(nomeBusca)); 
+    return (!mes || (h.dataTreino||"").startsWith(mes)) && (!eq || eqFiltro === eq) && (!nomeBusca || nomeFiltro.toLowerCase().includes(nomeBusca)); 
   });
 
   const tbody = document.getElementById("listaHistorico"); tbody.innerHTML = "";
@@ -477,15 +487,11 @@ function filtrarHistorico() {
 
   dados.forEach(h => {
     const atleta = mapAtletas[h.atletaId]; 
-    
     let nomeDisplay = h.atletaNome || (atleta ? atleta.nome : "Desconhecido");
     let eqDisplay = h.atletaEquipe || (atleta ? atleta.equipe : "-");
     
-    if (atleta && atleta.ativo === false) {
-      nomeDisplay += " <small style='color:var(--danger); font-weight:bold;'>(Inativo)</small>";
-    } else if (!atleta) {
-      nomeDisplay += " <small style='color:#999; font-weight:bold;'>(Excluído)</small>";
-    }
+    if (atleta && atleta.ativo === false) { nomeDisplay += " <small style='color:var(--danger); font-weight:bold;'>(Inativo)</small>"; } 
+    else if (!atleta) { nomeDisplay += " <small style='color:#999; font-weight:bold;'>(Excluído)</small>"; }
 
     let ptsV = h.pontos === 0 ? `<span style="color:var(--accent);">Justificada</span>` : `+${h.pontos}`;
     const btnEstorno = (userRole === "admin") ? `<button class="btn-acao btn-estornar" data-id="${h.id}" data-atleta="${h.atletaId}" data-pontos="${h.pontos}" style="color:var(--danger); border-color:var(--danger);"><i data-lucide="undo-2" style="width:16px;"></i></button>` : '';
@@ -505,8 +511,8 @@ function setupRelatorioConsolidado() {
   document.getElementById("btnGerarRelatorio").addEventListener("click", gerarRelatorioConsolidado);
   
   document.getElementById("btnExportarExcel").addEventListener("click", () => {
-    // FIX EXCEL: Agora verifica se tem a frase de aviso, se não, pode baixar.
     const tbody = document.getElementById("listaRelatorio");
+    // Correção: Agora verifica se realmente tem dados ou só uma mensagem vazia
     if(tbody.innerText.includes("Clique em Filtrar") || tbody.innerText.includes("Nenhum atleta")) return showToast("Gere o relatório primeiro!", "error");
     
     const rows = document.getElementById("tabelaConsolidada").querySelectorAll("tr"); 
@@ -559,7 +565,6 @@ function setupCadastrarPessoa() {
     const nome = document.getElementById("novoNome").value.trim(), email = document.getElementById("novoEmail").value.trim(), papel = document.getElementById("novoPapel").value, btn = e.target;
     if (!nome) return showToast("Por favor, preencha o nome!", "error");
     let role = "atleta"; let equipe = papel; 
-    
     try {
       btn.textContent = "Salvando..."; btn.disabled = true;
       await addDoc(collection(db, "atletas"), { nome: nome, email: email, role: role, equipe: equipe, status: "Aprovado", ativo: true, pontuacaoTotal: 0, recusas: 0, criadoEm: new Date().toISOString() });
