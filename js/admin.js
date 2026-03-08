@@ -144,13 +144,13 @@ async function setupAprovacoes() {
 document.getElementById("btnExportarPDF").addEventListener("click", () => {
   const elemento = document.getElementById("areaRelatorioPDF");
 
-  // 1. Aplica a classe que limpa o design (Modo Executivo)
+  // 1. Aplica o modo Executivo (que tranca a largura em 1120px)
   elemento.classList.add("pdf-executivo");
   
-  // 2. Injeta um cabeçalho corporativo temporário
+  // 2. Injeta o cabeçalho
   const dataHoje = new Date().toLocaleDateString('pt-BR');
   const headerHTML = `
-    <div id="cabecalhoPDF" style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid var(--primary); padding-bottom: 10px; margin-bottom: 25px;">
+    <div id="cabecalhoPDF" style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid var(--primary); padding-bottom: 10px; margin-bottom: 20px;">
       <div>
         <h1 style="margin: 0; color: var(--primary); font-size: 1.8rem;">Relatório Estratégico</h1>
         <p style="margin: 5px 0 0 0; color: #666; font-size: 1rem;">Programa Comitê Atletas Energisa</p>
@@ -162,24 +162,29 @@ document.getElementById("btnExportarPDF").addEventListener("click", () => {
   `;
   elemento.insertAdjacentHTML('afterbegin', headerHTML);
 
-  // 3. Força o Tema Claro durante a impressão para os gráficos ficarem nítidos
+  // 3. Força Tema Claro e re-renderiza os gráficos para o tamanho fixo
   const temaAtual = document.body.getAttribute("data-theme");
-  if (temaAtual === "dark") {
-    document.body.removeAttribute("data-theme");
-    Chart.defaults.color = '#666';
-    if(graficoLinhaInstancia) graficoLinhaInstancia.update();
-    if(graficoRoscaInstancia) graficoRoscaInstancia.update();
-  }
+  document.body.removeAttribute("data-theme");
+  Chart.defaults.color = '#666';
+  
+  // Congela as dimensões do Canvas para evitar que explodam de tamanho
+  const canvasLinha = document.getElementById('graficoTendencia');
+  const canvasRosca = document.getElementById('graficoEngajamento');
+  if(canvasLinha) { canvasLinha.style.width = '100%'; canvasLinha.style.height = '200px'; }
+  if(canvasRosca) { canvasRosca.style.width = '150px'; canvasRosca.style.height = '150px'; }
+  
+  if(graficoLinhaInstancia) graficoLinhaInstancia.resize();
+  if(graficoRoscaInstancia) graficoRoscaInstancia.resize();
 
-  // 4. Configurações Profissionais (Orientação Paisagem e Largura Forçada)
+  // 4. Configuração focada num encaixe perfeito na folha A4 (Paisagem)
   const opt = {
-    margin:       0.4,
-    filename:     `Report_Atletas_${dataHoje.replace(/\//g, '-')}.pdf`,
+    margin:       0.2, // Margens curtas
+    filename:     `Report_Estrategico_${dataHoje.replace(/\//g, '-')}.pdf`,
     image:        { type: 'jpeg', quality: 1 },
     html2canvas:  { 
       scale: 2, 
-      useCORS: true, 
-      windowWidth: 1200
+      useCORS: true,
+      windowWidth: 1200 // Diz à biblioteca para se comportar como um monitor largo
     },
     jsPDF:        { 
       unit: 'in', 
@@ -188,21 +193,26 @@ document.getElementById("btnExportarPDF").addEventListener("click", () => {
     } 
   };
 
-  showToast("Gerando Report Executivo, aguarde...", "info");
+  showToast("A gerar Report Executivo, aguarde...", "info");
 
-  // 5. Gera o PDF e limpa o layout
+  // 5. Gera e restaura
   html2pdf().set(opt).from(elemento).save().then(() => {
-    const cabecalho = document.getElementById("cabecalhoPDF");
-    if(cabecalho) cabecalho.remove();
+    document.getElementById("cabecalhoPDF").remove();
     elemento.classList.remove("pdf-executivo");
     
-    // Devolve o Tema Escuro
+    // Liberta as dimensões do Canvas
+    if(canvasLinha) { canvasLinha.style.width = ''; canvasLinha.style.height = ''; }
+    if(canvasRosca) { canvasRosca.style.width = ''; canvasRosca.style.height = ''; }
+
+    // Devolve o Tema Escuro se estava ativo
     if (temaAtual === "dark") {
       document.body.setAttribute("data-theme", "dark");
       Chart.defaults.color = '#aaa';
-      if(graficoLinhaInstancia) graficoLinhaInstancia.update();
-      if(graficoRoscaInstancia) graficoRoscaInstancia.update();
     }
+    
+    // Devolve o gráfico ao normal responsivo
+    if(graficoLinhaInstancia) graficoLinhaInstancia.resize();
+    if(graficoRoscaInstancia) graficoRoscaInstancia.resize();
     
     showToast("Relatório baixado com sucesso!", "success");
   });
