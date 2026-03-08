@@ -73,18 +73,23 @@ const fazerLogin = async () => {
   btn.textContent = "Entrar no Sistema"; btn.classList.remove("loading");
 };
 
-// Evento de Clique
+// Evento de Clique no Botão
 document.getElementById("loginBtn").addEventListener("click", (e) => { e.preventDefault(); fazerLogin(); });
 
-// Evento Rigoroso da Tecla ENTER nos Campos
-const inputs = document.querySelectorAll("#email, #password");
-inputs.forEach(input => {
-  input.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") {
+// Evento GLOBAL da Tecla ENTER (À Prova de Falhas)
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    // Se a tela de Login normal estiver visível, faz login.
+    if (document.getElementById("boxLogin").style.display !== "none") {
       e.preventDefault();
       fazerLogin();
+    } 
+    // Se a tela de Cadastro estiver visível, submete a solicitação.
+    else if (document.getElementById("boxSolicitar").style.display !== "none") {
+      e.preventDefault();
+      document.getElementById("registerBtn").click();
     }
-  });
+  }
 });
 
 // Solicitar Acesso
