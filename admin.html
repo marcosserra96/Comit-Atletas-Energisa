@@ -99,6 +99,7 @@
         <button class="sub-tab" data-target="sub-historico"><i data-lucide="history"></i> Extrato</button>
         <button class="sub-tab" data-target="sub-relatorio"><i data-lucide="sheet"></i> Consolidado</button>
       </div>
+      
       <div id="sub-lancar" class="sub-content active">
         <div class="card" style="margin-bottom: 25px;">
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
@@ -116,17 +117,26 @@
           <button id="btnSalvarPontuacao" class="btn-primario" style="width: 100%; justify-content: center; padding: 15px; background: var(--secondary);">Salvar Lote</button>
         </div>
       </div>
+      
       <div id="sub-historico" class="sub-content">
         <div class="card" style="margin-bottom: 20px;">
           <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: end;">
             <div style="flex:1"><label>Mês</label><input type="month" id="filtroMesHistorico" /></div>
             <div style="flex:1"><label>Equipe</label><select id="filtroEquipeHistorico"><option value="">Todas</option><option value="Bicicleta">Bicicleta</option><option value="Corrida">Corrida</option></select></div>
-            <div style="flex:1"><label>Atleta</label><input type="text" id="filtroNomeHistorico" /></div>
+            <div style="flex:1.5">
+              <label>Status do Atleta</label>
+              <select id="filtroStatusHistorico">
+                <option value="ativos">Apenas Ativos</option>
+                <option value="todos">Exibir Todos (Inativos)</option>
+              </select>
+            </div>
+            <div style="flex:1"><label>Atleta</label><input type="text" id="filtroNomeHistorico" placeholder="Nome..." /></div>
             <div><button id="btnLimparFiltrosExtrato" class="btn-acao" style="padding: 12px;"><i data-lucide="filter-x"></i> Limpar</button></div>
           </div>
         </div>
         <div class="tabela-container"><table class="tabela-simples"><thead><tr><th>Data</th><th>Atleta</th><th>Eq.</th><th>Regra</th><th>Pts</th><th>Ação</th></tr></thead><tbody id="listaHistorico"></tbody></table></div>
       </div>
+      
       <div id="sub-relatorio" class="sub-content">
         <div class="header-acao"><button id="btnExportarExcel" class="btn-primario" style="background: #107c41;"><i data-lucide="sheet"></i> Excel</button></div>
         <div class="card" style="margin-bottom: 20px;">
@@ -173,7 +183,12 @@
         <div class="card" style="max-width: 500px; margin: 0 auto;">
           <input type="text" id="novoNome" placeholder="Nome Completo" />
           <input type="email" id="novoEmail" placeholder="E-mail" />
-          <select id="novoPapel"><option value="Bicicleta">Bike</option><option value="Corrida">Corrida</option><option value="Fila - Bicicleta">Fila - Bike</option><option value="Fila - Corrida">Fila - Corrida</option><option value="Comitê" class="admin-only-element">Comitê</option></select>
+          <select id="novoPapel">
+            <option value="Bicicleta">Bike</option>
+            <option value="Corrida">Corrida</option>
+            <option value="Fila - Bicicleta">Fila - Bike</option>
+            <option value="Fila - Corrida">Fila - Corrida</option>
+            </select>
           <button id="btnCadastrarPessoa" class="btn-primario" style="width:100%; justify-content:center;">Adicionar</button>
         </div>
       </div>
@@ -223,36 +238,38 @@
     </section>
   </main>
 
-  <div id="pdfTemplateOculto">
-    <div class="pdf-header">
-      <div>
-        <h1 style="margin: 0; color: #009bc1; font-size: 28px;">Relatório Estratégico</h1>
-        <p style="margin: 5px 0 0 0; color: #666; font-size: 16px;">Programa Comitê Atletas Energisa</p>
-      </div>
-      <div style="text-align: right;">
-        <p style="margin: 0; color: #999; font-size: 14px;">Gerado em: <strong id="pdfDataHoje" style="color: #333;"></strong></p>
-      </div>
-    </div>
-    <div class="pdf-cards">
-      <div class="pdf-card"><h3>Atletas Ativos</h3><p id="pdfAtivos">0</p></div>
-      <div class="pdf-card"><h3>Equipe Bike</h3><p id="pdfBike">0</p></div>
-      <div class="pdf-card"><h3>Equipe Corrida</h3><p id="pdfCorrida">0</p></div>
-      <div class="pdf-card"><h3>Investimento</h3><p id="pdfInvest" style="color:#27ae60;">R$ 0</p></div>
-      <div class="pdf-card"><h3>Custo p/ Atleta</h3><p id="pdfRoi" style="color:#27ae60;">R$ 0</p></div>
-    </div>
-    <div class="pdf-row">
-      <div class="pdf-col" style="flex: 1.5;">
-        <h3 style="color: #009bc1; margin-top:0; border-bottom: 1px solid #eee; padding-bottom:10px;">Evolução de Pontos (Ano)</h3>
-        <img id="pdfImgTendencia" style="width: 100%; height: auto; margin-top: 15px;" />
-      </div>
-      <div class="pdf-col" style="flex: 1;">
-        <h3 style="color: #34495e; margin-top:0; border-bottom: 1px solid #eee; padding-bottom:10px;">Indicadores</h3>
-        <div style="margin-top: 20px;">
-          <p style="margin:5px 0;"><strong>Média Bike:</strong> <span id="pdfMediaBike">0</span> pts/atleta</p>
-          <p style="margin:5px 0;"><strong>Média Corrida:</strong> <span id="pdfMediaCorrida">0</span> pts/atleta</p>
+  <div id="pdfOverlay">
+    <div id="pdfPrintArea">
+      <div class="pdf-header">
+        <div>
+          <h1 style="margin: 0; color: #009bc1; font-size: 28px;">Relatório Estratégico</h1>
+          <p style="margin: 5px 0 0 0; color: #666; font-size: 16px;">Programa Comitê Atletas Energisa</p>
         </div>
-        <h3 style="color: #f37021; margin-top:30px; border-bottom: 1px solid #eee; padding-bottom:10px;">Top 3 Atletas</h3>
-        <ul id="pdfTop3" style="list-style: none; padding: 0; margin: 15px 0 0 0;"></ul>
+        <div style="text-align: right;">
+          <p style="margin: 0; color: #999; font-size: 14px;">Gerado em: <strong id="pdfDataHoje" style="color: #333;"></strong></p>
+        </div>
+      </div>
+      <div class="pdf-cards">
+        <div class="pdf-card"><h3>Atletas Ativos</h3><p id="pdfAtivos">0</p></div>
+        <div class="pdf-card"><h3>Equipe Bike</h3><p id="pdfBike">0</p></div>
+        <div class="pdf-card"><h3>Equipe Corrida</h3><p id="pdfCorrida">0</p></div>
+        <div class="pdf-card"><h3>Investimento</h3><p id="pdfInvest" style="color:#27ae60;">R$ 0</p></div>
+        <div class="pdf-card"><h3>Custo p/ Atleta</h3><p id="pdfRoi" style="color:#27ae60;">R$ 0</p></div>
+      </div>
+      <div class="pdf-row">
+        <div class="pdf-col" style="flex: 1.5;">
+          <h3 style="color: #009bc1; margin-top:0; border-bottom: 1px solid #eee; padding-bottom:10px;">Evolução de Pontos (Ano)</h3>
+          <img id="pdfImgTendencia" style="width: 100%; height: auto; margin-top: 15px;" />
+        </div>
+        <div class="pdf-col" style="flex: 1;">
+          <h3 style="color: #34495e; margin-top:0; border-bottom: 1px solid #eee; padding-bottom:10px;">Indicadores</h3>
+          <div style="margin-top: 20px;">
+            <p style="margin:5px 0;"><strong>Média Bike:</strong> <span id="pdfMediaBike">0</span> pts/atleta</p>
+            <p style="margin:5px 0;"><strong>Média Corrida:</strong> <span id="pdfMediaCorrida">0</span> pts/atleta</p>
+          </div>
+          <h3 style="color: #f37021; margin-top:30px; border-bottom: 1px solid #eee; padding-bottom:10px;">Top 3 Atletas</h3>
+          <ul id="pdfTop3" style="list-style: none; padding: 0; margin: 15px 0 0 0;"></ul>
+        </div>
       </div>
     </div>
   </div>
