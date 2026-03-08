@@ -13,7 +13,7 @@ function showToast(message, type = "info") {
   setTimeout(() => toast.remove(), 4000);
 }
 
-// Alternar entre Login e Solicitar Acesso
+// Alternar Telas
 document.getElementById("linkSolicitar").addEventListener("click", (e) => {
   e.preventDefault();
   document.getElementById("boxLogin").style.display = "none";
@@ -25,7 +25,7 @@ document.getElementById("linkLogin").addEventListener("click", (e) => {
   document.getElementById("boxLogin").style.display = "block";
 });
 
-// Login (com tecla Enter ativada)
+// A Função Principal de Login
 const fazerLogin = async () => {
   const email = document.getElementById("email").value.trim();
   const pass = document.getElementById("password").value.trim();
@@ -53,7 +53,7 @@ const fazerLogin = async () => {
     if (docSnap.exists()) {
       const data = docSnap.data();
       if (data.status === "Pendente") {
-        showToast("A sua conta ainda aguarda aprovação do Administrador.", "info");
+        showToast("A sua conta aguarda aprovação do Admin.", "info");
         await signOut(auth);
       } else if (data.role === "atleta") {
         showToast("Acesso restrito ao comitê.", "error");
@@ -73,8 +73,14 @@ const fazerLogin = async () => {
   btn.textContent = "Entrar no Sistema"; btn.classList.remove("loading");
 };
 
+// Evento de Clique e Evento GLOBAL do "ENTER"
 document.getElementById("loginBtn").addEventListener("click", (e) => { e.preventDefault(); fazerLogin(); });
-document.getElementById("password").addEventListener("keypress", (e) => { if (e.key === "Enter") { e.preventDefault(); fazerLogin(); } });
+document.getElementById("boxLogin").addEventListener("keypress", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    fazerLogin();
+  }
+});
 
 // Solicitar Acesso
 document.getElementById("registerBtn").addEventListener("click", async (e) => {
