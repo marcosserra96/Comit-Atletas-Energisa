@@ -48,7 +48,6 @@
       </div>
       
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; margin-top: 30px;">
-        
         <div class="card" style="margin-bottom: 0;">
           <h3 style="color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 10px;"><i data-lucide="bar-chart-2"></i> Evolução Global (Pontos)</h3>
           <div style="position: relative; height: 200px; margin-top: 20px;">
@@ -127,7 +126,7 @@
 
       <div id="sub-relatorio" class="sub-content">
         <div class="header-acao">
-          <div><h2>Relatório Consolidado</h2><p style="color: var(--text-light); font-size: 0.9rem;">Visão global de pontos mês a mês.</p></div>
+          <div><h2>Relatório Consolidado</h2><p style="color: var(--text-light); font-size: 0.9rem;">Ranking anual de pontos por mês.</p></div>
           <button id="btnExportarExcel" class="btn-primario" style="background: #107c41;"><i data-lucide="sheet"></i> Exportar para Excel</button>
         </div>
         <div class="card" style="margin-bottom: 20px;">
@@ -137,17 +136,16 @@
             <div style="display: flex; align-items: flex-end;"><button id="btnGerarRelatorio" class="btn-primario" style="height: 46px; width: 100%; justify-content: center;">Filtrar Dados</button></div>
           </div>
         </div>
-        <div class="tabela-container" style="max-height: 500px; overflow-y: auto;">
+        <div class="tabela-container">
           <table class="tabela-simples" id="tabelaConsolidada" style="font-size: 0.85rem;">
             <thead>
               <tr>
-                <th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Atleta</th>
-                <th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Equipe</th>
-                <th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Jan</th><th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Fev</th><th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Mar</th><th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Abr</th><th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Mai</th><th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Jun</th><th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Jul</th><th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Ago</th><th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Set</th><th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Out</th><th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Nov</th><th style="position: sticky; top: 0; background: #ebf6f8; z-index: 10;">Dez</th>
-                <th style="position: sticky; top: 0; background: #e0f2f1; z-index: 10; color: var(--primary);">Total</th>
+                <th>Atleta</th><th>Equipe</th>
+                <th>Jan</th><th>Fev</th><th>Mar</th><th>Abr</th><th>Mai</th><th>Jun</th><th>Jul</th><th>Ago</th><th>Set</th><th>Out</th><th>Nov</th><th>Dez</th>
+                <th style="color: var(--primary);">Total</th>
               </tr>
             </thead>
-            <tbody id="listaRelatorio"><tr><td colspan='15' style='text-align:center;'>Clique em Filtrar para carregar os dados.</td></tr></tbody>
+            <tbody id="listaRelatorio"><tr><td colspan='15' style='text-align:center;'>Gerando dados...</td></tr></tbody>
           </table>
         </div>
       </div>
