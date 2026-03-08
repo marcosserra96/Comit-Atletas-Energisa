@@ -95,7 +95,7 @@ function setupSubTabs() {
 
 async function atualizarTelas() {
   if (userRole === "admin") setupAprovacoes();
-  await carregarAgenda(); // Agenda precisa carregar antes do financeiro para o dropdown
+  await carregarAgenda(); // Popula os seletores de eventos
   await carregarHistorico(); 
   await carregarFinanceiro(); 
   await carregarEquipesEDashboard(); 
@@ -103,7 +103,7 @@ async function atualizarTelas() {
 }
 
 // =====================================================
-// 📊 DASHBOARD & GERADOR DE PDF BI 
+// 📊 DASHBOARD & GERADOR DE PDF BI (Congelamento de Gráfico)
 // =====================================================
 document.getElementById("btnExportarPDF").addEventListener("click", () => {
   showToast("Montando painel corporativo...", "info");
@@ -145,20 +145,20 @@ document.getElementById("btnExportarPDF").addEventListener("click", () => {
     let htmlUltimos = "";
     listaUltimos.forEach(e => {
        const d = new Date(e.data + "T00:00:00").toLocaleDateString('pt-BR').substring(0,5);
-       htmlUltimos += `<div style="display:flex; justify-content:space-between; margin-bottom:8px; border-bottom:1px solid #f5f5f5; padding-bottom:4px;">
+       htmlUltimos += `<div style="display:flex; justify-content:space-between; margin-bottom:4px; border-bottom:1px solid #f5f5f5; padding-bottom:4px;">
          <span style="color:#666;"><strong>${d}</strong> - ${e.desc}</span>
-         <strong style="color:var(--primary);">${e.atletas.size} <span style="font-size:12px;">👤</span></strong>
+         <strong style="color:var(--primary);">${e.atletas.size} 👤</strong>
        </div>`;
     });
-    document.getElementById("pdfUltimosEventos").innerHTML = htmlUltimos || "<p style='color:#999; text-align:center;'>Nenhum evento processado.</p>";
+    document.getElementById("pdfUltimosEventos").innerHTML = htmlUltimos || "<p style='color:#999; text-align:center;'>Nenhum evento.</p>";
 
-    // Congela dimensões do gráfico para evitar distorção no PDF
+    // CONGELAMENTO DO GRÁFICO (Evita distorção no PDF)
     const canvasLinha = document.getElementById('graficoTendencia');
     const widthOriginal = canvasLinha.style.width;
     const heightOriginal = canvasLinha.style.height;
     if(canvasLinha) { 
-      canvasLinha.style.width = '800px'; 
-      canvasLinha.style.height = '250px'; 
+      canvasLinha.style.width = '700px'; // Força largura horizontal
+      canvasLinha.style.height = '200px'; 
       if(graficoLinhaInstancia) graficoLinhaInstancia.resize();
       document.getElementById('pdfImgTendencia').src = canvasLinha.toDataURL("image/png", 1.0); 
     }
@@ -228,6 +228,7 @@ function setupFinanceiro() {
     btnSalvar.textContent = "Salvando..."; btnSalvar.disabled = true;
     try { 
       await addDoc(collection(db, "despesas"), { descricao: desc, categoria: cat, valor: parseFloat(val), data: data, eventoId: eventoId, eventoNome: nomeEvento, criadoEm: new Date().toISOString() }); 
+      // Limpa os campos após salvar
       document.getElementById("descDespesa").value = ""; document.getElementById("valorDespesa").value = ""; document.getElementById("vincularEventoDespesa").value = "";
       showToast("Despesa registrada!", "success"); atualizarTelas(); 
     } catch(err) { showToast("Erro.", "error"); } finally { btnSalvar.textContent = "Registrar Gasto"; btnSalvar.disabled = false; }
@@ -274,12 +275,10 @@ async function carregarAgenda() {
   cacheEventos = []; snap.forEach(d => cacheEventos.push({id: d.id, ...d.data()}));
   cacheEventos.sort((a,b) => new Date(a.data) - new Date(b.data)); 
   
-  // Alimenta Dropdown Financeiro
-  const selEventos = document.getElementById("vincularEventoDespesa");
-  if(selEventos) {
-    selEventos.innerHTML = '<option value="">Nenhum (Despesa Avulsa)</option>';
-    cacheEventos.forEach(e => { selEventos.innerHTML += `<option value="${e.id}">${e.titulo} (${new Date(e.data+"T00:00:00").toLocaleDateString('pt-BR')})</option>`; });
-  }
+  // Alimenta Dropdown Financeiro e Lançamento
+  const htmlDropdown = '<option value="">Nenhum (Avulso)</option>' + cacheEventos.map(e => `<option value="${e.id}">${e.titulo} (${new Date(e.data+"T00:00:00").toLocaleDateString('pt-BR')})</option>`).join('');
+  if(document.getElementById("vincularEventoDespesa")) document.getElementById("vincularEventoDespesa").innerHTML = htmlDropdown;
+  if(document.getElementById("lancarEventoSelect")) document.getElementById("lancarEventoSelect").innerHTML = htmlDropdown;
 
   const hoje = new Date().toISOString().split('T')[0];
   const futuros = cacheEventos.filter(e => e.data >= hoje).slice(0, 4); 
@@ -296,35 +295,40 @@ async function carregarAgenda() {
 }
 
 // =====================================================
-// 👥 EQUIPES & RENDERIZAÇÃO GRÁFICOS
+// 👥 EQUIPES & RENDERIZAÇÃO GRÁFICOS (Fila Separada e Comitê Sem Pontos)
 // =====================================================
 async function carregarEquipesEDashboard() {
   const snap = await getDocs(query(collection(db, "atletas"), where("status", "==", "Aprovado")));
-  let htmlFila = "", htmlBike = "", htmlCorrida = "", htmlComite = "";
+  let htmlFilaBike = "", htmlFilaCorrida = "", htmlBike = "", htmlCorrida = "", htmlComite = "";
   let contFila = 0, contBike = 0, contCorrida = 0, contComite = 0, ptsBike = 0, ptsCorrida = 0;
   let todosAtletas = []; mapAtletas = {}; 
 
   let listaOrdenada = []; snap.forEach(d => { mapAtletas[d.id] = { id: d.id, ...d.data() }; listaOrdenada.push(mapAtletas[d.id]); });
   
-  // Separar exatamente por string exata para não haver confusão
   const filaEspera = listaOrdenada.filter(u => u.equipe === "Fila - Bicicleta" || u.equipe === "Fila - Corrida" || u.equipe === "Fila de Espera");
   const titulares = listaOrdenada.filter(u => u.equipe !== "Fila - Bicicleta" && u.equipe !== "Fila - Corrida" && u.equipe !== "Fila de Espera");
   
   filaEspera.sort((a, b) => new Date(a.criadoEm || 0) - new Date(b.criadoEm || 0));
   titulares.sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || "")));
 
-  filaEspera.forEach((u, index) => {
-    let badgeFila = `<span style="color:#999;">Indefinida</span>`;
-    let btnDestinoEq = "Corrida"; // Default safe fallback
-    if(u.equipe === "Fila - Bicicleta") { badgeFila = `🚴 Bike`; btnDestinoEq = "Bicicleta"; }
-    else if(u.equipe === "Fila - Corrida") { badgeFila = `🏃 Corrida`; btnDestinoEq = "Corrida"; }
-
+  // Lógica Filas Distintas
+  let idxBike = 1, idxCorrida = 1;
+  filaEspera.forEach((u) => {
     const strikes = u.recusas || 0;
     const badgeStrike = strikes > 0 ? `<span class="strike-badge">⚠️ ${strikes}/3</span>` : '';
-    const btnAprovar = `<button class="btn-acao btn-aprovar-fila" data-id="${u.id}" data-eq="${btnDestinoEq}" style="color:var(--secondary); padding:4px;"><i data-lucide="check" style="width:16px;"></i></button>`;
-    const btnPular = `<button class="btn-acao btn-pular-fila" data-id="${u.id}" data-strikes="${strikes}" style="color:#f39c12; padding:4px;"><i data-lucide="skip-forward" style="width:16px;"></i></button>`;
-    htmlFila += `<tr><td><strong>${index+1}º - ${u.nome}</strong> <small>(${badgeFila})</small> ${badgeStrike}</td><td style="text-align: right; display:flex; justify-content:flex-end; gap:5px;">${btnAprovar} ${btnPular}</td></tr>`;
-    contFila++;
+    
+    if(u.equipe === "Fila - Bicicleta" || u.equipe === "Fila de Espera") { // Fallback de antigos pra Bike para não quebrar
+      const btnAprovar = `<button class="btn-acao btn-aprovar-fila" data-id="${u.id}" data-eq="Bicicleta" style="color:var(--secondary); padding:4px;"><i data-lucide="check" style="width:16px;"></i></button>`;
+      const btnPular = `<button class="btn-acao btn-pular-fila" data-id="${u.id}" data-strikes="${strikes}" style="color:#f39c12; padding:4px;"><i data-lucide="skip-forward" style="width:16px;"></i></button>`;
+      htmlFilaBike += `<tr><td><strong>${idxBike}º - ${u.nome}</strong> ${badgeStrike}</td><td style="text-align: right; display:flex; justify-content:flex-end; gap:5px;">${btnAprovar} ${btnPular}</td></tr>`;
+      idxBike++; contFila++;
+    } 
+    if (u.equipe === "Fila - Corrida") {
+      const btnAprovar = `<button class="btn-acao btn-aprovar-fila" data-id="${u.id}" data-eq="Corrida" style="color:var(--secondary); padding:4px;"><i data-lucide="check" style="width:16px;"></i></button>`;
+      const btnPular = `<button class="btn-acao btn-pular-fila" data-id="${u.id}" data-strikes="${strikes}" style="color:#f39c12; padding:4px;"><i data-lucide="skip-forward" style="width:16px;"></i></button>`;
+      htmlFilaCorrida += `<tr><td><strong>${idxCorrida}º - ${u.nome}</strong> ${badgeStrike}</td><td style="text-align: right; display:flex; justify-content:flex-end; gap:5px;">${btnAprovar} ${btnPular}</td></tr>`;
+      idxCorrida++; contFila++;
+    }
   });
 
   titulares.forEach(u => {
@@ -343,7 +347,8 @@ async function carregarEquipesEDashboard() {
     else if (u.equipe === "Bicicleta") { htmlBike += linha; contBike++; ptsBike += pts; todosAtletas.push({nome: u.nome, pts: pts, eq: u.equipe, id: u.id}); }
   });
 
-  if(document.getElementById("listaFila")) document.getElementById("listaFila").innerHTML = htmlFila || `<tr><td colspan='2'>Fila limpa!</td></tr>`;
+  if(document.getElementById("listaFilaBike")) document.getElementById("listaFilaBike").innerHTML = htmlFilaBike || `<tr><td colspan='2'>Ninguém na fila.</td></tr>`;
+  if(document.getElementById("listaFilaCorrida")) document.getElementById("listaFilaCorrida").innerHTML = htmlFilaCorrida || `<tr><td colspan='2'>Ninguém na fila.</td></tr>`;
   if(document.getElementById("listaBicicleta")) document.getElementById("listaBicicleta").innerHTML = htmlBike || `<tr><td colspan='2'>Equipe vazia.</td></tr>`;
   if(document.getElementById("listaCorrida")) document.getElementById("listaCorrida").innerHTML = htmlCorrida || `<tr><td colspan='2'>Equipe vazia.</td></tr>`;
   if(document.getElementById("listaComite")) document.getElementById("listaComite").innerHTML = htmlComite || `<tr><td colspan='2'>Sem membros.</td></tr>`;
@@ -448,9 +453,30 @@ async function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike, 
 // =====================================================
 function setupContabilizacao() {
   document.getElementById("dataTreino").valueAsDate = new Date();
+  
+  // Autopreenchimento Inteligente de Lançamento por Evento
+  document.getElementById("lancarEventoSelect").addEventListener("change", (e) => {
+    const evId = e.target.value;
+    if(evId) {
+      const evento = cacheEventos.find(x => x.id === evId);
+      if(evento) {
+        document.getElementById("descTreino").value = evento.titulo;
+        document.getElementById("dataTreino").value = evento.data;
+        if(evento.modalidade !== "Ambas") {
+          document.getElementById("modTreino").value = evento.modalidade;
+          document.getElementById("modTreino").dispatchEvent(new Event('change'));
+        }
+      }
+    } else {
+      document.getElementById("descTreino").value = "";
+      document.getElementById("dataTreino").valueAsDate = new Date();
+    }
+  });
+
   document.getElementById("modTreino").addEventListener("change", async (e) => {
     const mod = e.target.value; const areaRegras = document.getElementById("areaSelecaoRegras"), listaRegras = document.getElementById("listaRegrasTreino"), btnGerar = document.getElementById("btnGerarLista");
     document.getElementById("areaTabelaPontuacao").style.display = "none"; 
+    document.getElementById("checkSelecionarTodasRegras").checked = false; // Reseta botão de todas
     if (!mod) { areaRegras.style.display = "none"; btnGerar.style.display = "none"; return; }
     listaRegras.innerHTML = "<span style='font-size: 0.85rem; color: #999;'>Buscando regras...</span>"; areaRegras.style.display = "block";
     const snapRegras = await getDocs(query(collection(db, "regras_pontuacao"), where("modalidade", "in", ["Ambas", mod])));
@@ -460,13 +486,23 @@ function setupContabilizacao() {
     btnGerar.style.display = "inline-flex";
   });
 
+  // Botão Selecionar Todas as Regras
+  document.getElementById("checkSelecionarTodasRegras").addEventListener("change", (e) => {
+    const isChecked = e.target.checked;
+    document.querySelectorAll("#listaRegrasTreino .regra-chip input[type='checkbox']").forEach(chk => {
+      chk.checked = isChecked;
+      if(isChecked) chk.closest('.regra-chip').classList.add('selected');
+      else chk.closest('.regra-chip').classList.remove('selected');
+    });
+  });
+
   document.getElementById("btnGerarLista").addEventListener("click", async () => {
     const desc = document.getElementById("descTreino").value.trim(), data = document.getElementById("dataTreino").value, mod = document.getElementById("modTreino").value;
     const regras = []; document.querySelectorAll("#listaRegrasTreino input:checked").forEach(chk => { regras.push({ id: chk.value, descricao: chk.dataset.desc, pontos: parseInt(chk.dataset.pontos) }); });
     if (!desc || !data || !mod) return showToast("Preencha tudo!", "error"); if (regras.length === 0) return showToast("Selecione uma regra!", "error");
     const btn = document.getElementById("btnGerarLista"); btn.textContent = "Gerando..."; btn.disabled = true;
     await gerarTabelaContabilizacao(mod, regras);
-    btn.textContent = "Gerar Tabela"; btn.disabled = false; document.getElementById("areaTabelaPontuacao").style.display = "block";
+    btn.textContent = "Gerar Tabela de Atletas"; btn.disabled = false; document.getElementById("areaTabelaPontuacao").style.display = "block";
   });
   document.getElementById("btnSalvarPontuacao").addEventListener("click", salvarPontuacoesEmLote);
 }
@@ -497,7 +533,9 @@ async function gerarTabelaContabilizacao(modalidade, regras) {
 
 async function salvarPontuacoesEmLote() {
   const desc = document.getElementById("descTreino").value.trim(), data = document.getElementById("dataTreino").value;
+  const eventoIdSelecionado = document.getElementById("lancarEventoSelect").value;
   const checksPontos = document.querySelectorAll(".check-ponto:checked"), checksFaltas = document.querySelectorAll(".check-falta:checked");
+  
   if (checksPontos.length === 0 && checksFaltas.length === 0) return showToast("Nenhum lançamento!", "error");
   if (!confirm(`Confirmar lançamento no sistema?`)) return;
   const btn = document.getElementById("btnSalvarPontuacao"); btn.innerHTML = "Registrando Lote..."; btn.disabled = true;
@@ -505,11 +543,11 @@ async function salvarPontuacoesEmLote() {
   try {
     const batch = writeBatch(db); let pontosPorAtleta = {};
     for (let f of checksFaltas) { 
-      batch.set(doc(collection(db, "historico_pontos")), { atletaId: f.dataset.atletaId, atletaNome: f.dataset.atletaNome, atletaEquipe: f.dataset.atletaEquipe, regraId: "falta_just", regraDesc: "Falta Justificada", pontos: 0, descTreino: desc, dataTreino: data, criadoEm: new Date().toISOString() }); 
+      batch.set(doc(collection(db, "historico_pontos")), { atletaId: f.dataset.atletaId, atletaNome: f.dataset.atletaNome, atletaEquipe: f.dataset.atletaEquipe, regraId: "falta_just", regraDesc: "Falta Justificada", pontos: 0, descTreino: desc, dataTreino: data, eventoId: eventoIdSelecionado, criadoEm: new Date().toISOString() }); 
     }
     for (let check of checksPontos) {
       const aId = check.dataset.atletaId; const pts = Number(check.dataset.pontos) || 0;
-      batch.set(doc(collection(db, "historico_pontos")), { atletaId: aId, atletaNome: check.dataset.atletaNome, atletaEquipe: check.dataset.atletaEquipe, regraId: check.dataset.regraId, regraDesc: check.dataset.regraDesc, pontos: pts, descTreino: desc, dataTreino: data, criadoEm: new Date().toISOString() });
+      batch.set(doc(collection(db, "historico_pontos")), { atletaId: aId, atletaNome: check.dataset.atletaNome, atletaEquipe: check.dataset.atletaEquipe, regraId: check.dataset.regraId, regraDesc: check.dataset.regraDesc, pontos: pts, descTreino: desc, dataTreino: data, eventoId: eventoIdSelecionado, criadoEm: new Date().toISOString() });
       if (!pontosPorAtleta[aId]) pontosPorAtleta[aId] = 0; pontosPorAtleta[aId] += pts;
     }
     for (let aId in pontosPorAtleta) { batch.update(doc(db, "atletas", aId), { pontuacaoTotal: increment(pontosPorAtleta[aId]) }); }
@@ -517,8 +555,11 @@ async function salvarPontuacoesEmLote() {
 
     showToast("Sucesso!", "success");
     document.getElementById("areaTabelaPontuacao").style.display = "none"; document.getElementById("areaSelecaoRegras").style.display = "none";
-    document.getElementById("btnGerarLista").style.display = "none"; document.getElementById("descTreino").value = ""; atualizarTelas(); 
-  } catch (error) { showToast("Erro ao salvar.", "error"); } finally { btn.innerHTML = `Salvar Lote`; btn.disabled = false; }
+    document.getElementById("btnGerarLista").style.display = "none"; 
+    document.getElementById("descTreino").value = ""; 
+    document.getElementById("lancarEventoSelect").value = "";
+    atualizarTelas(); 
+  } catch (error) { showToast("Erro ao salvar.", "error"); } finally { btn.innerHTML = `Salvar Lançamentos em Lote`; btn.disabled = false; }
 }
 
 async function carregarHistorico() {
