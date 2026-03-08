@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gestão do Comitê | Atletas Energisa ⚡️</title>
+  
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -71,7 +72,7 @@
             <label style="margin-bottom: 10px; color: var(--primary); font-weight: 600;">Quais itens vão pontuar neste evento?</label>
             <div id="listaRegrasTreino" style="display: flex; flex-wrap: wrap; gap: 10px;"></div>
           </div>
-          <div style="display: flex; justify-content: flex-end;"><button id="btnGerarLista" class="btn-primario" style="height: 46px; display: none;">Gerar Tabela</button></div>
+          <div style="display: flex; justify-content: flex-end;"><button id="btnGerarLista" class="btn-primario" style="padding: 12px 20px; display: none;">Gerar Tabela</button></div>
         </div>
         <div id="areaTabelaPontuacao" style="display: none; animation: fadeIn 0.4s ease;">
           <div class="tabela-container"><table class="tabela-simples" id="tabelaPontuacao"></table></div>
@@ -86,7 +87,7 @@
             <div><label>Mês / Ano</label><input type="month" id="filtroMesHistorico" style="margin-bottom: 0;" /></div>
             <div><label>Equipe</label><select id="filtroEquipeHistorico" style="margin-bottom: 0;"><option value="">Todas</option><option value="Bicicleta">Bicicleta</option><option value="Corrida">Corrida</option></select></div>
             <div><label>Buscar Atleta</label><input type="text" id="filtroNomeHistorico" placeholder="Nome..." style="margin-bottom: 0;" /></div>
-            <div><button id="btnLimparFiltrosExtrato" class="btn-acao" style="height: 44px; width: 100%; justify-content: center;"><i data-lucide="filter-x"></i> Limpar</button></div>
+            <div><button id="btnLimparFiltrosExtrato" class="btn-acao" style="width: 100%; justify-content: center; padding: 12px; margin-bottom: 0;"><i data-lucide="filter-x"></i> Limpar</button></div>
           </div>
         </div>
         <div class="tabela-container"><table class="tabela-simples"><thead><tr><th>Data</th><th>Atleta</th><th>Equipe</th><th>Evento / Regra</th><th style="text-align: center;">Pontos</th><th style="text-align: right;">Ações</th></tr></thead><tbody id="listaHistorico"><tr><td colspan='6' style='text-align:center;'>Carregando...</td></tr></tbody></table></div>
@@ -101,7 +102,7 @@
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; align-items: end;">
             <div><label>Ano Base</label><input type="number" id="filtroAnoRelatorio" min="2020" max="2100" style="margin-bottom: 0;" /></div>
             <div><label>Equipe</label><select id="filtroEquipeRelatorio" style="margin-bottom: 0;"><option value="">Todas</option><option value="Bicicleta">Bicicleta</option><option value="Corrida">Corrida</option></select></div>
-            <div><button id="btnGerarRelatorio" class="btn-primario" style="height: 46px; width: 100%; justify-content: center; margin-bottom: 0;">Filtrar</button></div>
+            <div><button id="btnGerarRelatorio" class="btn-primario" style="width: 100%; justify-content: center; padding: 12px; margin-bottom: 0;">Filtrar Dados</button></div>
           </div>
         </div>
         <div class="tabela-container" style="max-height: 500px; overflow-y: auto;">
@@ -137,9 +138,7 @@
           <label>Nome Completo</label><input type="text" id="novoNome" placeholder="Ex: João da Silva" />
           <label>E-mail (Opcional)</label><input type="email" id="novoEmail" placeholder="joao@email.com" />
           <label>Equipe / Função</label>
-          <select id="novoPapel">
-            <option value="Bicicleta">Atleta - Bicicleta</option><option value="Corrida">Atleta - Corrida</option><option value="Fila de Espera" style="color: var(--accent);">Fila de Espera</option><option value="Comitê" class="admin-only-option">Membro do Comitê</option>
-          </select>
+          <select id="novoPapel"><option value="Bicicleta">Atleta - Bicicleta</option><option value="Corrida">Atleta - Corrida</option><option value="Fila de Espera" style="color: var(--accent);">Fila de Espera</option><option value="Comitê" class="admin-only-option">Membro do Comitê</option></select>
           <button id="btnCadastrarPessoa" class="btn-primario" style="width: 100%; margin-top: 15px; justify-content: center;">Adicionar ao Sistema</button>
         </div>
       </div>
