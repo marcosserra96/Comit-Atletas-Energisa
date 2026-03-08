@@ -76,13 +76,11 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
 .sub-content, .t-content { display: none; }
 .sub-content.active, .t-content.active { display: block; animation: fadeIn 0.3s ease; }
 
-/* Chips de Regra no Lançamento */
 .regra-chip { display: inline-flex; align-items: center; gap: 8px; background: var(--bg-card); border: 1px solid var(--border); padding: 8px 14px; border-radius: 30px; cursor: pointer; font-size: 0.85rem; color: var(--text-light); transition: all 0.2s ease; user-select: none; }
 .regra-chip:hover { border-color: var(--primary); }
 .regra-chip input[type="checkbox"] { margin: 0; width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary); }
 .regra-chip.selected { background: rgba(0, 155, 193, 0.1); border-color: var(--primary); color: var(--primary); font-weight: 600; }
 
-/* Toasts */
 .toast { padding: 14px 20px; border-radius: 12px; color: #fff; font-weight: 500; box-shadow: 0 8px 20px rgba(0,0,0,0.25); opacity: 0; animation: toastIn 0.4s forwards; display: flex; align-items: center; gap: 10px; min-width: 250px; }
 .toast.success { background: linear-gradient(135deg, var(--secondary), #009e6d); }
 .toast.error { background: linear-gradient(135deg, var(--danger), #c53030); }
@@ -93,7 +91,7 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
    📄 SOBREPOSIÇÃO PARA PDF EXECUTIVO (MOLDE A4 PERFEITO)
 ======================================================= */
 #pdfOverlay {
-  display: none; /* Mantido oculto até o clique de Exportar */
+  display: none; 
   position: fixed; top: 0; left: 0; 
   width: 100vw; height: 100vh; 
   background: rgba(0,0,0,0.8); z-index: 10000; 
@@ -102,14 +100,17 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
 }
 
 #pdfPrintArea {
-  width: 297mm; /* Medida exata A4 */
-  min-height: 210mm; /* Medida exata A4 Paisagem */
+  width: 297mm; 
+  height: 210mm; /* Fixado para evitar cortes */
   background: #ffffff; color: #333333;
-  padding: 15mm; box-sizing: border-box;
+  padding: 10mm 15mm; box-sizing: border-box;
   font-family: Arial, sans-serif;
   margin: auto;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  display: flex; flex-direction: column;
 }
+
+/* Oculta botões de ação injetados da Agenda */
+#pdfPrintArea button { display: none !important; }
 
 /* Lista de Permissões */
 .perm-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); align-items: center; }
