@@ -93,10 +93,11 @@ function configurarLogout() {
   });
 }
 
-function atualizarTelas() {
-  carregarEquipesEDashboard();
+// O SEGREDO DO RELATÓRIO: A Ordem Certa (Await)
+async function atualizarTelas() {
+  await carregarEquipesEDashboard(); // PRIMEIRO carrega os atletas (mapAtletas)
   carregarRegras();
-  carregarHistorico();
+  carregarHistorico(); // DEPOIS carrega o histórico e cruza os dados
 }
 
 // =====================================================
@@ -148,7 +149,9 @@ async function carregarEquipesEDashboard() {
 
   snap.forEach(d => {
     const u = d.data();
-    mapAtletas[d.id] = u; 
+    // A SOLUÇÃO: Guardamos o ID do banco de dados para a Visão Consolidada não se perder
+    mapAtletas[d.id] = { id: d.id, ...u }; 
+
     const isDono = auth.currentUser.uid === d.id;
     const pts = Number(u.pontuacaoTotal) || 0; 
     
@@ -287,14 +290,20 @@ function setupContabilizacao() {
 
     const qRegras = query(collection(db, "regras_pontuacao"), where("modalidade", "in", ["Ambas", mod]));
     const snapRegras = await getDocs(qRegras);
-    if (snapRegras.empty) { listaRegras.innerHTML = "<span style='font-size: 0.85rem; color: var(--danger);'>Nenhuma regra cadastrada.</span>"; btnGerar.style.display = "none"; return; }
+    if (snapRegras.empty) {
+      listaRegras.innerHTML = "<span style='font-size: 0.85rem; color: var(--danger);'>Nenhuma regra cadastrada.</span>";
+      btnGerar.style.display = "none"; return;
+    }
 
     listaRegras.innerHTML = "";
     snapRegras.forEach(d => {
       const r = d.data();
-      const chip = document.createElement("label"); chip.className = "regra-chip";
+      const chip = document.createElement("label");
+      chip.className = "regra-chip";
       chip.innerHTML = `<input type="checkbox" value="${d.id}" data-desc="${r.descricao}" data-pontos="${r.pontos}"> ${r.descricao} <strong style="color:var(--secondary);">+${r.pontos}</strong>`;
-      chip.querySelector("input").addEventListener("change", (ev) => { if(ev.target.checked) chip.classList.add("selected"); else chip.classList.remove("selected"); });
+      chip.querySelector("input").addEventListener("change", (ev) => {
+        if(ev.target.checked) chip.classList.add("selected"); else chip.classList.remove("selected");
+      });
       listaRegras.appendChild(chip);
     });
     btnGerar.style.display = "inline-flex";
@@ -303,14 +312,17 @@ function setupContabilizacao() {
   document.getElementById("btnGerarLista").addEventListener("click", async () => {
     const desc = document.getElementById("descTreino").value.trim(), data = document.getElementById("dataTreino").value, mod = document.getElementById("modTreino").value;
     const regrasSelecionadas = [];
-    document.querySelectorAll("#listaRegrasTreino input:checked").forEach(chk => { regrasSelecionadas.push({ id: chk.value, descricao: chk.dataset.desc, pontos: parseInt(chk.dataset.pontos) }); });
+    document.querySelectorAll("#listaRegrasTreino input:checked").forEach(chk => {
+      regrasSelecionadas.push({ id: chk.value, descricao: chk.dataset.desc, pontos: parseInt(chk.dataset.pontos) });
+    });
 
     if (!desc || !data || !mod) return showToast("Preencha descrição, data e equipe!", "error");
     if (regrasSelecionadas.length === 0) return showToast("Selecione pelo menos uma regra para pontuar!", "error");
 
-    const btn = document.getElementById("btnGerarLista"); btn.textContent = "Gerando..."; btn.disabled = true;
+    const btn = document.getElementById("btnGerarLista");
+    btn.textContent = "Gerando..."; btn.disabled = true;
     await gerarTabelaContabilizacao(mod, regrasSelecionadas);
-    btn.textContent = "Gerar Planilha de Presença"; btn.disabled = false;
+    btn.textContent = "Gerar Tabela de Lançamento"; btn.disabled = false;
     document.getElementById("areaTabelaPontuacao").style.display = "block";
   });
 
@@ -324,7 +336,11 @@ async function gerarTabelaContabilizacao(modalidade, regras) {
   let atletas = [];
   snapAtletas.forEach(d => atletas.push({id: d.id, ...d.data()}));
 
-  if (atletas.length === 0) { tabela.innerHTML = `<tr><td style='text-align:center; padding: 20px;'><div class="empty-state"><i data-lucide="ghost"></i><p>Nenhum atleta na equipe de ${modalidade}.</p></div></td></tr>`; lucide.createIcons(); return; }
+  if (atletas.length === 0) {
+    tabela.innerHTML = `<tr><td style='text-align:center; padding: 20px;'><div class="empty-state"><i data-lucide="ghost"></i><p>Ainda não existem atletas na equipe de ${modalidade}.</p></div></td></tr>`; 
+    lucide.createIcons();
+    return;
+  }
 
   let thead = `<thead><tr><th style="min-width: 200px; max-width: 300px; vertical-align: bottom;">Nome do Atleta</th>`;
   thead += `<th style="text-align: center; width: 90px; color: var(--accent); border-right: 2px solid var(--border);">Falta<br>Justificada<div style="margin-top: 10px; font-size: 0.75rem; color: #999; display: flex; align-items: center; justify-content: center; gap: 4px;"><input type="checkbox" id="checkMasterFalta" style="margin:0; width:14px; height:14px; accent-color:var(--accent);"> Todos</div></th>`;
@@ -335,7 +351,7 @@ async function gerarTabelaContabilizacao(modalidade, regras) {
 
   let tbody = "<tbody>";
   atletas.forEach(a => {
-    const ptsAtuais = Number(a.pontuacaoTotal) || 0;
+    const ptsAtuais = a.pontuacaoTotal || 0;
     tbody += `<tr><td><strong>${a.nome}</strong> <br><small style="color: #999;">Atual: ${ptsAtuais} pts</small></td>`;
     tbody += `<td style="text-align: center; vertical-align: middle; border-right: 2px solid var(--border); background: rgba(243, 112, 33, 0.05);"><input type="checkbox" class="check-falta" data-atleta-id="${a.id}"></td>`;
     regras.forEach(r => {
@@ -344,61 +360,86 @@ async function gerarTabelaContabilizacao(modalidade, regras) {
     tbody += `</tr>`;
   });
   tbody += "</tbody>";
+
   tabela.innerHTML = thead + tbody;
 
   document.querySelectorAll(".checkMasterRegra").forEach(master => {
     master.addEventListener("change", (e) => {
       const rId = e.target.dataset.regraId;
-      document.querySelectorAll(`.check-ponto[data-regra-id="${rId}"]`).forEach(chk => { if(!chk.disabled) chk.checked = e.target.checked; });
+      document.querySelectorAll(`.check-ponto[data-regra-id="${rId}"]`).forEach(chk => {
+        if(!chk.disabled) chk.checked = e.target.checked;
+      });
     });
   });
 
   document.getElementById("checkMasterFalta").addEventListener("change", (e) => {
-    document.querySelectorAll(".check-falta").forEach(chk => { chk.checked = e.target.checked; chk.dispatchEvent(new Event('change')); });
+    document.querySelectorAll(".check-falta").forEach(chk => {
+      chk.checked = e.target.checked;
+      chk.dispatchEvent(new Event('change'));
+    });
   });
 
   document.querySelectorAll(".check-falta").forEach(chk => {
     chk.addEventListener("change", (e) => {
       const tr = e.target.closest("tr");
-      tr.querySelectorAll(".check-ponto").forEach(p => { p.disabled = e.target.checked; if(e.target.checked) p.checked = false; });
+      const pontosChks = tr.querySelectorAll(".check-ponto");
+      pontosChks.forEach(p => {
+        p.disabled = e.target.checked;
+        if(e.target.checked) p.checked = false;
+      });
     });
   });
 }
 
 async function salvarPontuacoes() {
   const desc = document.getElementById("descTreino").value.trim(), data = document.getElementById("dataTreino").value;
-  const checksPontos = document.querySelectorAll(".check-ponto:checked"), checksFaltas = document.querySelectorAll(".check-falta:checked");
+  const checksPontos = document.querySelectorAll(".check-ponto:checked");
+  const checksFaltas = document.querySelectorAll(".check-falta:checked");
 
   if (checksPontos.length === 0 && checksFaltas.length === 0) return showToast("Nenhum lançamento selecionado!", "error");
   if (!confirm(`Salvar na nuvem ${checksPontos.length} pontuações e ${checksFaltas.length} faltas justificadas?`)) return;
 
-  const btn = document.getElementById("btnSalvarPontuacao"); btn.innerHTML = "Registrando na Base..."; btn.disabled = true;
+  const btn = document.getElementById("btnSalvarPontuacao");
+  btn.innerHTML = "Registrando na Base..."; btn.disabled = true;
 
   try {
     let pontosPorAtleta = {};
+
     for (let f of checksFaltas) {
-      await addDoc(collection(db, "historico_pontos"), { atletaId: f.dataset.atletaId, regraId: "falta_just", regraDesc: "Falta Justificada", pontos: 0, descTreino: desc, dataTreino: data, criadoEm: new Date().toISOString() });
+      const aId = f.dataset.atletaId;
+      await addDoc(collection(db, "historico_pontos"), {
+        atletaId: aId, regraId: "falta_just", regraDesc: "Falta Justificada", pontos: 0, descTreino: desc, dataTreino: data, criadoEm: new Date().toISOString()
+      });
     }
+
     for (let check of checksPontos) {
-      const aId = check.dataset.atletaId, pts = parseInt(check.dataset.pontos);
-      await addDoc(collection(db, "historico_pontos"), { atletaId: aId, regraId: check.dataset.regraId, regraDesc: check.dataset.regraDesc, pontos: pts, descTreino: desc, dataTreino: data, criadoEm: new Date().toISOString() });
-      if (!pontosPorAtleta[aId]) pontosPorAtleta[aId] = 0; pontosPorAtleta[aId] += pts;
+      const aId = check.dataset.atletaId;
+      const pts = parseInt(check.dataset.pontos);
+      await addDoc(collection(db, "historico_pontos"), {
+        atletaId: aId, regraId: check.dataset.regraId, regraDesc: check.dataset.regraDesc, pontos: pts, descTreino: desc, dataTreino: data, criadoEm: new Date().toISOString()
+      });
+      if (!pontosPorAtleta[aId]) pontosPorAtleta[aId] = 0;
+      pontosPorAtleta[aId] += pts;
     }
 
     for (let aId in pontosPorAtleta) {
-      const atletaRef = doc(db, "atletas", aId); const atletaSnap = await getDoc(atletaRef);
+      const atletaRef = doc(db, "atletas", aId);
+      const atletaSnap = await getDoc(atletaRef);
       if (atletaSnap.exists()) {
-        const totalAtual = Number(atletaSnap.data().pontuacaoTotal) || 0;
+        const totalAtual = atletaSnap.data().pontuacaoTotal || 0;
         await updateDoc(atletaRef, { pontuacaoTotal: totalAtual + pontosPorAtleta[aId] });
       }
     }
 
     showToast("Lançamentos efetuados com sucesso!", "success");
-    document.getElementById("areaTabelaPontuacao").style.display = "none"; document.getElementById("areaSelecaoRegras").style.display = "none";
-    document.getElementById("btnGerarLista").style.display = "none"; document.getElementById("descTreino").value = ""; document.getElementById("modTreino").value = "";
+    document.getElementById("areaTabelaPontuacao").style.display = "none";
+    document.getElementById("areaSelecaoRegras").style.display = "none";
+    document.getElementById("btnGerarLista").style.display = "none";
+    document.getElementById("descTreino").value = ""; document.getElementById("modTreino").value = "";
+    
     atualizarTelas(); 
   } catch (error) { console.error(error); showToast("Erro ao salvar.", "error"); } 
-  finally { btn.innerHTML = `<i data-lucide="check-circle"></i> Salvar na Base de Dados`; btn.disabled = false; lucide.createIcons(); }
+  finally { btn.innerHTML = `<i data-lucide="check-circle"></i> Salvar Lançamentos e Faltas`; btn.disabled = false; lucide.createIcons(); }
 }
 
 // =====================================================
@@ -410,7 +451,7 @@ async function carregarHistorico() {
   historicoCompleto = [];
   snap.forEach(d => { historicoCompleto.push({ id: d.id, ...d.data() }); });
   
-  // Define o mês atual por padrão para evitar carregar tudo!
+  // Define o mês atual por padrão
   const inputMes = document.getElementById("filtroMesHistorico");
   if(!inputMes.value) {
     const hoje = new Date();
@@ -466,17 +507,16 @@ function renderHistorico(dados) {
           }
         }
         await deleteDoc(doc(db, "historico_pontos", histId));
-        showToast("Estorno realizado com sucesso!", "success"); atualizarTelas(); 
+        showToast("Estorno realizado com sucesso!", "success");
+        atualizarTelas(); 
       } catch (err) { console.error(err); showToast("Erro no estorno.", "error"); }
     });
   });
 }
 
-// Gatilhos dos filtros do extrato
 ["filtroMesHistorico", "filtroEquipeHistorico", "filtroNomeHistorico"].forEach(id => {
   document.getElementById(id).addEventListener("input", filtrarHistorico);
 });
-
 
 // =====================================================
 // 📈 RELATÓRIO CONSOLIDADO SEGURO
@@ -523,7 +563,7 @@ function gerarRelatorioConsolidado() {
 
   let html = "";
   
-  // 1. Processamento rigoroso dos pontos como Número
+  // Processamento rigoroso dos pontos como Número
   atletasRelatorio.forEach(atleta => {
     atleta.totalAnoTemp = 0;
     atleta.ptsMesTemp = [0,0,0,0,0,0,0,0,0,0,0,0];
@@ -537,10 +577,10 @@ function gerarRelatorioConsolidado() {
     });
   });
 
-  // 2. Ordena o relatório por quem teve MAIS PONTOS no ano (Padrão Ranking)
+  // Ordena por maior pontuação no ano
   atletasRelatorio.sort((a, b) => b.totalAnoTemp - a.totalAnoTemp);
 
-  // 3. Monta o HTML
+  // Monta o HTML
   atletasRelatorio.forEach(atleta => {
     let colunasMeses = "";
     atleta.ptsMesTemp.forEach(p => { colunasMeses += `<td style="text-align: center; color: ${p > 0 ? 'var(--secondary)' : '#ccc'}; font-weight: ${p > 0 ? '600' : '400'};">${p}</td>`; });
