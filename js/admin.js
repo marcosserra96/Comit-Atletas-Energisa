@@ -27,7 +27,11 @@ onAuthStateChanged(auth, async (user) => {
     const docSnap = await getDoc(doc(db, "atletas", user.uid));
     if (docSnap.exists() && (docSnap.data().role === "admin" || docSnap.data().role === "comite")) {
       userRole = docSnap.data().role;
-      userPermissoes = userRole === "admin" ? ["visao-geral", "contabilizacao", "financeiro", "gestao", "configuracoes"] : (docSnap.data().permissoes || ["visao-geral", "configuracoes"]);
+      // Admin recebe tudo. Se for comitê, lê do banco.
+      userPermissoes = userRole === "admin" ? 
+        ["visao-geral", "contabilizacao", "financeiro_view", "financeiro_edit", "gestao", "configuracoes"] : 
+        (docSnap.data().permissoes || ["visao-geral", "configuracoes"]);
+      
       construirMenu(); iniciarPainelAdmin();
     } else { window.location.href = "index.html"; }
   } else { window.location.href = "index.html"; }
@@ -38,14 +42,18 @@ function construirMenu() {
   const itensDisponiveis = [
     { id: "visao-geral", icon: "layout-dashboard", text: "Estratégico" },
     { id: "contabilizacao", icon: "calculator", text: "Lançamentos" },
-    { id: "financeiro", icon: "dollar-sign", text: "Financeiro" },
+    { id: "financeiro", icon: "dollar-sign", text: "Financeiro", permCheck: ["financeiro_view", "financeiro_edit"] },
     { id: "gestao", icon: "users", text: "Gestão Base" },
     { id: "configuracoes", icon: "settings", text: "Ajustes" }
   ];
 
   let abaAtiva = false;
   itensDisponiveis.forEach(item => {
-    if (userPermissoes.includes(item.id)) {
+    let hasAccess = false;
+    if (item.permCheck) { hasAccess = item.permCheck.some(p => userPermissoes.includes(p)); } 
+    else { hasAccess = userPermissoes.includes(item.id); }
+
+    if (hasAccess || userRole === "admin") {
       const isFirst = !abaAtiva; if(isFirst) abaAtiva = true;
       menu.innerHTML += `<div class="menu-item ${isFirst ? 'active' : ''}" data-section="${item.id}"><i data-lucide="${item.icon}"></i><span>${item.text}</span></div>`;
     }
@@ -53,7 +61,8 @@ function construirMenu() {
   
   document.querySelectorAll("main section").forEach(sec => {
     sec.classList.remove("active-section");
-    if (userPermissoes.includes(sec.id) && sec.id === document.querySelector('.menu-item.active').dataset.section) { sec.classList.add("active-section"); }
+    const activeMenu = document.querySelector('.menu-item.active');
+    if (activeMenu && sec.id === activeMenu.dataset.section) { sec.classList.add("active-section"); }
   });
 
   const badge = document.getElementById("userGroupBadge"); badge.style.display = "inline-block";
@@ -94,11 +103,12 @@ async function atualizarTelas() {
 }
 
 // =====================================================
-// 📊 DASHBOARD & GERADOR DE PDF IMPECÁVEL
+// 📊 DASHBOARD & GERADOR DE PDF IMPECÁVEL (A4 Paisagem)
 // =====================================================
 document.getElementById("btnExportarPDF").addEventListener("click", () => {
   showToast("Preparando relatório. Aguarde...", "info");
   
+  // 1. Popula o Molde Invisível
   document.getElementById("pdfDataHoje").textContent = new Date().toLocaleDateString('pt-BR');
   document.getElementById("pdfAtivos").textContent = document.getElementById("totalAtivosGeral").textContent;
   document.getElementById("pdfBike").textContent = document.getElementById("totalBike").textContent;
@@ -112,23 +122,25 @@ document.getElementById("btnExportarPDF").addEventListener("click", () => {
   topUl.querySelectorAll('li').forEach((li, idx) => { if(idx > 2) li.remove(); }); 
   document.getElementById("pdfTop3").innerHTML = topUl.innerHTML;
 
+  // Foto do Canvas
   const canvasLinha = document.getElementById('graficoTendencia');
   if(canvasLinha) { document.getElementById('pdfImgTendencia').src = canvasLinha.toDataURL("image/png", 1.0); }
 
+  // 2. Exibe Sobreposição
   const modalPdf = document.getElementById("pdfOverlay");
   const printArea = document.getElementById("pdfPrintArea");
-  
-  // Exibe a sobreposição temporária visível
-  modalPdf.style.display = "block";
+  modalPdf.style.display = "flex";
 
-  const opt = {
-    margin: 0, filename: `Report_Atletas_${document.getElementById("pdfDataHoje").textContent.replace(/\//g, '-')}.pdf`,
-    image: { type: 'jpeg', quality: 1 }, html2canvas: { scale: 2, useCORS: true, windowWidth: 1122 },
-    jsPDF: { unit: 'px', format: [1122, 794], orientation: 'landscape' }
-  };
-
-  // Dá um pequeno tempo para o canvas atualizar na DOM antes de capturar
+  // 3. Aguarda re-render do CSS e converte para PDF em milímetros
   setTimeout(() => {
+    const opt = {
+      margin: 0, 
+      filename: `Report_Atletas_${document.getElementById("pdfDataHoje").textContent.replace(/\//g, '-')}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 }, 
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } // A4 Landscape Perfeito
+    };
+
     html2pdf().set(opt).from(printArea).save().then(() => { 
       modalPdf.style.display = "none"; 
       showToast("PDF Baixado com Sucesso!", "success"); 
@@ -164,14 +176,22 @@ function setupFinanceiro() {
 async function carregarFinanceiro() {
   const snap = await getDocs(query(collection(db, "despesas"), orderBy("data", "desc")));
   let html = ""; gastoTotalGlobal = 0;
+  
+  // VERIFICA PERMISSÃO DE EDIÇÃO FINANCEIRA
+  const canEdit = userRole === "admin" || userPermissoes.includes("financeiro_edit");
+  const cardAdd = document.getElementById("cardNovaDespesa");
+  if(cardAdd) cardAdd.style.display = canEdit ? "block" : "none";
+
   snap.forEach(d => {
     const desp = d.data(); gastoTotalGlobal += desp.valor;
-    const btnExcluir = (userRole === "admin") ? `<button class="btn-acao btn-excluir-despesa" data-id="${d.id}" style="color:red; border:0; padding:0;"><i data-lucide="trash" style="width:16px;"></i></button>` : '';
+    const btnExcluir = canEdit ? `<button class="btn-acao btn-excluir-despesa" data-id="${d.id}" style="color:red; border:0; padding:0;"><i data-lucide="trash" style="width:16px;"></i></button>` : '';
     html += `<tr><td>${new Date(desp.data + "T00:00:00").toLocaleDateString('pt-BR')}</td><td>${desp.descricao}</td><td style="color:var(--danger); font-weight:bold;">${desp.valor.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</td><td style="text-align:right;">${btnExcluir}</td></tr>`;
   });
+  
   if(document.getElementById("listaDespesas")) document.getElementById("listaDespesas").innerHTML = html || `<tr><td colspan='4'>Sem registros.</td></tr>`;
   if(document.getElementById("totalInvestimento")) document.getElementById("totalInvestimento").textContent = gastoTotalGlobal.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
   lucide.createIcons();
+  
   document.querySelectorAll(".btn-excluir-despesa").forEach(btn => { btn.addEventListener("click", async (e) => { if(confirm("Excluir despesa?")) { await deleteDoc(doc(db, "despesas", e.currentTarget.dataset.id)); atualizarTelas(); } }); });
 }
 
@@ -234,7 +254,7 @@ async function carregarEquipesEDashboard() {
   titulares.forEach(u => {
     const pts = Number(u.pontuacaoTotal) || 0; const ativo = u.ativo !== false;
     
-    // Botão de permissão bem destacado para Comitê
+    // BOTÃO PERMISSÕES (SOMENTE ADMIN VÊ E APENAS PARA COMITÊ)
     const btnPerm = (u.role === 'comite' && userRole === 'admin') ? `<button class="btn-primario btn-permissoes" data-id="${u.id}" data-nome="${u.nome}" style="background: #f39c12; padding: 6px 10px; font-size: 0.8rem; margin-left: 5px;"><i data-lucide="key" style="width: 14px;"></i> Acessos</button>` : '';
     const btnEditar = `<button class="btn-acao btn-editar-membro" data-id="${u.id}" data-nome="${u.nome}" data-email="${u.email}" data-eq="${u.equipe}" style="color: var(--warning); border-color: var(--warning); padding: 4px; margin-left: 5px;"><i data-lucide="edit-2" style="width: 16px;"></i></button>`;
     const btnExcluir = (auth.currentUser.uid !== u.id && userRole === "admin") ? `<button class="btn-acao btn-excluir-membro" data-id="${u.id}" style="color: red; border: 0; padding: 4px; margin-left: 5px;"><i data-lucide="x-circle" style="width: 18px;"></i></button>` : '';
@@ -278,7 +298,10 @@ async function carregarEquipesEDashboard() {
     btn.addEventListener("click", (e) => {
       const b = e.currentTarget; document.getElementById("permNomeUsuario").textContent = b.dataset.nome; document.getElementById("permUserId").value = b.dataset.id;
       const permissoesDB = mapAtletas[b.dataset.id].permissoes || ["visao-geral"];
-      document.querySelectorAll(".chk-perm").forEach(chk => { chk.checked = permissoesDB.includes(chk.value); });
+      document.querySelectorAll(".chk-perm").forEach(chk => { 
+        // Trata permissões antigas para manter compatibilidade
+        chk.checked = permissoesDB.includes(chk.value) || (permissoesDB.includes("financeiro") && chk.value.startsWith("financeiro")); 
+      });
       document.getElementById("modalPermissoes").style.display = "flex";
     });
   });
@@ -383,6 +406,7 @@ async function gerarTabelaContabilizacao(modalidade, regras) {
 
   let tbody = "<tbody>";
   atletas.forEach(a => {
+    // Adicionado os data-atleta-nome e equipe para o histórico salvar e lembrar caso o atleta seja excluído
     tbody += `<tr><td><strong>${a.nome}</strong></td><td style="text-align:center; background: rgba(243,112,33,0.05);"><input type="checkbox" class="check-falta" data-atleta-id="${a.id}" data-atleta-nome="${a.nome}" data-atleta-equipe="${a.equipe}"></td>`;
     regras.forEach(r => { tbody += `<td style="text-align:center;"><input type="checkbox" class="check-ponto" data-atleta-id="${a.id}" data-atleta-nome="${a.nome}" data-atleta-equipe="${a.equipe}" data-regra-id="${r.id}" data-regra-desc="${r.descricao}" data-pontos="${r.pontos}"></td>`; });
     tbody += `</tr>`;
@@ -439,7 +463,7 @@ function filtrarHistorico() {
     // Filtro de Status
     if (statusFiltro === "ativos" && !isAtivo) return false;
 
-    // Memória de Nomes (Resolve o problema do atleta excluído)
+    // Memória de Nomes (Resolve o problema do atleta excluído ou sem nome atrelado)
     const nomeFiltro = h.atletaNome || (atleta ? atleta.nome : "");
     const eqFiltro = h.atletaEquipe || (atleta ? atleta.equipe : "");
 
@@ -468,6 +492,7 @@ function filtrarHistorico() {
     tbody.innerHTML += `<tr><td>${(h.dataTreino?new Date(h.dataTreino+"T00:00:00").toLocaleDateString('pt-BR'):"-")}</td><td><strong>${nomeDisplay}</strong></td><td>${eqDisplay}</td><td>${h.descTreino}<br><small style="color:var(--primary);">${h.regraDesc}</small></td><td style="text-align:center; color:var(--secondary); font-weight:bold;">${ptsV}</td><td style="text-align:right;">${btnEstorno}</td></tr>`;
   });
   lucide.createIcons();
+  
   document.querySelectorAll(".btn-estornar").forEach(btn => { btn.addEventListener("click", async (e) => { const histId = e.currentTarget.dataset.id, atlId = e.currentTarget.dataset.atleta, pts = parseInt(e.currentTarget.dataset.pontos); if(!confirm(`Estornar?`)) return; try { if (mapAtletas[atlId] && pts > 0) { await updateDoc(doc(db, "atletas", atlId), { pontuacaoTotal: increment(-pts) }); } await deleteDoc(doc(db, "historico_pontos", histId)); showToast("Estornado!", "success"); atualizarTelas(); } catch (err) { showToast("Erro.", "error"); } }); });
 }
 
@@ -478,10 +503,22 @@ function setupRelatorioConsolidado() {
   document.getElementById("filtroAnoRelatorio").value = new Date().getFullYear();
   document.querySelector('[data-target="sub-relatorio"]').addEventListener("click", gerarRelatorioConsolidado);
   document.getElementById("btnGerarRelatorio").addEventListener("click", gerarRelatorioConsolidado);
+  
   document.getElementById("btnExportarExcel").addEventListener("click", () => {
-    const rows = document.getElementById("tabelaConsolidada").querySelectorAll("tr"); if(rows.length <= 2) return showToast("Gere primeiro!", "error");
-    let csv = "\uFEFF"; rows.forEach(row => { const cols = row.querySelectorAll("th, td"); const rowData = Array.from(cols).map(c => `"${c.innerText.replace(/"/g, '""')}"`); csv += rowData.join(";") + "\r\n"; });
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `Relatorio.csv`; a.click(); URL.revokeObjectURL(url);
+    // FIX EXCEL: Agora verifica se tem a frase de aviso, se não, pode baixar.
+    const tbody = document.getElementById("listaRelatorio");
+    if(tbody.innerText.includes("Clique em Filtrar") || tbody.innerText.includes("Nenhum atleta")) return showToast("Gere o relatório primeiro!", "error");
+    
+    const rows = document.getElementById("tabelaConsolidada").querySelectorAll("tr"); 
+    let csv = "\uFEFF"; 
+    rows.forEach(row => { 
+      const cols = row.querySelectorAll("th, td"); 
+      const rowData = Array.from(cols).map(c => `"${c.innerText.replace(/"/g, '""')}"`); 
+      csv += rowData.join(";") + "\r\n"; 
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); 
+    const url = URL.createObjectURL(blob); const a = document.createElement("a"); 
+    a.href = url; a.download = `Relatorio_Consolidado.csv`; a.click(); URL.revokeObjectURL(url);
   });
 }
 
@@ -521,7 +558,8 @@ function setupCadastrarPessoa() {
   document.getElementById("btnCadastrarPessoa").addEventListener("click", async (e) => {
     const nome = document.getElementById("novoNome").value.trim(), email = document.getElementById("novoEmail").value.trim(), papel = document.getElementById("novoPapel").value, btn = e.target;
     if (!nome) return showToast("Por favor, preencha o nome!", "error");
-    let role = "atleta"; let equipe = papel; if (papel === "Comitê") { role = "comite"; equipe = "Nenhuma"; }
+    let role = "atleta"; let equipe = papel; 
+    
     try {
       btn.textContent = "Salvando..."; btn.disabled = true;
       await addDoc(collection(db, "atletas"), { nome: nome, email: email, role: role, equipe: equipe, status: "Aprovado", ativo: true, pontuacaoTotal: 0, recusas: 0, criadoEm: new Date().toISOString() });
