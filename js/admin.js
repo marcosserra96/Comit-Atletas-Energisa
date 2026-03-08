@@ -1,15 +1,17 @@
 import { 
   auth, db, collection, getDocs, doc, getDoc, updateDoc, deleteDoc, addDoc,
-  onAuthStateChanged, signOut, query, where
+  onAuthStateChanged, signOut, query, where, writeBatch, increment,
+  updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider
 } from "./firebase.js";
 
 let userRole = "atleta";
 let historicoCompleto = []; 
 let mapAtletas = {};        
-let graficoInstancia = null; 
+let graficoLinhaInstancia = null; 
+let graficoRoscaInstancia = null;
 
 // =====================================================
-// 🔔 SISTEMA DE NOTIFICAÇÕES
+// 🔔 SISTEMA DE NOTIFICAÇÕES (TOAST)
 // =====================================================
 function showToast(message, type = "info") {
   const container = document.getElementById("toastContainer");
@@ -24,44 +26,44 @@ function showToast(message, type = "info") {
 }
 
 // =====================================================
-// 🌙 TEMA ESCURO
-// =====================================================
-function setupThemeToggle() {
-  const btn = document.getElementById("themeToggle");
-  if (localStorage.getItem("theme") === "dark") document.body.setAttribute("data-theme", "dark");
-  btn.addEventListener("click", () => {
-    if (document.body.getAttribute("data-theme") === "dark") {
-      document.body.removeAttribute("data-theme"); localStorage.setItem("theme", "light");
-    } else {
-      document.body.setAttribute("data-theme", "dark"); localStorage.setItem("theme", "dark");
-    }
-    Chart.defaults.color = document.body.getAttribute('data-theme') === 'dark' ? '#aaa' : '#666';
-    if(graficoInstancia) graficoInstancia.update();
-  });
-}
-
-// =====================================================
-// 🔒 INICIALIZAÇÃO
+// 🔒 INICIALIZAÇÃO E IDENTIDADE
 // =====================================================
 onAuthStateChanged(auth, async (user) => {
   if (user) {
     const docSnap = await getDoc(doc(db, "atletas", user.uid));
     if (docSnap.exists() && (docSnap.data().role === "admin" || docSnap.data().role === "comite")) {
       userRole = docSnap.data().role;
+      definirTagUsuario(); // Atualiza a tag no topo
       iniciarPainelAdmin();
     } else { window.location.href = "index.html"; }
   } else { window.location.href = "index.html"; }
 });
 
+function definirTagUsuario() {
+  const badge = document.getElementById("userGroupBadge");
+  badge.style.display = "inline-block";
+  if (userRole === "admin") {
+    badge.textContent = "Administrador";
+    badge.style.background = "var(--danger)";
+  } else {
+    badge.textContent = "Comitê";
+    badge.style.background = "var(--primary)";
+  }
+}
+
 function iniciarPainelAdmin() {
   Chart.defaults.color = document.body.getAttribute('data-theme') === 'dark' ? '#aaa' : '#666';
-  setupThemeToggle(); setupNavigation(); setupSubTabs(); configurarLogout();
+  setupConfiguracoes(); // Zoom, Tema e Conta
+  setupNavigation(); setupSubTabs(); configurarLogout();
   setupCadastrarPessoa(); setupAprovacoes(); setupModalRegras();
   setupContabilizacao(); setupPesquisaEquipes(); setupRelatorioConsolidado();
   setupModalEditar(); setupLimparBase();
   atualizarTelas();
 }
 
+// =====================================================
+// 🧭 NAVEGAÇÃO E ABAS
+// =====================================================
 function setupNavigation() {
   document.querySelectorAll(".menu-item").forEach(item => {
     item.addEventListener("click", () => {
@@ -73,7 +75,11 @@ function setupNavigation() {
         if (sec.id === target) sec.classList.add("active-section");
       });
       lucide.createIcons();
-      if(target === "visao-geral" && graficoInstancia) graficoInstancia.update();
+      // Atualiza gráficos se aba estratégica for clicada
+      if(target === "visao-geral") {
+        if(graficoLinhaInstancia) graficoLinhaInstancia.update();
+        if(graficoRoscaInstancia) graficoRoscaInstancia.update();
+      }
     });
   });
 }
@@ -112,9 +118,9 @@ function configurarLogout() {
 // 🛡️ A ORDEM CERTA DAS CHAMADAS
 async function atualizarTelas() {
   if (userRole === "admin") setupAprovacoes();
+  await carregarHistorico(); // Histórico DEVE carregar antes do Dashboard para gerar gráficos
   await carregarEquipesEDashboard(); 
   await carregarRegras();
-  await carregarHistorico(); 
   
   if (document.getElementById("sub-relatorio").classList.contains("active")) {
     gerarRelatorioConsolidado();
@@ -148,7 +154,7 @@ async function setupAprovacoes() {
 }
 
 // =====================================================
-// 📊 DASHBOARD & EQUIPES & EDIÇÃO
+// 📈 DASHBOARD ESTRATÉGICO & EQUIPES
 // =====================================================
 function setupPesquisaEquipes() {
   document.getElementById("buscaEquipes").addEventListener("keyup", (e) => {
@@ -160,15 +166,57 @@ function setupPesquisaEquipes() {
   });
 }
 
-function renderizarGrafico(ptsBike, ptsCorrida) {
-  const ctx = document.getElementById('graficoEvolucao');
-  if(!ctx) return;
-  if(graficoInstancia) graficoInstancia.destroy();
-  graficoInstancia = new Chart(ctx, {
-    type: 'bar',
-    data: { labels: ['Pontuação Geral das Equipes'], datasets: [ { label: 'Bicicleta 🚴', data: [ptsBike], backgroundColor: '#009bc1', borderRadius: 8 }, { label: 'Corrida 🏃', data: [ptsCorrida], backgroundColor: '#00b37e', borderRadius: 8 } ] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true, grid: { color: document.body.getAttribute('data-theme') === 'dark' ? '#333' : '#eee' } } } }
-  });
+function renderizarGraficosDashboard(ptsBike, ptsCorrida, totalAtivos) {
+  // 1. Gráfico de Linha (Tendência Mensal do Ano Atual)
+  const ctxLinha = document.getElementById('graficoTendencia');
+  if(ctxLinha) {
+    if(graficoLinhaInstancia) graficoLinhaInstancia.destroy();
+    
+    // Processar Histórico para pegar pontos por mês
+    const anoAtual = new Date().getFullYear().toString();
+    let ptsPorMes = [0,0,0,0,0,0,0,0,0,0,0,0];
+    historicoCompleto.forEach(h => {
+      if(h.dataTreino && h.dataTreino.startsWith(anoAtual)) {
+        const mesInt = parseInt(h.dataTreino.split("-")[1], 10);
+        if(!isNaN(mesInt) && mesInt >= 1 && mesInt <= 12) { ptsPorMes[mesInt - 1] += (Number(h.pontos) || 0); }
+      }
+    });
+
+    graficoLinhaInstancia = new Chart(ctxLinha, {
+      type: 'line',
+      data: { 
+        labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'], 
+        datasets: [{ label: 'Pontos Distribuídos', data: ptsPorMes, borderColor: '#009bc1', backgroundColor: 'rgba(0, 155, 193, 0.2)', fill: true, tension: 0.4 }] 
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+  }
+
+  // 2. Gráfico de Rosca (Engajamento / Saúde da Base)
+  const ctxRosca = document.getElementById('graficoEngajamento');
+  if(ctxRosca) {
+    if(graficoRoscaInstancia) graficoRoscaInstancia.destroy();
+    
+    const atletasBase = Object.values(mapAtletas).filter(a => a.role === "atleta" && !a.equipe.startsWith("Fila"));
+    const totalBase = atletasBase.length;
+    let ativosNoAno = 0;
+
+    // Quem pontuou no ano atual?
+    const anoAtual = new Date().getFullYear().toString();
+    const idsQuePontuaram = new Set();
+    historicoCompleto.forEach(h => { if(h.dataTreino && h.dataTreino.startsWith(anoAtual) && h.pontos > 0) idsQuePontuaram.add(h.atletaId); });
+    
+    atletasBase.forEach(a => { if(idsQuePontuaram.has(a.id)) ativosNoAno++; });
+    const inativos = totalBase - ativosNoAno;
+    const porcentagem = totalBase === 0 ? 0 : Math.round((ativosNoAno / totalBase) * 100);
+    document.getElementById('txtAtivos').textContent = `${porcentagem}%`;
+
+    graficoRoscaInstancia = new Chart(ctxRosca, {
+      type: 'doughnut',
+      data: { labels: ['Ativos', 'Inativos'], datasets: [{ data: [ativosNoAno, inativos], backgroundColor: ['#00b37e', '#e3e6eb'], borderWidth: 0 }] },
+      options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false } } }
+    });
+  }
 }
 
 async function carregarEquipesEDashboard() {
@@ -184,8 +232,6 @@ async function carregarEquipesEDashboard() {
 
   let listaOrdenada = [];
   snap.forEach(d => { mapAtletas[d.id] = { id: d.id, ...d.data() }; listaOrdenada.push(mapAtletas[d.id]); });
-  
-  // BLINDAGEM CONTRA FALHAS NA ORDENAÇÃO: Se faltar o nome na DB, não trava o sistema
   listaOrdenada.sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || "")));
 
   listaOrdenada.forEach(u => {
@@ -194,14 +240,21 @@ async function carregarEquipesEDashboard() {
     const ativo = u.ativo !== false; 
     const classeInativo = !ativo ? 'inativo-txt' : '';
     
-    const switchAtivo = (u.role === 'atleta' && userRole === 'admin') ? `<label class="switch" title="Ativar/Desativar Atleta"><input type="checkbox" class="toggle-ativo" data-id="${u.id}" ${ativo ? 'checked' : ''}><span class="slider"></span></label>` : '';
+    const switchAtivo = (u.role === 'atleta' && userRole === 'admin') ? `<label class="switch" title="Ativar/Desativar"><input type="checkbox" class="toggle-ativo" data-id="${u.id}" ${ativo ? 'checked' : ''}><span class="slider"></span></label>` : '';
     const btnEditar = `<button class="btn-acao btn-editar-membro" data-id="${u.id}" data-nome="${u.nome}" data-email="${u.email}" data-eq="${u.equipe}" style="color: var(--warning); border-color: var(--warning); padding: 4px; margin-left: 10px;" title="Editar"><i data-lucide="edit-2" style="width: 16px; height: 16px;"></i></button>`;
     const btnExcluir = (!isDono && userRole === "admin") ? `<button class="btn-acao btn-excluir-membro" data-id="${u.id}" style="color: red; border: 0; padding: 4px; margin-left: 5px;" title="Remover Definitivo"><i data-lucide="x-circle" style="width: 18px; height: 18px;"></i></button>` : '';
 
-    if (u.equipe === "Fila de Espera") {
-      const btnMoverBike = `<button class="btn-acao btn-mover" data-id="${u.id}" data-eq="Bicicleta" title="Mover para Bicicleta" style="padding: 4px 8px; font-size: 1.1rem; border-color: var(--primary);">🚴</button>`;
-      const btnMoverCorrida = `<button class="btn-acao btn-mover" data-id="${u.id}" data-eq="Corrida" title="Mover para Corrida" style="padding: 4px 8px; font-size: 1.1rem; border-color: var(--secondary);">🏃</button>`;
-      htmlFila += `<tr><td style="padding: 10px;"><strong>${u.nome}</strong></td><td style="text-align: right; padding: 10px; display: flex; justify-content: flex-end; align-items: center; gap: 8px;">${btnMoverBike} ${btnMoverCorrida} <span style="border-left: 1px solid var(--border); height: 20px; margin: 0 5px;"></span> ${btnEditar} ${btnExcluir}</td></tr>`;
+    // SEPARAÇÃO INTELIGENTE DA FILA DE ESPERA
+    if (u.equipe && u.equipe.startsWith("Fila")) {
+      let badgeFila = "";
+      if (u.equipe === "Fila - Bicicleta") badgeFila = `<span style="font-size: 0.75rem; background: rgba(0, 155, 193, 0.1); color: var(--primary); padding: 3px 6px; border-radius: 4px; margin-left: 8px;">🚴 Bike</span>`;
+      else if (u.equipe === "Fila - Corrida") badgeFila = `<span style="font-size: 0.75rem; background: rgba(0, 179, 126, 0.1); color: var(--secondary); padding: 3px 6px; border-radius: 4px; margin-left: 8px;">🏃 Corrida</span>`;
+      else badgeFila = `<span style="font-size: 0.75rem; background: #eee; color: #666; padding: 3px 6px; border-radius: 4px; margin-left: 8px;">Indefinida</span>`;
+
+      const btnMoverBike = `<button class="btn-acao btn-mover" data-id="${u.id}" data-eq="Bicicleta" title="Aprovar para Bicicleta" style="padding: 4px 8px; font-size: 1.1rem; border-color: var(--primary);">🚴</button>`;
+      const btnMoverCorrida = `<button class="btn-acao btn-mover" data-id="${u.id}" data-eq="Corrida" title="Aprovar para Corrida" style="padding: 4px 8px; font-size: 1.1rem; border-color: var(--secondary);">🏃</button>`;
+      
+      htmlFila += `<tr><td style="padding: 10px;"><strong>${u.nome}</strong> ${badgeFila}</td><td style="text-align: right; padding: 10px; display: flex; justify-content: flex-end; align-items: center; gap: 8px;">${btnMoverBike} ${btnMoverCorrida} <span style="border-left: 1px solid var(--border); height: 20px; margin: 0 5px;"></span> ${btnEditar} ${btnExcluir}</td></tr>`;
       contFila++;
     } else {
       const linha = `<tr><td style="padding: 10px;" class="${classeInativo}"><strong>${u.nome}</strong> ${isDono ? `<span style="font-size: 0.75rem; color: #999;">(Você)</span>` : ''}${u.role === 'atleta' ? `<br><small style="color: var(--primary); font-weight: 600;">🏆 ${pts} pts</small>` : ''}</td><td style="text-align: right; padding: 10px; display: flex; justify-content: flex-end; align-items: center;">${switchAtivo} ${btnEditar} ${btnExcluir}</td></tr>`;
@@ -220,14 +273,7 @@ async function carregarEquipesEDashboard() {
   if(document.getElementById("totalBike")) document.getElementById("totalBike").textContent = contBike;
   if(document.getElementById("totalCorrida")) document.getElementById("totalCorrida").textContent = contCorrida;
 
-  renderizarGrafico(ptsBike, ptsCorrida);
-  let coroaBike = "", coroaCorrida = "";
-  if (ptsBike > ptsCorrida && ptsBike > 0) coroaBike = "👑 ";
-  if (ptsCorrida > ptsBike && ptsCorrida > 0) coroaCorrida = "👑 ";
-  document.getElementById("ptsBikeTxt").parentElement.innerHTML = `${coroaBike}🚴 Bike (<span id="ptsBikeTxt">${ptsBike}</span> pts)`;
-  document.getElementById("ptsCorridaTxt").parentElement.innerHTML = `${coroaCorrida}🏃 Corrida (<span id="ptsCorridaTxt">${ptsCorrida}</span> pts)`;
-  document.getElementById("barBike").style.width = `${(ptsBike + ptsCorrida === 0) ? 50 : (ptsBike / (ptsBike + ptsCorrida)) * 100}%`;
-  document.getElementById("barCorrida").style.width = `${(ptsBike + ptsCorrida === 0) ? 50 : (ptsCorrida / (ptsBike + ptsCorrida)) * 100}%`;
+  renderizarGraficosDashboard(ptsBike, ptsCorrida);
 
   todosAtletas.sort((a, b) => b.pts - a.pts);
   const podio = todosAtletas.slice(0, 5);
@@ -305,14 +351,14 @@ function setupCadastrarPessoa() {
       showToast(`${nome} adicionado!`, "success");
       document.getElementById("novoNome").value = ""; document.getElementById("novoEmail").value = "";
       btn.textContent = "Adicionar ao Sistema"; btn.disabled = false; atualizarTelas(); 
-      if(equipe === "Fila de Espera") document.querySelector('[data-target="tab-fila"]').click(); else if(equipe === "Bicicleta") document.querySelector('[data-target="tab-bike"]').click(); else if(equipe === "Corrida") document.querySelector('[data-target="tab-corrida"]').click();
+      if(equipe.startsWith("Fila")) document.querySelector('[data-target="tab-fila"]').click(); else if(equipe === "Bicicleta") document.querySelector('[data-target="tab-bike"]').click(); else if(equipe === "Corrida") document.querySelector('[data-target="tab-corrida"]').click();
       document.querySelector('[data-target="sub-equipes"]').click();
     } catch (error) { showToast("Erro ao cadastrar.", "error"); btn.textContent = "Adicionar ao Sistema"; btn.disabled = false; }
   });
 }
 
 // =====================================================
-// 💯 LANÇAR PONTUAÇÃO E FALTAS 
+// 💯 LANÇAR PONTUAÇÃO (COM BATCH / LOTE DE DADOS)
 // =====================================================
 function setupContabilizacao() {
   document.getElementById("dataTreino").valueAsDate = new Date();
@@ -349,7 +395,7 @@ function setupContabilizacao() {
     btn.textContent = "Gerar Tabela de Lançamento"; btn.disabled = false; document.getElementById("areaTabelaPontuacao").style.display = "block";
   });
 
-  document.getElementById("btnSalvarPontuacao").addEventListener("click", salvarPontuacoes);
+  document.getElementById("btnSalvarPontuacao").addEventListener("click", salvarPontuacoesEmLote);
 }
 
 async function gerarTabelaContabilizacao(modalidade, regras) {
@@ -359,7 +405,6 @@ async function gerarTabelaContabilizacao(modalidade, regras) {
   let atletas = [];
   snapAtletas.forEach(d => { if(d.data().ativo !== false) atletas.push({id: d.id, ...d.data()}); });
   
-  // BLINDAGEM CONTRA FALHAS NA ORDENAÇÃO
   atletas.sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || "")));
 
   if (atletas.length === 0) { tabela.innerHTML = `<tr><td style='text-align:center; padding: 20px;'><div class="empty-state"><i data-lucide="ghost"></i><p>Nenhum atleta ativo na equipe de ${modalidade}.</p></div></td></tr>`; lucide.createIcons(); return; }
@@ -393,38 +438,46 @@ async function gerarTabelaContabilizacao(modalidade, regras) {
   });
 }
 
-async function salvarPontuacoes() {
+// NOVO SALVAMENTO BLINDADO
+async function salvarPontuacoesEmLote() {
   const desc = document.getElementById("descTreino").value.trim(), data = document.getElementById("dataTreino").value;
   const checksPontos = document.querySelectorAll(".check-ponto:checked"), checksFaltas = document.querySelectorAll(".check-falta:checked");
 
   if (checksPontos.length === 0 && checksFaltas.length === 0) return showToast("Nenhum lançamento selecionado!", "error");
   if (!confirm(`RESUMO:\n- ${checksPontos.length} Itens de pontuação marcados.\n- ${checksFaltas.length} Faltas Justificadas.\n\nConfirmar lançamento no sistema?`)) return;
 
-  const btn = document.getElementById("btnSalvarPontuacao"); btn.innerHTML = "Registrando na Base..."; btn.disabled = true;
+  const btn = document.getElementById("btnSalvarPontuacao"); btn.innerHTML = "Registrando Lote..."; btn.disabled = true;
 
   try {
+    const batch = writeBatch(db);
     let pontosPorAtleta = {};
-    for (let f of checksFaltas) { await addDoc(collection(db, "historico_pontos"), { atletaId: f.dataset.atletaId, regraId: "falta_just", regraDesc: "Falta Justificada", pontos: 0, descTreino: desc, dataTreino: data, criadoEm: new Date().toISOString() }); }
+
+    for (let f of checksFaltas) { 
+      const novoLctoRef = doc(collection(db, "historico_pontos"));
+      batch.set(novoLctoRef, { atletaId: f.dataset.atletaId, regraId: "falta_just", regraDesc: "Falta Justificada", pontos: 0, descTreino: desc, dataTreino: data, criadoEm: new Date().toISOString() });
+    }
+
     for (let check of checksPontos) {
-      const aId = check.dataset.atletaId, pts = Number(check.dataset.pontos) || 0;
-      await addDoc(collection(db, "historico_pontos"), { atletaId: aId, regraId: check.dataset.regraId, regraDesc: check.dataset.regraDesc, pontos: pts, descTreino: desc, dataTreino: data, criadoEm: new Date().toISOString() });
+      const aId = check.dataset.atletaId; const pts = Number(check.dataset.pontos) || 0;
+      const novoLctoRef = doc(collection(db, "historico_pontos"));
+      batch.set(novoLctoRef, { atletaId: aId, regraId: check.dataset.regraId, regraDesc: check.dataset.regraDesc, pontos: pts, descTreino: desc, dataTreino: data, criadoEm: new Date().toISOString() });
       if (!pontosPorAtleta[aId]) pontosPorAtleta[aId] = 0; pontosPorAtleta[aId] += pts;
     }
 
+    // Delega a matemática para os servidores do Google (Prevenção de Race Condition)
     for (let aId in pontosPorAtleta) {
-      const atletaRef = doc(db, "atletas", aId); const atletaSnap = await getDoc(atletaRef);
-      if (atletaSnap.exists()) {
-        const totalAtual = Number(atletaSnap.data().pontuacaoTotal) || 0;
-        await updateDoc(atletaRef, { pontuacaoTotal: totalAtual + pontosPorAtleta[aId] });
-      }
+      const atletaRef = doc(db, "atletas", aId);
+      batch.update(atletaRef, { pontuacaoTotal: increment(pontosPorAtleta[aId]) });
     }
+
+    await batch.commit();
 
     showToast("Lançamentos efetuados com sucesso!", "success");
     document.getElementById("areaTabelaPontuacao").style.display = "none"; document.getElementById("areaSelecaoRegras").style.display = "none";
     document.getElementById("btnGerarLista").style.display = "none"; document.getElementById("descTreino").value = ""; document.getElementById("modTreino").value = "";
     atualizarTelas(); 
-  } catch (error) { console.error(error); showToast("Erro ao salvar.", "error"); } 
-  finally { btn.innerHTML = `<i data-lucide="check-circle"></i> Salvar Lançamentos e Faltas`; btn.disabled = false; lucide.createIcons(); }
+  } catch (error) { console.error(error); showToast("Erro ao salvar lote.", "error"); } 
+  finally { btn.innerHTML = `<i data-lucide="check-circle"></i> Salvar Lançamentos Lote`; btn.disabled = false; lucide.createIcons(); }
 }
 
 // =====================================================
@@ -435,18 +488,11 @@ async function carregarHistorico() {
     const snap = await getDocs(collection(db, "historico_pontos"));
     historicoCompleto = [];
     snap.forEach(d => { historicoCompleto.push({ id: d.id, ...d.data() }); });
-    
-    // ORDENAÇÃO BLINDADA: Evita falhas se faltar a data de criação
     historicoCompleto.sort((a, b) => String(b.criadoEm || "").localeCompare(String(a.criadoEm || "")));
     
-    const inputMes = document.getElementById("filtroMesHistorico");
-    if(!inputMes.value) {
-      const hoje = new Date();
-      inputMes.value = `${hoje.getFullYear()}-${(hoje.getMonth() + 1).toString().padStart(2, '0')}`;
-    }
+    // Deixamos o mês vazio por padrão para não ocultar pontos antigos recém-lançados
     filtrarHistorico();
   } catch (error) {
-    console.error("Erro ao carregar histórico:", error);
     document.getElementById("listaHistorico").innerHTML = `<tr><td colspan='6'><div class="empty-state"><i data-lucide="alert-triangle"></i><p>Erro ao buscar histórico.</p></div></td></tr>`;
     lucide.createIcons();
   }
@@ -491,11 +537,8 @@ function renderHistorico(dados) {
 
       try {
         if (mapAtletas[atlId] && ptsARemover > 0) {
-          const atletaRef = doc(db, "atletas", atlId); const atletaSnap = await getDoc(atletaRef);
-          if (atletaSnap.exists()) {
-            const novoTotal = Math.max(0, (Number(atletaSnap.data().pontuacaoTotal) || 0) - ptsARemover); 
-            await updateDoc(atletaRef, { pontuacaoTotal: novoTotal });
-          }
+          const atletaRef = doc(db, "atletas", atlId); 
+          await updateDoc(atletaRef, { pontuacaoTotal: increment(-ptsARemover) }); // Estorno Seguro
         }
         await deleteDoc(doc(db, "historico_pontos", histId));
         showToast("Estorno realizado com sucesso!", "success"); atualizarTelas(); 
@@ -506,8 +549,8 @@ function renderHistorico(dados) {
 
 ["filtroMesHistorico", "filtroEquipeHistorico", "filtroNomeHistorico"].forEach(id => { document.getElementById(id).addEventListener("input", filtrarHistorico); });
 document.getElementById("btnLimparFiltrosExtrato").addEventListener("click", () => {
-  const hoje = new Date(); document.getElementById("filtroMesHistorico").value = `${hoje.getFullYear()}-${(hoje.getMonth() + 1).toString().padStart(2, '0')}`;
-  document.getElementById("filtroEquipeHistorico").value = ""; document.getElementById("filtroNomeHistorico").value = ""; filtrarHistorico(); showToast("Filtros limpos!", "info");
+  document.getElementById("filtroMesHistorico").value = ""; document.getElementById("filtroEquipeHistorico").value = ""; document.getElementById("filtroNomeHistorico").value = ""; 
+  filtrarHistorico(); showToast("Filtros limpos!", "info");
 });
 
 // =====================================================
@@ -533,12 +576,11 @@ function gerarRelatorioConsolidado() {
   const anoInput = document.getElementById("filtroAnoRelatorio").value;
   if (!anoInput) return;
   const ano = String(anoInput).trim(); 
-  
   const eqFiltro = document.getElementById("filtroEquipeRelatorio").value;
   const tbody = document.getElementById("listaRelatorio");
-  
   const histAno = historicoCompleto.filter(h => h.dataTreino && h.dataTreino.startsWith(ano));
-  let atletasRelatorio = Object.values(mapAtletas).filter(a => a.role === "atleta" && a.equipe !== "Fila de Espera" && a.equipe !== "Nenhuma");
+  
+  let atletasRelatorio = Object.values(mapAtletas).filter(a => a.role === "atleta" && !a.equipe.startsWith("Fila") && a.equipe !== "Nenhuma");
   if (eqFiltro) atletasRelatorio = atletasRelatorio.filter(a => a.equipe === eqFiltro);
 
   if(atletasRelatorio.length === 0) {
@@ -605,7 +647,67 @@ function setupModalRegras() {
 }
 
 // =====================================================
-// 💣 LIMPAR BASE DE DADOS (ZONA DE PERIGO)
+// ⚙️ CONFIGURAÇÕES (Aparência e Conta)
+// =====================================================
+function setupConfiguracoes() {
+  // 1. Zoom (Tamanho da Fonte)
+  document.querySelectorAll(".btn-zoom").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      document.querySelectorAll(".btn-zoom").forEach(b => { b.style.background = "transparent"; b.style.color = "var(--text)"; });
+      e.target.style.background = "var(--primary)"; e.target.style.color = "white";
+      document.documentElement.style.fontSize = e.target.dataset.size;
+    });
+  });
+
+  // 2. Tema Claro/Escuro
+  const aplicarTema = (tema) => {
+    if(tema === "dark") { document.body.setAttribute("data-theme", "dark"); localStorage.setItem("theme", "dark"); } 
+    else { document.body.removeAttribute("data-theme"); localStorage.setItem("theme", "light"); }
+    Chart.defaults.color = tema === 'dark' ? '#aaa' : '#666';
+    if(graficoLinhaInstancia) graficoLinhaInstancia.update();
+    if(graficoRoscaInstancia) graficoRoscaInstancia.update();
+  };
+  
+  if (localStorage.getItem("theme") === "dark") aplicarTema("dark");
+
+  document.getElementById("btnTemaClaro").addEventListener("click", () => aplicarTema("light"));
+  document.getElementById("btnTemaEscuro").addEventListener("click", () => aplicarTema("dark"));
+
+  // 3. Atualizar Conta
+  document.getElementById("btnSalvarConta").addEventListener("click", async () => {
+    const senhaAtual = document.getElementById("confSenhaAtual").value;
+    const novoEmail = document.getElementById("confNovoEmail").value.trim();
+    const novaSenha = document.getElementById("confNovaSenha").value.trim();
+    const btn = document.getElementById("btnSalvarConta");
+
+    if(!senhaAtual) return showToast("A senha atual é obrigatória para fazer alterações.", "error");
+    if(!novoEmail && !novaSenha) return showToast("Preencha um novo email ou nova senha.", "info");
+
+    btn.textContent = "Autenticando..."; btn.disabled = true;
+    try {
+      const user = auth.currentUser;
+      const credential = EmailAuthProvider.credential(user.email, senhaAtual);
+      await reauthenticateWithCredential(user, credential);
+      
+      btn.textContent = "Salvando...";
+      if(novoEmail) { await updateEmail(user, novoEmail); }
+      if(novaSenha) { await updatePassword(user, novaSenha); }
+      
+      showToast("Conta atualizada com sucesso!", "success");
+      document.getElementById("confSenhaAtual").value = "";
+      document.getElementById("confNovoEmail").value = "";
+      document.getElementById("confNovaSenha").value = "";
+    } catch(err) {
+      console.error(err);
+      if(err.code === "auth/wrong-password") showToast("Senha atual incorreta.", "error");
+      else showToast("Erro ao atualizar conta.", "error");
+    }
+    btn.innerHTML = `<i data-lucide="save"></i> Salvar Alterações`; btn.disabled = false; lucide.createIcons();
+  });
+}
+
+// =====================================================
+// 💣 LIMPAR BASE DE DADOS
 // =====================================================
 function setupLimparBase() {
   const btnL = document.getElementById("btnLimparBase");
