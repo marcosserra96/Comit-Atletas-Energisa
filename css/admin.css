@@ -134,38 +134,61 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
 }
 
 /* =======================================================
-   📄 MODO REPORT EXECUTIVO (PDF)
+   📄 MODO REPORT EXECUTIVO (PDF) CORRIGIDO
 ======================================================= */
-.html2pdf__page-break { page-break-before: always; }
-
 .pdf-executivo {
   background: #ffffff !important;
   color: #333333 !important;
-  padding: 10px;
+  padding: 20px !important;
+  /* FORÇA A LARGURA DE DESKTOP - Evita que vire layout de telemóvel */
+  width: 1120px !important; 
+  max-width: 1120px !important;
+  margin: 0 auto !important;
 }
 
-/* Remove sombras de site e coloca bordas limpas e elegantes */
-.pdf-executivo .card {
-  background: #ffffff !important;
-  box-shadow: none !important;
-  border: 1px solid #d1d5db !important; 
-  border-radius: 8px !important;
-  break-inside: avoid; /* IMPEDIR QUE O CARD SEJA CORTADO NA METADE DA PÁGINA */
-  margin-bottom: 15px !important;
-}
-
-/* Esconde botões que não fazem sentido no papel */
+/* Esconde elementos indesejados */
 .pdf-executivo button, 
 .pdf-executivo .btn-acao {
   display: none !important; 
 }
 
-/* Ajusta o grid para ficar perfeito na folha Deitada */
-.pdf-executivo .dashboard-grid {
-  gap: 15px !important;
+/* Remove sombras e formata os cards para impressão profissional */
+.pdf-executivo .card {
+  background: #ffffff !important;
+  box-shadow: none !important;
+  border: 1px solid #d1d5db !important; 
+  border-radius: 8px !important;
+  margin-bottom: 20px !important;
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
 }
 
-/* Garante que o fundo da barra de progresso imprima corretamente */
+/* Força os 4 cards do topo a ficarem em linha reta (4 colunas) */
+.pdf-executivo .cards {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  gap: 15px !important;
+}
+.pdf-executivo .cards .card {
+  flex: 1 !important;
+  margin-bottom: 10px !important;
+}
+
+/* Força as duas grandes colunas a ficarem lado a lado (60% e 40%) */
+.pdf-executivo .dashboard-grid {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 20px !important;
+}
+.pdf-executivo .dashboard-grid > div:first-child {
+  width: 58% !important; /* Coluna dos Gráficos */
+}
+.pdf-executivo .dashboard-grid > div:last-child {
+  width: 40% !important; /* Coluna do Top 5 / Batalha */
+}
+
+/* Fixa o fundo da barra de progresso */
 .pdf-executivo .progress-bar-bg {
-  border: 1px solid #eee;
+  border: 1px solid #ddd;
+  background-color: #f9f9f9 !important;
 }
