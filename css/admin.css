@@ -97,9 +97,6 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
 .progress-bar-fill { height: 100%; transition: width 1s ease-in-out; }
 .strike-badge { background: #fee2e2; color: #ef4444; font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 8px; }
 
-/* Correção PDF */
-.html2pdf__page-break { page-break-before: always; }
-
 /* ABAS */
 .sub-menu, .tertiary-menu { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 2px solid var(--border); padding-bottom: 10px; overflow-x: auto; min-height: 44px; align-items: center; }
 .tertiary-menu { border-bottom: 0; margin-bottom: 15px; }
@@ -134,4 +131,41 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
   .header-acao { flex-direction: column; align-items: flex-start; }
   #toastContainer { right: 5%; left: 5%; top: 70px; align-items: center; }
   .toast { width: 100%; justify-content: center; }
+}
+
+/* =======================================================
+   📄 MODO REPORT EXECUTIVO (PDF)
+======================================================= */
+.html2pdf__page-break { page-break-before: always; }
+
+.pdf-executivo {
+  background: #ffffff !important;
+  color: #333333 !important;
+  padding: 10px;
+}
+
+/* Remove sombras de site e coloca bordas limpas e elegantes */
+.pdf-executivo .card {
+  background: #ffffff !important;
+  box-shadow: none !important;
+  border: 1px solid #d1d5db !important; 
+  border-radius: 8px !important;
+  break-inside: avoid; /* IMPEDIR QUE O CARD SEJA CORTADO NA METADE DA PÁGINA */
+  margin-bottom: 15px !important;
+}
+
+/* Esconde botões que não fazem sentido no papel */
+.pdf-executivo button, 
+.pdf-executivo .btn-acao {
+  display: none !important; 
+}
+
+/* Ajusta o grid para ficar perfeito na folha Deitada */
+.pdf-executivo .dashboard-grid {
+  gap: 15px !important;
+}
+
+/* Garante que o fundo da barra de progresso imprima corretamente */
+.pdf-executivo .progress-bar-bg {
+  border: 1px solid #eee;
 }
