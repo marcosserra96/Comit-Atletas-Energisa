@@ -30,7 +30,7 @@ button { cursor: pointer; font-family: var(--font-main); border: none; }
 .menu-item.active { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(0, 155, 193, 0.3); }
 
 /* =======================================================
-   📐 LAYOUT, CARDS E TABELAS
+   📐 LAYOUT E COMPONENTES
 ======================================================= */
 main { padding: 90px 20px 100px; max-width: 1200px; margin: 0 auto; }
 section { display: none; animation: fadeIn 0.4s ease; }
@@ -50,7 +50,7 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
 .progress-bar-fill { height: 100%; transition: width 1s ease-in-out; }
 .strike-badge { background: #fee2e2; color: #ef4444; font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 8px; }
 
-/* Agenda e Notificações */
+/* Agenda */
 .agenda-item { display: flex; gap: 15px; padding: 12px 0; border-bottom: 1px solid var(--border); align-items: center; }
 .agenda-item:last-child { border-bottom: none; }
 .agenda-data { background: rgba(0, 155, 193, 0.1); color: var(--primary); padding: 10px; border-radius: 8px; text-align: center; min-width: 50px; }
@@ -81,14 +81,14 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
 .regra-chip input[type="checkbox"] { margin: 0; width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary); }
 .regra-chip.selected { background: rgba(0, 155, 193, 0.1); border-color: var(--primary); color: var(--primary); font-weight: 600; }
 
-.toast { padding: 14px 20px; border-radius: 12px; color: #fff; font-weight: 500; box-shadow: 0 8px 20px rgba(0,0,0,0.25); opacity: 0; animation: toastIn 0.4s forwards; display: flex; align-items: center; gap: 10px; min-width: 250px; }
+.toast { padding: 14px 20px; border-radius: 12px; color: #fff; font-weight: 500; box-shadow: 0 8px 20px rgba(0,0,0,0.25); opacity: 0; animation: toastIn 0.4s forwards; display: flex; align-items: center; gap: 10px; min-width: 250px; z-index: 10001; }
 .toast.success { background: linear-gradient(135deg, var(--secondary), #009e6d); }
 .toast.error { background: linear-gradient(135deg, var(--danger), #c53030); }
 .toast.info { background: linear-gradient(135deg, var(--primary), #007fa0); }
 @keyframes toastIn { to { opacity: 1; transform: translateY(0); } }
 
 /* =======================================================
-   📄 SOBREPOSIÇÃO PARA PDF EXECUTIVO (MOLDE A4 PERFEITO)
+   📄 SOBREPOSIÇÃO PARA PDF EXECUTIVO
 ======================================================= */
 #pdfOverlay {
   display: none; 
@@ -101,7 +101,7 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
 
 #pdfPrintArea {
   width: 297mm; 
-  height: 210mm; /* Fixado para evitar cortes */
+  height: 210mm;
   background: #ffffff; color: #333333;
   padding: 10mm 15mm; box-sizing: border-box;
   font-family: Arial, sans-serif;
@@ -109,10 +109,8 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
   display: flex; flex-direction: column;
 }
 
-/* Oculta botões de ação injetados da Agenda */
 #pdfPrintArea button { display: none !important; }
 
-/* Lista de Permissões */
 .perm-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); align-items: center; }
 .perm-item:last-child { border-bottom: none; }
 
