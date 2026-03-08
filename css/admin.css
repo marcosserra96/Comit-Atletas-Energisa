@@ -23,9 +23,19 @@
 }
 
 /* =======================================================
-   🧱 BASE GERAL
+   🧱 BASE GERAL E PREVENÇÃO DE LAYOUT SHIFT (PULO)
 ======================================================= */
-body { margin: 0; font-family: var(--font-main); background: var(--bg); color: var(--text); transition: background 0.3s, color 0.3s; overflow-x: hidden; padding-bottom: 80px; }
+body { 
+  margin: 0; 
+  font-family: var(--font-main); 
+  background: var(--bg); 
+  color: var(--text); 
+  transition: background 0.3s, color 0.3s; 
+  overflow-x: hidden; 
+  /* A REGEA DE OURO PARA PARAR O PULO DA TELA: */
+  overflow-y: scroll; 
+  padding-bottom: 80px; 
+}
 
 input[type="text"], input[type="email"], input[type="number"], input[type="date"], input[type="month"], input[type="password"], select, textarea {
   font-family: var(--font-main); border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 8px; padding: 12px; font-size: 0.95rem; width: 100%; box-sizing: border-box; outline: none; transition: 0.2s; margin-bottom: 10px;
@@ -70,14 +80,14 @@ button { cursor: pointer; font-family: var(--font-main); border: none; }
 .menu-item.active { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(0, 155, 193, 0.3); }
 
 /* =======================================================
-   📊 LAYOUT E TABELAS
+   📊 LAYOUT E TABELAS (CABEÇALHO CONGELADO)
 ======================================================= */
 main { padding: 90px 20px 100px; max-width: 1200px; margin: 0 auto; }
 section { display: none; animation: fadeIn 0.4s ease; }
 .active-section { display: block; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-.header-acao { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+.header-acao { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; min-height: 40px; }
 h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
 
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
@@ -85,9 +95,27 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
 .card h3 { margin: 0 0 10px 0; font-size: 1rem; color: var(--text); display: flex; align-items: center; gap: 8px; }
 .card p { margin: 0; font-size: 1.5rem; font-weight: 700; color: var(--text-light); }
 
-.tabela-container { overflow-x: auto; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 20px; background: var(--bg-card);}
+/* O MÁGICO CONGELADOR DE PAINÉIS */
+.tabela-container { 
+  overflow-x: auto; 
+  overflow-y: auto; 
+  max-height: 65vh; /* Limita a altura da tabela para o cabeçalho grudar */
+  border-radius: var(--radius); 
+  box-shadow: var(--shadow); 
+  margin-bottom: 20px; 
+  background: var(--bg-card);
+}
 .tabela-simples { width: 100%; border-collapse: collapse; min-width: 600px; }
-.tabela-simples th { background: rgba(0,155,193,0.1); color: var(--primary); padding: 15px; text-align: left; }
+.tabela-simples th { 
+  background: #f4f9fb; /* Cor sólida para não bugar o scroll por trás */
+  color: var(--primary); 
+  padding: 15px; 
+  text-align: left; 
+  position: sticky; 
+  top: 0; 
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* Sombrinha para destacar o cabeçalho */
+}
 .tabela-simples td { padding: 15px; border-bottom: 1px solid var(--border); color: var(--text); }
 
 .btn-primario { background: var(--primary); color: white; padding: 10px 20px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; }
@@ -96,7 +124,7 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
 .btn-acao:hover { border-color: var(--primary); color: var(--primary); }
 
 /* SUB-ABAS */
-.sub-menu { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 2px solid var(--border); padding-bottom: 10px; overflow-x: auto; }
+.sub-menu { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 2px solid var(--border); padding-bottom: 10px; overflow-x: auto; min-height: 44px; align-items: center; }
 .sub-tab { background: transparent; color: var(--text-light); font-weight: 600; padding: 10px 20px; border-radius: 8px; display: flex; align-items: center; gap: 8px; transition: 0.3s ease; white-space: nowrap; }
 .sub-tab.active { background: var(--primary); color: white; box-shadow: 0 4px 10px rgba(0, 155, 193, 0.2); }
 .sub-content { display: none; animation: fadeIn 0.3s ease; }
