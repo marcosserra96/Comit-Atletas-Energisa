@@ -1,6 +1,6 @@
 import { 
   auth, db, collection, getDocs, doc, getDoc, updateDoc, deleteDoc, addDoc,
-  onAuthStateChanged, signOut, query, where, orderBy 
+  onAuthStateChanged, signOut, query, where
 } from "./firebase.js";
 
 let userRole = "atleta";
@@ -109,12 +109,17 @@ function configurarLogout() {
   });
 }
 
-// 🛡️ A ORDEM CERTA DAS CHAMADAS: Sincronização 100% segura
+// 🛡️ A ORDEM CERTA DAS CHAMADAS DE DADOS
 async function atualizarTelas() {
   if (userRole === "admin") setupAprovacoes();
   await carregarEquipesEDashboard(); 
   await carregarRegras();
   await carregarHistorico(); 
+  
+  // Atualiza também o Relatório caso o utilizador esteja lá
+  if (document.getElementById("sub-relatorio").classList.contains("active")) {
+    gerarRelatorioConsolidado();
+  }
 }
 
 // =====================================================
@@ -162,7 +167,7 @@ function renderizarGrafico(ptsBike, ptsCorrida) {
   if(graficoInstancia) graficoInstancia.destroy();
   graficoInstancia = new Chart(ctx, {
     type: 'bar',
-    data: { labels: ['Pontuação Geral'], datasets: [ { label: 'Bicicleta 🚴', data: [ptsBike], backgroundColor: '#009bc1', borderRadius: 8 }, { label: 'Corrida 🏃', data: [ptsCorrida], backgroundColor: '#00b37e', borderRadius: 8 } ] },
+    data: { labels: ['Pontuação Geral das Equipes'], datasets: [ { label: 'Bicicleta 🚴', data: [ptsBike], backgroundColor: '#009bc1', borderRadius: 8 }, { label: 'Corrida 🏃', data: [ptsCorrida], backgroundColor: '#00b37e', borderRadius: 8 } ] },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true, grid: { color: document.body.getAttribute('data-theme') === 'dark' ? '#333' : '#eee' } } } }
   });
 }
@@ -184,7 +189,6 @@ async function carregarEquipesEDashboard() {
 
   listaOrdenada.forEach(u => {
     const isDono = auth.currentUser.uid === u.id;
-    // BLINDAGEM DA PONTUAÇÃO: Força sempre o tipo Número Absoluto
     const pts = Number(u.pontuacaoTotal) || 0; 
     const ativo = u.ativo !== false; 
     const classeInativo = !ativo ? 'inativo-txt' : '';
@@ -399,7 +403,7 @@ async function salvarPontuacoes() {
     let pontosPorAtleta = {};
     for (let f of checksFaltas) { await addDoc(collection(db, "historico_pontos"), { atletaId: f.dataset.atletaId, regraId: "falta_just", regraDesc: "Falta Justificada", pontos: 0, descTreino: desc, dataTreino: data, criadoEm: new Date().toISOString() }); }
     for (let check of checksPontos) {
-      const aId = check.dataset.atletaId, pts = parseInt(check.dataset.pontos);
+      const aId = check.dataset.atletaId, pts = Number(check.dataset.pontos) || 0;
       await addDoc(collection(db, "historico_pontos"), { atletaId: aId, regraId: check.dataset.regraId, regraDesc: check.dataset.regraDesc, pontos: pts, descTreino: desc, dataTreino: data, criadoEm: new Date().toISOString() });
       if (!pontosPorAtleta[aId]) pontosPorAtleta[aId] = 0; pontosPorAtleta[aId] += pts;
     }
@@ -407,7 +411,6 @@ async function salvarPontuacoes() {
     for (let aId in pontosPorAtleta) {
       const atletaRef = doc(db, "atletas", aId); const atletaSnap = await getDoc(atletaRef);
       if (atletaSnap.exists()) {
-        // BLINDAGEM DA MATEMÁTICA: Assegura sempre a leitura e gravação em formato numérico
         const totalAtual = Number(atletaSnap.data().pontuacaoTotal) || 0;
         await updateDoc(atletaRef, { pontuacaoTotal: totalAtual + pontosPorAtleta[aId] });
       }
@@ -422,20 +425,33 @@ async function salvarPontuacoes() {
 }
 
 // =====================================================
-// 📜 EXTRATO E LIMPAR FILTROS
+// 📜 EXTRATO E LIMPAR FILTROS (BLINDADO CONTRA ERROS DO FIREBASE)
 // =====================================================
 async function carregarHistorico() {
-  const q = query(collection(db, "historico_pontos"), orderBy("criadoEm", "desc"));
-  const snap = await getDocs(q);
-  historicoCompleto = [];
-  snap.forEach(d => { historicoCompleto.push({ id: d.id, ...d.data() }); });
-  
-  const inputMes = document.getElementById("filtroMesHistorico");
-  if(!inputMes.value) {
-    const hoje = new Date();
-    inputMes.value = `${hoje.getFullYear()}-${(hoje.getMonth() + 1).toString().padStart(2, '0')}`;
+  try {
+    // Busca Pura - Sem OrderBy para evitar erro de Missing Index no Firebase
+    const snap = await getDocs(collection(db, "historico_pontos"));
+    historicoCompleto = [];
+    snap.forEach(d => { historicoCompleto.push({ id: d.id, ...d.data() }); });
+    
+    // Ordena do mais recente para o mais antigo via Javascript
+    historicoCompleto.sort((a, b) => {
+      const dataA = a.criadoEm || "";
+      const dataB = b.criadoEm || "";
+      return dataB.localeCompare(dataA);
+    });
+    
+    const inputMes = document.getElementById("filtroMesHistorico");
+    if(!inputMes.value) {
+      const hoje = new Date();
+      inputMes.value = `${hoje.getFullYear()}-${(hoje.getMonth() + 1).toString().padStart(2, '0')}`;
+    }
+    filtrarHistorico();
+  } catch (error) {
+    console.error("Erro ao carregar histórico:", error);
+    document.getElementById("listaHistorico").innerHTML = `<tr><td colspan='6'><div class="empty-state"><i data-lucide="alert-triangle"></i><p>Erro de conexão ao buscar histórico.</p></div></td></tr>`;
+    lucide.createIcons();
   }
-  filtrarHistorico();
 }
 
 function filtrarHistorico() {
@@ -446,7 +462,7 @@ function filtrarHistorico() {
   const dadosFiltrados = historicoCompleto.filter(h => {
     const atleta = mapAtletas[h.atletaId] || { nome: "", equipe: "" };
     const dataValida = h.dataTreino || "";
-    return (!mes || dataValida.startsWith(mes)) && (!eq || atleta.equipe === eq) && (!nome || atleta.nome.toLowerCase().includes(nome));
+    return (!mes || dataValida.startsWith(mes)) && (!eq || atleta.equipe === eq) && (!nome || (atleta.nome && atleta.nome.toLowerCase().includes(nome)));
   });
   renderHistorico(dadosFiltrados);
 }
@@ -516,7 +532,6 @@ function setupRelatorioConsolidado() {
 }
 
 function gerarRelatorioConsolidado() {
-  // BLINDAGEM DA DATA: Transforma o ano em texto obrigatoriamente para a busca funcionar.
   const anoInput = document.getElementById("filtroAnoRelatorio").value;
   if (!anoInput) return;
   const ano = String(anoInput).trim(); 
@@ -536,11 +551,13 @@ function gerarRelatorioConsolidado() {
   atletasRelatorio.forEach(atleta => {
     atleta.totalAnoTemp = 0; atleta.ptsMesTemp = [0,0,0,0,0,0,0,0,0,0,0,0];
     histAno.filter(h => h.atletaId === atleta.id).forEach(lancamento => {
-      const mesInt = parseInt(lancamento.dataTreino.split("-")[1], 10); 
-      if(!isNaN(mesInt) && mesInt >= 1 && mesInt <= 12) {
-        // MAIS BLINDAGEM: Lê o registo histórico em formato numérico
-        const ptsLcto = Number(lancamento.pontos) || 0;
-        atleta.ptsMesTemp[mesInt - 1] += ptsLcto; atleta.totalAnoTemp += ptsLcto;
+      // BLINDAGEM NO CÁLCULO
+      if(lancamento.dataTreino && lancamento.dataTreino.includes("-")) {
+        const mesInt = parseInt(lancamento.dataTreino.split("-")[1], 10); 
+        if(!isNaN(mesInt) && mesInt >= 1 && mesInt <= 12) {
+          const ptsLcto = Number(lancamento.pontos) || 0;
+          atleta.ptsMesTemp[mesInt - 1] += ptsLcto; atleta.totalAnoTemp += ptsLcto;
+        }
       }
     });
   });
@@ -569,6 +586,7 @@ async function carregarRegras() {
     const btnExcluir = (userRole === "admin") ? `<button class="btn-acao btn-excluir-regra" data-id="${d.id}" style="color: var(--danger); border-color: var(--danger);"><i data-lucide="trash" style="width: 16px; height:16px;"></i></button>` : '';
     tbody.innerHTML += `<tr><td><strong>${r.descricao}</strong></td><td>${r.modalidade}</td><td><strong style="color: var(--primary); font-size: 1.1rem;">+ ${r.pontos}</strong></td><td style="text-align:center;">${btnExcluir}</td></tr>`;
   });
+
   lucide.createIcons();
   document.querySelectorAll(".btn-excluir-regra").forEach(btn => {
     btn.addEventListener("click", async (e) => { if(confirm("Deseja apagar esta regra?")) { await deleteDoc(doc(db, "regras_pontuacao", e.currentTarget.dataset.id)); carregarRegras(); } });
