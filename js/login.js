@@ -8,37 +8,40 @@ function showToast(message, type = "info") {
   if (!container) return;
   const toast = document.createElement("div");
   toast.className = `toast ${type}`;
-  toast.textContent = message;
+  toast.innerHTML = message;
   container.appendChild(toast);
   setTimeout(() => toast.remove(), 4000);
 }
 
-document.getElementById("loginBtn").addEventListener("click", async (e) => {
+// Alternar entre Login e Solicitar Acesso
+document.getElementById("linkSolicitar").addEventListener("click", (e) => {
   e.preventDefault();
+  document.getElementById("boxLogin").style.display = "none";
+  document.getElementById("boxSolicitar").style.display = "block";
+});
+document.getElementById("linkLogin").addEventListener("click", (e) => {
+  e.preventDefault();
+  document.getElementById("boxSolicitar").style.display = "none";
+  document.getElementById("boxLogin").style.display = "block";
+});
+
+// Login (com tecla Enter ativada)
+const fazerLogin = async () => {
   const email = document.getElementById("email").value.trim();
   const pass = document.getElementById("password").value.trim();
-  const btn = e.target;
+  const btn = document.getElementById("loginBtn");
 
   if (!email || !pass) return showToast("Preencha e-mail e senha", "error");
 
-  btn.textContent = "Verificando...";
-  btn.classList.add("loading");
+  btn.textContent = "Verificando..."; btn.classList.add("loading");
   
   try {
-    // GATILHO DE PRIMEIRO ACESSO (Criação automática do Admin)
     if (email === "admin@comite.com") {
-      try {
-        await signInWithEmailAndPassword(auth, email, pass);
-      } catch (err) {
+      try { await signInWithEmailAndPassword(auth, email, pass); } 
+      catch (err) {
         const cred = await createUserWithEmailAndPassword(auth, email, pass);
-        await setDoc(doc(db, "atletas", cred.user.uid), {
-          nome: "Administrador Geral",
-          email: email,
-          status: "Aprovado",
-          role: "admin",
-          criadoEm: new Date().toISOString()
-        });
-        showToast("Conta de administrador criada!", "success");
+        await setDoc(doc(db, "atletas", cred.user.uid), { nome: "Administrador Geral", email: email, status: "Aprovado", role: "admin", ativo: true, criadoEm: new Date().toISOString() });
+        showToast("Conta Admin criada!", "success");
       }
     } else {
       await signInWithEmailAndPassword(auth, email, pass);
@@ -49,31 +52,49 @@ document.getElementById("loginBtn").addEventListener("click", async (e) => {
     
     if (docSnap.exists()) {
       const data = docSnap.data();
-
-      // Bloqueia quem tentar entrar e não for do comitê/admin
-      if (data.role === "atleta") {
+      if (data.status === "Pendente") {
+        showToast("A sua conta ainda aguarda aprovação do Administrador.", "info");
+        await signOut(auth);
+      } else if (data.role === "atleta") {
         showToast("Acesso restrito ao comitê.", "error");
         await signOut(auth);
-        btn.textContent = "Entrar no Sistema";
-        btn.classList.remove("loading");
-        return;
+      } else {
+        showToast("Acesso liberado!", "success");
+        setTimeout(() => window.location.href = "admin.html", 1500);
+        return; 
       }
-
-      localStorage.setItem("userName", data.nome);
-      localStorage.setItem("userRole", data.role);
-      showToast("Acesso liberado!", "success");
-
-      setTimeout(() => window.location.href = "admin.html", 1500);
-
     } else {
       showToast("Perfil não encontrado.", "error");
       await signOut(auth);
-      btn.textContent = "Entrar no Sistema";
-      btn.classList.remove("loading");
     }
   } catch (error) {
     showToast("E-mail ou senha incorretos.", "error");
-    btn.textContent = "Entrar no Sistema";
-    btn.classList.remove("loading");
   }
+  btn.textContent = "Entrar no Sistema"; btn.classList.remove("loading");
+};
+
+document.getElementById("loginBtn").addEventListener("click", (e) => { e.preventDefault(); fazerLogin(); });
+document.getElementById("password").addEventListener("keypress", (e) => { if (e.key === "Enter") { e.preventDefault(); fazerLogin(); } });
+
+// Solicitar Acesso
+document.getElementById("registerBtn").addEventListener("click", async (e) => {
+  e.preventDefault();
+  const nome = document.getElementById("regNome").value.trim(), email = document.getElementById("regEmail").value.trim(), pass = document.getElementById("regPassword").value.trim();
+  const btn = e.target;
+
+  if (!nome || !email || !pass) return showToast("Preencha todos os campos!", "error");
+  btn.textContent = "Enviando..."; btn.classList.add("loading");
+
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    await setDoc(doc(db, "atletas", cred.user.uid), {
+      nome: nome, email: email, status: "Pendente", role: "comite", equipe: "Nenhuma", ativo: true, pontuacaoTotal: 0, criadoEm: new Date().toISOString()
+    });
+    await signOut(auth);
+    showToast("Solicitação enviada com sucesso! Aguarde aprovação.", "success");
+    document.getElementById("linkLogin").click();
+  } catch (error) {
+    showToast("Erro ao solicitar acesso (E-mail pode já existir).", "error");
+  }
+  btn.textContent = "Enviar Solicitação"; btn.classList.remove("loading");
 });
