@@ -152,7 +152,7 @@
 
     <section id="financeiro">
       <div class="dashboard-grid">
-        <div class="card" id="cardNovaDespesa" style="margin: 0; align-self: start; display: none;">
+        <div class="card admin-only-element" id="cardNovaDespesa" style="margin: 0; align-self: start; display: none;">
           <h3 style="color: #27ae60;"><i data-lucide="plus-circle"></i> Nova Despesa</h3>
           <label>Descrição</label><input type="text" id="descDespesa" />
           <label>Categoria</label><select id="catDespesa"><option value="Eventos">Eventos e Inscrições</option><option value="Uniformes">Uniformes/Materiais</option><option value="Premiações">Premiações</option><option value="Outros">Outros</option></select>
@@ -238,52 +238,63 @@
     </section>
   </main>
 
-  <div id="pdfOverlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:#555; z-index:10000; align-items:center; justify-content:center;">
-    <div id="pdfPrintArea" style="width: 297mm; height: 210mm; background: #fff; padding: 15mm; box-sizing: border-box; margin: auto; font-family: sans-serif;">
-      <div style="display: flex; justify-content: space-between; border-bottom: 3px solid #009bc1; padding-bottom: 10px; margin-bottom: 20px;">
+  <div id="pdfOverlay">
+    <div id="pdfPrintArea">
+      <div style="flex: 0 0 auto; display: flex; justify-content: space-between; border-bottom: 3px solid #009bc1; padding-bottom: 8px; margin-bottom: 15px;">
          <div>
-           <h1 style="margin: 0; color: #009bc1; font-size: 24px;">Relatório Estratégico</h1>
-           <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">Programa Comitê Atletas Energisa</p>
+           <h1 style="margin: 0; color: #009bc1; font-size: 22px;">Relatório Estratégico</h1>
+           <p style="margin: 5px 0 0 0; color: #666; font-size: 13px;">Programa Comitê Atletas Energisa</p>
          </div>
          <div style="text-align: right;">
            <p style="margin: 0; color: #999; font-size: 12px;">Gerado em: <strong id="pdfDataHoje" style="color: #333;"></strong></p>
          </div>
       </div>
-      <div style="display: flex; gap: 15px; margin-bottom: 20px;">
-         <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 8px; padding: 15px; text-align: center;">
-           <h3 style="margin: 0; font-size: 12px; color: #666; font-weight: normal;">Atletas Ativos</h3>
-           <p id="pdfAtivos" style="margin: 5px 0 0 0; font-size: 22px; font-weight: bold; color: #009bc1;">0</p>
+      <div style="flex: 0 0 auto; display: flex; gap: 15px; margin-bottom: 15px;">
+         <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 8px; padding: 10px; text-align: center;">
+           <h3 style="margin: 0; font-size: 11px; color: #666; font-weight: normal;">Atletas Ativos</h3>
+           <p id="pdfAtivos" style="margin: 5px 0 0 0; font-size: 20px; font-weight: bold; color: #009bc1;">0</p>
          </div>
-         <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 8px; padding: 15px; text-align: center;">
-           <h3 style="margin: 0; font-size: 12px; color: #666; font-weight: normal;">Equipe Bike</h3>
-           <p id="pdfBike" style="margin: 5px 0 0 0; font-size: 22px; font-weight: bold; color: #009bc1;">0</p>
+         <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 8px; padding: 10px; text-align: center;">
+           <h3 style="margin: 0; font-size: 11px; color: #666; font-weight: normal;">Equipe Bike</h3>
+           <p id="pdfBike" style="margin: 5px 0 0 0; font-size: 20px; font-weight: bold; color: #009bc1;">0</p>
          </div>
-         <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 8px; padding: 15px; text-align: center;">
-           <h3 style="margin: 0; font-size: 12px; color: #666; font-weight: normal;">Equipe Corrida</h3>
-           <p id="pdfCorrida" style="margin: 5px 0 0 0; font-size: 22px; font-weight: bold; color: #009bc1;">0</p>
+         <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 8px; padding: 10px; text-align: center;">
+           <h3 style="margin: 0; font-size: 11px; color: #666; font-weight: normal;">Equipe Corrida</h3>
+           <p id="pdfCorrida" style="margin: 5px 0 0 0; font-size: 20px; font-weight: bold; color: #009bc1;">0</p>
          </div>
-         <div style="flex: 1; border: 1px solid #27ae60; background: rgba(39,174,96,0.05); border-radius: 8px; padding: 15px; text-align: center;">
-           <h3 style="margin: 0; font-size: 12px; color: #27ae60; font-weight: normal;">Investimento Total</h3>
-           <p id="pdfInvest" style="margin: 5px 0 0 0; font-size: 22px; font-weight: bold; color: #27ae60;">R$ 0,00</p>
+         <div style="flex: 1; border: 1px solid #27ae60; background: rgba(39,174,96,0.05); border-radius: 8px; padding: 10px; text-align: center;">
+           <h3 style="margin: 0; font-size: 11px; color: #27ae60; font-weight: normal;">Investimento Total</h3>
+           <p id="pdfInvest" style="margin: 5px 0 0 0; font-size: 20px; font-weight: bold; color: #27ae60;">R$ 0,00</p>
          </div>
-         <div style="flex: 1; border: 1px solid #27ae60; background: rgba(39,174,96,0.05); border-radius: 8px; padding: 15px; text-align: center;">
-           <h3 style="margin: 0; font-size: 12px; color: #27ae60; font-weight: normal;">Custo p/ Atleta</h3>
-           <p id="pdfRoi" style="margin: 5px 0 0 0; font-size: 22px; font-weight: bold; color: #27ae60;">R$ 0,00</p>
+         <div style="flex: 1; border: 1px solid #27ae60; background: rgba(39,174,96,0.05); border-radius: 8px; padding: 10px; text-align: center;">
+           <h3 style="margin: 0; font-size: 11px; color: #27ae60; font-weight: normal;">Custo p/ Atleta</h3>
+           <p id="pdfRoi" style="margin: 5px 0 0 0; font-size: 20px; font-weight: bold; color: #27ae60;">R$ 0,00</p>
          </div>
       </div>
-      <div style="display: flex; gap: 20px;">
-         <div style="flex: 1.5; border: 1px solid #e3e6eb; border-radius: 8px; padding: 15px;">
-           <h3 style="color: #009bc1; margin-top:0; border-bottom: 1px solid #eee; padding-bottom:10px; font-size: 14px;">Evolução de Pontos (Ano Atual)</h3>
-           <img id="pdfImgTendencia" style="width: 100%; max-height: 300px; object-fit: contain; margin-top: 15px;" />
-         </div>
-         <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 8px; padding: 15px;">
-           <h3 style="color: #34495e; margin-top:0; border-bottom: 1px solid #eee; padding-bottom:10px; font-size: 14px;">Indicadores de Força</h3>
-           <div style="margin-top: 15px;">
-             <p style="margin:5px 0; font-size: 14px;"><strong>Média Bike:</strong> <span id="pdfMediaBike" style="color: #009bc1;">0</span> pts/atleta</p>
-             <p style="margin:5px 0; font-size: 14px;"><strong>Média Corrida:</strong> <span id="pdfMediaCorrida" style="color: #00b37e;">0</span> pts/atleta</p>
+      <div style="flex: 1 1 auto; display: flex; gap: 15px; min-height: 0;">
+         <div style="flex: 1.2; display: flex; flex-direction: column; gap: 15px;">
+           <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 8px; padding: 12px; display: flex; flex-direction: column;">
+             <h3 style="color: #009bc1; margin:0 0 10px 0; border-bottom: 1px solid #eee; padding-bottom:5px; font-size: 13px;">Evolução de Pontos</h3>
+             <img id="pdfImgTendencia" style="width: 100%; flex: 1; object-fit: contain; min-height: 0;" />
            </div>
-           <h3 style="color: #f37021; margin-top:30px; border-bottom: 1px solid #eee; padding-bottom:10px; font-size: 14px;">Top 3 Atletas (Geral)</h3>
-           <ul id="pdfTop3" style="list-style: none; padding: 0; margin: 15px 0 0 0; font-size: 14px;"></ul>
+           <div style="flex: 0 0 auto; border: 1px solid #e3e6eb; border-radius: 8px; padding: 12px; display: flex; justify-content: space-around; align-items: center;">
+             <div style="text-align:center;"><span style="font-size:18px;">🚴</span><br><strong id="pdfMediaBike" style="color:#009bc1; font-size:16px;">0</strong> <small style="font-size:11px;">pts/atleta</small></div>
+             <div style="text-align:center;"><span style="font-size:18px;">🏃</span><br><strong id="pdfMediaCorrida" style="color:#00b37e; font-size:16px;">0</strong> <small style="font-size:11px;">pts/atleta</small></div>
+           </div>
+         </div>
+         <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 8px; padding: 12px;">
+           <h3 style="color: #f37021; margin:0 0 10px 0; border-bottom: 1px solid #eee; padding-bottom:5px; font-size: 13px;">Ranking Top 5 (Geral)</h3>
+           <ul id="pdfTop5" style="list-style: none; padding: 0; margin: 0; font-size: 12px;"></ul>
+         </div>
+         <div style="flex: 1; display: flex; flex-direction: column; gap: 15px;">
+           <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 8px; padding: 12px; overflow: hidden;">
+             <h3 style="color: #34495e; margin:0 0 10px 0; border-bottom: 1px solid #eee; padding-bottom:5px; font-size: 13px;">Últimos Eventos (Adesão)</h3>
+             <div id="pdfUltimosEventos" style="font-size: 11px;"></div>
+           </div>
+           <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 8px; padding: 12px; overflow: hidden;">
+             <h3 style="color: #8e44ad; margin:0 0 10px 0; border-bottom: 1px solid #eee; padding-bottom:5px; font-size: 13px;">Próximos Eventos</h3>
+             <div id="pdfProximosEventos" style="font-size: 11px;"></div>
+           </div>
          </div>
       </div>
     </div>
