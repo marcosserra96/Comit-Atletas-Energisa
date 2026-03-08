@@ -73,13 +73,18 @@ const fazerLogin = async () => {
   btn.textContent = "Entrar no Sistema"; btn.classList.remove("loading");
 };
 
-// Evento de Clique e Evento GLOBAL do "ENTER"
+// Evento de Clique
 document.getElementById("loginBtn").addEventListener("click", (e) => { e.preventDefault(); fazerLogin(); });
-document.getElementById("boxLogin").addEventListener("keypress", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    fazerLogin();
-  }
+
+// Evento Rigoroso da Tecla ENTER nos Campos
+const inputs = document.querySelectorAll("#email, #password");
+inputs.forEach(input => {
+  input.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      fazerLogin();
+    }
+  });
 });
 
 // Solicitar Acesso
