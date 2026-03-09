@@ -54,19 +54,21 @@
       <div class="dashboard-grid">
         <div style="display: flex; flex-direction: column; gap: 20px;">
           <div class="card" style="margin: 0;">
-            <h3 style="color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 10px;"><i data-lucide="trending-up"></i> Engajamento Anual (Pontos)</h3>
+            <h3 style="color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 10px;"><i data-lucide="trending-up"></i> Evolução Anual (Pontos)</h3>
             <div style="position: relative; height: 200px; margin-top: 15px;"><canvas id="graficoTendencia"></canvas></div>
           </div>
           <div class="card" style="margin: 0; display: flex; gap: 20px;">
             <div style="flex: 1; text-align: center;">
-              <h3 style="color: var(--primary); justify-content: center;"><i data-lucide="bike"></i> Retenção Bike</h3>
+              <h3 style="color: var(--primary); justify-content: center;"><i data-lucide="bike"></i> Participação Bike</h3>
               <div style="position: relative; height: 100px; width: 100px; margin: 10px auto;"><canvas id="graficoEngajBike"></canvas></div>
-              <p id="txtAtivosBike" style="font-size: 1.2rem; color: var(--primary);">0%</p>
+              <p id="txtAtivosBike" style="font-size: 1.2rem; font-weight: bold; color: var(--primary); margin-bottom:0;">0%</p>
+              <small style="color: var(--text-light);">(1+ presenças no ano)</small>
             </div>
             <div style="flex: 1; text-align: center; border-left: 1px solid var(--border);">
-              <h3 style="color: var(--secondary); justify-content: center;"><i data-lucide="footprints"></i> Retenção Corrida</h3>
+              <h3 style="color: var(--secondary); justify-content: center;"><i data-lucide="footprints"></i> Participação Corrida</h3>
               <div style="position: relative; height: 100px; width: 100px; margin: 10px auto;"><canvas id="graficoEngajCorrida"></canvas></div>
-              <p id="txtAtivosCorrida" style="font-size: 1.2rem; color: var(--secondary);">0%</p>
+              <p id="txtAtivosCorrida" style="font-size: 1.2rem; font-weight: bold; color: var(--secondary); margin-bottom:0;">0%</p>
+              <small style="color: var(--text-light);">(1+ presenças no ano)</small>
             </div>
           </div>
         </div>
@@ -79,24 +81,34 @@
               <div><span style="font-size: 1.5rem;">🏃</span><br><strong id="mediaCorrida" style="color: var(--secondary);">0</strong></div>
             </div>
           </div>
-          <div class="card" style="margin: 0;">
-            <h3 style="color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 10px;"><i data-lucide="award"></i> Pódio Top 3</h3>
-            <div style="display: flex; gap: 20px; margin-top: 15px;">
-              <div style="flex: 1;">
-                <h4 style="color: var(--primary); margin: 0 0 10px 0;">🚴 Bike</h4>
-                <ul id="listaPodioBike" style="list-style: none; padding: 0; margin: 0;"></ul>
-              </div>
-              <div style="flex: 1; border-left: 1px solid var(--border); padding-left: 15px;">
-                <h4 style="color: var(--secondary); margin: 0 0 10px 0;">🏃 Corrida</h4>
-                <ul id="listaPodioCorrida" style="list-style: none; padding: 0; margin: 0;"></ul>
-              </div>
+        </div>
+      </div>
+
+      <div class="dashboard-grid-3" style="margin-top: 20px;">
+        <div class="card" style="margin: 0;">
+          <h3 style="color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 10px;"><i data-lucide="award"></i> Pódio Top 3</h3>
+          <div style="display: flex; gap: 20px; margin-top: 15px;">
+            <div style="flex: 1;">
+              <h4 style="color: var(--primary); margin: 0 0 10px 0;">🚴 Bike</h4>
+              <ul id="listaPodioBike" style="list-style: none; padding: 0; margin: 0;"></ul>
+            </div>
+            <div style="flex: 1; border-left: 1px solid var(--border); padding-left: 15px;">
+              <h4 style="color: var(--secondary); margin: 0 0 10px 0;">🏃 Corrida</h4>
+              <ul id="listaPodioCorrida" style="list-style: none; padding: 0; margin: 0;"></ul>
             </div>
           </div>
-          <div class="card" style="margin: 0; flex: 1;">
-            <h3 style="color: #8e44ad; border-bottom: 1px solid var(--border); padding-bottom: 10px;"><i data-lucide="calendar"></i> Próximos Eventos</h3>
-            <div id="listaEventosAgenda" style="margin-top: 15px;"></div>
-            <button id="abrirModalEvento" class="btn-acao admin-only-element" style="width: 100%; margin-top: 15px; justify-content: center;"><i data-lucide="plus-circle"></i> Novo Evento</button>
-          </div>
+        </div>
+        
+        <div class="card" style="margin: 0;">
+          <h3 style="color: var(--danger); border-bottom: 1px solid var(--border); padding-bottom: 10px;"><i data-lucide="alert-triangle"></i> Radar de Inatividade</h3>
+          <p style="font-size: 0.8rem; color: #999; margin-bottom: 10px;">Atletas titulares sem pontuação registrada.</p>
+          <ul id="listaEvasao" style="list-style: none; padding: 0; margin: 0;"></ul>
+        </div>
+
+        <div class="card" style="margin: 0;">
+          <h3 style="color: #8e44ad; border-bottom: 1px solid var(--border); padding-bottom: 10px;"><i data-lucide="calendar"></i> Próximos Eventos</h3>
+          <div id="listaEventosAgenda" style="margin-top: 15px;"></div>
+          <button id="abrirModalEvento" class="btn-acao admin-only-element" style="width: 100%; margin-top: 15px; justify-content: center;"><i data-lucide="plus-circle"></i> Novo Evento</button>
         </div>
       </div>
     </section>
@@ -151,7 +163,7 @@
               </select>
             </div>
             <div style="flex:1"><label>Atleta</label><input type="text" id="filtroNomeHistorico" placeholder="Buscar Nome..." /></div>
-            <div><label style="visibility:hidden;">Ação</label><button id="btnLimparFiltrosExtrato" class="btn-acao" style="padding: 12px; margin-bottom:10px;"><i data-lucide="filter-x"></i> Limpar</button></div>
+            <div><label style="visibility:hidden; display:block;">.</label><button id="btnLimparFiltrosExtrato" class="btn-acao" style="padding: 12px; margin-bottom: 10px;"><i data-lucide="filter-x"></i> Limpar</button></div>
           </div>
         </div>
         <div class="tabela-container"><table class="tabela-simples"><thead><tr><th>Data</th><th>Atleta</th><th>Eq.</th><th>Regra</th><th>Pts</th><th>Ação</th></tr></thead><tbody id="listaHistorico"></tbody></table></div>
@@ -163,7 +175,7 @@
           <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: end;">
             <div style="flex:1"><label>Ano Base</label><input type="number" id="filtroAnoRelatorio" /></div>
             <div style="flex:1"><label>Equipe</label><select id="filtroEquipeRelatorio"><option value="">Todas</option><option value="Bicicleta">Bike</option><option value="Corrida">Corrida</option></select></div>
-            <div><label style="visibility:hidden;">Ação</label><button id="btnGerarRelatorio" class="btn-primario" style="margin-bottom:10px;">Filtrar Dados</button></div>
+            <div><label style="visibility:hidden; display:block;">.</label><button id="btnGerarRelatorio" class="btn-primario" style="margin-bottom: 10px;">Filtrar Dados</button></div>
           </div>
         </div>
         <div class="tabela-container"><table class="tabela-simples" id="tabelaConsolidada"><thead><tr><th>Atleta</th><th>Eq</th><th>Jan</th><th>Fev</th><th>Mar</th><th>Abr</th><th>Mai</th><th>Jun</th><th>Jul</th><th>Ago</th><th>Set</th><th>Out</th><th>Nov</th><th>Dez</th><th>Total</th></tr></thead><tbody id="listaRelatorio"></tbody></table></div>
@@ -197,7 +209,8 @@
         <button class="sub-tab admin-only-element" data-target="sub-aprovacoes"><i data-lucide="shield-alert"></i> Aprovações</button>
         <button class="sub-tab active" data-target="sub-cadastrar"><i data-lucide="user-plus"></i> Novo Membro</button>
         <button class="sub-tab" data-target="sub-equipes"><i data-lucide="users"></i> Equipes e Filas</button>
-        <button class="sub-tab admin-only-element" data-target="sub-regras"><i data-lucide="list-checks"></i> Regras de Pontos</button>
+        <button class="sub-tab admin-only-element" data-target="sub-regras"><i data-lucide="list-checks"></i> Regras</button>
+        <button class="sub-tab admin-only-element" data-target="sub-dados" style="color: var(--danger);"><i data-lucide="database"></i> Dados</button>
       </div>
 
       <div id="sub-aprovacoes" class="sub-content"><div class="tabela-container"><table class="tabela-simples"><tbody id="listaAprovacoes"></tbody></table></div></div>
@@ -218,7 +231,7 @@
 
       <div id="sub-equipes" class="sub-content">
         <div class="tertiary-menu">
-          <button class="t-tab active" data-target="tab-fila">Fila de Espera</button>
+          <button class="t-tab active" data-target="tab-fila">Filas de Espera</button>
           <button class="t-tab" data-target="tab-bike">Bicicleta</button>
           <button class="t-tab" data-target="tab-corrida">Corrida</button>
           <button class="t-tab admin-only-element" data-target="tab-comite">Comitê</button>
@@ -245,6 +258,24 @@
       <div id="sub-regras" class="sub-content">
         <button id="abrirModalRegra" class="btn-primario admin-only-element" style="margin-bottom:15px;">Nova Regra</button>
         <div class="tabela-container"><table class="tabela-simples"><tbody id="listaRegras"></tbody></table></div>
+      </div>
+
+      <div id="sub-dados" class="sub-content admin-only-element">
+        <div class="card" style="max-width: 600px; margin: 0 auto; text-align: center;">
+          <h3 style="color: var(--primary); justify-content: center; font-size: 1.2rem;"><i data-lucide="info"></i> Onde edito ou apago dados?</h3>
+          <p style="color: var(--text-light); font-size: 0.95rem; margin-bottom: 25px;">
+            Para garantir a integridade do sistema, as exclusões e edições são feitas diretamente nas telas de origem:
+            <br><br>
+            • <b>Editar Nome/Equipe de um Atleta:</b> Vá na aba "Equipes" e clique no ícone ✏️ ao lado do nome.<br>
+            • <b>Apagar Pessoas do Sistema:</b> Vá na aba "Equipes" e clique no ícone vermelho ❌.<br>
+            • <b>Apagar Pontos Lançados:</b> Vá em "Lançamentos > Extrato" e use o botão de Estorno.
+          </p>
+          <div style="border-top: 1px dashed var(--border); padding-top: 25px;">
+            <h4 style="color: var(--danger); margin: 0 0 10px 0;"><i data-lucide="alert-octagon" style="display:inline; vertical-align:middle;"></i> Zona de Perigo Total</h4>
+            <p style="font-size: 0.85rem; color: #999; margin-bottom: 15px;">Esta ação formata a base e apaga <b>TODO O HISTÓRICO</b>, despesas, regras e atletas (exceto sua conta Admin).</p>
+            <button id="btnLimparBase" class="btn-acao" style="color: var(--danger); border-color: var(--danger); width: 100%; justify-content: center; padding: 12px;"><i data-lucide="trash-2"></i> Zerar Todo o Banco de Dados</button>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -314,11 +345,9 @@
       </div>
 
       <div style="flex: 1; display: flex; gap: 15px; min-height: 0;">
-         
          <div style="flex: 1.8; display: flex; flex-direction: column; gap: 12px;">
-           
            <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 6px; padding: 10px; display: flex; flex-direction: column;">
-             <h3 style="color: #009bc1; margin:0 0 8px 0; border-bottom: 1px solid #eee; padding-bottom:4px; font-size: 12px; text-transform: uppercase;">Evolução de Engajamento</h3>
+             <h3 style="color: #009bc1; margin:0 0 8px 0; border-bottom: 1px solid #eee; padding-bottom:4px; font-size: 12px; text-transform: uppercase;">Evolução de Participação</h3>
              <div style="flex: 1; overflow: hidden; display: flex; align-items: center; justify-content: center;">
                <img id="pdfImgTendencia" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
              </div>
@@ -326,7 +355,7 @@
            
            <div style="flex: 0.8; display: flex; gap: 12px;">
              <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 6px; padding: 10px; overflow: hidden;">
-               <h3 style="color: #34495e; margin:0 0 8px 0; border-bottom: 1px solid #eee; padding-bottom:4px; font-size: 12px; text-transform: uppercase;">Últimos Eventos Realizados</h3>
+               <h3 style="color: #34495e; margin:0 0 8px 0; border-bottom: 1px solid #eee; padding-bottom:4px; font-size: 12px; text-transform: uppercase;">Últimos Eventos (Adesão)</h3>
                <div id="pdfUltimosEventos" style="font-size: 10px; line-height: 1.4;"></div>
              </div>
              <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 6px; padding: 10px; overflow: hidden;">
@@ -334,11 +363,9 @@
                <div id="pdfProximosEventos" style="font-size: 10px; line-height: 1.4;"></div>
              </div>
            </div>
-
          </div>
 
          <div style="flex: 1; display: flex; flex-direction: column; gap: 12px;">
-           
            <div style="flex: 0 0 auto; border: 1px solid #e3e6eb; border-radius: 6px; padding: 10px; display: flex; justify-content: space-around; align-items: center; background: #fafafa;">
              <div style="text-align:center;"><span style="font-size:16px;">🚴 Bike</span><br><strong id="pdfMediaBike" style="color:#009bc1; font-size:16px;">0</strong> <small style="font-size:10px;">pts/atleta</small></div>
              <div style="width: 1px; height: 30px; background: #ddd;"></div>
@@ -359,6 +386,10 @@
              </div>
            </div>
 
+           <div style="flex: 0.8; border: 1px solid #fbd5d5; background: #fef2f2; border-radius: 6px; padding: 10px; overflow: hidden;">
+             <h3 style="color: var(--danger); margin:0 0 5px 0; border-bottom: 1px solid #fca5a5; padding-bottom:4px; font-size: 11px; text-transform: uppercase;">⚠️ Radar de Evasão (Zero Pts)</h3>
+             <ul id="pdfListaEvasao" style="list-style: none; padding: 0; margin: 0; font-size: 10px; line-height: 1.4;"></ul>
+           </div>
          </div>
       </div>
     </div>
