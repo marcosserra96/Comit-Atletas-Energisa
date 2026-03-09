@@ -84,7 +84,7 @@ function construirMenu() {
 function iniciarPainelAdmin() {
   Chart.defaults.color = document.body.getAttribute('data-theme') === 'dark' ? '#aaa' : '#666';
   document.getElementById("logoutBtn").addEventListener("click", async () => { if(confirm("Sair?")) { await signOut(auth); window.location.href = "index.html"; } });
-  setupSubTabs(); setupCadastrarPessoa(); setupContabilizacao(); setupRelatorioConsolidado(); setupFinanceiro(); setupMetas(); setupPermissoesModal(); setupAgenda(); setupConfiguracoes(); setupModalRegras(); setupModalEditar(); setupLimparBase();
+  setupSubTabs(); setupCadastrarPessoa(); setupContabilizacao(); setupRelatorioConsolidado(); setupFinanceiro(); setupMetas(); setupPermissoesModal(); setupAgenda(); setupConfiguracoes(); setupModalRegras(); setupModalEditar(); setupLimparBase(); setupFichaAtleta();
   atualizarTelas();
 }
 
@@ -109,11 +109,7 @@ document.getElementById("btnExportarPDF").addEventListener("click", () => {
   showToast("Montando painel corporativo...", "info");
   
   const temaAtual = document.body.getAttribute("data-theme");
-  if (temaAtual === "dark") {
-    document.body.removeAttribute("data-theme");
-    Chart.defaults.color = '#666';
-    if(graficoLinhaInstancia) graficoLinhaInstancia.update();
-  }
+  if (temaAtual === "dark") { document.body.removeAttribute("data-theme"); Chart.defaults.color = '#666'; if(graficoLinhaInstancia) graficoLinhaInstancia.update(); }
 
   setTimeout(() => {
     document.getElementById("pdfDataHoje").textContent = new Date().toLocaleDateString('pt-BR');
@@ -145,51 +141,23 @@ document.getElementById("btnExportarPDF").addEventListener("click", () => {
     let htmlUltimos = "";
     listaUltimos.forEach(e => {
        const d = new Date(e.data + "T00:00:00").toLocaleDateString('pt-BR').substring(0,5);
-       htmlUltimos += `<div style="display:flex; justify-content:space-between; margin-bottom:4px; border-bottom:1px solid #f5f5f5; padding-bottom:4px;">
-         <span style="color:#666;"><strong>${d}</strong> - ${e.desc}</span>
-         <strong style="color:var(--primary);">${e.atletas.size} 👤</strong>
-       </div>`;
+       htmlUltimos += `<div style="display:flex; justify-content:space-between; margin-bottom:4px; border-bottom:1px solid #f5f5f5; padding-bottom:4px;"><span style="color:#666;"><strong>${d}</strong> - ${e.desc}</span><strong style="color:var(--primary);">${e.atletas.size} 👤</strong></div>`;
     });
     document.getElementById("pdfUltimosEventos").innerHTML = htmlUltimos || "<p style='color:#999; text-align:center;'>Nenhum evento.</p>";
 
-    // CONGELAMENTO DO GRÁFICO
     const canvasLinha = document.getElementById('graficoTendencia');
-    const widthOriginal = canvasLinha.style.width;
-    const heightOriginal = canvasLinha.style.height;
-    if(canvasLinha) { 
-      canvasLinha.style.width = '700px'; 
-      canvasLinha.style.height = '200px'; 
-      if(graficoLinhaInstancia) graficoLinhaInstancia.resize();
-      document.getElementById('pdfImgTendencia').src = canvasLinha.toDataURL("image/png", 1.0); 
-    }
+    const widthOriginal = canvasLinha.style.width; const heightOriginal = canvasLinha.style.height;
+    if(canvasLinha) { canvasLinha.style.width = '700px'; canvasLinha.style.height = '200px'; if(graficoLinhaInstancia) graficoLinhaInstancia.resize(); document.getElementById('pdfImgTendencia').src = canvasLinha.toDataURL("image/png", 1.0); }
 
-    const modalPdf = document.getElementById("pdfOverlay");
-    const printArea = document.getElementById("pdfPrintArea");
+    const modalPdf = document.getElementById("pdfOverlay"); const printArea = document.getElementById("pdfPrintArea");
     modalPdf.style.display = "flex";
 
     setTimeout(() => {
-      const opt = {
-        margin: 0, 
-        filename: `Report_Atletas_${document.getElementById("pdfDataHoje").textContent.replace(/\//g, '-')}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 }, 
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
-      };
-
+      const opt = { margin: 0, filename: `Report_Atletas_${document.getElementById("pdfDataHoje").textContent.replace(/\//g, '-')}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } };
       html2pdf().set(opt).from(printArea).save().then(() => { 
         modalPdf.style.display = "none"; 
-        
-        if(canvasLinha) {
-          canvasLinha.style.width = widthOriginal; 
-          canvasLinha.style.height = heightOriginal; 
-          if(graficoLinhaInstancia) graficoLinhaInstancia.resize();
-        }
-
-        if (temaAtual === "dark") {
-          document.body.setAttribute("data-theme", "dark");
-          Chart.defaults.color = '#aaa';
-          if(graficoLinhaInstancia) graficoLinhaInstancia.update();
-        }
+        if(canvasLinha) { canvasLinha.style.width = widthOriginal; canvasLinha.style.height = heightOriginal; if(graficoLinhaInstancia) graficoLinhaInstancia.resize(); }
+        if (temaAtual === "dark") { document.body.setAttribute("data-theme", "dark"); Chart.defaults.color = '#aaa'; if(graficoLinhaInstancia) graficoLinhaInstancia.update(); }
         showToast("Download Concluído!", "success"); 
       });
     }, 600);
@@ -201,12 +169,7 @@ document.getElementById("btnExportarPDF").addEventListener("click", () => {
 // =====================================================
 async function setupMetas() {
   const btn = document.getElementById("btnEditarMeta");
-  if(btn) {
-    btn.addEventListener("click", async () => {
-      const novaMeta = prompt("Digite a meta global de pontos (Digite 0 para ocultar):");
-      if(novaMeta !== null) { await setDoc(doc(db, "configuracoes", "metas"), { valor: Number(novaMeta) || 0 }); atualizarTelas(); }
-    });
-  }
+  if(btn) { btn.addEventListener("click", async () => { const novaMeta = prompt("Digite a meta global de pontos (Digite 0 para ocultar):"); if(novaMeta !== null) { await setDoc(doc(db, "configuracoes", "metas"), { valor: Number(novaMeta) || 0 }); atualizarTelas(); } }); }
 }
 
 function setupFinanceiro() {
@@ -214,12 +177,9 @@ function setupFinanceiro() {
   if(!btnSalvar) return;
   btnSalvar.addEventListener("click", async () => {
     const desc = document.getElementById("descDespesa").value.trim(), cat = document.getElementById("catDespesa").value, val = document.getElementById("valorDespesa").value, data = document.getElementById("dataDespesa").value;
-    const eventoId = document.getElementById("vincularEventoDespesa").value;
-    
-    let nomeEvento = "";
+    const eventoId = document.getElementById("vincularEventoDespesa").value; let nomeEvento = "";
     if (eventoId) { const eventoEncontrado = cacheEventos.find(e => e.id === eventoId); if(eventoEncontrado) nomeEvento = eventoEncontrado.titulo; }
     if (!desc || !val || !data) return showToast("Preencha descrição, valor e data!", "error");
-    
     btnSalvar.textContent = "Salvando..."; btnSalvar.disabled = true;
     try { 
       await addDoc(collection(db, "despesas"), { descricao: desc, categoria: cat, valor: parseFloat(val), data: data, eventoId: eventoId, eventoNome: nomeEvento, criadoEm: new Date().toISOString() }); 
@@ -232,18 +192,14 @@ function setupFinanceiro() {
 async function carregarFinanceiro() {
   const snap = await getDocs(query(collection(db, "despesas"), orderBy("data", "desc")));
   let html = ""; gastoTotalGlobal = 0;
-  
   const canEdit = userRole === "admin" || userPermissoes.includes("financeiro_edit");
-  const cardAdd = document.getElementById("cardNovaDespesa");
-  if(cardAdd) cardAdd.style.display = canEdit ? "block" : "none";
-
+  const cardAdd = document.getElementById("cardNovaDespesa"); if(cardAdd) cardAdd.style.display = canEdit ? "block" : "none";
   snap.forEach(d => {
     const desp = d.data(); gastoTotalGlobal += desp.valor;
     const btnExcluir = canEdit ? `<button class="btn-acao btn-excluir-despesa" data-id="${d.id}" style="color:red; border:0; padding:0;"><i data-lucide="trash" style="width:16px;"></i></button>` : '';
     const tagEvento = desp.eventoNome ? `<br><small style="color: var(--primary);"><i data-lucide="calendar" style="width:12px;"></i> ${desp.eventoNome}</small>` : '';
     html += `<tr><td>${new Date(desp.data + "T00:00:00").toLocaleDateString('pt-BR')}</td><td><strong>${desp.descricao}</strong>${tagEvento}</td><td style="color:var(--danger); font-weight:bold;">${desp.valor.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</td><td style="text-align:right;">${btnExcluir}</td></tr>`;
   });
-  
   if(document.getElementById("listaDespesas")) document.getElementById("listaDespesas").innerHTML = html || `<tr><td colspan='4'>Sem registros.</td></tr>`;
   if(document.getElementById("totalInvestimento")) document.getElementById("totalInvestimento").textContent = gastoTotalGlobal.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
   lucide.createIcons();
@@ -286,7 +242,7 @@ async function carregarAgenda() {
 }
 
 // =====================================================
-// 👥 EQUIPES & RENDERIZAÇÃO GRÁFICOS
+// 👥 EQUIPES & FICHA DO ATLETA
 // =====================================================
 async function carregarEquipesEDashboard() {
   const snap = await getDocs(query(collection(db, "atletas"), where("status", "==", "Aprovado")));
@@ -305,7 +261,6 @@ async function carregarEquipesEDashboard() {
   filaEspera.forEach((u) => {
     const strikes = u.recusas || 0;
     const badgeStrike = strikes > 0 ? `<span class="strike-badge">⚠️ ${strikes}/3</span>` : '';
-    
     if(u.equipe === "Fila - Bicicleta" || u.equipe === "Fila de Espera") { 
       const btnAprovar = `<button class="btn-acao btn-aprovar-fila" data-id="${u.id}" data-eq="Bicicleta" style="color:var(--secondary); padding:4px;"><i data-lucide="check" style="width:16px;"></i></button>`;
       const btnPular = `<button class="btn-acao btn-pular-fila" data-id="${u.id}" data-strikes="${strikes}" style="color:#f39c12; padding:4px;"><i data-lucide="skip-forward" style="width:16px;"></i></button>`;
@@ -322,12 +277,16 @@ async function carregarEquipesEDashboard() {
 
   titulares.forEach(u => {
     const pts = Number(u.pontuacaoTotal) || 0; const ativo = u.ativo !== false;
-    const btnPerm = (u.role === 'comite' && userRole === 'admin') ? `<button class="btn-primario btn-permissoes" data-id="${u.id}" data-nome="${u.nome}" style="background: #f39c12; padding: 6px 10px; font-size: 0.8rem; margin-left: 5px;"><i data-lucide="key" style="width: 14px;"></i> Acessos</button>` : '';
+    
+    // Switch de Ativar/Desativar e Ficha do Atleta
+    const switchAtivo = (userRole === 'admin' && u.role !== 'admin') ? `<label class="switch" title="Ativar/Desativar"><input type="checkbox" class="toggle-ativo" data-id="${u.id}" ${ativo ? 'checked' : ''}><span class="slider"></span></label>` : '';
+    const btnFicha = `<button class="btn-acao btn-ficha" data-id="${u.id}" style="color: var(--primary); border-color: var(--primary); padding: 4px; margin-left: 5px;" title="Ver Ficha Completa"><i data-lucide="clipboard-list" style="width: 16px;"></i></button>`;
+    const btnPerm = (u.role === 'comite' && userRole === 'admin') ? `<button class="btn-primario btn-permissoes" data-id="${u.id}" data-nome="${u.nome}" style="background: #f39c12; padding: 6px 10px; font-size: 0.8rem; margin-left: 5px;"><i data-lucide="key" style="width: 14px;"></i></button>` : '';
     const btnEditar = `<button class="btn-acao btn-editar-membro" data-id="${u.id}" data-nome="${u.nome}" data-email="${u.email}" data-eq="${u.equipe}" style="color: var(--warning); border-color: var(--warning); padding: 4px; margin-left: 5px;"><i data-lucide="edit-2" style="width: 16px;"></i></button>`;
     const btnExcluir = (auth.currentUser.uid !== u.id && userRole === "admin") ? `<button class="btn-acao btn-excluir-membro" data-id="${u.id}" style="color: red; border: 0; padding: 4px; margin-left: 5px;"><i data-lucide="x-circle" style="width: 18px;"></i></button>` : '';
     
     const displayPts = u.role === 'atleta' ? `<br><small style="color: var(--primary);">🏆 ${pts} pts</small>` : '';
-    const linha = `<tr><td class="${!ativo ? 'inativo-txt' : ''}"><strong>${u.nome}</strong>${displayPts}</td><td style="text-align: right; display:flex; justify-content:flex-end; align-items:center;">${btnPerm} ${btnEditar} ${btnExcluir}</td></tr>`;
+    const linha = `<tr><td class="${!ativo ? 'inativo-txt' : ''}" style="vertical-align:middle;"><strong>${u.nome}</strong>${displayPts}</td><td style="text-align: right; display:flex; justify-content:flex-end; align-items:center; min-height: 40px;">${switchAtivo} ${btnFicha} ${btnPerm} ${btnEditar} ${btnExcluir}</td></tr>`;
     
     if (u.role === "admin" || u.role === "comite") { htmlComite += linha; contComite++; }
     else if (u.equipe === "Corrida") { htmlCorrida += linha; contCorrida++; ptsCorrida += pts; todosAtletas.push({nome: u.nome, pts: pts, eq: u.equipe, id: u.id, ativo: ativo}); }
@@ -353,6 +312,19 @@ async function carregarEquipesEDashboard() {
   document.querySelectorAll(".btn-excluir-membro").forEach(btn => { btn.addEventListener("click", async (e) => { if(confirm("Apagar definitivamente?")) { await deleteDoc(doc(db, "atletas", e.currentTarget.dataset.id)); atualizarTelas(); }}); });
   document.querySelectorAll(".btn-editar-membro").forEach(btn => { btn.addEventListener("click", (e) => { const b = e.currentTarget; document.getElementById("editId").value = b.dataset.id; document.getElementById("editNome").value = b.dataset.nome; document.getElementById("editEmail").value = b.dataset.email !== "undefined" ? b.dataset.email : ""; document.getElementById("editPapel").value = b.dataset.eq; document.getElementById("modalEditarAtleta").style.display = "flex"; }); });
 
+  // Toggle Ativo
+  document.querySelectorAll(".toggle-ativo").forEach(chk => {
+    chk.addEventListener("change", async (e) => {
+      const isAtivo = e.target.checked; await updateDoc(doc(db, "atletas", e.target.dataset.id), { ativo: isAtivo });
+      const td = e.target.closest('tr').querySelector('td');
+      if(isAtivo) td.classList.remove('inativo-txt'); else td.classList.add('inativo-txt');
+      showToast(isAtivo ? "Atleta Ativado!" : "Atleta Inativado.", "info");
+    });
+  });
+
+  // Ficha do Atleta
+  document.querySelectorAll(".btn-ficha").forEach(btn => { btn.addEventListener("click", (e) => abrirFichaAtleta(e.currentTarget.dataset.id)); });
+
   document.querySelectorAll(".btn-permissoes").forEach(btn => {
     btn.addEventListener("click", (e) => {
       const b = e.currentTarget; document.getElementById("permNomeUsuario").textContent = b.dataset.nome; document.getElementById("permUserId").value = b.dataset.id;
@@ -372,6 +344,77 @@ function setupPermissoesModal() {
     if(selecionadas.length === 0) return showToast("Precisa ter pelo menos uma aba.", "error");
     await updateDoc(doc(db, "atletas", id), { permissoes: selecionadas }); showToast("Permissões atualizadas!", "success"); modal.style.display = "none"; atualizarTelas();
   });
+}
+
+// 📋 LÓGICA DA FICHA DO ATLETA (Resumo Completo)
+function setupFichaAtleta() {
+  document.getElementById("fecharModalFicha").addEventListener("click", () => document.getElementById("modalFichaAtleta").style.display = "none");
+  document.getElementById("btnSalvarComentario").addEventListener("click", async () => {
+    const aId = document.getElementById("fichaAtletaId").value;
+    const txt = document.getElementById("novoComentarioFicha").value.trim();
+    if(!txt) return;
+    
+    const meuNome = mapAtletas[auth.currentUser.uid] ? mapAtletas[auth.currentUser.uid].nome : "Comitê";
+    document.getElementById("btnSalvarComentario").disabled = true;
+    try {
+      await addDoc(collection(db, "comentarios_atletas"), { atletaId: aId, texto: txt, autorNome: meuNome, criadoEm: new Date().toISOString() });
+      document.getElementById("novoComentarioFicha").value = "";
+      carregarComentarios(aId);
+      showToast("Comentário salvo!", "success");
+    } catch(e) { showToast("Erro ao salvar comentário.", "error"); }
+    document.getElementById("btnSalvarComentario").disabled = false;
+  });
+}
+
+async function abrirFichaAtleta(id) {
+  const a = mapAtletas[id]; if(!a) return;
+  document.getElementById("fichaNome").textContent = a.nome;
+  document.getElementById("fichaEquipe").textContent = a.equipe;
+  document.getElementById("fichaPontos").textContent = a.pontuacaoTotal || 0;
+  
+  const statusEl = document.getElementById("fichaStatus");
+  if(a.ativo !== false) { statusEl.textContent = "Ativo no Sistema"; statusEl.style.color = "var(--secondary)"; } 
+  else { statusEl.textContent = "Desativado"; statusEl.style.color = "var(--danger)"; }
+  
+  document.getElementById("fichaAtletaId").value = id;
+
+  // Carrega o Histórico
+  const hist = historicoCompleto.filter(h => h.atletaId === id);
+  let htmlH = "";
+  if(hist.length === 0) htmlH = "<p style='color:#999;'>Nenhum registro encontrado.</p>";
+  hist.forEach(h => {
+    const dataF = new Date(h.dataTreino+"T00:00:00").toLocaleDateString('pt-BR');
+    const isFalta = h.pontos === 0;
+    const cor = isFalta ? "var(--accent)" : "var(--secondary)";
+    const ptsStr = isFalta ? "Falta Justificada" : `+${h.pontos} pts`;
+    htmlH += `<div style="border-bottom: 1px solid var(--border); padding: 8px 0; display:flex; justify-content:space-between; align-items:center;">
+      <div><strong>${dataF}</strong> - ${h.descTreino}<br><small style="color:#666;">${h.regraDesc}</small></div>
+      <div style="color:${cor}; font-weight:bold; text-align:right;">${ptsStr}</div>
+    </div>`;
+  });
+  document.getElementById("fichaHistorico").innerHTML = htmlH;
+
+  // Carrega Comentários
+  await carregarComentarios(id);
+  document.getElementById("modalFichaAtleta").style.display = "flex";
+}
+
+async function carregarComentarios(id) {
+  try {
+    const snap = await getDocs(query(collection(db, "comentarios_atletas"), where("atletaId", "==", id)));
+    let coments = []; snap.forEach(d => coments.push(d.data()));
+    coments.sort((a,b) => new Date(b.criadoEm) - new Date(a.criadoEm)); // Ordena decrescente em memória (evita erro de index)
+    
+    let html = "";
+    coments.forEach(c => {
+      const d = new Date(c.criadoEm).toLocaleDateString('pt-BR') + " às " + new Date(c.criadoEm).toLocaleTimeString('pt-BR').substring(0,5);
+      html += `<div class="comentario-box">
+        <div class="comentario-header"><span class="comentario-autor">${c.autorNome}</span> <span>${d}</span></div>
+        <div style="margin-top: 4px;">${c.texto}</div>
+      </div>`;
+    });
+    document.getElementById("fichaComentariosLista").innerHTML = html || "<p style='color:#999; font-size:0.85rem;'>Nenhum comentário registado.</p>";
+  } catch(e) { document.getElementById("fichaComentariosLista").innerHTML = "<p style='color:red;'>Erro ao carregar comentários.</p>"; }
 }
 
 async function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike, totalCorrida) {
@@ -396,7 +439,6 @@ async function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike, 
   if(document.getElementById("listaPodioBike")) document.getElementById("listaPodioBike").innerHTML = htmlPodio(bikeAtletas);
   if(document.getElementById("listaPodioCorrida")) document.getElementById("listaPodioCorrida").innerHTML = htmlPodio(corridaAtletas);
 
-  // RADAR DE EVASÃO (Inativos e Zerados)
   const evasaoAtletas = arrayAtletas.filter(a => a.pts === 0 || a.ativo === false).slice(0, 6);
   const htmlEvasao = (arr) => {
     if(arr.length===0) return "<li style='color:var(--secondary); font-size:0.85rem;'>Nenhum alerta. Todos participando! 🎉</li>";
@@ -647,6 +689,7 @@ function setupLimparBase() {
       const snapH = await getDocs(collection(db, "historico_pontos")); snapH.forEach(async (d) => { await deleteDoc(doc(db, "historico_pontos", d.id)); });
       const snapR = await getDocs(collection(db, "regras_pontuacao")); snapR.forEach(async (d) => { await deleteDoc(doc(db, "regras_pontuacao", d.id)); });
       const snapD = await getDocs(collection(db, "despesas")); snapD.forEach(async (d) => { await deleteDoc(doc(db, "despesas", d.id)); });
+      const snapC = await getDocs(collection(db, "comentarios_atletas")); snapC.forEach(async (d) => { await deleteDoc(doc(db, "comentarios_atletas", d.id)); });
       const snapA = await getDocs(collection(db, "atletas")); snapA.forEach(async (d) => { if (d.id !== auth.currentUser.uid) await deleteDoc(doc(db, "atletas", d.id)); });
       showToast("Base Limpa com sucesso!", "success"); setTimeout(() => window.location.reload(), 2000); 
     } catch(err) { showToast("Erro ao apagar.", "error"); btn.disabled = false; }
