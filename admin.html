@@ -448,6 +448,33 @@
     </div>
   </div>
 
+  <div id="modalEvento" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:2000; justify-content:center; align-items:center;">
+    <div style="background: var(--bg-card); padding: 30px; border-radius: 12px; width: 90%; max-width: 400px;">
+      <h3 style="color: #8e44ad; margin-top: 0;"><i data-lucide="calendar"></i> Novo Evento</h3>
+      
+      <label>Título / Nome do Evento</label>
+      <input type="text" id="eventoTitulo" placeholder="Ex: Treinão de Sábado" />
+      
+      <label>Local / Ponto de Encontro</label>
+      <input type="text" id="eventoLocal" placeholder="Ex: Praça Central" />
+      
+      <label>Equipe Alvo</label>
+      <select id="eventoModalidade">
+        <option value="Ambas">Todas (Geral)</option>
+        <option value="Bicicleta">Bicicleta</option>
+        <option value="Corrida">Corrida</option>
+      </select>
+      
+      <label>Data</label>
+      <input type="date" id="eventoData" />
+      
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+        <button id="fecharModalEvento" style="background: var(--border); padding: 10px; border-radius: 8px;">Cancelar</button>
+        <button id="salvarEventoBtn" class="btn-primario" style="background: #8e44ad;">Agendar Evento</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="js/admin.js"></script>
 </body>
 </html>
