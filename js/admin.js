@@ -143,7 +143,7 @@ document.getElementById("btnExportarPDF").addEventListener("click", () => {
        const d = new Date(e.data + "T00:00:00").toLocaleDateString('pt-BR').substring(0,5);
        htmlUltimos += `<div style="display:flex; justify-content:space-between; margin-bottom:4px; border-bottom:1px solid #f5f5f5; padding-bottom:4px;"><span style="color:#666;"><strong>${d}</strong> - ${e.desc}</span><strong style="color:var(--primary);">${e.atletas.size} 👤</strong></div>`;
     });
-    document.getElementById("pdfUltimosEventos").innerHTML = htmlUltimos || "<p style='color:#999; text-align:center;'>Nenhum evento processado.</p>";
+    document.getElementById("pdfUltimosEventos").innerHTML = htmlUltimos || "<p style='color:#999; text-align:center;'>Nenhum evento.</p>";
 
     const canvasLinha = document.getElementById('graficoTendencia');
     const widthOriginal = canvasLinha.style.width; const heightOriginal = canvasLinha.style.height;
@@ -242,7 +242,7 @@ async function carregarAgenda() {
 }
 
 // =====================================================
-// 👥 EQUIPES & FICHA DO ATLETA (Com Switch Restaurado)
+// 👥 EQUIPES & FICHA DO ATLETA
 // =====================================================
 async function carregarEquipesEDashboard() {
   const snap = await getDocs(query(collection(db, "atletas"), where("status", "==", "Aprovado")));
@@ -342,7 +342,6 @@ function setupPermissoesModal() {
   });
 }
 
-// 📋 LÓGICA DA FICHA DO ATLETA (Resumo e Histórico de Faltas)
 function setupFichaAtleta() {
   document.getElementById("fecharModalFicha").addEventListener("click", () => document.getElementById("modalFichaAtleta").style.display = "none");
   document.getElementById("btnSalvarComentario").addEventListener("click", async () => {
@@ -502,17 +501,12 @@ function setupContabilizacao() {
     
     if (!mod) { areaRegras.style.display = "none"; btnGerar.style.display = "none"; return; }
     
-    // Agora não é necessário pre-selecionar as regras no cabeçalho antes de gerar, 
-    // a pessoa gera a lista e usa os master-checkboxes lá em baixo.
-    
     const snapRegras = await getDocs(query(collection(db, "regras_pontuacao"), where("modalidade", "in", ["Ambas", mod])));
     if (snapRegras.empty) { showToast("Nenhuma regra para esta equipe.", "error"); btnGerar.style.display = "none"; return; }
     
-    // Opcional: Ainda guarda internamente para gerar a tabela, mas não precisa do UI confuso de chips
     let regrasArray = [];
     snapRegras.forEach(d => { const r = d.data(); regrasArray.push({ id: d.id, descricao: r.descricao, pontos: r.pontos }); });
     
-    // Como simplificamos a UI removendo as regras pré-selecionáveis do HTML (agora é tudo feito na tabela), chamamos a tabela direto
     await gerarTabelaContabilizacao(mod, regrasArray);
     document.getElementById("areaTabelaPontuacao").style.display = "block";
   });
@@ -520,7 +514,6 @@ function setupContabilizacao() {
   document.getElementById("btnSalvarPontuacao").addEventListener("click", salvarPontuacoesEmLote);
 }
 
-// 📐 TABELA ALINHADA COM CUMPRIU TODAS
 async function gerarTabelaContabilizacao(modalidade, regras) {
   const tabela = document.getElementById("tabelaPontuacao");
   const snapAtletas = await getDocs(query(collection(db, "atletas"), where("status", "==", "Aprovado"), where("equipe", "==", modalidade)));
@@ -528,7 +521,6 @@ async function gerarTabelaContabilizacao(modalidade, regras) {
   atletas.sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || "")));
   if (atletas.length === 0) { tabela.innerHTML = `<tr><td style='text-align:center; padding:20px;'>Nenhum atleta ativo nesta equipe.</td></tr>`; return; }
 
-  // 📐 HEADER COM ALINHAMENTO FLEXBOX
   let thead = `<thead><tr>
     <th style="vertical-align:middle; font-size:1rem;">Nome do Atleta</th>
     <th style="text-align:center; color:var(--accent); vertical-align:middle; min-width: 90px; border-left: 1px solid var(--border);">
@@ -554,7 +546,6 @@ async function gerarTabelaContabilizacao(modalidade, regras) {
   });
   thead += "</tr></thead>";
 
-  // 📐 BODY
   let tbody = "<tbody>";
   atletas.forEach(a => {
     tbody += `<tr>
@@ -577,19 +568,16 @@ async function gerarTabelaContabilizacao(modalidade, regras) {
   
   tabela.innerHTML = thead + tbody;
 
-  // LÓGICA MASTER (Cumpriu Todas)
   document.getElementById("checkMasterCumpriu").addEventListener("change", (e) => {
     document.querySelectorAll(".check-cumpriu").forEach(chk => { 
       if(!chk.disabled) { chk.checked = e.target.checked; chk.dispatchEvent(new Event('change')); }
     });
   });
 
-  // LÓGICA MASTER (Falta)
   document.getElementById("checkMasterFalta").addEventListener("change", (e) => { 
     document.querySelectorAll(".check-falta").forEach(chk => { chk.checked = e.target.checked; chk.dispatchEvent(new Event('change')); }); 
   });
   
-  // Lógica Individual Falta (Desativa as outras colunas da linha)
   document.querySelectorAll(".check-falta").forEach(chk => { 
     chk.addEventListener("change", (e) => { 
       const tr = e.target.closest("tr");
@@ -604,7 +592,6 @@ async function gerarTabelaContabilizacao(modalidade, regras) {
     }); 
   });
 
-  // Lógica Individual Cumpriu Todas
   document.querySelectorAll(".check-cumpriu").forEach(chk => {
     chk.addEventListener("change", (e) => {
       const tr = e.target.closest("tr");
@@ -780,7 +767,14 @@ function setupCadastrarPessoa() {
 async function carregarRegras() {
   const tbody = document.getElementById("listaRegras"); const snap = await getDocs(collection(db, "regras_pontuacao")); tbody.innerHTML = "";
   if (snap.empty) { tbody.innerHTML = `<tr><td colspan='4'>Nenhuma regra.</td></tr>`; return; }
-  snap.forEach(d => { const r = d.data(); const btnExcluir = (userRole === "admin") ? `<button class="btn-acao btn-excluir-regra" data-id="${d.id}" style="color:var(--danger); border-color:var(--danger);"><i data-lucide="trash" style="width:16px;"></i></button>` : ''; tbody.innerHTML += `<tr><td><strong>${r.descricao}</strong></td><td>${r.modalidade}</td><td><strong style="color:var(--primary);">+ ${r.pontos}</strong></td><td style="text-align:center;">${btnExcluir}</td></tr>`; });
+  
+  const canEdit = userRole === "admin" || userPermissoes.includes("gestao");
+  
+  snap.forEach(d => { 
+    const r = d.data(); 
+    const btnExcluir = canEdit ? `<button class="btn-acao btn-excluir-regra" data-id="${d.id}" style="color:var(--danger); border-color:var(--danger);"><i data-lucide="trash" style="width:16px;"></i></button>` : ''; 
+    tbody.innerHTML += `<tr><td><strong>${r.descricao}</strong></td><td>${r.modalidade}</td><td><strong style="color:var(--primary);">+ ${r.pontos}</strong></td><td style="text-align:center;">${btnExcluir}</td></tr>`; 
+  });
   lucide.createIcons();
   document.querySelectorAll(".btn-excluir-regra").forEach(btn => { btn.addEventListener("click", async (e) => { if(confirm("Apagar regra?")) { await deleteDoc(doc(db, "regras_pontuacao", e.currentTarget.dataset.id)); carregarRegras(); } }); });
 }
@@ -790,7 +784,7 @@ function setupModalRegras() {
   if(document.getElementById("abrirModalRegra")) document.getElementById("abrirModalRegra").addEventListener("click", () => modal.style.display = "flex");
   document.getElementById("fecharModalRegra").addEventListener("click", () => modal.style.display = "none");
   document.getElementById("salvarRegraBtn").addEventListener("click", async () => {
-    if (userRole !== "admin") return;
+    if (userRole !== "admin" && !userPermissoes.includes("gestao")) return showToast("Sem permissão para gerir regras.", "error");
     const desc = document.getElementById("regraDescricao").value.trim(), mod = document.getElementById("regraModalidade").value, pts = document.getElementById("regraPontos").value.trim();
     if (!desc || !pts) return;
     await addDoc(collection(db, "regras_pontuacao"), { descricao: desc, modalidade: mod, pontos: Number(pts), criadoEm: new Date().toISOString() });
