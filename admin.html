@@ -51,26 +51,35 @@
         <p id="textoMetaGeral" style="font-size: 0.9rem; text-align: right; margin-top: 5px; color: var(--text-light);"></p>
       </div>
 
-      <div class="dashboard-grid">
+     <div class="dashboard-grid">
         <div style="display: flex; flex-direction: column; gap: 20px;">
+          
           <div class="card" style="margin: 0;">
             <h3 style="color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 10px;"><i data-lucide="trending-up"></i> Evolução Anual (Pontos)</h3>
             <div style="position: relative; height: 200px; margin-top: 15px;"><canvas id="graficoTendencia"></canvas></div>
           </div>
-          <div class="card" style="margin: 0; display: flex; gap: 20px;">
-            <div style="flex: 1; text-align: center;">
+          
+          <div class="card" style="margin: 0; display: flex; gap: 20px; flex-wrap: wrap;">
+            <div style="flex: 1; text-align: center; min-width: 120px;">
               <h3 style="color: var(--primary); justify-content: center;"><i data-lucide="bike"></i> Participação Bike</h3>
               <div style="position: relative; height: 100px; width: 100px; margin: 10px auto;"><canvas id="graficoEngajBike"></canvas></div>
               <p id="txtAtivosBike" style="font-size: 1.2rem; font-weight: bold; color: var(--primary); margin-bottom:0;">0%</p>
               <small style="color: var(--text-light);">(1+ presenças no ano)</small>
             </div>
-            <div style="flex: 1; text-align: center; border-left: 1px solid var(--border);">
+            <div style="flex: 1; text-align: center; border-left: 1px solid var(--border); min-width: 120px;">
               <h3 style="color: var(--secondary); justify-content: center;"><i data-lucide="footprints"></i> Participação Corrida</h3>
               <div style="position: relative; height: 100px; width: 100px; margin: 10px auto;"><canvas id="graficoEngajCorrida"></canvas></div>
               <p id="txtAtivosCorrida" style="font-size: 1.2rem; font-weight: bold; color: var(--secondary); margin-bottom:0;">0%</p>
               <small style="color: var(--text-light);">(1+ presenças no ano)</small>
             </div>
           </div>
+
+          <div class="card" style="margin: 0;">
+            <h3 style="color: var(--danger); border-bottom: 1px solid var(--border); padding-bottom: 10px;"><i data-lucide="alert-triangle"></i> Radar de Inatividade</h3>
+            <p style="font-size: 0.85rem; color: #999; margin-bottom: 10px;">Atletas titulares que não possuem pontos este ano.</p>
+            <ul id="listaEvasao" style="list-style: none; padding: 0; margin: 0;"></ul>
+          </div>
+
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 20px;">
