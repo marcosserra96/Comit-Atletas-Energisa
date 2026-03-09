@@ -62,13 +62,13 @@
               <h3 style="color: var(--primary); justify-content: center;"><i data-lucide="bike"></i> Participação Bike</h3>
               <div style="position: relative; height: 100px; width: 100px; margin: 10px auto;"><canvas id="graficoEngajBike"></canvas></div>
               <p id="txtAtivosBike" style="font-size: 1.2rem; font-weight: bold; color: var(--primary); margin-bottom:0;">0%</p>
-              <small style="color: var(--text-light);"></small>
+              <small style="color: var(--text-light);">(1+ presenças no ano)</small>
             </div>
             <div style="flex: 1; text-align: center; border-left: 1px solid var(--border); min-width: 120px;">
               <h3 style="color: var(--secondary); justify-content: center;"><i data-lucide="footprints"></i> Participação Corrida</h3>
               <div style="position: relative; height: 100px; width: 100px; margin: 10px auto;"><canvas id="graficoEngajCorrida"></canvas></div>
               <p id="txtAtivosCorrida" style="font-size: 1.2rem; font-weight: bold; color: var(--secondary); margin-bottom:0;">0%</p>
-              <small style="color: var(--text-light);"></small>
+              <small style="color: var(--text-light);">(1+ presenças no ano)</small>
             </div>
           </div>
         </div>
@@ -172,7 +172,7 @@
 
     <section id="financeiro">
       <div class="dashboard-grid">
-        <div class="card admin-only-element" id="cardNovaDespesa" style="margin: 0; align-self: start; display: none;">
+        <div class="card" id="cardNovaDespesa" style="margin: 0; align-self: start; display: none;">
           <h3 style="color: #27ae60;"><i data-lucide="plus-circle"></i> Nova Despesa</h3>
           <label>Descrição</label><input type="text" id="descDespesa" />
           <label>Categoria</label><select id="catDespesa"><option value="Eventos e Inscrições">Eventos e Inscrições</option><option value="Uniformes e Materiais">Uniformes/Materiais</option><option value="Premiações e Brindes">Premiações</option><option value="Alimentação / Hidratação">Alimentação</option><option value="Outros">Outros</option></select>
@@ -194,7 +194,7 @@
 
     <section id="gestao">
       <div class="sub-menu">
-        <button class="sub-tab admin-only-element" data-target="sub-aprovacoes"><i data-lucide="shield-alert"></i> Aprovações</button>
+        <button class="sub-tab" data-target="sub-aprovacoes"><i data-lucide="shield-alert"></i> Aprovações</button>
         <button class="sub-tab active" data-target="sub-cadastrar"><i data-lucide="user-plus"></i> Novo Membro</button>
         <button class="sub-tab" data-target="sub-equipes"><i data-lucide="users"></i> Equipes e Filas</button>
         <button class="sub-tab" data-target="sub-regras"><i data-lucide="list-checks"></i> Regras</button>
@@ -222,7 +222,7 @@
           <button class="t-tab active" data-target="tab-fila">Filas de Espera</button>
           <button class="t-tab" data-target="tab-bike">Bicicleta</button>
           <button class="t-tab" data-target="tab-corrida">Corrida</button>
-          <button class="t-tab admin-only-element" data-target="tab-comite">Comitê</button>
+          <button class="t-tab" data-target="tab-comite">Comitê</button>
         </div>
         
         <div id="tab-fila" class="t-content active">
@@ -339,7 +339,7 @@
            <div style="background: #009bc1; color: white; font-weight: bold; font-size: 24px; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">⚡️</div>
            <div>
              <h1 style="margin: 0; color: #009bc1; font-size: 20px;">Relatório Estratégico</h1>
-             <p style="margin: 3px 0 0 0; color: #666; font-size: 12px;">Programa Atletas Energisa</p>
+             <p style="margin: 3px 0 0 0; color: #666; font-size: 12px;">Programa Comitê Atletas Energisa</p>
            </div>
          </div>
          <div style="text-align: right; display: flex; flex-direction: column; justify-content: flex-end;">
@@ -450,28 +450,12 @@
 
   <div id="modalEvento" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:2000; justify-content:center; align-items:center;">
     <div style="background: var(--bg-card); padding: 30px; border-radius: 12px; width: 90%; max-width: 400px;">
-      <h3 style="color: #8e44ad; margin-top: 0;"><i data-lucide="calendar"></i> Novo Evento</h3>
-      
-      <label>Título / Nome do Evento</label>
-      <input type="text" id="eventoTitulo" placeholder="Ex: Treinão de Sábado" />
-      
-      <label>Local / Ponto de Encontro</label>
-      <input type="text" id="eventoLocal" placeholder="Ex: Praça Central" />
-      
-      <label>Equipe Alvo</label>
-      <select id="eventoModalidade">
-        <option value="Ambas">Todas (Geral)</option>
-        <option value="Bicicleta">Bicicleta</option>
-        <option value="Corrida">Corrida</option>
-      </select>
-      
-      <label>Data</label>
+      <h3 style="color: #8e44ad; margin-top: 0;">Agendar Evento</h3>
+      <input type="text" id="eventoTitulo" placeholder="Ex: Corrida Rústica 10k" />
+      <input type="text" id="eventoLocal" placeholder="Local / Encontro" />
+      <select id="eventoModalidade"><option value="Ambas">Ambas</option><option value="Bicicleta">Bicicleta</option><option value="Corrida">Corrida</option></select>
       <input type="date" id="eventoData" />
-      
-      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-        <button id="fecharModalEvento" style="background: var(--border); padding: 10px; border-radius: 8px;">Cancelar</button>
-        <button id="salvarEventoBtn" class="btn-primario" style="background: #8e44ad;">Agendar Evento</button>
-      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;"><button id="fecharModalEvento" style="background: var(--border); padding: 10px;">Cancelar</button><button id="salvarEventoBtn" class="btn-primario" style="background: #8e44ad;">Salvar Evento</button></div>
     </div>
   </div>
 
