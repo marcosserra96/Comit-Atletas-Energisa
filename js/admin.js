@@ -7,11 +7,12 @@ import {
 let userRole = "atleta";
 let userPermissoes = [];
 let historicoCompleto = []; 
+let historicoFinanceiro = []; // NOVO: Para o relatório Excel da Rafaela
 let mapAtletas = {};        
 let graficoLinhaInstancia = null; 
 let graficoEngajBike = null;
 let graficoEngajCorrida = null;
-let gastoTotalGlobal = 0; 
+let gastoTotalGlobal = 0; // Usado para o ROI no card da Visão Geral
 let cacheEventos = [];
 
 function showToast(message, type = "info") {
@@ -21,7 +22,7 @@ function showToast(message, type = "info") {
 }
 
 // =====================================================
-// 🔒 INICIALIZAÇÃO & PERMISSÕES DINÂMICAS
+// 🔒 INICIALIZAÇÃO E PERMISSÕES
 // =====================================================
 onAuthStateChanged(auth, async (user) => {
   if (user) {
@@ -165,7 +166,7 @@ document.getElementById("btnExportarPDF").addEventListener("click", () => {
 });
 
 // =====================================================
-// 🎯 METAS & FINANCEIRO & AGENDA
+// 🎯 METAS & NOVO FINANCEIRO (ORÇAMENTO RAFAELA)
 // =====================================================
 async function setupMetas() {
   const btn = document.getElementById("btnEditarMeta");
@@ -173,39 +174,216 @@ async function setupMetas() {
 }
 
 function setupFinanceiro() {
-  const btnSalvar = document.getElementById("btnSalvarDespesa");
-  if(!btnSalvar) return;
-  btnSalvar.addEventListener("click", async () => {
-    const desc = document.getElementById("descDespesa").value.trim(), cat = document.getElementById("catDespesa").value, val = document.getElementById("valorDespesa").value, data = document.getElementById("dataDespesa").value;
-    const eventoId = document.getElementById("vincularEventoDespesa").value; let nomeEvento = "";
-    if (eventoId) { const eventoEncontrado = cacheEventos.find(e => e.id === eventoId); if(eventoEncontrado) nomeEvento = eventoEncontrado.titulo; }
-    if (!desc || !val || !data) return showToast("Preencha descrição, valor e data!", "error");
-    btnSalvar.textContent = "Salvando..."; btnSalvar.disabled = true;
-    try { 
-      await addDoc(collection(db, "despesas"), { descricao: desc, categoria: cat, valor: parseFloat(val), data: data, eventoId: eventoId, eventoNome: nomeEvento, criadoEm: new Date().toISOString() }); 
-      document.getElementById("descDespesa").value = ""; document.getElementById("valorDespesa").value = ""; document.getElementById("vincularEventoDespesa").value = "";
-      showToast("Despesa registrada!", "success"); atualizarTelas(); 
-    } catch(err) { showToast("Erro de permissão ou conexão.", "error"); } finally { btnSalvar.textContent = "Registrar Gasto"; btnSalvar.disabled = false; }
+  const selectCat = document.getElementById("catDespesa");
+  const areaForm = document.getElementById("areaFormFinanceiro");
+  const formCorrida = document.getElementById("formProvaCorrida");
+  const formOutros = document.getElementById("formOutrosTipos");
+  
+  const canEdit = userRole === "admin" || userPermissoes.includes("financeiro_edit");
+  const cardAdd = document.getElementById("cardNovaDespesa"); 
+  if(cardAdd) cardAdd.style.display = canEdit ? "block" : "none";
+
+  if(!selectCat) return;
+
+  // Mostra/Oculta campos dinâmicos dependendo do tipo
+  selectCat.addEventListener("change", (e) => {
+    const val = e.target.value;
+    if(!val) { areaForm.style.display = "none"; return; }
+    areaForm.style.display = "block";
+    
+    if(val === "Prova Corrida") {
+      formCorrida.style.display = "block";
+      formOutros.style.display = "none";
+      document.getElementById("equipeDespesa").value = "Corrida";
+      document.getElementById("equipeDespesa").disabled = true;
+    } else {
+      formCorrida.style.display = "none";
+      formOutros.style.display = "block";
+      document.getElementById("equipeDespesa").disabled = false;
+    }
   });
+
+  document.getElementById("btnSalvarDespesa").addEventListener("click", async () => {
+    const btn = document.getElementById("btnSalvarDespesa");
+    const cat = selectCat.value;
+    const desc = document.getElementById("descDespesa").value.trim();
+    const eq = document.getElementById("equipeDespesa").value;
+    const eventoId = document.getElementById("vincularEventoDespesa").value;
+    const obs = document.getElementById("obsDespesa").value.trim();
+    
+    if(!cat || !desc) return showToast("Preencha Tipo e Título/Descrição!", "error");
+
+    let dadosFinanceiros = {
+      categoria: cat, descricao: desc, equipe: eq, eventoId: eventoId, observacao: obs, criadoEm: new Date().toISOString()
+    };
+
+    if (cat === "Prova Corrida") {
+      const dt = document.getElementById("dataProva").value;
+      if(!dt) return showToast("Data da prova é obrigatória!", "error");
+      
+      const v = (id) => parseFloat(document.getElementById(id).value) || 0;
+      
+      dadosFinanceiros.dataBase = dt;
+      dadosFinanceiros.local = document.getElementById("localProva").value.trim();
+      dadosFinanceiros.detalhes = {
+        transporte: { orcado: v('orcTransp'), realizado: v('realTransp') },
+        hospedagem: { orcado: v('orcHosp'), realizado: v('realHosp') },
+        alimentacao: { orcado: v('orcAlim'), realizado: v('realAlim') },
+        inscricao: { orcado: v('orcInsc'), realizado: v('realInsc') },
+        demais: { orcado: v('orcDemais'), realizado: v('realDemais') }
+      };
+      
+      // Soma Totais
+      dadosFinanceiros.orcadoTotal = Object.values(dadosFinanceiros.detalhes).reduce((a, b) => a + b.orcado, 0);
+      dadosFinanceiros.realizadoTotal = Object.values(dadosFinanceiros.detalhes).reduce((a, b) => a + b.realizado, 0);
+
+    } else {
+      const dt = document.getElementById("dataDespesaNormal").value;
+      if(!dt) return showToast("Data de pagamento é obrigatória!", "error");
+      
+      dadosFinanceiros.dataBase = dt;
+      dadosFinanceiros.orcadoTotal = parseFloat(document.getElementById("valorOrcadoNormal").value) || 0;
+      dadosFinanceiros.realizadoTotal = parseFloat(document.getElementById("valorRealizadoNormal").value) || 0;
+      dadosFinanceiros.detalhes = {};
+    }
+
+    btn.textContent = "Gravando..."; btn.disabled = true;
+    try {
+      await addDoc(collection(db, "despesas"), dadosFinanceiros);
+      showToast("Orçamento registrado com sucesso!", "success");
+      
+      // Limpar formulário
+      document.querySelectorAll("#areaFormFinanceiro input").forEach(i => i.value = "");
+      document.getElementById("obsDespesa").value = "";
+      selectCat.value = ""; areaForm.style.display = "none";
+      
+      atualizarTelas();
+    } catch(err) {
+      showToast("Erro ao gravar dados financeiros.", "error");
+    } finally {
+      btn.textContent = "Registrar no Orçamento"; btn.disabled = false;
+    }
+  });
+
+  const btnExport = document.getElementById("btnExportarFinExcel");
+  if(btnExport) btnExport.addEventListener("click", () => exportarFinanceiroExcel());
 }
 
 async function carregarFinanceiro() {
-  const snap = await getDocs(query(collection(db, "despesas"), orderBy("data", "desc")));
-  let html = ""; gastoTotalGlobal = 0;
+  const snap = await getDocs(query(collection(db, "despesas"), orderBy("dataBase", "desc")));
+  historicoFinanceiro = [];
+  let html = "";
+  let orcadoGeral = 0, realizadoGeral = 0;
+  let orcadoBike = 0, realizadoBike = 0, orcadoCor = 0, realizadoCor = 0;
+
   const canEdit = userRole === "admin" || userPermissoes.includes("financeiro_edit");
-  const cardAdd = document.getElementById("cardNovaDespesa"); if(cardAdd) cardAdd.style.display = canEdit ? "block" : "none";
+
   snap.forEach(d => {
-    const desp = d.data(); gastoTotalGlobal += desp.valor;
+    const desp = d.data();
+    historicoFinanceiro.push({id: d.id, ...desp});
+    
+    orcadoGeral += desp.orcadoTotal || 0;
+    realizadoGeral += desp.realizadoTotal || 0;
+    
+    if(desp.equipe === "Bicicleta" || desp.equipe === "Ambas") {
+      orcadoBike += desp.orcadoTotal || 0;
+      realizadoBike += desp.realizadoTotal || 0;
+    }
+    if(desp.equipe === "Corrida" || desp.equipe === "Ambas") {
+      orcadoCor += desp.orcadoTotal || 0;
+      realizadoCor += desp.realizadoTotal || 0;
+    }
+
     const btnExcluir = canEdit ? `<button class="btn-acao btn-excluir-despesa" data-id="${d.id}" style="color:red; border:0; padding:0;"><i data-lucide="trash" style="width:16px;"></i></button>` : '';
-    const tagEvento = desp.eventoNome ? `<br><small style="color: var(--primary);"><i data-lucide="calendar" style="width:12px;"></i> ${desp.eventoNome}</small>` : '';
-    html += `<tr><td>${new Date(desp.data + "T00:00:00").toLocaleDateString('pt-BR')}</td><td><strong>${desp.descricao}</strong>${tagEvento}</td><td style="color:var(--danger); font-weight:bold;">${desp.valor.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</td><td style="text-align:right;">${btnExcluir}</td></tr>`;
+    const badgeProva = desp.categoria === 'Prova Corrida' ? `<br><small style="color:var(--secondary);"><i data-lucide="map-pin" style="width:12px;"></i> ${desp.local}</small>` : '';
+    
+    const money = (v) => (v||0).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+    html += `<tr>
+      <td>${new Date(desp.dataBase+"T00:00:00").toLocaleDateString('pt-BR')}</td>
+      <td><strong>${desp.descricao}</strong><br><small>${desp.categoria}</small>${badgeProva}</td>
+      <td>${desp.equipe}</td>
+      <td style="color:#666;">${money(desp.orcadoTotal)}</td>
+      <td style="color:var(--primary); font-weight:bold;">${money(desp.realizadoTotal)}</td>
+      <td style="text-align:right;">${btnExcluir}</td>
+    </tr>`;
   });
-  if(document.getElementById("listaDespesas")) document.getElementById("listaDespesas").innerHTML = html || `<tr><td colspan='4'>Sem registros.</td></tr>`;
+
+  if(document.getElementById("listaDespesas")) document.getElementById("listaDespesas").innerHTML = html || `<tr><td colspan='6'>Sem registros orçamentais.</td></tr>`;
+  
+  gastoTotalGlobal = realizadoGeral; // Passando para o ROI Geral
   if(document.getElementById("totalInvestimento")) document.getElementById("totalInvestimento").textContent = gastoTotalGlobal.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+
+  // Atualizar Dashboard Financeiro da Rafaela
+  const moneyStr = (v) => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+  if(document.getElementById("dashFinOrcadoTotal")) document.getElementById("dashFinOrcadoTotal").textContent = moneyStr(orcadoGeral);
+  if(document.getElementById("dashFinRealizadoTotal")) document.getElementById("dashFinRealizadoTotal").textContent = moneyStr(realizadoGeral);
+  if(document.getElementById("dashFinSaldoTotal")) {
+    const saldo = orcadoGeral - realizadoGeral;
+    const el = document.getElementById("dashFinSaldoTotal");
+    el.textContent = moneyStr(saldo);
+    el.style.color = saldo < 0 ? 'var(--danger)' : '#8e44ad';
+  }
+
+  if(document.getElementById("finBikeOrcado")) {
+    document.getElementById("finBikeOrcado").textContent = moneyStr(orcadoBike);
+    document.getElementById("finBikeRealizado").textContent = moneyStr(realizadoBike);
+    const percB = orcadoBike > 0 ? Math.min((realizadoBike / orcadoBike)*100, 100) : 0;
+    document.getElementById("barraBikeFin").style.width = `${percB}%`;
+    document.getElementById("barraBikeFin").style.background = percB >= 100 ? 'var(--danger)' : 'var(--primary)';
+  }
+
+  if(document.getElementById("finCorridaOrcado")) {
+    document.getElementById("finCorridaOrcado").textContent = moneyStr(orcadoCor);
+    document.getElementById("finCorridaRealizado").textContent = moneyStr(realizadoCor);
+    const percC = orcadoCor > 0 ? Math.min((realizadoCor / orcadoCor)*100, 100) : 0;
+    document.getElementById("barraCorridaFin").style.width = `${percC}%`;
+    document.getElementById("barraCorridaFin").style.background = percC >= 100 ? 'var(--danger)' : 'var(--secondary)';
+  }
+
   lucide.createIcons();
-  document.querySelectorAll(".btn-excluir-despesa").forEach(btn => { btn.addEventListener("click", async (e) => { if(confirm("Excluir despesa?")) { await deleteDoc(doc(db, "despesas", e.currentTarget.dataset.id)); atualizarTelas(); } }); });
+  document.querySelectorAll(".btn-excluir-despesa").forEach(btn => { 
+    btn.addEventListener("click", async (e) => { 
+      if(confirm("Excluir este registo do orçamento?")) { 
+        await deleteDoc(doc(db, "despesas", e.currentTarget.dataset.id)); 
+        atualizarTelas(); 
+      } 
+    }); 
+  });
 }
 
+function exportarFinanceiroExcel() {
+  if(historicoFinanceiro.length === 0) return showToast("Nenhum dado financeiro para exportar.", "error");
+  
+  let csv = "\uFEFF"; 
+  csv += "Data;Categoria;Descrição;Equipe;Local;Observação;Transporte (Orc);Transporte (Real);Hospedagem (Orc);Hospedagem (Real);Alimentacao (Orc);Alimentacao (Real);Inscricao (Orc);Inscricao (Real);Outros (Orc);Outros (Real);Total Orçado;Total Realizado;Saldo\r\n";
+  
+  historicoFinanceiro.forEach(d => {
+    const n = (v) => (v || 0).toFixed(2).replace('.', ',');
+    const dt = d.detalhes || {};
+    
+    let linha = [
+      d.dataBase ? new Date(d.dataBase+"T00:00:00").toLocaleDateString('pt-BR') : "-",
+      d.categoria || "-", d.descricao || "-", d.equipe || "-", d.local || "-", d.observacao || "-",
+      n(dt.transporte?.orcado), n(dt.transporte?.realizado),
+      n(dt.hospedagem?.orcado), n(dt.hospedagem?.realizado),
+      n(dt.alimentacao?.orcado), n(dt.alimentacao?.realizado),
+      n(dt.inscricao?.orcado), n(dt.inscricao?.realizado),
+      n(dt.demais?.orcado), n(dt.demais?.realizado),
+      n(d.orcadoTotal), n(d.realizadoTotal), n((d.orcadoTotal||0) - (d.realizadoTotal||0))
+    ];
+    
+    csv += linha.map(col => `"${String(col).replace(/"/g, '""')}"`).join(";") + "\r\n";
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); 
+  const url = URL.createObjectURL(blob); 
+  const a = document.createElement("a"); 
+  a.href = url; a.download = `Relatorio_Orcamental.csv`; a.click(); URL.revokeObjectURL(url);
+}
+
+// =====================================================
+// 📅 AGENDA
+// =====================================================
 function setupAgenda() {
   const modal = document.getElementById("modalEvento");
   if(document.getElementById("abrirModalEvento")) document.getElementById("abrirModalEvento").addEventListener("click", () => modal.style.display = "flex");
@@ -245,7 +423,7 @@ async function carregarAgenda() {
 }
 
 // =====================================================
-// 👥 EQUIPES & FICHA DO ATLETA
+// 👥 EQUIPES, FICHA DO ATLETA E FILA INTELIGENTE
 // =====================================================
 async function carregarEquipesEDashboard() {
   const snap = await getDocs(query(collection(db, "atletas"), where("status", "==", "Aprovado")));
@@ -286,7 +464,6 @@ async function carregarEquipesEDashboard() {
   titulares.forEach(u => {
     const pts = Number(u.pontuacaoTotal) || 0; const ativo = u.ativo !== false;
     
-    // Apenas admin ou comitê COM permissão "gestao" podem editar/excluir
     const switchAtivo = (hasGestao && u.role !== 'admin') ? `<label class="switch" title="Ativar/Desativar"><input type="checkbox" class="toggle-ativo" data-id="${u.id}" ${ativo ? 'checked' : ''}><span class="slider"></span></label>` : '';
     const btnFicha = `<button class="btn-acao btn-ficha" data-id="${u.id}" style="color: var(--primary); border-color: var(--primary); padding: 4px; margin-left: 5px;" title="Ver Ficha Completa"><i data-lucide="clipboard-list" style="width: 16px;"></i></button>`;
     const btnPerm = (u.role === 'comite' && userRole === 'admin') ? `<button class="btn-primario btn-permissoes" data-id="${u.id}" data-nome="${u.nome}" style="background: #f39c12; padding: 6px 10px; font-size: 0.8rem; margin-left: 5px;"><i data-lucide="key" style="width: 14px;"></i></button>` : '';
@@ -316,7 +493,52 @@ async function carregarEquipesEDashboard() {
   lucide.createIcons();
 
   document.querySelectorAll(".btn-aprovar-fila").forEach(btn => { btn.addEventListener("click", async (e) => { if(confirm(`Aprovar atleta?`)) { await updateDoc(doc(db, "atletas", e.currentTarget.dataset.id), { equipe: e.currentTarget.dataset.eq, recusas: 0 }); atualizarTelas(); }}); });
-  document.querySelectorAll(".btn-pular-fila").forEach(btn => { btn.addEventListener("click", async (e) => { const id = e.currentTarget.dataset.id; let st = parseInt(e.currentTarget.dataset.strikes); if(confirm(`Passar a vez do atleta?`)) { st++; if(st>=3) { alert("3 recusas! Movido pro fim da fila."); await updateDoc(doc(db, "atletas", id), { recusas: 0, criadoEm: new Date().toISOString() }); } else { await updateDoc(doc(db, "atletas", id), { recusas: st }); } atualizarTelas(); }}); });
+  
+  // NOVA LÓGICA DA FILA: Passar a vez troca de lugar
+  document.querySelectorAll(".btn-pular-fila").forEach(btn => { 
+    btn.addEventListener("click", async (e) => { 
+      const id = e.currentTarget.dataset.id; 
+      let st = parseInt(e.currentTarget.dataset.strikes); 
+      
+      if(confirm(`Passar a vez do atleta? Ele trocará de posição com o próximo da fila.`)) { 
+        st++; 
+        
+        if(st >= 3) { 
+          if(confirm("Este atleta já recusou 3 vezes. Deseja removê-lo definitivamente da fila? (Se cancelar, ele ganha mais 3 chances)")) {
+             await updateDoc(doc(db, "atletas", id), { ativo: false, equipe: "Nenhuma" });
+             showToast("Atleta removido da fila.", "info");
+             atualizarTelas();
+             return;
+          } else {
+             st = 0; // Reseta as chances
+          }
+        }
+        
+        // Lógica de trocar com o próximo
+        const eqFila = mapAtletas[id].equipe;
+        const filaAtual = Object.values(mapAtletas)
+            .filter(a => a.equipe === eqFila && a.ativo !== false)
+            .sort((a, b) => new Date(a.criadoEm || 0) - new Date(b.criadoEm || 0));
+        
+        const idx = filaAtual.findIndex(a => a.id === id);
+        if (idx >= 0 && idx < filaAtual.length - 1) {
+            // Troca as datas de criação (criadoEm) para inverter a ordem
+            const idProximo = filaAtual[idx + 1].id;
+            const dataAtual = mapAtletas[id].criadoEm;
+            const dataProximo = mapAtletas[idProximo].criadoEm;
+            
+            await updateDoc(doc(db, "atletas", id), { recusas: st, criadoEm: dataProximo });
+            await updateDoc(doc(db, "atletas", idProximo), { criadoEm: dataAtual });
+            showToast("Posições trocadas na fila com sucesso!", "success");
+        } else {
+            await updateDoc(doc(db, "atletas", id), { recusas: st });
+            showToast("Recusa registrada. Ele já é o último da fila.", "info");
+        }
+        atualizarTelas(); 
+      }
+    }); 
+  });
+  
   document.querySelectorAll(".btn-excluir-membro").forEach(btn => { btn.addEventListener("click", async (e) => { if(confirm("Apagar definitivamente?")) { await deleteDoc(doc(db, "atletas", e.currentTarget.dataset.id)); atualizarTelas(); }}); });
   document.querySelectorAll(".btn-editar-membro").forEach(btn => { btn.addEventListener("click", (e) => { const b = e.currentTarget; document.getElementById("editId").value = b.dataset.id; document.getElementById("editNome").value = b.dataset.nome; document.getElementById("editEmail").value = b.dataset.email !== "undefined" ? b.dataset.email : ""; document.getElementById("editPapel").value = b.dataset.eq; document.getElementById("modalEditarAtleta").style.display = "flex"; }); });
 
@@ -612,7 +834,12 @@ async function gerarTabelaContabilizacao(modalidade, regras) {
 }
 
 async function salvarPontuacoesEmLote() {
-  const desc = document.getElementById("descTreino").value.trim(), data = document.getElementById("dataTreino").value;
+  const desc = document.getElementById("descTreino").value.trim();
+  const data = document.getElementById("dataTreino").value;
+  
+  const hoje = new Date().toISOString().split('T')[0];
+  if (data > hoje) return showToast("Acesso Negado: Não é permitido fazer lançamentos em datas futuras!", "error");
+
   const eventoIdSelecionado = document.getElementById("lancarEventoSelect").value;
   const checksPontos = document.querySelectorAll(".check-ponto:checked"), checksFaltas = document.querySelectorAll(".check-falta:checked");
   
@@ -668,6 +895,9 @@ function filtrarHistorico() {
   const tbody = document.getElementById("listaHistorico"); tbody.innerHTML = "";
   if (dados.length === 0) { tbody.innerHTML = `<tr><td colspan='6' style='text-align:center;'>Nenhum registro.</td></tr>`; return; }
 
+  // BOTÃO ESTORNO VISÍVEL COM PERMISSÃO DE CONTABILIZAÇÃO
+  const podeEstornar = userRole === "admin" || userPermissoes.includes("contabilizacao");
+
   dados.forEach(h => {
     const atleta = mapAtletas[h.atletaId]; 
     let nomeDisplay = h.atletaNome || (atleta ? atleta.nome : "Desconhecido");
@@ -677,7 +907,7 @@ function filtrarHistorico() {
     else if (!atleta) { nomeDisplay += " <small style='color:#999; font-weight:bold;'>(Excluído)</small>"; }
 
     let ptsV = h.pontos === 0 ? `<span style="color:var(--accent);">Justificada</span>` : `+${h.pontos}`;
-    const btnEstorno = (userRole === "admin") ? `<button class="btn-acao btn-estornar" data-id="${h.id}" data-atleta="${h.atletaId}" data-pontos="${h.pontos}" style="color:var(--danger); border-color:var(--danger);"><i data-lucide="undo-2" style="width:16px;"></i></button>` : '';
+    const btnEstorno = podeEstornar ? `<button class="btn-acao btn-estornar" data-id="${h.id}" data-atleta="${h.atletaId}" data-pontos="${h.pontos}" style="color:var(--danger); border-color:var(--danger);"><i data-lucide="undo-2" style="width:16px;"></i></button>` : '';
     tbody.innerHTML += `<tr><td>${(h.dataTreino?new Date(h.dataTreino+"T00:00:00").toLocaleDateString('pt-BR'):"-")}</td><td><strong>${nomeDisplay}</strong></td><td>${eqDisplay}</td><td>${h.descTreino}<br><small style="color:var(--primary);">${h.regraDesc}</small></td><td style="text-align:center; color:var(--secondary); font-weight:bold;">${ptsV}</td><td style="text-align:right;">${btnEstorno}</td></tr>`;
   });
   lucide.createIcons();
@@ -760,6 +990,7 @@ async function setupAprovacoes() {
   document.querySelectorAll(".btn-rejeitar").forEach(btn => btn.addEventListener("click", async (e) => { if(confirm("Rejeitar?")) { await deleteDoc(doc(db, "atletas", e.currentTarget.dataset.id)); atualizarTelas(); } }));
 }
 
+// CADASTRO COM FEEDBACK VISUAL
 function setupCadastrarPessoa() {
   document.getElementById("btnCadastrarPessoa").addEventListener("click", async (e) => {
     const nome = document.getElementById("novoNome").value.trim(), email = document.getElementById("novoEmail").value.trim(), papel = document.getElementById("novoPapel").value, btn = e.target;
@@ -768,7 +999,17 @@ function setupCadastrarPessoa() {
     try {
       btn.textContent = "Salvando..."; btn.disabled = true;
       await addDoc(collection(db, "atletas"), { nome: nome, email: email, role: role, equipe: equipe, status: "Aprovado", ativo: true, pontuacaoTotal: 0, recusas: 0, criadoEm: new Date().toISOString() });
-      showToast(`${nome} adicionado!`, "success"); document.getElementById("novoNome").value = ""; document.getElementById("novoEmail").value = ""; btn.textContent = "Adicionar"; btn.disabled = false; atualizarTelas(); 
+      
+      document.getElementById("novoNome").value = ""; document.getElementById("novoEmail").value = ""; 
+      showToast(`${nome} adicionado com sucesso!`, "success"); 
+      
+      // Auto-redirecionamento
+      document.querySelector('[data-target="sub-equipes"]').click();
+      if (equipe.includes("Fila")) document.querySelector('[data-target="tab-fila"]').click();
+      else if (equipe === "Bicicleta") document.querySelector('[data-target="tab-bike"]').click();
+      else if (equipe === "Corrida") document.querySelector('[data-target="tab-corrida"]').click();
+
+      btn.textContent = "Adicionar"; btn.disabled = false; atualizarTelas(); 
     } catch (error) { showToast("Erro.", "error"); btn.textContent = "Adicionar"; btn.disabled = false; }
   });
 }
