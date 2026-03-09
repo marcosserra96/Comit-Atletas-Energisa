@@ -496,13 +496,21 @@ function setupContabilizacao() {
   });
 
   document.getElementById("modTreino").addEventListener("change", async (e) => {
-    const mod = e.target.value; const areaRegras = document.getElementById("areaSelecaoRegras"), listaRegras = document.getElementById("listaRegrasTreino"), btnGerar = document.getElementById("btnGerarLista");
+    const mod = e.target.value; 
+    const btnGerar = document.getElementById("btnGerarLista");
     document.getElementById("areaTabelaPontuacao").style.display = "none"; 
     
-    if (!mod) { areaRegras.style.display = "none"; btnGerar.style.display = "none"; return; }
+    if (!mod) { 
+      if(btnGerar) btnGerar.style.display = "none"; 
+      return; 
+    }
     
     const snapRegras = await getDocs(query(collection(db, "regras_pontuacao"), where("modalidade", "in", ["Ambas", mod])));
-    if (snapRegras.empty) { showToast("Nenhuma regra para esta equipe.", "error"); btnGerar.style.display = "none"; return; }
+    if (snapRegras.empty) { 
+      showToast("Nenhuma regra para esta equipe.", "error"); 
+      if(btnGerar) btnGerar.style.display = "none"; 
+      return; 
+    }
     
     let regrasArray = [];
     snapRegras.forEach(d => { const r = d.data(); regrasArray.push({ id: d.id, descricao: r.descricao, pontos: r.pontos }); });
@@ -752,15 +760,49 @@ async function setupAprovacoes() {
 }
 
 function setupCadastrarPessoa() {
-  document.getElementById("btnCadastrarPessoa").addEventListener("click", async (e) => {
-    const nome = document.getElementById("novoNome").value.trim(), email = document.getElementById("novoEmail").value.trim(), papel = document.getElementById("novoPapel").value, btn = e.target;
+  const btnAdd = document.getElementById("btnCadastrarPessoa");
+  if (!btnAdd) return;
+
+  btnAdd.addEventListener("click", async (e) => {
+    e.preventDefault();
+    const nome = document.getElementById("novoNome").value.trim();
+    const email = document.getElementById("novoEmail").value.trim();
+    const papel = document.getElementById("novoPapel").value;
+    const btn = e.currentTarget;
+
     if (!nome) return showToast("Por favor, preencha o nome!", "error");
-    let role = "atleta"; let equipe = papel; 
+    
+    let role = "atleta"; 
+    let equipe = papel; 
+    
     try {
-      btn.textContent = "Salvando..."; btn.disabled = true;
-      await addDoc(collection(db, "atletas"), { nome: nome, email: email, role: role, equipe: equipe, status: "Aprovado", ativo: true, pontuacaoTotal: 0, recusas: 0, criadoEm: new Date().toISOString() });
-      showToast(`${nome} adicionado!`, "success"); document.getElementById("novoNome").value = ""; document.getElementById("novoEmail").value = ""; btn.textContent = "Adicionar"; btn.disabled = false; atualizarTelas(); 
-    } catch (error) { showToast("Erro.", "error"); btn.textContent = "Adicionar"; btn.disabled = false; }
+      btn.textContent = "Salvando..."; 
+      btn.disabled = true;
+      
+      await addDoc(collection(db, "atletas"), { 
+        nome: nome, 
+        email: email || "", 
+        role: role, 
+        equipe: equipe, 
+        status: "Aprovado", 
+        ativo: true, 
+        pontuacaoTotal: 0, 
+        recusas: 0, 
+        criadoEm: new Date().toISOString() 
+      });
+      
+      showToast(`${nome} adicionado!`, "success"); 
+      document.getElementById("novoNome").value = ""; 
+      document.getElementById("novoEmail").value = ""; 
+      btn.textContent = "Adicionar ao Sistema"; 
+      btn.disabled = false; 
+      atualizarTelas(); 
+    } catch (error) { 
+      console.error("Erro no cadastro:", error);
+      showToast("Erro: " + error.message, "error"); 
+      btn.textContent = "Adicionar ao Sistema"; 
+      btn.disabled = false; 
+    }
   });
 }
 
