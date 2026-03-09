@@ -98,7 +98,7 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
 @keyframes toastIn { to { opacity: 1; transform: translateY(0); } }
 
 /* =======================================================
-   📋 FICHA DO ATLETA (RESUMO) E COMENTÁRIOS
+   📋 FICHA DO ATLETA E COMENTÁRIOS
 ======================================================= */
 .ficha-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .comentario-box { background: rgba(0, 155, 193, 0.05); padding: 12px; border-radius: 8px; margin-bottom: 10px; font-size: 0.85rem; border-left: 3px solid var(--primary); color: var(--text); }
@@ -108,15 +108,8 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
 /* =======================================================
    📄 SOBREPOSIÇÃO PARA PDF EXECUTIVO
 ======================================================= */
-#pdfOverlay {
-  display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
-  background: rgba(0,0,0,0.8); z-index: 10000; align-items: center; justify-content: center; overflow-y: auto;
-}
-#pdfPrintArea {
-  width: 297mm; height: 210mm; background: #ffffff; color: #333333;
-  padding: 10mm 15mm; box-sizing: border-box; font-family: Arial, sans-serif;
-  margin: auto; display: flex; flex-direction: column;
-}
+#pdfOverlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 10000; align-items: center; justify-content: center; overflow-y: auto; }
+#pdfPrintArea { width: 297mm; height: 210mm; background: #ffffff; color: #333333; padding: 10mm 15mm; box-sizing: border-box; font-family: Arial, sans-serif; margin: auto; display: flex; flex-direction: column; }
 #pdfPrintArea button { display: none !important; }
 
 .perm-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); align-items: center; }
