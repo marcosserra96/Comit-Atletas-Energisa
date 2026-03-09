@@ -94,7 +94,7 @@ function setupSubTabs() {
 }
 
 async function atualizarTelas() {
-  if (userRole === "admin") setupAprovacoes();
+  if (userRole === "admin" || userPermissoes.includes("gestao")) setupAprovacoes();
   await carregarAgenda(); 
   await carregarHistorico(); 
   await carregarFinanceiro(); 
@@ -143,7 +143,7 @@ document.getElementById("btnExportarPDF").addEventListener("click", () => {
        const d = new Date(e.data + "T00:00:00").toLocaleDateString('pt-BR').substring(0,5);
        htmlUltimos += `<div style="display:flex; justify-content:space-between; margin-bottom:4px; border-bottom:1px solid #f5f5f5; padding-bottom:4px;"><span style="color:#666;"><strong>${d}</strong> - ${e.desc}</span><strong style="color:var(--primary);">${e.atletas.size} 👤</strong></div>`;
     });
-    document.getElementById("pdfUltimosEventos").innerHTML = htmlUltimos || "<p style='color:#999; text-align:center;'>Nenhum evento.</p>";
+    document.getElementById("pdfUltimosEventos").innerHTML = htmlUltimos || "<p style='color:#999; text-align:center;'>Nenhum evento processado.</p>";
 
     const canvasLinha = document.getElementById('graficoTendencia');
     const widthOriginal = canvasLinha.style.width; const heightOriginal = canvasLinha.style.height;
@@ -230,10 +230,13 @@ async function carregarAgenda() {
   const hoje = new Date().toISOString().split('T')[0];
   const futuros = cacheEventos.filter(e => e.data >= hoje).slice(0, 4); 
   let html = "";
+  
+  const hasGestao = userRole === "admin" || userPermissoes.includes("gestao");
+  
   futuros.forEach(e => {
     const d = new Date(e.data + "T00:00:00"); const mes = d.toLocaleString('pt-BR', {month: 'short'}).replace('.',''); const dia = d.getDate().toString().padStart(2, '0');
     let icon = e.modalidade === "Bicicleta" ? "🚴" : e.modalidade === "Corrida" ? "🏃" : "🤝";
-    const btnExcluir = (userRole === "admin") ? `<button class="btn-excluir-evento" data-id="${e.id}" style="background:transparent; border:none; color:var(--danger); cursor:pointer; float:right;"><i data-lucide="x" style="width:16px;"></i></button>` : '';
+    const btnExcluir = hasGestao ? `<button class="btn-excluir-evento" data-id="${e.id}" style="background:transparent; border:none; color:var(--danger); cursor:pointer; float:right;"><i data-lucide="x" style="width:16px;"></i></button>` : '';
     html += `<div class="agenda-item"><div class="agenda-data"><span>${mes}</span><strong>${dia}</strong></div><div class="agenda-info" style="flex:1;">${btnExcluir}<h4>${e.titulo}</h4><p>${icon} ${e.local}</p></div></div>`;
   });
   if(document.getElementById("listaEventosAgenda")) document.getElementById("listaEventosAgenda").innerHTML = html || `<div class="empty-state" style="padding:10px;"><p style="font-size:0.85rem;">Nenhum evento agendado.</p></div>`;
@@ -257,20 +260,25 @@ async function carregarEquipesEDashboard() {
   filaEspera.sort((a, b) => new Date(a.criadoEm || 0) - new Date(b.criadoEm || 0));
   titulares.sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || "")));
 
+  const hasGestao = userRole === "admin" || userPermissoes.includes("gestao");
+
   let idxBike = 1, idxCorrida = 1;
   filaEspera.forEach((u) => {
     const strikes = u.recusas || 0;
     const badgeStrike = strikes > 0 ? `<span class="strike-badge">⚠️ ${strikes}/3</span>` : '';
+    
+    let acoesHTML = "";
+    if(hasGestao) {
+      acoesHTML = `<button class="btn-acao btn-aprovar-fila" data-id="${u.id}" data-eq="${u.equipe === 'Fila - Corrida' ? 'Corrida' : 'Bicicleta'}" style="color:var(--secondary); padding:4px;"><i data-lucide="check" style="width:16px;"></i></button>
+                   <button class="btn-acao btn-pular-fila" data-id="${u.id}" data-strikes="${strikes}" style="color:#f39c12; padding:4px;"><i data-lucide="skip-forward" style="width:16px;"></i></button>`;
+    }
+
     if(u.equipe === "Fila - Bicicleta" || u.equipe === "Fila de Espera") { 
-      const btnAprovar = `<button class="btn-acao btn-aprovar-fila" data-id="${u.id}" data-eq="Bicicleta" style="color:var(--secondary); padding:4px;"><i data-lucide="check" style="width:16px;"></i></button>`;
-      const btnPular = `<button class="btn-acao btn-pular-fila" data-id="${u.id}" data-strikes="${strikes}" style="color:#f39c12; padding:4px;"><i data-lucide="skip-forward" style="width:16px;"></i></button>`;
-      htmlFilaBike += `<tr><td><strong>${idxBike}º - ${u.nome}</strong> ${badgeStrike}</td><td style="text-align: right; display:flex; justify-content:flex-end; gap:5px;">${btnAprovar} ${btnPular}</td></tr>`;
+      htmlFilaBike += `<tr><td><strong>${idxBike}º - ${u.nome}</strong> ${badgeStrike}</td><td style="text-align: right; display:flex; justify-content:flex-end; gap:5px;">${acoesHTML}</td></tr>`;
       idxBike++; contFila++;
     } 
     if (u.equipe === "Fila - Corrida") {
-      const btnAprovar = `<button class="btn-acao btn-aprovar-fila" data-id="${u.id}" data-eq="Corrida" style="color:var(--secondary); padding:4px;"><i data-lucide="check" style="width:16px;"></i></button>`;
-      const btnPular = `<button class="btn-acao btn-pular-fila" data-id="${u.id}" data-strikes="${strikes}" style="color:#f39c12; padding:4px;"><i data-lucide="skip-forward" style="width:16px;"></i></button>`;
-      htmlFilaCorrida += `<tr><td><strong>${idxCorrida}º - ${u.nome}</strong> ${badgeStrike}</td><td style="text-align: right; display:flex; justify-content:flex-end; gap:5px;">${btnAprovar} ${btnPular}</td></tr>`;
+      htmlFilaCorrida += `<tr><td><strong>${idxCorrida}º - ${u.nome}</strong> ${badgeStrike}</td><td style="text-align: right; display:flex; justify-content:flex-end; gap:5px;">${acoesHTML}</td></tr>`;
       idxCorrida++; contFila++;
     }
   });
@@ -278,11 +286,12 @@ async function carregarEquipesEDashboard() {
   titulares.forEach(u => {
     const pts = Number(u.pontuacaoTotal) || 0; const ativo = u.ativo !== false;
     
-    const switchAtivo = (userRole === 'admin' && u.role !== 'admin') ? `<label class="switch" title="Ativar/Desativar"><input type="checkbox" class="toggle-ativo" data-id="${u.id}" ${ativo ? 'checked' : ''}><span class="slider"></span></label>` : '';
+    // Apenas admin ou comitê COM permissão "gestao" podem editar/excluir
+    const switchAtivo = (hasGestao && u.role !== 'admin') ? `<label class="switch" title="Ativar/Desativar"><input type="checkbox" class="toggle-ativo" data-id="${u.id}" ${ativo ? 'checked' : ''}><span class="slider"></span></label>` : '';
     const btnFicha = `<button class="btn-acao btn-ficha" data-id="${u.id}" style="color: var(--primary); border-color: var(--primary); padding: 4px; margin-left: 5px;" title="Ver Ficha Completa"><i data-lucide="clipboard-list" style="width: 16px;"></i></button>`;
     const btnPerm = (u.role === 'comite' && userRole === 'admin') ? `<button class="btn-primario btn-permissoes" data-id="${u.id}" data-nome="${u.nome}" style="background: #f39c12; padding: 6px 10px; font-size: 0.8rem; margin-left: 5px;"><i data-lucide="key" style="width: 14px;"></i></button>` : '';
-    const btnEditar = `<button class="btn-acao btn-editar-membro" data-id="${u.id}" data-nome="${u.nome}" data-email="${u.email}" data-eq="${u.equipe}" style="color: var(--warning); border-color: var(--warning); padding: 4px; margin-left: 5px;"><i data-lucide="edit-2" style="width: 16px;"></i></button>`;
-    const btnExcluir = (auth.currentUser.uid !== u.id && userRole === "admin") ? `<button class="btn-acao btn-excluir-membro" data-id="${u.id}" style="color: red; border: 0; padding: 4px; margin-left: 5px;"><i data-lucide="x-circle" style="width: 18px;"></i></button>` : '';
+    const btnEditar = hasGestao ? `<button class="btn-acao btn-editar-membro" data-id="${u.id}" data-nome="${u.nome}" data-email="${u.email}" data-eq="${u.equipe}" style="color: var(--warning); border-color: var(--warning); padding: 4px; margin-left: 5px;"><i data-lucide="edit-2" style="width: 16px;"></i></button>` : '';
+    const btnExcluir = (auth.currentUser.uid !== u.id && hasGestao) ? `<button class="btn-acao btn-excluir-membro" data-id="${u.id}" style="color: red; border: 0; padding: 4px; margin-left: 5px;"><i data-lucide="x-circle" style="width: 18px;"></i></button>` : '';
     
     const displayPts = u.role === 'atleta' ? `<br><small style="color: var(--primary);">🏆 ${pts} pts</small>` : '';
     const linha = `<tr><td class="${!ativo ? 'inativo-txt' : ''}" style="vertical-align:middle;"><strong>${u.nome}</strong>${displayPts}</td><td style="text-align: right; display:flex; justify-content:flex-end; align-items:center; min-height: 40px;">${switchAtivo} ${btnFicha} ${btnPerm} ${btnEditar} ${btnExcluir}</td></tr>`;
@@ -356,7 +365,7 @@ function setupFichaAtleta() {
       document.getElementById("novoComentarioFicha").value = "";
       carregarComentarios(aId);
       showToast("Comentário salvo!", "success");
-    } catch(e) { showToast("Erro ao salvar comentário. Verifique as regras de segurança.", "error"); }
+    } catch(e) { showToast("Erro ao salvar comentário.", "error"); }
     document.getElementById("btnSalvarComentario").disabled = false;
   });
 }
@@ -496,21 +505,13 @@ function setupContabilizacao() {
   });
 
   document.getElementById("modTreino").addEventListener("change", async (e) => {
-    const mod = e.target.value; 
-    const btnGerar = document.getElementById("btnGerarLista");
+    const mod = e.target.value; const areaRegras = document.getElementById("areaSelecaoRegras"), listaRegras = document.getElementById("listaRegrasTreino"), btnGerar = document.getElementById("btnGerarLista");
     document.getElementById("areaTabelaPontuacao").style.display = "none"; 
     
-    if (!mod) { 
-      if(btnGerar) btnGerar.style.display = "none"; 
-      return; 
-    }
+    if (!mod) { btnGerar.style.display = "none"; return; }
     
     const snapRegras = await getDocs(query(collection(db, "regras_pontuacao"), where("modalidade", "in", ["Ambas", mod])));
-    if (snapRegras.empty) { 
-      showToast("Nenhuma regra para esta equipe.", "error"); 
-      if(btnGerar) btnGerar.style.display = "none"; 
-      return; 
-    }
+    if (snapRegras.empty) { showToast("Nenhuma regra para esta equipe.", "error"); btnGerar.style.display = "none"; return; }
     
     let regrasArray = [];
     snapRegras.forEach(d => { const r = d.data(); regrasArray.push({ id: d.id, descricao: r.descricao, pontos: r.pontos }); });
@@ -760,49 +761,15 @@ async function setupAprovacoes() {
 }
 
 function setupCadastrarPessoa() {
-  const btnAdd = document.getElementById("btnCadastrarPessoa");
-  if (!btnAdd) return;
-
-  btnAdd.addEventListener("click", async (e) => {
-    e.preventDefault();
-    const nome = document.getElementById("novoNome").value.trim();
-    const email = document.getElementById("novoEmail").value.trim();
-    const papel = document.getElementById("novoPapel").value;
-    const btn = e.currentTarget;
-
+  document.getElementById("btnCadastrarPessoa").addEventListener("click", async (e) => {
+    const nome = document.getElementById("novoNome").value.trim(), email = document.getElementById("novoEmail").value.trim(), papel = document.getElementById("novoPapel").value, btn = e.target;
     if (!nome) return showToast("Por favor, preencha o nome!", "error");
-    
-    let role = "atleta"; 
-    let equipe = papel; 
-    
+    let role = "atleta"; let equipe = papel; 
     try {
-      btn.textContent = "Salvando..."; 
-      btn.disabled = true;
-      
-      await addDoc(collection(db, "atletas"), { 
-        nome: nome, 
-        email: email || "", 
-        role: role, 
-        equipe: equipe, 
-        status: "Aprovado", 
-        ativo: true, 
-        pontuacaoTotal: 0, 
-        recusas: 0, 
-        criadoEm: new Date().toISOString() 
-      });
-      
-      showToast(`${nome} adicionado!`, "success"); 
-      document.getElementById("novoNome").value = ""; 
-      document.getElementById("novoEmail").value = ""; 
-      btn.textContent = "Adicionar ao Sistema"; 
-      btn.disabled = false; 
-      atualizarTelas(); 
-    } catch (error) { 
-      console.error("Erro no cadastro:", error);
-      showToast("Erro: " + error.message, "error"); 
-      btn.textContent = "Adicionar ao Sistema"; 
-      btn.disabled = false; 
-    }
+      btn.textContent = "Salvando..."; btn.disabled = true;
+      await addDoc(collection(db, "atletas"), { nome: nome, email: email, role: role, equipe: equipe, status: "Aprovado", ativo: true, pontuacaoTotal: 0, recusas: 0, criadoEm: new Date().toISOString() });
+      showToast(`${nome} adicionado!`, "success"); document.getElementById("novoNome").value = ""; document.getElementById("novoEmail").value = ""; btn.textContent = "Adicionar"; btn.disabled = false; atualizarTelas(); 
+    } catch (error) { showToast("Erro.", "error"); btn.textContent = "Adicionar"; btn.disabled = false; }
   });
 }
 
