@@ -20,7 +20,6 @@ body {
   align-items: center;
   color: var(--texto);
   
-  /* OTIMIZAÇÃO: Força o uso da Placa de Vídeo (GPU) para o fundo */
   will-change: background-position;
   transform: translateZ(0);
 }
@@ -80,7 +79,6 @@ body {
   font-family: inherit;
   font-size: 14px;
   box-sizing: border-box;
-  /* OTIMIZAÇÃO: Transições específicas em vez de 'all' */
   transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
@@ -103,7 +101,6 @@ button {
   cursor: pointer;
   font-family: inherit;
   position: relative;
-  /* OTIMIZAÇÃO: Transições específicas em vez de 'all' */
   transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -176,7 +173,6 @@ button.loading::after {
   top: 0;
   width: 100%;
   height: 100%;
-  /* OTIMIZAÇÃO: Trocamos o desfoque (blur) pesado por um fundo sólido translúcido */
   background-color: rgba(0, 0, 0, 0.85);
   justify-content: center;
   align-items: center;
@@ -282,7 +278,6 @@ button.loading::after {
   color: #fff;
   font-family: "Poppins", sans-serif;
   font-weight: 500;
-  /* OTIMIZAÇÃO: Sombra otimizada e sem desfoque (blur) */
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
   opacity: 0;
   transform: translateY(-20px);
