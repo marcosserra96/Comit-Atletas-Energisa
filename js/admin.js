@@ -84,7 +84,7 @@ function construirMenu() {
 function iniciarPainelAdmin() {
   Chart.defaults.color = document.body.getAttribute('data-theme') === 'dark' ? '#aaa' : '#666';
   document.getElementById("logoutBtn").addEventListener("click", async () => { if(confirm("Sair?")) { await signOut(auth); window.location.href = "index.html"; } });
-  setupSubTabs(); setupCadastrarPessoa(); setupContabilizacao(); setupRelatorioConsolidado(); setupFinanceiro(); setupMetas(); setupPermissoesModal(); setupAgenda(); setupConfiguracoes(); setupModalRegras(); setupModalEditar();
+  setupSubTabs(); setupCadastrarPessoa(); setupContabilizacao(); setupRelatorioConsolidado(); setupFinanceiro(); setupMetas(); setupPermissoesModal(); setupAgenda(); setupConfiguracoes(); setupModalRegras(); setupModalEditar(); setupLimparBase();
   atualizarTelas();
 }
 
@@ -95,7 +95,7 @@ function setupSubTabs() {
 
 async function atualizarTelas() {
   if (userRole === "admin") setupAprovacoes();
-  await carregarAgenda(); // Popula os seletores de eventos
+  await carregarAgenda(); 
   await carregarHistorico(); 
   await carregarFinanceiro(); 
   await carregarEquipesEDashboard(); 
@@ -103,7 +103,7 @@ async function atualizarTelas() {
 }
 
 // =====================================================
-// 📊 DASHBOARD & GERADOR DE PDF BI (Congelamento de Gráfico)
+// 📊 DASHBOARD & GERADOR DE PDF BI
 // =====================================================
 document.getElementById("btnExportarPDF").addEventListener("click", () => {
   showToast("Montando painel corporativo...", "info");
@@ -125,9 +125,9 @@ document.getElementById("btnExportarPDF").addEventListener("click", () => {
     document.getElementById("pdfMediaBike").textContent = document.getElementById("mediaBike").textContent;
     document.getElementById("pdfMediaCorrida").textContent = document.getElementById("mediaCorrida").textContent;
     
-    // Clona o Ranking Dividido
     document.getElementById("pdfTopBike").innerHTML = document.getElementById("listaPodioBike").innerHTML;
     document.getElementById("pdfTopCorrida").innerHTML = document.getElementById("listaPodioCorrida").innerHTML;
+    document.getElementById("pdfListaEvasao").innerHTML = document.getElementById("listaEvasao").innerHTML;
 
     const agendaClone = document.getElementById("listaEventosAgenda").cloneNode(true);
     agendaClone.querySelectorAll("button").forEach(b => b.remove()); 
@@ -152,12 +152,12 @@ document.getElementById("btnExportarPDF").addEventListener("click", () => {
     });
     document.getElementById("pdfUltimosEventos").innerHTML = htmlUltimos || "<p style='color:#999; text-align:center;'>Nenhum evento.</p>";
 
-    // CONGELAMENTO DO GRÁFICO (Evita distorção no PDF)
+    // CONGELAMENTO DO GRÁFICO
     const canvasLinha = document.getElementById('graficoTendencia');
     const widthOriginal = canvasLinha.style.width;
     const heightOriginal = canvasLinha.style.height;
     if(canvasLinha) { 
-      canvasLinha.style.width = '700px'; // Força largura horizontal
+      canvasLinha.style.width = '700px'; 
       canvasLinha.style.height = '200px'; 
       if(graficoLinhaInstancia) graficoLinhaInstancia.resize();
       document.getElementById('pdfImgTendencia').src = canvasLinha.toDataURL("image/png", 1.0); 
@@ -179,7 +179,6 @@ document.getElementById("btnExportarPDF").addEventListener("click", () => {
       html2pdf().set(opt).from(printArea).save().then(() => { 
         modalPdf.style.display = "none"; 
         
-        // Descongela gráfico
         if(canvasLinha) {
           canvasLinha.style.width = widthOriginal; 
           canvasLinha.style.height = heightOriginal; 
@@ -218,17 +217,12 @@ function setupFinanceiro() {
     const eventoId = document.getElementById("vincularEventoDespesa").value;
     
     let nomeEvento = "";
-    if (eventoId) {
-      const eventoEncontrado = cacheEventos.find(e => e.id === eventoId);
-      if(eventoEncontrado) nomeEvento = eventoEncontrado.titulo;
-    }
-
+    if (eventoId) { const eventoEncontrado = cacheEventos.find(e => e.id === eventoId); if(eventoEncontrado) nomeEvento = eventoEncontrado.titulo; }
     if (!desc || !val || !data) return showToast("Preencha descrição, valor e data!", "error");
     
     btnSalvar.textContent = "Salvando..."; btnSalvar.disabled = true;
     try { 
       await addDoc(collection(db, "despesas"), { descricao: desc, categoria: cat, valor: parseFloat(val), data: data, eventoId: eventoId, eventoNome: nomeEvento, criadoEm: new Date().toISOString() }); 
-      // Limpa os campos após salvar
       document.getElementById("descDespesa").value = ""; document.getElementById("valorDespesa").value = ""; document.getElementById("vincularEventoDespesa").value = "";
       showToast("Despesa registrada!", "success"); atualizarTelas(); 
     } catch(err) { showToast("Erro.", "error"); } finally { btnSalvar.textContent = "Registrar Gasto"; btnSalvar.disabled = false; }
@@ -246,7 +240,6 @@ async function carregarFinanceiro() {
   snap.forEach(d => {
     const desp = d.data(); gastoTotalGlobal += desp.valor;
     const btnExcluir = canEdit ? `<button class="btn-acao btn-excluir-despesa" data-id="${d.id}" style="color:red; border:0; padding:0;"><i data-lucide="trash" style="width:16px;"></i></button>` : '';
-    
     const tagEvento = desp.eventoNome ? `<br><small style="color: var(--primary);"><i data-lucide="calendar" style="width:12px;"></i> ${desp.eventoNome}</small>` : '';
     html += `<tr><td>${new Date(desp.data + "T00:00:00").toLocaleDateString('pt-BR')}</td><td><strong>${desp.descricao}</strong>${tagEvento}</td><td style="color:var(--danger); font-weight:bold;">${desp.valor.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</td><td style="text-align:right;">${btnExcluir}</td></tr>`;
   });
@@ -254,7 +247,6 @@ async function carregarFinanceiro() {
   if(document.getElementById("listaDespesas")) document.getElementById("listaDespesas").innerHTML = html || `<tr><td colspan='4'>Sem registros.</td></tr>`;
   if(document.getElementById("totalInvestimento")) document.getElementById("totalInvestimento").textContent = gastoTotalGlobal.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
   lucide.createIcons();
-  
   document.querySelectorAll(".btn-excluir-despesa").forEach(btn => { btn.addEventListener("click", async (e) => { if(confirm("Excluir despesa?")) { await deleteDoc(doc(db, "despesas", e.currentTarget.dataset.id)); atualizarTelas(); } }); });
 }
 
@@ -275,7 +267,6 @@ async function carregarAgenda() {
   cacheEventos = []; snap.forEach(d => cacheEventos.push({id: d.id, ...d.data()}));
   cacheEventos.sort((a,b) => new Date(a.data) - new Date(b.data)); 
   
-  // Alimenta Dropdown Financeiro e Lançamento
   const htmlDropdown = '<option value="">Nenhum (Avulso)</option>' + cacheEventos.map(e => `<option value="${e.id}">${e.titulo} (${new Date(e.data+"T00:00:00").toLocaleDateString('pt-BR')})</option>`).join('');
   if(document.getElementById("vincularEventoDespesa")) document.getElementById("vincularEventoDespesa").innerHTML = htmlDropdown;
   if(document.getElementById("lancarEventoSelect")) document.getElementById("lancarEventoSelect").innerHTML = htmlDropdown;
@@ -295,7 +286,7 @@ async function carregarAgenda() {
 }
 
 // =====================================================
-// 👥 EQUIPES & RENDERIZAÇÃO GRÁFICOS (Fila Separada e Comitê Sem Pontos)
+// 👥 EQUIPES & RENDERIZAÇÃO GRÁFICOS
 // =====================================================
 async function carregarEquipesEDashboard() {
   const snap = await getDocs(query(collection(db, "atletas"), where("status", "==", "Aprovado")));
@@ -304,20 +295,18 @@ async function carregarEquipesEDashboard() {
   let todosAtletas = []; mapAtletas = {}; 
 
   let listaOrdenada = []; snap.forEach(d => { mapAtletas[d.id] = { id: d.id, ...d.data() }; listaOrdenada.push(mapAtletas[d.id]); });
-  
   const filaEspera = listaOrdenada.filter(u => u.equipe === "Fila - Bicicleta" || u.equipe === "Fila - Corrida" || u.equipe === "Fila de Espera");
   const titulares = listaOrdenada.filter(u => u.equipe !== "Fila - Bicicleta" && u.equipe !== "Fila - Corrida" && u.equipe !== "Fila de Espera");
   
   filaEspera.sort((a, b) => new Date(a.criadoEm || 0) - new Date(b.criadoEm || 0));
   titulares.sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || "")));
 
-  // Lógica Filas Distintas
   let idxBike = 1, idxCorrida = 1;
   filaEspera.forEach((u) => {
     const strikes = u.recusas || 0;
     const badgeStrike = strikes > 0 ? `<span class="strike-badge">⚠️ ${strikes}/3</span>` : '';
     
-    if(u.equipe === "Fila - Bicicleta" || u.equipe === "Fila de Espera") { // Fallback de antigos pra Bike para não quebrar
+    if(u.equipe === "Fila - Bicicleta" || u.equipe === "Fila de Espera") { 
       const btnAprovar = `<button class="btn-acao btn-aprovar-fila" data-id="${u.id}" data-eq="Bicicleta" style="color:var(--secondary); padding:4px;"><i data-lucide="check" style="width:16px;"></i></button>`;
       const btnPular = `<button class="btn-acao btn-pular-fila" data-id="${u.id}" data-strikes="${strikes}" style="color:#f39c12; padding:4px;"><i data-lucide="skip-forward" style="width:16px;"></i></button>`;
       htmlFilaBike += `<tr><td><strong>${idxBike}º - ${u.nome}</strong> ${badgeStrike}</td><td style="text-align: right; display:flex; justify-content:flex-end; gap:5px;">${btnAprovar} ${btnPular}</td></tr>`;
@@ -333,18 +322,16 @@ async function carregarEquipesEDashboard() {
 
   titulares.forEach(u => {
     const pts = Number(u.pontuacaoTotal) || 0; const ativo = u.ativo !== false;
-    
     const btnPerm = (u.role === 'comite' && userRole === 'admin') ? `<button class="btn-primario btn-permissoes" data-id="${u.id}" data-nome="${u.nome}" style="background: #f39c12; padding: 6px 10px; font-size: 0.8rem; margin-left: 5px;"><i data-lucide="key" style="width: 14px;"></i> Acessos</button>` : '';
     const btnEditar = `<button class="btn-acao btn-editar-membro" data-id="${u.id}" data-nome="${u.nome}" data-email="${u.email}" data-eq="${u.equipe}" style="color: var(--warning); border-color: var(--warning); padding: 4px; margin-left: 5px;"><i data-lucide="edit-2" style="width: 16px;"></i></button>`;
     const btnExcluir = (auth.currentUser.uid !== u.id && userRole === "admin") ? `<button class="btn-acao btn-excluir-membro" data-id="${u.id}" style="color: red; border: 0; padding: 4px; margin-left: 5px;"><i data-lucide="x-circle" style="width: 18px;"></i></button>` : '';
     
-    // Oculta pontos se for da organização
     const displayPts = u.role === 'atleta' ? `<br><small style="color: var(--primary);">🏆 ${pts} pts</small>` : '';
     const linha = `<tr><td class="${!ativo ? 'inativo-txt' : ''}"><strong>${u.nome}</strong>${displayPts}</td><td style="text-align: right; display:flex; justify-content:flex-end; align-items:center;">${btnPerm} ${btnEditar} ${btnExcluir}</td></tr>`;
     
     if (u.role === "admin" || u.role === "comite") { htmlComite += linha; contComite++; }
-    else if (u.equipe === "Corrida") { htmlCorrida += linha; contCorrida++; ptsCorrida += pts; todosAtletas.push({nome: u.nome, pts: pts, eq: u.equipe, id: u.id}); }
-    else if (u.equipe === "Bicicleta") { htmlBike += linha; contBike++; ptsBike += pts; todosAtletas.push({nome: u.nome, pts: pts, eq: u.equipe, id: u.id}); }
+    else if (u.equipe === "Corrida") { htmlCorrida += linha; contCorrida++; ptsCorrida += pts; todosAtletas.push({nome: u.nome, pts: pts, eq: u.equipe, id: u.id, ativo: ativo}); }
+    else if (u.equipe === "Bicicleta") { htmlBike += linha; contBike++; ptsBike += pts; todosAtletas.push({nome: u.nome, pts: pts, eq: u.equipe, id: u.id, ativo: ativo}); }
   });
 
   if(document.getElementById("listaFilaBike")) document.getElementById("listaFilaBike").innerHTML = htmlFilaBike || `<tr><td colspan='2'>Ninguém na fila.</td></tr>`;
@@ -370,9 +357,7 @@ async function carregarEquipesEDashboard() {
     btn.addEventListener("click", (e) => {
       const b = e.currentTarget; document.getElementById("permNomeUsuario").textContent = b.dataset.nome; document.getElementById("permUserId").value = b.dataset.id;
       const permissoesDB = mapAtletas[b.dataset.id].permissoes || ["visao-geral"];
-      document.querySelectorAll(".chk-perm").forEach(chk => { 
-        chk.checked = permissoesDB.includes(chk.value) || (permissoesDB.includes("financeiro") && chk.value.startsWith("financeiro")); 
-      });
+      document.querySelectorAll(".chk-perm").forEach(chk => { chk.checked = permissoesDB.includes(chk.value) || (permissoesDB.includes("financeiro") && chk.value.startsWith("financeiro")); });
       document.getElementById("modalPermissoes").style.display = "flex";
     });
   });
@@ -401,17 +386,23 @@ async function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike, 
   document.getElementById("mediaBike").textContent = totalBike > 0 ? Math.round(ptsBike / totalBike) : 0;
   document.getElementById("mediaCorrida").textContent = totalCorrida > 0 ? Math.round(ptsCorrida / totalCorrida) : 0;
 
-  // Lógica do Top 3 Dividido
-  const bikeAtletas = arrayAtletas.filter(a => a.eq === 'Bicicleta').sort((a,b) => b.pts - a.pts).slice(0,3);
-  const corridaAtletas = arrayAtletas.filter(a => a.eq === 'Corrida').sort((a,b) => b.pts - a.pts).slice(0,3);
-  
   const htmlPodio = (arr) => {
     if(arr.length===0) return "<li style='color:#999; font-size:0.85rem;'>Sem pontos</li>";
     return arr.map((a,i) => `<li style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border);"><span>${i===0?'🥇':i===1?'🥈':'🥉'} <strong>${a.nome}</strong></span><strong>${a.pts}</strong></li>`).join('');
   };
   
+  const bikeAtletas = arrayAtletas.filter(a => a.eq === 'Bicicleta').sort((a,b) => b.pts - a.pts).slice(0,3);
+  const corridaAtletas = arrayAtletas.filter(a => a.eq === 'Corrida').sort((a,b) => b.pts - a.pts).slice(0,3);
   if(document.getElementById("listaPodioBike")) document.getElementById("listaPodioBike").innerHTML = htmlPodio(bikeAtletas);
   if(document.getElementById("listaPodioCorrida")) document.getElementById("listaPodioCorrida").innerHTML = htmlPodio(corridaAtletas);
+
+  // RADAR DE EVASÃO (Inativos e Zerados)
+  const evasaoAtletas = arrayAtletas.filter(a => a.pts === 0 || a.ativo === false).slice(0, 6);
+  const htmlEvasao = (arr) => {
+    if(arr.length===0) return "<li style='color:var(--secondary); font-size:0.85rem;'>Nenhum alerta. Todos participando! 🎉</li>";
+    return arr.map(a => `<li style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed var(--danger);"><span style="color:var(--danger);">⚠️ <strong>${a.nome}</strong></span><small style="color:#999;">${a.eq}</small></li>`).join('');
+  };
+  if(document.getElementById("listaEvasao")) document.getElementById("listaEvasao").innerHTML = htmlEvasao(evasaoAtletas);
 
   const anoAtual = new Date().getFullYear().toString();
   const idsQuePontuaram = new Set();
@@ -454,7 +445,6 @@ async function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike, 
 function setupContabilizacao() {
   document.getElementById("dataTreino").valueAsDate = new Date();
   
-  // Autopreenchimento Inteligente de Lançamento por Evento
   document.getElementById("lancarEventoSelect").addEventListener("change", (e) => {
     const evId = e.target.value;
     if(evId) {
@@ -476,7 +466,7 @@ function setupContabilizacao() {
   document.getElementById("modTreino").addEventListener("change", async (e) => {
     const mod = e.target.value; const areaRegras = document.getElementById("areaSelecaoRegras"), listaRegras = document.getElementById("listaRegrasTreino"), btnGerar = document.getElementById("btnGerarLista");
     document.getElementById("areaTabelaPontuacao").style.display = "none"; 
-    document.getElementById("checkSelecionarTodasRegras").checked = false; // Reseta botão de todas
+    document.getElementById("checkSelecionarTodasRegras").checked = false;
     if (!mod) { areaRegras.style.display = "none"; btnGerar.style.display = "none"; return; }
     listaRegras.innerHTML = "<span style='font-size: 0.85rem; color: #999;'>Buscando regras...</span>"; areaRegras.style.display = "block";
     const snapRegras = await getDocs(query(collection(db, "regras_pontuacao"), where("modalidade", "in", ["Ambas", mod])));
@@ -486,14 +476,9 @@ function setupContabilizacao() {
     btnGerar.style.display = "inline-flex";
   });
 
-  // Botão Selecionar Todas as Regras
   document.getElementById("checkSelecionarTodasRegras").addEventListener("change", (e) => {
     const isChecked = e.target.checked;
-    document.querySelectorAll("#listaRegrasTreino .regra-chip input[type='checkbox']").forEach(chk => {
-      chk.checked = isChecked;
-      if(isChecked) chk.closest('.regra-chip').classList.add('selected');
-      else chk.closest('.regra-chip').classList.remove('selected');
-    });
+    document.querySelectorAll("#listaRegrasTreino .regra-chip input[type='checkbox']").forEach(chk => { chk.checked = isChecked; if(isChecked) chk.closest('.regra-chip').classList.add('selected'); else chk.closest('.regra-chip').classList.remove('selected'); });
   });
 
   document.getElementById("btnGerarLista").addEventListener("click", async () => {
@@ -649,8 +634,25 @@ function gerarRelatorioConsolidado() {
 }
 
 // =====================================================
-// GESTÃO, APROVAÇÕES E REGRAS
+// GESTÃO GERAL E ZONA DE PERIGO
 // =====================================================
+function setupLimparBase() {
+  const btnL = document.getElementById("btnLimparBase"); if(!btnL) return;
+  btnL.addEventListener("click", async () => {
+    if (userRole !== "admin") return;
+    if (prompt("CUIDADO EXTREMO! Isso apagará TODOS os atletas, regras e histórico.\nDigite 'LIMPAR' para confirmar:") !== "LIMPAR") return;
+    if (!prompt("Digite sua senha de administrador para autorizar:")) return;
+    const btn = document.getElementById("btnLimparBase"); btn.innerHTML = "Apagando a base..."; btn.disabled = true;
+    try {
+      const snapH = await getDocs(collection(db, "historico_pontos")); snapH.forEach(async (d) => { await deleteDoc(doc(db, "historico_pontos", d.id)); });
+      const snapR = await getDocs(collection(db, "regras_pontuacao")); snapR.forEach(async (d) => { await deleteDoc(doc(db, "regras_pontuacao", d.id)); });
+      const snapD = await getDocs(collection(db, "despesas")); snapD.forEach(async (d) => { await deleteDoc(doc(db, "despesas", d.id)); });
+      const snapA = await getDocs(collection(db, "atletas")); snapA.forEach(async (d) => { if (d.id !== auth.currentUser.uid) await deleteDoc(doc(db, "atletas", d.id)); });
+      showToast("Base Limpa com sucesso!", "success"); setTimeout(() => window.location.reload(), 2000); 
+    } catch(err) { showToast("Erro ao apagar.", "error"); btn.disabled = false; }
+  });
+}
+
 async function setupAprovacoes() {
   const tbody = document.getElementById("listaAprovacoes"); if (!tbody) return;
   const snap = await getDocs(query(collection(db, "atletas"), where("status", "==", "Pendente"))); tbody.innerHTML = "";
