@@ -172,7 +172,7 @@
 
     <section id="financeiro">
       <div class="dashboard-grid">
-        <div class="card" id="cardNovaDespesa" style="margin: 0; align-self: start; display: none;">
+        <div class="card admin-only-element" id="cardNovaDespesa" style="margin: 0; align-self: start; display: none;">
           <h3 style="color: #27ae60;"><i data-lucide="plus-circle"></i> Nova Despesa</h3>
           <label>Descrição</label><input type="text" id="descDespesa" />
           <label>Categoria</label><select id="catDespesa"><option value="Eventos e Inscrições">Eventos e Inscrições</option><option value="Uniformes e Materiais">Uniformes/Materiais</option><option value="Premiações e Brindes">Premiações</option><option value="Alimentação / Hidratação">Alimentação</option><option value="Outros">Outros</option></select>
@@ -197,7 +197,7 @@
         <button class="sub-tab admin-only-element" data-target="sub-aprovacoes"><i data-lucide="shield-alert"></i> Aprovações</button>
         <button class="sub-tab active" data-target="sub-cadastrar"><i data-lucide="user-plus"></i> Novo Membro</button>
         <button class="sub-tab" data-target="sub-equipes"><i data-lucide="users"></i> Equipes e Filas</button>
-        <button class="sub-tab admin-only-element" data-target="sub-regras"><i data-lucide="list-checks"></i> Regras</button>
+        <button class="sub-tab" data-target="sub-regras"><i data-lucide="list-checks"></i> Regras</button>
         <button class="sub-tab admin-only-element" data-target="sub-dados" style="color: var(--danger);"><i data-lucide="database"></i> Dados</button>
       </div>
 
@@ -244,7 +244,7 @@
       </div>
 
       <div id="sub-regras" class="sub-content">
-        <button id="abrirModalRegra" class="btn-primario admin-only-element" style="margin-bottom:15px;">Nova Regra</button>
+        <button id="abrirModalRegra" class="btn-primario" style="margin-bottom:15px;">Nova Regra</button>
         <div class="tabela-container"><table class="tabela-simples"><tbody id="listaRegras"></tbody></table></div>
       </div>
 
@@ -339,7 +339,7 @@
            <div style="background: #009bc1; color: white; font-weight: bold; font-size: 24px; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">⚡️</div>
            <div>
              <h1 style="margin: 0; color: #009bc1; font-size: 20px;">Relatório Estratégico</h1>
-             <p style="margin: 3px 0 0 0; color: #666; font-size: 12px;">Programa Atletas Energisa</p>
+             <p style="margin: 3px 0 0 0; color: #666; font-size: 12px;">Programa Comitê Atletas Energisa</p>
            </div>
          </div>
          <div style="text-align: right; display: flex; flex-direction: column; justify-content: flex-end;">
