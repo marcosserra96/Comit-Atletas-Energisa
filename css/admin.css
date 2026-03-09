@@ -12,7 +12,15 @@ label { display: block; font-size: 0.9rem; font-weight: 500; color: var(--text-l
 button { cursor: pointer; font-family: var(--font-main); border: none; }
 .empty-state { text-align: center; padding: 30px; color: var(--text-light); display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .empty-state i { width: 48px; height: 48px; color: var(--border); }
+
+/* Switch Ativar/Desativar */
 .inativo-txt { text-decoration: line-through; opacity: 0.5; }
+.switch { position: relative; display: inline-block; width: 36px; height: 20px; margin: 0; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border); transition: .4s; border-radius: 34px; }
+.slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+input:checked + .slider { background-color: var(--secondary); }
+input:checked + .slider:before { transform: translateX(16px); }
 
 /* =======================================================
    🌟 TOPO E MENU
@@ -90,6 +98,14 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
 @keyframes toastIn { to { opacity: 1; transform: translateY(0); } }
 
 /* =======================================================
+   📋 FICHA DO ATLETA (RESUMO) E COMENTÁRIOS
+======================================================= */
+.ficha-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.comentario-box { background: rgba(0, 155, 193, 0.05); padding: 12px; border-radius: 8px; margin-bottom: 10px; font-size: 0.85rem; border-left: 3px solid var(--primary); color: var(--text); }
+.comentario-header { display: flex; justify-content: space-between; margin-bottom: 6px; color: var(--text-light); font-size: 0.75rem; }
+.comentario-autor { font-weight: bold; color: var(--text); }
+
+/* =======================================================
    📄 SOBREPOSIÇÃO PARA PDF EXECUTIVO
 ======================================================= */
 #pdfOverlay {
@@ -106,7 +122,10 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
 .perm-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); align-items: center; }
 .perm-item:last-child { border-bottom: none; }
 
-@media (max-width: 900px) { .dashboard-grid { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { 
+  .dashboard-grid { grid-template-columns: 1fr; } 
+  .ficha-grid { grid-template-columns: 1fr; }
+}
 @media (max-width: 768px) {
   .menu-item span { display: none; } .menu-item { padding: 12px; border-radius: 50%; }
   .portal-nome { display: none; } 
