@@ -57,7 +57,6 @@
             <h3 style="color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 10px;"><i data-lucide="trending-up"></i> Evolução Anual (Pontos)</h3>
             <div style="position: relative; height: 200px; margin-top: 15px;"><canvas id="graficoTendencia"></canvas></div>
           </div>
-          
           <div class="card" style="margin: 0; display: flex; gap: 20px; flex-wrap: wrap;">
             <div style="flex: 1; text-align: center; min-width: 120px;">
               <h3 style="color: var(--primary); justify-content: center;"><i data-lucide="bike"></i> Participação Bike</h3>
@@ -82,7 +81,6 @@
               <div><span style="font-size: 1.5rem;">🏃</span><br><strong id="mediaCorrida" style="color: var(--secondary);">0</strong></div>
             </div>
           </div>
-          
           <div class="card" style="margin: 0; flex: 1;">
             <h3 style="color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 10px;"><i data-lucide="award"></i> Pódio Top 3</h3>
             <div style="display: flex; gap: 15px; margin-top: 15px;">
@@ -108,7 +106,7 @@
         <div class="card" style="margin: 0; display: flex; flex-direction: column;">
           <h3 style="color: #8e44ad; border-bottom: 1px solid var(--border); padding-bottom: 10px;"><i data-lucide="calendar"></i> Próximos Eventos</h3>
           <div id="listaEventosAgenda" style="margin-top: 15px; flex: 1;"></div>
-          <button id="abrirModalEvento" class="btn-acao admin-only-element" style="width: 100%; margin-top: 15px; justify-content: center;"><i data-lucide="plus-circle"></i> Novo Evento</button>
+          <button id="abrirModalEvento" class="btn-acao" style="width: 100%; margin-top: 15px; justify-content: center;"><i data-lucide="plus-circle"></i> Novo Evento</button>
         </div>
       </div>
     </section>
@@ -138,21 +136,11 @@
             <div><label>Equipe Alvo</label><select id="modTreino" style="margin-bottom: 0;"><option value="">Selecione...</option><option value="Bicicleta">Bicicleta</option><option value="Corrida">Corrida</option></select></div>
           </div>
           
-          <div id="areaSelecaoRegras" style="display: none; background: rgba(0,0,0,0.02); padding: 15px; border-radius: 8px; margin-top: 15px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-              <label style="margin: 0; color: var(--primary); font-weight: 600;">Quais itens vão pontuar?</label>
-              <label style="margin: 0; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text);">
-                <input type="checkbox" id="checkSelecionarTodasRegras"> Selecionar Todas
-              </label>
-            </div>
-            <div id="listaRegrasTreino" style="display: flex; flex-wrap: wrap; gap: 10px;"></div>
-          </div>
-          
           <div style="text-align: right; margin-top: 15px;"><button id="btnGerarLista" class="btn-primario" style="display: none;">Gerar Tabela de Atletas</button></div>
         </div>
-        <div id="areaTabelaPontuacao" style="display: none;">
+        <div id="areaTabelaPontuacao" style="display: none; animation: fadeIn 0.4s ease;">
           <div class="tabela-container"><table class="tabela-simples" id="tabelaPontuacao"></table></div>
-          <button id="btnSalvarPontuacao" class="btn-primario" style="width: 100%; justify-content: center; padding: 15px; background: var(--secondary);">Salvar Lançamentos em Lote</button>
+          <button id="btnSalvarPontuacao" class="btn-primario" style="width: 100%; justify-content: center; padding: 15px; background: var(--secondary); margin-top: 15px;">Salvar Lançamentos em Lote</button>
         </div>
       </div>
       
@@ -161,13 +149,7 @@
           <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: end;">
             <div style="flex:1"><label>Mês</label><input type="month" id="filtroMesHistorico" style="margin-bottom: 0;" /></div>
             <div style="flex:1"><label>Equipe</label><select id="filtroEquipeHistorico" style="margin-bottom: 0;"><option value="">Todas</option><option value="Bicicleta">Bicicleta</option><option value="Corrida">Corrida</option></select></div>
-            <div style="flex:1">
-              <label>Status</label>
-              <select id="filtroStatusHistorico" style="margin-bottom: 0;">
-                <option value="ativos">Apenas Ativos</option>
-                <option value="todos">Exibir Todos (Inativos/Excluídos)</option>
-              </select>
-            </div>
+            <div style="flex:1"><label>Status</label><select id="filtroStatusHistorico" style="margin-bottom: 0;"><option value="ativos">Apenas Ativos</option><option value="todos">Exibir Todos</option></select></div>
             <div style="flex:1"><label>Atleta</label><input type="text" id="filtroNomeHistorico" placeholder="Buscar Nome..." style="margin-bottom: 0;" /></div>
             <div><label style="visibility:hidden; display:block; margin-bottom: 4px;">.</label><button id="btnLimparFiltrosExtrato" class="btn-acao" style="padding: 12px; margin-bottom: 0;"><i data-lucide="filter-x"></i> Limpar</button></div>
           </div>
@@ -190,7 +172,7 @@
 
     <section id="financeiro">
       <div class="dashboard-grid">
-        <div class="card admin-only-element" id="cardNovaDespesa" style="margin: 0; align-self: start; display: none;">
+        <div class="card" id="cardNovaDespesa" style="margin: 0; align-self: start; display: none;">
           <h3 style="color: #27ae60;"><i data-lucide="plus-circle"></i> Nova Despesa</h3>
           <label>Descrição</label><input type="text" id="descDespesa" />
           <label>Categoria</label><select id="catDespesa"><option value="Eventos e Inscrições">Eventos e Inscrições</option><option value="Uniformes e Materiais">Uniformes/Materiais</option><option value="Premiações e Brindes">Premiações</option><option value="Alimentação / Hidratação">Alimentação</option><option value="Outros">Outros</option></select>
@@ -334,12 +316,12 @@
             </div>
           </div>
           <h4 style="margin: 0 0 10px 0; color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 5px;">Histórico de Lançamentos</h4>
-          <div id="fichaHistorico" style="max-height: 300px; overflow-y: auto; font-size: 0.85rem;"></div>
+          <div id="fichaHistorico" style="max-height: 300px; overflow-y: auto; font-size: 0.85rem; padding-right: 5px;"></div>
         </div>
         
         <div style="display: flex; flex-direction: column;">
           <h4 style="margin: 0 0 10px 0; color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 5px;">Comentários da Gestão</h4>
-          <div id="fichaComentariosLista" style="flex: 1; max-height: 230px; overflow-y: auto; margin-bottom: 10px;"></div>
+          <div id="fichaComentariosLista" style="flex: 1; max-height: 230px; overflow-y: auto; margin-bottom: 10px; padding-right: 5px;"></div>
           <div style="background: var(--bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border);">
             <input type="hidden" id="fichaAtletaId" />
             <textarea id="novoComentarioFicha" placeholder="Registe uma observação (lesão, aviso, etc)..." rows="3" style="width: 100%; resize: none; margin-bottom: 10px;"></textarea>
@@ -396,7 +378,6 @@
                <img id="pdfImgTendencia" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
              </div>
            </div>
-           
            <div style="flex: 0.8; display: flex; gap: 12px;">
              <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 6px; padding: 10px; overflow: hidden;">
                <h3 style="color: #34495e; margin:0 0 8px 0; border-bottom: 1px solid #eee; padding-bottom:4px; font-size: 12px; text-transform: uppercase;">Últimos Eventos (Adesão)</h3>
@@ -415,21 +396,13 @@
              <div style="width: 1px; height: 30px; background: #ddd;"></div>
              <div style="text-align:center;"><span style="font-size:16px;">🏃 Corrida</span><br><strong id="pdfMediaCorrida" style="color:#00b37e; font-size:16px;">0</strong> <small style="font-size:10px;">pts/atleta</small></div>
            </div>
-           
            <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 6px; padding: 10px;">
              <h3 style="color: #f37021; margin:0 0 10px 0; border-bottom: 1px solid #eee; padding-bottom:4px; font-size: 12px; text-transform: uppercase;">Ranking Pódio (Top 3)</h3>
              <div style="display: flex; flex-direction: column; gap: 10px;">
-               <div>
-                 <h4 style="color: #009bc1; margin: 0 0 4px 0; font-size: 11px;">Bicicleta</h4>
-                 <ul id="pdfTopBike" style="list-style: none; padding: 0; margin: 0; font-size: 10px;"></ul>
-               </div>
-               <div>
-                 <h4 style="color: #00b37e; margin: 0 0 4px 0; font-size: 11px;">Corrida</h4>
-                 <ul id="pdfTopCorrida" style="list-style: none; padding: 0; margin: 0; font-size: 10px;"></ul>
-               </div>
+               <div><h4 style="color: #009bc1; margin: 0 0 4px 0; font-size: 11px;">Bicicleta</h4><ul id="pdfTopBike" style="list-style: none; padding: 0; margin: 0; font-size: 10px;"></ul></div>
+               <div><h4 style="color: #00b37e; margin: 0 0 4px 0; font-size: 11px;">Corrida</h4><ul id="pdfTopCorrida" style="list-style: none; padding: 0; margin: 0; font-size: 10px;"></ul></div>
              </div>
            </div>
-
            <div style="flex: 0.8; border: 1px solid #fbd5d5; background: #fef2f2; border-radius: 6px; padding: 10px; overflow: hidden;">
              <h3 style="color: var(--danger); margin:0 0 5px 0; border-bottom: 1px solid #fca5a5; padding-bottom:4px; font-size: 11px; text-transform: uppercase;">⚠️ Radar de Evasão (Zero Pts)</h3>
              <ul id="pdfListaEvasao" style="list-style: none; padding: 0; margin: 0; font-size: 10px; line-height: 1.4;"></ul>
@@ -472,17 +445,6 @@
       <div class="perm-item"><label style="margin:0;">⚙️ Gestão de Base (Aprovações)</label><input type="checkbox" class="chk-perm" value="gestao" /></div>
       <div class="perm-item"><label style="margin:0;">⚙️ Configurações (Minha Conta)</label><input type="checkbox" class="chk-perm" value="configuracoes" /></div>
       <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px;"><button id="fecharModalPermissoes" style="background: var(--border); padding: 10px;">Cancelar</button><button id="salvarPermissoesBtn" class="btn-primario">Salvar Acessos</button></div>
-    </div>
-  </div>
-
-  <div id="modalEvento" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:2000; justify-content:center; align-items:center;">
-    <div style="background: var(--bg-card); padding: 30px; border-radius: 12px; width: 90%; max-width: 400px;">
-      <h3 style="color: #8e44ad; margin-top: 0;">Agendar Evento</h3>
-      <input type="text" id="eventoTitulo" placeholder="Ex: Corrida Rústica 10k" />
-      <input type="text" id="eventoLocal" placeholder="Local / Encontro" />
-      <select id="eventoModalidade"><option value="Ambas">Ambas</option><option value="Bicicleta">Bicicleta</option><option value="Corrida">Corrida</option></select>
-      <input type="date" id="eventoData" />
-      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;"><button id="fecharModalEvento" style="background: var(--border); padding: 10px;">Cancelar</button><button id="salvarEventoBtn" class="btn-primario" style="background: #8e44ad;">Salvar Evento</button></div>
     </div>
   </div>
 
