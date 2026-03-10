@@ -85,7 +85,7 @@ function construirMenu() {
 function iniciarPainelAdmin() {
   Chart.defaults.color = document.body.getAttribute('data-theme') === 'dark' ? '#aaa' : '#666';
   document.getElementById("logoutBtn").addEventListener("click", async () => { if(confirm("Sair?")) { await signOut(auth); window.location.href = "index.html"; } });
-  setupSubTabs(); setupCadastrarPessoa(); setupContabilizacao(); setupRelatorioConsolidado(); setupFinanceiro(); setupMetas(); setupPermissoesModal(); setupAgenda(); setupConfiguracoes(); setupModalRegras(); setupModalEditar(); setupLimparBase(); setupFichaAtleta();
+  setupSubTabs(); setupCadastrarPessoa(); setupContabilizacao(); setupRelatorioConsolidado(); setupFinanceiroPlanilha(); setupPermissoesModal(); setupAgenda(); setupConfiguracoes(); setupModalRegras(); setupModalEditar(); setupLimparBase(); setupFichaAtleta();
   atualizarTelas();
 }
 
@@ -98,13 +98,13 @@ async function atualizarTelas() {
   if (userRole === "admin" || userPermissoes.includes("gestao")) setupAprovacoes();
   await carregarAgenda(); 
   await carregarHistorico(); 
-  await carregarFinanceiro(); 
+  await carregarFinanceiroPlanilha(); 
   await carregarEquipesEDashboard(); 
   await carregarRegras();
 }
 
 // =====================================================
-// 📊 DASHBOARD & GERADOR DE PDF BI (CORRIGIDO)
+// 📊 DASHBOARD & GERADOR DE PDF BI
 // =====================================================
 document.getElementById("btnExportarPDF").addEventListener("click", () => {
   showToast("Montando painel corporativo...", "info");
@@ -113,11 +113,9 @@ document.getElementById("btnExportarPDF").addEventListener("click", () => {
   if (temaAtual === "dark") { document.body.removeAttribute("data-theme"); Chart.defaults.color = '#666'; if(graficoLinhaInstancia) graficoLinhaInstancia.update(); }
 
   setTimeout(() => {
-    // Alimenta o HTML oculto com os dados do dashboard principal
     document.getElementById("pdfDataHoje").textContent = new Date().toLocaleDateString('pt-BR');
     
     if(document.getElementById("pdfAtivos")) document.getElementById("pdfAtivos").textContent = document.getElementById("totalAtivosGeral").textContent;
-    if(document.getElementById("pdfEngajamento")) document.getElementById("pdfEngajamento").textContent = document.getElementById("engajamento30d").textContent;
     if(document.getElementById("pdfInvest")) document.getElementById("pdfInvest").textContent = document.getElementById("totalInvestimento").textContent;
     if(document.getElementById("pdfRoi")) document.getElementById("pdfRoi").textContent = document.getElementById("roiAtleta").textContent;
     
@@ -127,7 +125,6 @@ document.getElementById("btnExportarPDF").addEventListener("click", () => {
     if(document.getElementById("pdfTopBike")) document.getElementById("pdfTopBike").innerHTML = document.getElementById("listaPodioBike").innerHTML;
     if(document.getElementById("pdfTopCorrida")) document.getElementById("pdfTopCorrida").innerHTML = document.getElementById("listaPodioCorrida").innerHTML;
     
-    // Mescla as duas listas de Evasão para o PDF
     if(document.getElementById("pdfListaEvasao")) {
        document.getElementById("pdfListaEvasao").innerHTML = document.getElementById("listaEvasaoBike").innerHTML + document.getElementById("listaEvasaoCorrida").innerHTML;
     }
@@ -171,234 +168,178 @@ document.getElementById("btnExportarPDF").addEventListener("click", () => {
   }, 150); 
 });
 
-
 // =====================================================
-// 🎯 METAS 
+// 💰 NOVO FINANCEIRO (REPLICAÇÃO EXCEL)
 // =====================================================
-async function setupMetas() {
-  const btn = document.getElementById("btnEditarMeta");
-  if(btn) { btn.addEventListener("click", async () => { const novaMeta = prompt("Digite a meta global de pontos (Digite 0 para ocultar):"); if(novaMeta !== null) { await setDoc(doc(db, "configuracoes", "metas"), { valor: Number(novaMeta) || 0 }); atualizarTelas(); } }); }
-}
-
-// =====================================================
-// 💰 FINANCEIRO (CATEGORIAS)
-// =====================================================
-function setupFinanceiro() {
-  const modalOrc = document.getElementById("modalOrcamento");
-  const canEditFin = userRole === "admin" || userPermissoes.includes("financeiro_edit");
-  const btnDefinir = document.getElementById("btnDefinirOrcamento");
-  if(btnDefinir) btnDefinir.style.display = canEditFin ? "inline-flex" : "none";
-
-  btnDefinir?.addEventListener("click", async () => {
-    const snap = await getDoc(doc(db, "configuracoes", "orcamento"));
-    if(snap.exists()) {
-        const d = snap.data();
-        document.getElementById("orcTreinador").value = d.treinador || 0;
-        document.getElementById("orcProva").value = d.prova || 0;
-        document.getElementById("orcEncontros").value = d.encontros || 0;
-        document.getElementById("orcUniformes").value = d.uniformes || 0;
-        document.getElementById("orcOutros").value = d.outros || 0;
-    }
-    modalOrc.style.display = "flex";
-  });
-  
-  document.getElementById("fecharModalOrcamento")?.addEventListener("click", () => modalOrc.style.display = "none");
-  document.getElementById("salvarOrcamentoBtn")?.addEventListener("click", async (e) => {
-    const p = (id) => parseFloat(document.getElementById(id).value) || 0;
-    e.target.textContent = "Salvando..."; e.target.disabled = true;
-    await setDoc(doc(db, "configuracoes", "orcamento"), { 
-      treinador: p("orcTreinador"), prova: p("orcProva"), encontros: p("orcEncontros"), uniformes: p("orcUniformes"), outros: p("orcOutros") 
-    });
-    modalOrc.style.display = "none"; showToast("Orçamento anual salvo!", "success"); 
-    e.target.textContent = "Salvar Orçamento"; e.target.disabled = false;
-    atualizarTelas();
-  });
-
-  const selectCat = document.getElementById("catDespesa");
-  const areaForm = document.getElementById("areaFormFinanceiro");
-  const formCorrida = document.getElementById("formProvaCorrida");
-  const formOutros = document.getElementById("formOutrosTipos");
-  
-  const cardAdd = document.getElementById("cardNovaDespesa"); 
-  if(cardAdd) cardAdd.style.display = canEditFin ? "block" : "none";
-
-  if(!selectCat) return;
-
-  selectCat.addEventListener("change", (e) => {
-    const val = e.target.value;
-    if(!val) { areaForm.style.display = "none"; return; }
-    areaForm.style.display = "block";
-    
-    if(val === "Prova Corrida") {
-      formCorrida.style.display = "block";
-      formOutros.style.display = "none";
-      document.getElementById("equipeDespesa").value = "Corrida";
-      document.getElementById("equipeDespesa").disabled = true;
-    } else {
-      formCorrida.style.display = "none";
-      formOutros.style.display = "block";
-      document.getElementById("equipeDespesa").disabled = false;
-    }
-  });
-
-  document.getElementById("btnSalvarDespesa").addEventListener("click", async () => {
-    const btn = document.getElementById("btnSalvarDespesa");
-    const cat = selectCat.value;
-    const desc = document.getElementById("descDespesa").value.trim();
-    const eq = document.getElementById("equipeDespesa").value;
-    const eventoId = document.getElementById("vincularEventoDespesa").value;
-    const obs = document.getElementById("obsDespesa").value.trim();
-    
-    if(!cat || !desc) return showToast("Preencha Tipo e Título!", "error");
-
-    let dadosFinanceiros = {
-      categoria: cat, descricao: desc, equipe: eq, eventoId: eventoId, observacao: obs, criadoEm: new Date().toISOString()
-    };
-
-    if (cat === "Prova Corrida") {
-      const dt = document.getElementById("dataProva").value;
-      if(!dt) return showToast("Data da prova é obrigatória!", "error");
-      const v = (id) => parseFloat(document.getElementById(id).value) || 0;
-      dadosFinanceiros.dataBase = dt;
-      dadosFinanceiros.local = document.getElementById("localProva").value.trim();
-      dadosFinanceiros.detalhes = { transporte: v('valTransp'), hospedagem: v('valHosp'), alimentacao: v('valAlim'), inscricao: v('valInsc'), demais: v('valDemais') };
-      dadosFinanceiros.realizadoTotal = Object.values(dadosFinanceiros.detalhes).reduce((a, b) => a + b, 0);
-    } else {
-      const dt = document.getElementById("dataDespesaNormal").value;
-      if(!dt) return showToast("Data de pagamento é obrigatória!", "error");
-      dadosFinanceiros.dataBase = dt;
-      dadosFinanceiros.realizadoTotal = parseFloat(document.getElementById("valorRealizadoNormal").value) || 0;
-      dadosFinanceiros.detalhes = {};
-    }
-
-    if(dadosFinanceiros.realizadoTotal <= 0) return showToast("Insira um valor maior que zero.", "warning");
-
-    btn.textContent = "Debitando..."; btn.disabled = true;
-    try {
-      await addDoc(collection(db, "despesas"), dadosFinanceiros);
-      showToast("Gasto debitado!", "success");
-      document.querySelectorAll("#areaFormFinanceiro input").forEach(i => i.value = ""); document.getElementById("obsDespesa").value = "";
-      selectCat.value = ""; areaForm.style.display = "none"; atualizarTelas();
-    } catch(err) { showToast("Erro ao gravar.", "error"); } finally { btn.textContent = "Debitar do Orçamento"; btn.disabled = false; }
-  });
-
-  const btnExport = document.getElementById("btnExportarFinExcel");
-  if(btnExport) btnExport.addEventListener("click", () => exportarFinanceiroExcel());
-}
-
-async function carregarFinanceiro() {
-  const snapOrc = await getDoc(doc(db, "configuracoes", "orcamento"));
-  let orc = snapOrc.exists() ? snapOrc.data() : { treinador: 0, prova: 0, encontros: 0, uniformes: 0, outros: 0 };
-
-  const snap = await getDocs(query(collection(db, "despesas"), orderBy("dataBase", "desc")));
-  historicoFinanceiro = [];
-  let html = "";
-  
-  let real = { "Mensalidade Treinador": 0, "Prova Corrida": 0, "Encontros": 0, "Uniformes": 0, "Demais Despesas": 0 };
-  let realizadoGeral = 0;
-  let orcadoGeral = (orc.treinador||0) + (orc.prova||0) + (orc.encontros||0) + (orc.uniformes||0) + (orc.outros||0);
-
+function setupFinanceiroPlanilha() {
+  const modal = document.getElementById("modalLinhaVerba");
   const canEdit = userRole === "admin" || userPermissoes.includes("financeiro_edit");
-
-  snap.forEach(d => {
-    const desp = d.data();
-    historicoFinanceiro.push({id: d.id, ...desp});
-    const v = desp.realizadoTotal || 0;
-    realizadoGeral += v;
-    
-    if(real[desp.categoria] !== undefined) real[desp.categoria] += v;
-    else real["Demais Despesas"] += v;
-
-    const btnExcluir = canEdit ? `<button class="btn-acao btn-excluir-despesa" data-id="${d.id}" style="color:red; border:0; padding:0;"><i data-lucide="trash" style="width:16px;"></i></button>` : '';
-    const badgeProva = desp.categoria === 'Prova Corrida' ? `<br><small style="color:var(--secondary);"><i data-lucide="map-pin" style="width:12px;"></i> ${desp.local}</small>` : '';
-    const money = (v) => (v||0).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-    
-    html += `<tr>
-      <td>${new Date(desp.dataBase+"T00:00:00").toLocaleDateString('pt-BR')}</td>
-      <td><strong>${desp.descricao}</strong><br><small>${desp.categoria}</small>${badgeProva}</td>
-      <td>${desp.equipe}</td>
-      <td style="color:var(--danger); font-weight:bold;">${money(v)}</td>
-      <td style="text-align:right;">${btnExcluir}</td>
-    </tr>`;
-  });
-
-  if(document.getElementById("listaDespesas")) document.getElementById("listaDespesas").innerHTML = html || `<tr><td colspan='5'>Sem despesas lançadas.</td></tr>`;
-  gastoTotalGlobal = realizadoGeral; // Para o ROI
-
-  const moneyStr = (v) => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-  if(document.getElementById("totalInvestimento")) document.getElementById("totalInvestimento").textContent = moneyStr(realizadoGeral);
   
-  if(document.getElementById("dashFinOrcadoTotal")) document.getElementById("dashFinOrcadoTotal").textContent = moneyStr(orcadoGeral);
-  if(document.getElementById("dashFinRealizadoTotal")) document.getElementById("dashFinRealizadoTotal").textContent = moneyStr(realizadoGeral);
-  if(document.getElementById("dashFinSaldoTotal")) {
-    const saldo = orcadoGeral - realizadoGeral;
-    const el = document.getElementById("dashFinSaldoTotal");
-    el.textContent = moneyStr(saldo); el.style.color = saldo < 0 ? 'var(--danger)' : '#8e44ad';
+  if (document.getElementById("btnAbrirModalDespesa")) {
+    document.getElementById("btnAbrirModalDespesa").addEventListener("click", () => {
+      document.getElementById("verbaEditId").value = "";
+      document.getElementById("verbaEquipe").value = "Corrida e Bike";
+      document.getElementById("verbaEvento").value = "";
+      document.getElementById("vPropInsc").value = "";
+      document.getElementById("vPropTransp").value = "";
+      document.getElementById("vPropHosp").value = "";
+      document.getElementById("vPropAlim").value = "";
+      document.getElementById("vPropDemais").value = "";
+      document.getElementById("vRealizadoTotal").value = "";
+      modal.style.display = "flex";
+    });
   }
 
-  // Dashboard de Categorias (Grid Cards)
-  let htmlPotes = "";
-  const catInfos = [
-    { nome: "Mensalidade Treinador", orc: orc.treinador||0, real: real["Mensalidade Treinador"], color: "#3498db" },
-    { nome: "Provas / Inscrições", orc: orc.prova||0, real: real["Prova Corrida"], color: "var(--secondary)" },
-    { nome: "Encontros", orc: orc.encontros||0, real: real["Encontros"], color: "#f39c12" },
-    { nome: "Uniformes", orc: orc.uniformes||0, real: real["Uniformes"], color: "var(--primary)" },
-    { nome: "Demais Despesas", orc: orc.outros||0, real: real["Demais Despesas"], color: "#95a5a6" }
+  document.getElementById("fecharModalVerba")?.addEventListener("click", () => modal.style.display = "none");
+
+  document.getElementById("salvarVerbaBtn")?.addEventListener("click", async (e) => {
+    const idEdit = document.getElementById("verbaEditId").value;
+    const eq = document.getElementById("verbaEquipe").value;
+    const ev = document.getElementById("verbaEvento").value.trim();
+    
+    if(!ev) return showToast("Informe o Evento/Custo!", "error");
+
+    const p = (id) => parseFloat(document.getElementById(id).value) || 0;
+    
+    const propInsc = p("vPropInsc");
+    const propTransp = p("vPropTransp");
+    const propHosp = p("vPropHosp");
+    const propAlim = p("vPropAlim");
+    const propDemais = p("vPropDemais");
+    const totalProp = propInsc + propTransp + propHosp + propAlim + propDemais;
+    
+    const totalRealizado = p("vRealizadoTotal");
+    const desvio = totalProp - totalRealizado;
+
+    const dados = {
+      equipe: eq, evento: ev,
+      propInsc: propInsc, propTransp: propTransp, propHosp: propHosp, propAlim: propAlim, propDemais: propDemais,
+      totalProposto: totalProp, totalRealizado: totalRealizado, desvio: desvio,
+      atualizadoEm: new Date().toISOString()
+    };
+
+    e.target.textContent = "Salvando..."; e.target.disabled = true;
+    try {
+      if(idEdit) { await updateDoc(doc(db, "verbas_excel"), idEdit, dados); showToast("Linha atualizada!", "success"); }
+      else { dados.criadoEm = new Date().toISOString(); await addDoc(collection(db, "verbas_excel"), dados); showToast("Linha adicionada!", "success"); }
+      modal.style.display = "none";
+      carregarFinanceiroPlanilha();
+    } catch(err) { showToast("Erro.", "error"); }
+    e.target.textContent = "Salvar na Planilha"; e.target.disabled = false;
+  });
+
+  document.getElementById("btnExportarFinExcel")?.addEventListener("click", exportarFinanceiroPlanilha);
+}
+
+async function carregarFinanceiroPlanilha() {
+  const snap = await getDocs(query(collection(db, "verbas_excel"), orderBy("criadoEm", "asc")));
+  historicoFinanceiro = [];
+  
+  let htmlMaster = "";
+  let resumo = {
+    Corrida: { prop: 0, real: 0 },
+    Bike: { prop: 0, real: 0 },
+    Ambas: { prop: 0, real: 0 } // "Corrida e Bike"
+  };
+
+  let globalProp = 0;
+  let globalReal = 0;
+
+  const canEdit = userRole === "admin" || userPermissoes.includes("financeiro_edit");
+  const num = (v) => (v||0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+  snap.forEach(d => {
+    const v = d.data();
+    historicoFinanceiro.push({id: d.id, ...v});
+    
+    // Somas Globais e Resumo
+    globalProp += v.totalProposto || 0;
+    globalReal += v.totalRealizado || 0;
+
+    if(v.equipe === "Corrida") { resumo.Corrida.prop += v.totalProposto; resumo.Corrida.real += v.totalRealizado; }
+    else if(v.equipe === "Bike") { resumo.Bike.prop += v.totalProposto; resumo.Bike.real += v.totalRealizado; }
+    else { resumo.Ambas.prop += v.totalProposto; resumo.Ambas.real += v.totalRealizado; } // rateio ou full
+
+    const corDesvio = v.desvio < 0 ? "color: var(--danger); font-weight:bold;" : "color: var(--secondary);";
+    const bgReal = v.totalRealizado > 0 ? "background: rgba(39, 174, 96, 0.05);" : "";
+    
+    let btnAcoes = "";
+    if(canEdit) {
+      btnAcoes = `
+        <button class="btn-acao btn-edit-verba" data-id="${d.id}" style="color:var(--primary); padding:4px;"><i data-lucide="edit-2" style="width:14px;"></i></button>
+        <button class="btn-acao btn-del-verba" data-id="${d.id}" style="color:var(--danger); padding:4px;"><i data-lucide="trash" style="width:14px;"></i></button>
+      `;
+    }
+
+    htmlMaster += `
+      <tr>
+        <td><small>${v.equipe}</small></td>
+        <td><strong>${v.evento}</strong></td>
+        <td>${v.propInsc > 0 ? num(v.propInsc) : '-'}</td>
+        <td>${v.propTransp > 0 ? num(v.propTransp) : '-'}</td>
+        <td>${v.propHosp > 0 ? num(v.propHosp) : '-'}</td>
+        <td>${v.propAlim > 0 ? num(v.propAlim) : '-'}</td>
+        <td>${v.propDemais > 0 ? num(v.propDemais) : '-'}</td>
+        <td style="font-weight:600; background: rgba(0,0,0,0.02);">${num(v.totalProposto)}</td>
+        <td style="font-weight:600; color: #27ae60; ${bgReal}">${num(v.totalRealizado)}</td>
+        <td style="${corDesvio}">${num(v.desvio)}</td>
+        <td style="text-align:right; white-space:nowrap;">${btnAcoes}</td>
+      </tr>
+    `;
+  });
+
+  if(document.getElementById("tabelaMasterFin")) document.getElementById("tabelaMasterFin").innerHTML = htmlMaster || `<tr><td colspan='11' style='text-align:center;'>Nenhum planejamento registrado.</td></tr>`;
+
+  // Render Resumo
+  let htmlResumo = "";
+  const arrResumo = [
+    {nome: "Corrida", data: resumo.Corrida},
+    {nome: "Bike", data: resumo.Bike},
+    {nome: "Corrida e Bike (Ambas)", data: resumo.Ambas}
   ];
 
-  catInfos.forEach(c => {
-     const perc = c.orc > 0 ? Math.min((c.real / c.orc) * 100, 100) : (c.real > 0 ? 100 : 0);
-     const corBarra = perc >= 100 ? "var(--danger)" : c.color;
-     htmlPotes += `
-      <div class="card" style="margin:0; padding:15px; border-left: 4px solid ${c.color};">
-         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-           <strong style="color:var(--text); font-size:0.9rem;">${c.nome}</strong>
-         </div>
-         <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:5px;">
-           <span style="color:#666;">Teto: ${moneyStr(c.orc)}</span>
-           <span style="color:${c.color}; font-weight:bold;">${moneyStr(c.real)}</span>
-         </div>
-         <div class="progress-bar-bg" style="height:6px; margin-bottom:5px;"><div class="progress-bar-fill" style="width: ${perc}%; background: ${corBarra};"></div></div>
-         <div style="text-align:right; font-size:0.75rem; color:#999;">Saldo: <strong>${moneyStr(c.orc - c.real)}</strong></div>
-      </div>`;
+  arrResumo.forEach(r => {
+    if(r.data.prop > 0 || r.data.real > 0) {
+      htmlResumo += `<tr><td><strong>${r.nome}</strong></td><td>R$ ${num(r.data.prop)}</td><td style="color:var(--danger); font-weight:bold;">R$ ${num(r.data.real)}</td></tr>`;
+    }
   });
-  if(document.getElementById("listaPotesOrcamento")) document.getElementById("listaPotesOrcamento").innerHTML = htmlPotes;
+  
+  htmlResumo += `<tr style="background:var(--table-header);"><td style="color:var(--primary); font-weight:bold;">TOTAIS GERAIS</td><td style="font-weight:bold;">R$ ${num(globalProp)}</td><td style="color:var(--danger); font-weight:bold;">R$ ${num(globalReal)}</td></tr>`;
 
-  // Lançamentos Recentes no Painel
-  let htmlUltimos = "";
-  const ultimos = historicoFinanceiro.slice(0, 4);
-  if(ultimos.length === 0) htmlUltimos = "<p style='color:#999;'>Nenhum registro.</p>";
-  ultimos.forEach(u => {
-     htmlUltimos += `
-      <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border);">
-        <div style="overflow:hidden; white-space:nowrap; max-width: 65%;">
-          <strong style="display:block; font-size:0.9rem; color:var(--text); text-overflow:ellipsis; overflow:hidden;" title="${u.descricao}">${u.descricao}</strong>
-          <small style="color:var(--text-light);">${new Date(u.dataBase+"T00:00:00").toLocaleDateString('pt-BR')} • ${u.categoria}</small>
-        </div>
-        <strong style="color:var(--danger); font-size:0.9rem; margin-left:10px;">-${moneyStr(u.realizadoTotal)}</strong>
-      </div>`;
-  });
-  if(document.getElementById("dashUltimasDespesas")) document.getElementById("dashUltimasDespesas").innerHTML = htmlUltimos;
+  if(document.getElementById("tabelaResumoEquipes")) document.getElementById("tabelaResumoEquipes").innerHTML = htmlResumo;
+  
+  gastoTotalGlobal = globalReal; 
+  if(document.getElementById("totalInvestimento")) document.getElementById("totalInvestimento").textContent = `R$ ${num(globalReal)}`;
 
   lucide.createIcons();
-  document.querySelectorAll(".btn-excluir-despesa").forEach(btn => { 
-    btn.addEventListener("click", async (e) => { 
-      if(confirm("Excluir este registo do orçamento? O valor voltará para o Saldo.")) { 
-        await deleteDoc(doc(db, "despesas", e.currentTarget.dataset.id)); atualizarTelas(); 
-      } 
-    }); 
+
+  document.querySelectorAll(".btn-del-verba").forEach(btn => {
+    btn.addEventListener("click", async (e) => {
+      if(confirm("Excluir linha da planilha permanentemente?")) { await deleteDoc(doc(db, "verbas_excel", e.currentTarget.dataset.id)); carregarFinanceiroPlanilha(); }
+    });
+  });
+
+  document.querySelectorAll(".btn-edit-verba").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      const id = e.currentTarget.dataset.id; const v = historicoFinanceiro.find(x => x.id === id);
+      if(!v) return;
+      document.getElementById("verbaEditId").value = v.id; document.getElementById("verbaEquipe").value = v.equipe; document.getElementById("verbaEvento").value = v.evento;
+      document.getElementById("vPropInsc").value = v.propInsc || ""; document.getElementById("vPropTransp").value = v.propTransp || ""; document.getElementById("vPropHosp").value = v.propHosp || ""; document.getElementById("vPropAlim").value = v.propAlim || ""; document.getElementById("vPropDemais").value = v.propDemais || "";
+      document.getElementById("vRealizadoTotal").value = v.totalRealizado || "";
+      document.getElementById("modalLinhaVerba").style.display = "flex";
+    });
   });
 }
 
-function exportarFinanceiroExcel() {
-  if(historicoFinanceiro.length === 0) return showToast("Nenhum dado para exportar.", "error");
-  let csv = "\uFEFFData;Categoria;Descrição;Equipe;Local;Observação;Transporte;Hospedagem;Alimentacao;Inscricao;Outros;Gasto Total Realizado\r\n";
-  historicoFinanceiro.forEach(d => {
-    const n = (v) => (v || 0).toFixed(2).replace('.', ','); const dt = d.detalhes || {};
-    let linha = [ d.dataBase ? new Date(d.dataBase+"T00:00:00").toLocaleDateString('pt-BR') : "-", d.categoria || "-", d.descricao || "-", d.equipe || "-", d.local || "-", d.observacao || "-", n(dt.transporte), n(dt.hospedagem), n(dt.alimentacao), n(dt.inscricao), n(dt.demais), n(d.realizadoTotal) ];
+function exportarFinanceiroPlanilha() {
+  if(historicoFinanceiro.length === 0) return showToast("Nenhuma linha para exportar.", "error");
+  let csv = "\uFEFFEquipe;Evento;Inscrições;Transporte;Hospedagem;Alimentação;Demais Custos;Total Proposto;Total Realizado;Desvio\r\n";
+  historicoFinanceiro.forEach(v => {
+    const n = (val) => (val || 0).toFixed(2).replace('.', ',');
+    let linha = [ v.equipe, v.evento, n(v.propInsc), n(v.propTransp), n(v.propHosp), n(v.propAlim), n(v.propDemais), n(v.totalProposto), n(v.totalRealizado), n(v.desvio) ];
     csv += linha.map(col => `"${String(col).replace(/"/g, '""')}"`).join(";") + "\r\n";
   });
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `Relatorio_Custos_Gerais.csv`; a.click(); URL.revokeObjectURL(url);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `Controle_Orcamentario_Atletas.csv`; a.click(); URL.revokeObjectURL(url);
 }
 
 // =====================================================
@@ -425,13 +366,11 @@ async function carregarAgenda() {
   cacheEventos.sort((a,b) => new Date(a.data) - new Date(b.data)); 
   
   const htmlDropdown = '<option value="">Nenhum (Avulso)</option>' + cacheEventos.map(e => `<option value="${e.id}">${e.titulo} (${new Date(e.data+"T00:00:00").toLocaleDateString('pt-BR')})</option>`).join('');
-  if(document.getElementById("vincularEventoDespesa")) document.getElementById("vincularEventoDespesa").innerHTML = htmlDropdown;
   if(document.getElementById("lancarEventoSelect")) document.getElementById("lancarEventoSelect").innerHTML = htmlDropdown;
 
   const hoje = new Date().toISOString().split('T')[0];
   const futuros = cacheEventos.filter(e => e.data >= hoje).slice(0, 4); 
   let html = "";
-  
   const hasGestao = userRole === "admin" || userPermissoes.includes("gestao");
   
   futuros.forEach(e => {
@@ -530,7 +469,9 @@ function setupFichaAtleta() {
 
 async function abrirFichaAtleta(id) {
   const a = mapAtletas[id]; if(!a) return;
-  document.getElementById("fichaNome").textContent = a.nome; document.getElementById("fichaEquipe").textContent = a.equipe; document.getElementById("fichaPontos").textContent = a.pontuacaoTotal || 0;
+  document.getElementById("fichaNome").textContent = a.nome;
+  document.getElementById("fichaEquipe").textContent = a.equipe;
+  document.getElementById("fichaPontos").textContent = a.pontuacaoTotal || 0;
   const statusEl = document.getElementById("fichaStatus"); if(a.ativo !== false) { statusEl.textContent = "Ativo no Sistema"; statusEl.style.color = "var(--secondary)"; } else { statusEl.textContent = "Desativado"; statusEl.style.color = "var(--danger)"; }
   document.getElementById("fichaAtletaId").value = id;
   const hist = historicoCompleto.filter(h => h.atletaId === id); let htmlH = ""; if(hist.length === 0) htmlH = "<p style='color:#999; margin-top: 10px;'>Nenhum registro encontrado.</p>";
@@ -568,7 +509,7 @@ async function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike, 
   document.getElementById("mediaBike").textContent = totalBike > 0 ? Math.round(ptsBike / totalBike) : 0;
   document.getElementById("mediaCorrida").textContent = totalCorrida > 0 ? Math.round(ptsCorrida / totalCorrida) : 0;
 
-  // CORREÇÃO DO PÓDIO: Flexbox rígido e fonte menor
+  // CORREÇÃO DO PÓDIO: Flexbox rígido
   const htmlPodio = (arr) => {
     if(arr.length===0) return "<li style='color:#999; font-size:0.85rem;'>Sem pontos</li>";
     return arr.map((a,i) => `
@@ -586,7 +527,7 @@ async function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike, 
   if(document.getElementById("listaPodioBike")) document.getElementById("listaPodioBike").innerHTML = htmlPodio(bikeAtletas);
   if(document.getElementById("listaPodioCorrida")) document.getElementById("listaPodioCorrida").innerHTML = htmlPodio(corridaAtletas);
 
-  // CORREÇÃO DA EVASÃO: Flexbox rígido e fonte menor
+  // CORREÇÃO DA EVASÃO
   const radarBike = arrayAtletas.filter(a => a.diasAusente > 30 && a.eq === 'Bicicleta').sort((a,b) => b.diasAusente - a.diasAusente).slice(0, 5);
   const radarCorrida = arrayAtletas.filter(a => a.diasAusente > 30 && a.eq === 'Corrida').sort((a,b) => b.diasAusente - a.diasAusente).slice(0, 5);
   const htmlEvasao = (arr) => {
@@ -749,7 +690,7 @@ function setupLimparBase() {
     if (!prompt("Digite sua senha de administrador para autorizar:")) return;
     const btn = document.getElementById("btnLimparBase"); btn.innerHTML = "Apagando..."; btn.disabled = true;
     try {
-      const col = ["historico_pontos", "regras_pontuacao", "despesas", "comentarios_atletas"];
+      const col = ["historico_pontos", "regras_pontuacao", "despesas", "verbas_excel", "comentarios_atletas"];
       for (let c of col) { const snap = await getDocs(collection(db, c)); snap.forEach(async (d) => { await deleteDoc(doc(db, c, d.id)); }); }
       const snapA = await getDocs(collection(db, "atletas")); snapA.forEach(async (d) => { if (d.id !== auth.currentUser.uid) await deleteDoc(doc(db, "atletas", d.id)); });
       showToast("Base Limpa!", "success"); setTimeout(() => window.location.reload(), 2000); 
