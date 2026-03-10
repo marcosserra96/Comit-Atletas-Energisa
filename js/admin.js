@@ -142,7 +142,7 @@ document.getElementById("btnExportarPDF").addEventListener("click", () => {
       eventosPassados[key].atletas.add(h.atletaId);
     });
     
-    const listaUltimos = Object.values(eventosPassados).sort((a,b) => new Date(b.data) - new Date(a.data)).slice(0, 4);
+    const listaUltimos = Object.values(eventosPassados).sort((a,b) => new Date(b.data || "1970-01-01") - new Date(a.data || "1970-01-01")).slice(0, 4);
     let htmlUltimos = "";
     listaUltimos.forEach(e => {
        const d = new Date(e.data + "T00:00:00").toLocaleDateString('pt-BR').substring(0,5);
@@ -180,7 +180,6 @@ function setupFinanceiroPlanilha() {
       document.getElementById("areaAcoesFinanceiro").style.display = canEdit ? "block" : "none";
   }
 
-  // Toggle do Lançamento Avulso (Esconde a parte de Orçamento Proposto)
   const chkAvulso = document.getElementById("checkAvulso");
   const areaProposto = document.getElementById("areaProposto");
   if(chkAvulso) {
@@ -224,7 +223,6 @@ function setupFinanceiroPlanilha() {
     
     let propInsc = 0, propTransp = 0, propHosp = 0, propAlim = 0, propDemais = 0, totalProp = 0;
     
-    // Se não for avulso, capta o proposto
     if(!chkAvulso.checked) {
        propInsc = p("vPropInsc"); propTransp = p("vPropTransp"); propHosp = p("vPropHosp"); propAlim = p("vPropAlim"); propDemais = p("vPropDemais");
        totalProp = propInsc + propTransp + propHosp + propAlim + propDemais;
@@ -278,9 +276,9 @@ async function carregarFinanceiroPlanilha() {
     globalProp += v.totalProposto || 0;
     globalReal += v.totalRealizado || 0;
 
-    // Resumo Equipes
+    // Resumo Equipes (Garante que "Bike" ou "Bicicleta" vai pro mesmo pote)
     if(v.equipe === "Corrida") { resumoEquipes.Corrida.prop += v.totalProposto; resumoEquipes.Corrida.real += v.totalRealizado; }
-    else if(v.equipe === "Bike") { resumoEquipes.Bike.prop += v.totalProposto; resumoEquipes.Bike.real += v.totalRealizado; }
+    else if(v.equipe === "Bicicleta" || v.equipe === "Bike") { resumoEquipes.Bike.prop += v.totalProposto; resumoEquipes.Bike.real += v.totalRealizado; }
     else { resumoEquipes.Ambas.prop += v.totalProposto; resumoEquipes.Ambas.real += v.totalRealizado; }
 
     // Resumo Categorias Estratégicas
@@ -321,7 +319,7 @@ async function carregarFinanceiroPlanilha() {
   if(document.getElementById("tabelaMasterFin")) document.getElementById("tabelaMasterFin").innerHTML = htmlMaster || `<tr><td colspan='12' style='text-align:center;'>Nenhum planejamento registrado.</td></tr>`;
 
   // Inject Global Dashboard Cards
-  gastoTotalGlobal = globalReal; 
+  gastoTotalGlobal = globalReal || 0; 
   if(document.getElementById("totalInvestimento")) document.getElementById("totalInvestimento").textContent = moneyStr(globalReal);
   if(document.getElementById("dashFinOrcadoTotal")) document.getElementById("dashFinOrcadoTotal").textContent = moneyStr(globalProp);
   if(document.getElementById("dashFinRealizadoTotal")) document.getElementById("dashFinRealizadoTotal").textContent = moneyStr(globalReal);
@@ -433,7 +431,7 @@ async function carregarEquipesEDashboard() {
     const btnExcluir = (auth.currentUser.uid !== u.id && hasGestao) ? `<button class="btn-acao btn-excluir-membro" data-id="${u.id}" style="color: red; border: 0; padding: 4px; margin-left: 5px;"><i data-lucide="x-circle" style="width: 18px;"></i></button>` : '';
     const displayPts = u.role === 'atleta' ? `<br><small style="color: var(--primary);">🏆 ${pts} pts</small>` : '';
     const linha = `<tr><td class="${!ativo ? 'inativo-txt' : ''}" style="vertical-align:middle;"><strong>${u.nome}</strong>${displayPts}</td><td style="text-align: right; display:flex; justify-content:flex-end; align-items:center; min-height: 40px;">${switchAtivo} ${btnFicha} ${btnPerm} ${btnEditar} ${btnExcluir}</td></tr>`;
-    if (u.role === "admin" || u.role === "comite") { htmlComite += linha; contComite++; } else if (u.equipe === "Corrida") { htmlCorrida += linha; contCorrida++; ptsCorrida += pts; todosAtletas.push({nome: u.nome, pts: pts, eq: u.equipe, id: u.id, ativo: ativo}); } else if (u.equipe === "Bicicleta") { htmlBike += linha; contBike++; ptsBike += pts; todosAtletas.push({nome: u.nome, pts: pts, eq: u.equipe, id: u.id, ativo: ativo}); }
+    if (u.role === "admin" || u.role === "comite") { htmlComite += linha; contComite++; } else if (u.equipe === "Corrida") { htmlCorrida += linha; contCorrida++; ptsCorrida += pts; todosAtletas.push({nome: u.nome, pts: pts, eq: u.equipe, id: u.id, ativo: ativo}); } else if (u.equipe === "Bicicleta" || u.equipe === "Bike") { htmlBike += linha; contBike++; ptsBike += pts; todosAtletas.push({nome: u.nome, pts: pts, eq: u.equipe, id: u.id, ativo: ativo}); }
   });
 
   if(document.getElementById("listaFilaBike")) document.getElementById("listaFilaBike").innerHTML = htmlFilaBike || `<tr><td colspan='2'>Ninguém na fila.</td></tr>`;
@@ -482,11 +480,13 @@ function setupFichaAtleta() {
 
 async function abrirFichaAtleta(id) {
   const a = mapAtletas[id]; if(!a) return;
-  document.getElementById("fichaNome").textContent = a.nome; document.getElementById("fichaEquipe").textContent = a.equipe; document.getElementById("fichaPontos").textContent = a.pontuacaoTotal || 0;
+  document.getElementById("fichaNome").textContent = a.nome;
+  document.getElementById("fichaEquipe").textContent = a.equipe;
+  document.getElementById("fichaPontos").textContent = a.pontuacaoTotal || 0;
   const statusEl = document.getElementById("fichaStatus"); if(a.ativo !== false) { statusEl.textContent = "Ativo no Sistema"; statusEl.style.color = "var(--secondary)"; } else { statusEl.textContent = "Desativado"; statusEl.style.color = "var(--danger)"; }
   document.getElementById("fichaAtletaId").value = id;
   const hist = historicoCompleto.filter(h => h.atletaId === id); let htmlH = ""; if(hist.length === 0) htmlH = "<p style='color:#999; margin-top: 10px;'>Nenhum registro encontrado.</p>";
-  hist.forEach(h => { const dataF = new Date(h.dataTreino+"T00:00:00").toLocaleDateString('pt-BR'); const isFalta = h.pontos === 0; const cor = isFalta ? "var(--accent)" : "var(--secondary)"; const ptsStr = isFalta ? "Falta Justificada" : `+${h.pontos} pts`; htmlH += `<div style="border-bottom: 1px solid var(--border); padding: 8px 0; display:flex; justify-content:space-between; align-items:center;"><div><strong>${dataF}</strong> - ${h.descTreino}<br><small style="color:#666;">${h.regraDesc}</small></div><div style="color:${cor}; font-weight:bold; text-align:right;">${ptsStr}</div></div>`; });
+  hist.forEach(h => { const dataF = new Date(h.dataTreino+"T00:00:00").toLocaleDateString('pt-BR'); const isFalta = Number(h.pontos) === 0; const cor = isFalta ? "var(--accent)" : "var(--secondary)"; const ptsStr = isFalta ? "Falta Justificada" : `+${h.pontos} pts`; htmlH += `<div style="border-bottom: 1px solid var(--border); padding: 8px 0; display:flex; justify-content:space-between; align-items:center;"><div><strong>${dataF}</strong> - ${h.descTreino}<br><small style="color:#666;">${h.regraDesc}</small></div><div style="color:${cor}; font-weight:bold; text-align:right;">${ptsStr}</div></div>`; });
   document.getElementById("fichaHistorico").innerHTML = htmlH; await carregarComentarios(id); document.getElementById("modalFichaAtleta").style.display = "flex";
 }
 
@@ -507,7 +507,7 @@ async function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike, 
   arrayAtletas.forEach(a => {
       totalPontosGlobal += a.pts;
       if (a.ativo !== false) {
-          const lastEntry = historicoCompleto.find(h => h.atletaId === a.id && h.pontos > 0);
+          const lastEntry = historicoCompleto.find(h => h.atletaId === a.id && Number(h.pontos) > 0);
           if (lastEntry && lastEntry.dataTreino) {
               const dataTreino = new Date(lastEntry.dataTreino + "T00:00:00");
               const diffTime = Math.abs(hoje - dataTreino);
@@ -533,13 +533,13 @@ async function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike, 
       </li>`).join('');
   };
   
-  const bikeAtletas = arrayAtletas.filter(a => a.eq === 'Bicicleta').sort((a,b) => b.pts - a.pts).slice(0,3);
+  const bikeAtletas = arrayAtletas.filter(a => a.eq === 'Bicicleta' || a.eq === 'Bike').sort((a,b) => b.pts - a.pts).slice(0,3);
   const corridaAtletas = arrayAtletas.filter(a => a.eq === 'Corrida').sort((a,b) => b.pts - a.pts).slice(0,3);
   if(document.getElementById("listaPodioBike")) document.getElementById("listaPodioBike").innerHTML = htmlPodio(bikeAtletas);
   if(document.getElementById("listaPodioCorrida")) document.getElementById("listaPodioCorrida").innerHTML = htmlPodio(corridaAtletas);
 
   // CORREÇÃO DA EVASÃO
-  const radarBike = arrayAtletas.filter(a => a.diasAusente > 30 && a.eq === 'Bicicleta').sort((a,b) => b.diasAusente - a.diasAusente).slice(0, 5);
+  const radarBike = arrayAtletas.filter(a => a.diasAusente > 30 && (a.eq === 'Bicicleta' || a.eq === 'Bike')).sort((a,b) => b.diasAusente - a.diasAusente).slice(0, 5);
   const radarCorrida = arrayAtletas.filter(a => a.diasAusente > 30 && a.eq === 'Corrida').sort((a,b) => b.diasAusente - a.diasAusente).slice(0, 5);
   const htmlEvasao = (arr) => {
     if(arr.length===0) return "<li style='color:var(--secondary); font-size:0.8rem;'>Nenhum alerta.</li>";
@@ -560,7 +560,7 @@ async function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike, 
   if(document.getElementById("engajamento30d")) { document.getElementById("engajamento30d").textContent = (totalAtivosGerais > 0 ? Math.round((engajados30d / totalAtivosGerais)*100) : 0) + "%"; }
   if(document.getElementById("roiAtleta")) { document.getElementById("roiAtleta").textContent = (totalAtivosGerais > 0 ? (gastoTotalGlobal / totalAtivosGerais) : 0).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}); }
 
-  let ativosBikeG = arrayAtletas.filter(a => a.eq === 'Bicicleta' && a.diasAusente <= 30 && a.diasAusente !== -1).length;
+  let ativosBikeG = arrayAtletas.filter(a => (a.eq === 'Bicicleta' || a.eq === 'Bike') && a.diasAusente <= 30 && a.diasAusente !== -1).length;
   let ativosCorridaG = arrayAtletas.filter(a => a.eq === 'Corrida' && a.diasAusente <= 30 && a.diasAusente !== -1).length;
   
   document.getElementById('txtAtivosBike').textContent = totalBike === 0 ? "0% ativos (30d)" : `${Math.round((ativosBikeG/totalBike)*100)}% ativos (30d)`;
@@ -632,7 +632,7 @@ async function salvarPontuacoesEmLote() {
 
 async function carregarHistorico() {
   const snap = await getDocs(collection(db, "historico_pontos")); historicoCompleto = []; snap.forEach(d => { historicoCompleto.push({ id: d.id, ...d.data() }); });
-  historicoCompleto.sort((a, b) => new Date(b.dataTreino || 0) - new Date(a.dataTreino || 0)); filtrarHistorico();
+  historicoCompleto.sort((a, b) => new Date(b.dataTreino || "1970-01-01") - new Date(a.dataTreino || "1970-01-01")); filtrarHistorico();
 }
 
 function filtrarHistorico() {
@@ -646,7 +646,7 @@ function filtrarHistorico() {
   dados.forEach(h => {
     const atleta = mapAtletas[h.atletaId]; let nomeDisplay = h.atletaNome || (atleta ? atleta.nome : "Desconhecido"); let eqDisplay = h.atletaEquipe || (atleta ? atleta.equipe : "-");
     if (atleta && atleta.ativo === false) { nomeDisplay += " <small style='color:var(--danger); font-weight:bold;'>(Inativo)</small>"; } else if (!atleta) { nomeDisplay += " <small style='color:#999; font-weight:bold;'>(Excluído)</small>"; }
-    let ptsV = h.pontos === 0 ? `<span style="color:var(--accent);">Justificada</span>` : `+${h.pontos}`;
+    let ptsV = Number(h.pontos) === 0 ? `<span style="color:var(--accent);">Justificada</span>` : `+${h.pontos}`;
     const btnEstorno = podeEstornar ? `<button class="btn-acao btn-estornar" data-id="${h.id}" data-atleta="${h.atletaId}" data-pontos="${h.pontos}" style="color:var(--danger); border-color:var(--danger);"><i data-lucide="undo-2" style="width:16px;"></i></button>` : '';
     tbody.innerHTML += `<tr><td>${(h.dataTreino?new Date(h.dataTreino+"T00:00:00").toLocaleDateString('pt-BR'):"-")}</td><td><strong>${nomeDisplay}</strong></td><td>${eqDisplay}</td><td>${h.descTreino}<br><small style="color:var(--primary);">${h.regraDesc}</small></td><td style="text-align:center; color:var(--secondary); font-weight:bold;">${ptsV}</td><td style="text-align:right;">${btnEstorno}</td></tr>`;
   });
