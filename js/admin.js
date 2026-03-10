@@ -104,6 +104,75 @@ async function atualizarTelas() {
 }
 
 // =====================================================
+// 📊 DASHBOARD & GERADOR DE PDF BI (CORRIGIDO)
+// =====================================================
+document.getElementById("btnExportarPDF").addEventListener("click", () => {
+  showToast("Montando painel corporativo...", "info");
+  
+  const temaAtual = document.body.getAttribute("data-theme");
+  if (temaAtual === "dark") { document.body.removeAttribute("data-theme"); Chart.defaults.color = '#666'; if(graficoLinhaInstancia) graficoLinhaInstancia.update(); }
+
+  setTimeout(() => {
+    // Alimenta o HTML oculto com os dados do dashboard principal
+    document.getElementById("pdfDataHoje").textContent = new Date().toLocaleDateString('pt-BR');
+    
+    if(document.getElementById("pdfAtivos")) document.getElementById("pdfAtivos").textContent = document.getElementById("totalAtivosGeral").textContent;
+    if(document.getElementById("pdfEngajamento")) document.getElementById("pdfEngajamento").textContent = document.getElementById("engajamento30d").textContent;
+    if(document.getElementById("pdfInvest")) document.getElementById("pdfInvest").textContent = document.getElementById("totalInvestimento").textContent;
+    if(document.getElementById("pdfRoi")) document.getElementById("pdfRoi").textContent = document.getElementById("roiAtleta").textContent;
+    
+    if(document.getElementById("pdfMediaBike")) document.getElementById("pdfMediaBike").textContent = document.getElementById("mediaBike").textContent;
+    if(document.getElementById("pdfMediaCorrida")) document.getElementById("pdfMediaCorrida").textContent = document.getElementById("mediaCorrida").textContent;
+    
+    if(document.getElementById("pdfTopBike")) document.getElementById("pdfTopBike").innerHTML = document.getElementById("listaPodioBike").innerHTML;
+    if(document.getElementById("pdfTopCorrida")) document.getElementById("pdfTopCorrida").innerHTML = document.getElementById("listaPodioCorrida").innerHTML;
+    
+    // Mescla as duas listas de Evasão para o PDF
+    if(document.getElementById("pdfListaEvasao")) {
+       document.getElementById("pdfListaEvasao").innerHTML = document.getElementById("listaEvasaoBike").innerHTML + document.getElementById("listaEvasaoCorrida").innerHTML;
+    }
+
+    const agendaClone = document.getElementById("listaEventosAgenda").cloneNode(true);
+    agendaClone.querySelectorAll("button").forEach(b => b.remove()); 
+    if(document.getElementById("pdfProximosEventos")) document.getElementById("pdfProximosEventos").innerHTML = agendaClone.innerHTML;
+
+    const eventosPassados = {};
+    historicoCompleto.forEach(h => {
+      if(!h.dataTreino || !h.descTreino || h.descTreino.toLowerCase().includes("falta")) return;
+      const key = `${h.dataTreino}::${h.descTreino}`;
+      if(!eventosPassados[key]) eventosPassados[key] = { data: h.dataTreino, desc: h.descTreino, atletas: new Set() };
+      eventosPassados[key].atletas.add(h.atletaId);
+    });
+    
+    const listaUltimos = Object.values(eventosPassados).sort((a,b) => new Date(b.data) - new Date(a.data)).slice(0, 4);
+    let htmlUltimos = "";
+    listaUltimos.forEach(e => {
+       const d = new Date(e.data + "T00:00:00").toLocaleDateString('pt-BR').substring(0,5);
+       htmlUltimos += `<div style="display:flex; justify-content:space-between; margin-bottom:4px; border-bottom:1px solid #f5f5f5; padding-bottom:4px;"><span style="color:#666;"><strong>${d}</strong> - ${e.desc}</span><strong style="color:var(--primary);">${e.atletas.size} 👤</strong></div>`;
+    });
+    if(document.getElementById("pdfUltimosEventos")) document.getElementById("pdfUltimosEventos").innerHTML = htmlUltimos || "<p style='color:#999; text-align:center;'>Nenhum evento processado.</p>";
+
+    const canvasLinha = document.getElementById('graficoTendencia');
+    const widthOriginal = canvasLinha.style.width; const heightOriginal = canvasLinha.style.height;
+    if(canvasLinha) { canvasLinha.style.width = '700px'; canvasLinha.style.height = '200px'; if(graficoLinhaInstancia) graficoLinhaInstancia.resize(); document.getElementById('pdfImgTendencia').src = canvasLinha.toDataURL("image/png", 1.0); }
+
+    const modalPdf = document.getElementById("pdfOverlay"); const printArea = document.getElementById("pdfPrintArea");
+    modalPdf.style.display = "flex";
+
+    setTimeout(() => {
+      const opt = { margin: 0, filename: `Report_Atletas_${document.getElementById("pdfDataHoje").textContent.replace(/\//g, '-')}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } };
+      html2pdf().set(opt).from(printArea).save().then(() => { 
+        modalPdf.style.display = "none"; 
+        if(canvasLinha) { canvasLinha.style.width = widthOriginal; canvasLinha.style.height = heightOriginal; if(graficoLinhaInstancia) graficoLinhaInstancia.resize(); }
+        if (temaAtual === "dark") { document.body.setAttribute("data-theme", "dark"); Chart.defaults.color = '#aaa'; if(graficoLinhaInstancia) graficoLinhaInstancia.update(); }
+        showToast("Download Concluído!", "success"); 
+      });
+    }, 600);
+  }, 150); 
+});
+
+
+// =====================================================
 // 🎯 METAS 
 // =====================================================
 async function setupMetas() {
@@ -134,12 +203,15 @@ function setupFinanceiro() {
   });
   
   document.getElementById("fecharModalOrcamento")?.addEventListener("click", () => modalOrc.style.display = "none");
-  document.getElementById("salvarOrcamentoBtn")?.addEventListener("click", async () => {
+  document.getElementById("salvarOrcamentoBtn")?.addEventListener("click", async (e) => {
     const p = (id) => parseFloat(document.getElementById(id).value) || 0;
+    e.target.textContent = "Salvando..."; e.target.disabled = true;
     await setDoc(doc(db, "configuracoes", "orcamento"), { 
       treinador: p("orcTreinador"), prova: p("orcProva"), encontros: p("orcEncontros"), uniformes: p("orcUniformes"), outros: p("orcOutros") 
     });
-    modalOrc.style.display = "none"; showToast("Orçamento anual salvo!", "success"); atualizarTelas();
+    modalOrc.style.display = "none"; showToast("Orçamento anual salvo!", "success"); 
+    e.target.textContent = "Salvar Orçamento"; e.target.disabled = false;
+    atualizarTelas();
   });
 
   const selectCat = document.getElementById("catDespesa");
@@ -336,11 +408,14 @@ function setupAgenda() {
   const modal = document.getElementById("modalEvento");
   if(document.getElementById("abrirModalEvento")) document.getElementById("abrirModalEvento").addEventListener("click", () => modal.style.display = "flex");
   if(document.getElementById("fecharModalEvento")) document.getElementById("fecharModalEvento").addEventListener("click", () => modal.style.display = "none");
-  if(document.getElementById("salvarEventoBtn")) document.getElementById("salvarEventoBtn").addEventListener("click", async () => {
+  if(document.getElementById("salvarEventoBtn")) document.getElementById("salvarEventoBtn").addEventListener("click", async (e) => {
     const titulo = document.getElementById("eventoTitulo").value.trim(), local = document.getElementById("eventoLocal").value.trim(), mod = document.getElementById("eventoModalidade").value, data = document.getElementById("eventoData").value;
     if (!titulo || !data) return showToast("Título e Data são obrigatórios!", "error");
+    e.target.textContent = "Salvando..."; e.target.disabled = true;
     await addDoc(collection(db, "agenda_eventos"), { titulo: titulo, local: local, modalidade: mod, data: data, criadoEm: new Date().toISOString() });
-    modal.style.display = "none"; document.getElementById("eventoTitulo").value = ""; document.getElementById("eventoLocal").value = ""; showToast("Evento agendado!", "success"); atualizarTelas();
+    modal.style.display = "none"; document.getElementById("eventoTitulo").value = ""; document.getElementById("eventoLocal").value = ""; showToast("Evento agendado!", "success"); 
+    e.target.textContent = "Salvar Evento"; e.target.disabled = false;
+    atualizarTelas();
   });
 }
 
@@ -435,11 +510,12 @@ async function carregarEquipesEDashboard() {
 function setupPermissoesModal() {
   const modal = document.getElementById("modalPermissoes"); if(!modal) return;
   document.getElementById("fecharModalPermissoes").addEventListener("click", () => modal.style.display = "none");
-  document.getElementById("salvarPermissoesBtn").addEventListener("click", async () => {
+  document.getElementById("salvarPermissoesBtn").addEventListener("click", async (e) => {
     const id = document.getElementById("permUserId").value; let selecionadas = [];
     document.querySelectorAll(".chk-perm:checked").forEach(chk => selecionadas.push(chk.value));
     if(selecionadas.length === 0) return showToast("Precisa ter pelo menos uma aba.", "error");
-    await updateDoc(doc(db, "atletas", id), { permissoes: selecionadas }); showToast("Permissões atualizadas!", "success"); modal.style.display = "none"; atualizarTelas();
+    e.target.textContent = "Salvando..."; e.target.disabled = true;
+    await updateDoc(doc(db, "atletas", id), { permissoes: selecionadas }); showToast("Permissões atualizadas!", "success"); modal.style.display = "none"; e.target.textContent = "Salvar Acessos"; e.target.disabled = false; atualizarTelas();
   });
 }
 
@@ -447,8 +523,8 @@ function setupFichaAtleta() {
   document.getElementById("fecharModalFicha").addEventListener("click", () => document.getElementById("modalFichaAtleta").style.display = "none");
   document.getElementById("btnSalvarComentario").addEventListener("click", async () => {
     const aId = document.getElementById("fichaAtletaId").value; const txt = document.getElementById("novoComentarioFicha").value.trim();
-    if(!txt) return; const meuNome = mapAtletas[auth.currentUser.uid] ? mapAtletas[auth.currentUser.uid].nome : "Comitê"; document.getElementById("btnSalvarComentario").disabled = true;
-    try { await addDoc(collection(db, "comentarios_atletas"), { atletaId: aId, texto: txt, autorNome: meuNome, criadoEm: new Date().toISOString() }); document.getElementById("novoComentarioFicha").value = ""; carregarComentarios(aId); showToast("Comentário salvo!", "success"); } catch(e) { showToast("Erro ao salvar comentário.", "error"); } document.getElementById("btnSalvarComentario").disabled = false;
+    if(!txt) return; const meuNome = mapAtletas[auth.currentUser.uid] ? mapAtletas[auth.currentUser.uid].nome : "Comitê"; document.getElementById("btnSalvarComentario").disabled = true; document.getElementById("btnSalvarComentario").textContent = "Salvando...";
+    try { await addDoc(collection(db, "comentarios_atletas"), { atletaId: aId, texto: txt, autorNome: meuNome, criadoEm: new Date().toISOString() }); document.getElementById("novoComentarioFicha").value = ""; carregarComentarios(aId); showToast("Comentário salvo!", "success"); } catch(e) { showToast("Erro ao salvar comentário.", "error"); } document.getElementById("btnSalvarComentario").disabled = false; document.getElementById("btnSalvarComentario").textContent = "Adicionar Comentário";
   });
 }
 
@@ -492,16 +568,16 @@ async function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike, 
   document.getElementById("mediaBike").textContent = totalBike > 0 ? Math.round(ptsBike / totalBike) : 0;
   document.getElementById("mediaCorrida").textContent = totalCorrida > 0 ? Math.round(ptsCorrida / totalCorrida) : 0;
 
-  // Render do Pódio com TRUNCATE text (resolve o bug da imagem)
+  // CORREÇÃO DO PÓDIO: Flexbox rígido e fonte menor
   const htmlPodio = (arr) => {
     if(arr.length===0) return "<li style='color:#999; font-size:0.85rem;'>Sem pontos</li>";
     return arr.map((a,i) => `
-      <li style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border);">
-        <span style="display:flex; align-items:center; gap:5px; max-width:80%; overflow:hidden;">
-          <span>${i===0?'🥇':i===1?'🥈':'🥉'}</span>
-          <strong style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;" title="${a.nome}">${a.nome}</strong>
+      <li style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--border);">
+        <span style="display:flex; align-items:center; gap:5px; flex: 1; min-width: 0; margin-right: 10px;">
+          <span style="font-size:0.85rem; flex-shrink: 0;">${i===0?'🥇':i===1?'🥈':'🥉'}</span>
+          <strong style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:0.85rem;" title="${a.nome}">${a.nome}</strong>
         </span>
-        <strong>${a.pts}</strong>
+        <strong style="font-size:0.85rem; flex-shrink: 0;">${a.pts}</strong>
       </li>`).join('');
   };
   
@@ -510,11 +586,19 @@ async function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike, 
   if(document.getElementById("listaPodioBike")) document.getElementById("listaPodioBike").innerHTML = htmlPodio(bikeAtletas);
   if(document.getElementById("listaPodioCorrida")) document.getElementById("listaPodioCorrida").innerHTML = htmlPodio(corridaAtletas);
 
+  // CORREÇÃO DA EVASÃO: Flexbox rígido e fonte menor
   const radarBike = arrayAtletas.filter(a => a.diasAusente > 30 && a.eq === 'Bicicleta').sort((a,b) => b.diasAusente - a.diasAusente).slice(0, 5);
   const radarCorrida = arrayAtletas.filter(a => a.diasAusente > 30 && a.eq === 'Corrida').sort((a,b) => b.diasAusente - a.diasAusente).slice(0, 5);
   const htmlEvasao = (arr) => {
-    if(arr.length===0) return "<li style='color:var(--secondary); font-size:0.85rem;'>Nenhum alerta.</li>";
-    return arr.map(a => `<li style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed var(--danger);"><span style="color:var(--danger); font-size:0.85rem; max-width:65%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${a.nome}">⚠️ <strong>${a.nome}</strong></span><small style="color:#999; font-weight:600; font-size:0.75rem; white-space:nowrap;">${a.diasAusente === 999 ? 'Nunca foi' : a.diasAusente + 'd'}</small></li>`).join('');
+    if(arr.length===0) return "<li style='color:var(--secondary); font-size:0.8rem;'>Nenhum alerta.</li>";
+    return arr.map(a => `
+      <li style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; border-bottom:1px dashed var(--danger);">
+        <span style="display:flex; align-items:center; gap:5px; flex: 1; min-width: 0; margin-right: 10px;">
+           <span style="color:var(--danger); font-size:0.8rem; flex-shrink:0;">⚠️</span>
+           <strong style="color:var(--danger); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:0.8rem;" title="${a.nome}">${a.nome}</strong>
+        </span>
+        <small style="color:#999; font-weight:600; font-size:0.75rem; flex-shrink:0;">${a.diasAusente === 999 ? 'Nunca foi' : a.diasAusente + 'd'}</small>
+      </li>`).join('');
   };
   if(document.getElementById("listaEvasaoBike")) document.getElementById("listaEvasaoBike").innerHTML = htmlEvasao(radarBike);
   if(document.getElementById("listaEvasaoCorrida")) document.getElementById("listaEvasaoCorrida").innerHTML = htmlEvasao(radarCorrida);
@@ -713,22 +797,29 @@ function setupModalRegras() {
   const modal = document.getElementById("modalRegra");
   if(document.getElementById("abrirModalRegra")) document.getElementById("abrirModalRegra").addEventListener("click", () => modal.style.display = "flex");
   document.getElementById("fecharModalRegra").addEventListener("click", () => modal.style.display = "none");
-  document.getElementById("salvarRegraBtn").addEventListener("click", async () => {
+  document.getElementById("salvarRegraBtn").addEventListener("click", async (e) => {
     if (userRole !== "admin" && !userPermissoes.includes("gestao")) return showToast("Sem permissão.", "error");
     const desc = document.getElementById("regraDescricao").value.trim(), mod = document.getElementById("regraModalidade").value, pts = document.getElementById("regraPontos").value.trim();
     if (!desc || !pts) return;
+    
+    e.target.textContent = "Salvando..."; e.target.disabled = true;
     await addDoc(collection(db, "regras_pontuacao"), { descricao: desc, modalidade: mod, pontos: Number(pts), criadoEm: new Date().toISOString() });
-    modal.style.display = "none"; document.getElementById("regraDescricao").value = ""; document.getElementById("regraPontos").value = ""; showToast("Regra criada!", "success"); carregarRegras();
+    modal.style.display = "none"; document.getElementById("regraDescricao").value = ""; document.getElementById("regraPontos").value = ""; showToast("Regra criada!", "success"); 
+    e.target.textContent = "Salvar"; e.target.disabled = false;
+    carregarRegras();
   });
 }
 
 function setupModalEditar() {
   const modal = document.getElementById("modalEditarAtleta");
   document.getElementById("fecharModalEdit").addEventListener("click", () => modal.style.display = "none");
-  document.getElementById("salvarEditBtn").addEventListener("click", async () => {
+  document.getElementById("salvarEditBtn").addEventListener("click", async (e) => {
     const id = document.getElementById("editId").value, nome = document.getElementById("editNome").value.trim(), email = document.getElementById("editEmail").value.trim(), papel = document.getElementById("editPapel").value;
     if (!nome) return; let role = "atleta"; let equipe = papel; if (papel === "Comitê") { role = "comite"; equipe = "Nenhuma"; }
+    
+    e.target.textContent = "Salvando..."; e.target.disabled = true;
     try { await updateDoc(doc(db, "atletas", id), { nome: nome, email: email, role: role, equipe: equipe }); showToast("Atualizado!", "success"); modal.style.display = "none"; atualizarTelas(); } catch (err) { showToast("Erro.", "error"); }
+    e.target.textContent = "Atualizar"; e.target.disabled = false;
   });
 }
 
