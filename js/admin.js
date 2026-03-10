@@ -94,12 +94,18 @@ function setupSubTabs() {
   document.querySelectorAll(".t-tab").forEach(tab => { tab.addEventListener("click", () => { const p = tab.closest('.sub-content'); p.querySelectorAll(".t-tab").forEach(t => t.classList.remove("active")); p.querySelectorAll(".t-content").forEach(c => c.classList.remove("active")); tab.classList.add("active"); document.getElementById(tab.dataset.target).classList.add("active"); }); });
 }
 
+// Ordem segura: carrega atletas primeiro para evitar o erro de nomes vazios no histórico
 async function atualizarTelas() {
   if (userRole === "admin" || userPermissoes.includes("gestao")) setupAprovacoes();
   await carregarAgenda(); 
+  
+  const snapA = await getDocs(query(collection(db, "atletas"), where("status", "==", "Aprovado")));
+  mapAtletas = {};
+  snapA.forEach(d => { mapAtletas[d.id] = { id: d.id, ...d.data() }; });
+
   await carregarHistorico(); 
-  await carregarFinanceiroPlanilha(); 
   await carregarEquipesEDashboard(); 
+  await carregarFinanceiroPlanilha(); 
   await carregarRegras();
 }
 
@@ -223,7 +229,7 @@ function setupFinanceiroPlanilha() {
     
     let propInsc = 0, propTransp = 0, propHosp = 0, propAlim = 0, propDemais = 0, totalProp = 0;
     
-    if(!chkAvulso.checked) {
+    if(chkAvulso && !chkAvulso.checked) {
        propInsc = p("vPropInsc"); propTransp = p("vPropTransp"); propHosp = p("vPropHosp"); propAlim = p("vPropAlim"); propDemais = p("vPropDemais");
        totalProp = propInsc + propTransp + propHosp + propAlim + propDemais;
     }
@@ -232,7 +238,7 @@ function setupFinanceiroPlanilha() {
     const desvio = totalProp - totalRealizado;
 
     const dados = {
-      categoria: cat, equipe: eq, evento: ev, avulso: chkAvulso.checked,
+      categoria: cat, equipe: eq, evento: ev, avulso: chkAvulso ? chkAvulso.checked : false,
       propInsc: propInsc, propTransp: propTransp, propHosp: propHosp, propAlim: propAlim, propDemais: propDemais,
       totalProposto: totalProp, totalRealizado: totalRealizado, desvio: desvio,
       atualizadoEm: new Date().toISOString()
@@ -243,7 +249,7 @@ function setupFinanceiroPlanilha() {
       if(idEdit) { await updateDoc(doc(db, "verbas_excel"), idEdit, dados); showToast("Linha atualizada!", "success"); }
       else { dados.criadoEm = new Date().toISOString(); await addDoc(collection(db, "verbas_excel"), dados); showToast("Linha adicionada!", "success"); }
       modal.style.display = "none"; carregarFinanceiroPlanilha();
-    } catch(err) { showToast("Erro.", "error"); }
+    } catch(err) { showToast("Erro ao gravar.", "error"); }
     e.target.textContent = "Salvar na Planilha"; e.target.disabled = false;
   });
 
@@ -276,7 +282,7 @@ async function carregarFinanceiroPlanilha() {
     globalProp += v.totalProposto || 0;
     globalReal += v.totalRealizado || 0;
 
-    // Resumo Equipes (Garante que "Bike" ou "Bicicleta" vai pro mesmo pote)
+    // Resumo Equipes
     if(v.equipe === "Corrida") { resumoEquipes.Corrida.prop += v.totalProposto; resumoEquipes.Corrida.real += v.totalRealizado; }
     else if(v.equipe === "Bicicleta" || v.equipe === "Bike") { resumoEquipes.Bike.prop += v.totalProposto; resumoEquipes.Bike.real += v.totalRealizado; }
     else { resumoEquipes.Ambas.prop += v.totalProposto; resumoEquipes.Ambas.real += v.totalRealizado; }
@@ -290,7 +296,7 @@ async function carregarFinanceiroPlanilha() {
         resumoCategorias["Outros"].real += v.totalRealizado;
     }
 
-    // Build Master Table Row
+    // Tabela Master
     const isAvulso = v.avulso ? `<span title="Lançamento Não Previsto" style="color:var(--accent); font-size:0.75rem; font-weight:bold;">[AVULSO]</span>` : "";
     const corDesvio = v.desvio < 0 ? "color: var(--danger); font-weight:bold;" : "color: var(--secondary);";
     const bgReal = v.totalRealizado > 0 ? "background: rgba(39, 174, 96, 0.05);" : "";
@@ -315,10 +321,8 @@ async function carregarFinanceiroPlanilha() {
     `;
   });
 
-  // Inject Planilha Master
   if(document.getElementById("tabelaMasterFin")) document.getElementById("tabelaMasterFin").innerHTML = htmlMaster || `<tr><td colspan='12' style='text-align:center;'>Nenhum planejamento registrado.</td></tr>`;
 
-  // Inject Global Dashboard Cards
   gastoTotalGlobal = globalReal || 0; 
   if(document.getElementById("totalInvestimento")) document.getElementById("totalInvestimento").textContent = moneyStr(globalReal);
   if(document.getElementById("dashFinOrcadoTotal")) document.getElementById("dashFinOrcadoTotal").textContent = moneyStr(globalProp);
@@ -329,7 +333,7 @@ async function carregarFinanceiroPlanilha() {
     el.textContent = moneyStr(desvioTotal); el.style.color = desvioTotal < 0 ? 'var(--danger)' : '#8e44ad';
   }
 
-  // Inject Consolidado Tabela Excel (Resumo por Equipe)
+  // Tabela Consolidada Excel
   let htmlResumo = "";
   const arrResumo = [{nome: "Corrida", data: resumoEquipes.Corrida}, {nome: "Bicicleta", data: resumoEquipes.Bike}, {nome: "Equipe Geral (Ambas)", data: resumoEquipes.Ambas}];
   arrResumo.forEach(r => {
@@ -339,9 +343,9 @@ async function carregarFinanceiroPlanilha() {
       htmlResumo += `<tr><td><strong>${r.nome}</strong></td><td>R$ ${num(r.data.prop)}</td><td style="color:var(--danger); font-weight:bold;">R$ ${num(r.data.real)}</td><td style="font-weight:bold; ${cor}">R$ ${num(desvioEquipe)}</td></tr>`;
     }
   });
-  if(document.getElementById("tabelaResumoEquipes")) document.getElementById("tabelaResumoEquipes").innerHTML = htmlResumo || `<tr><td colspan='4'>Sem dados.</td></tr>`;
+  if(document.getElementById("tabelaResumoEquipes")) document.getElementById("tabelaResumoEquipes").innerHTML = htmlResumo || `<tr><td colspan='4'>Sem dados processados.</td></tr>`;
   
-  // Inject Estratégia de Categorias (Potes Progress Bar)
+  // Progresso de Categorias Estratégicas
   let htmlCategorias = "";
   Object.keys(resumoCategorias).forEach(nomeCat => {
      const c = resumoCategorias[nomeCat];
@@ -363,7 +367,7 @@ async function carregarFinanceiroPlanilha() {
 
   document.querySelectorAll(".btn-del-verba").forEach(btn => {
     btn.addEventListener("click", async (e) => {
-      if(confirm("Excluir linha da planilha permanentemente?")) { e.currentTarget.disabled = true; await deleteDoc(doc(db, "verbas_excel", e.currentTarget.dataset.id)); carregarFinanceiroPlanilha(); }
+      if(confirm("Excluir linha permanentemente?")) { e.currentTarget.disabled = true; await deleteDoc(doc(db, "verbas_excel", e.currentTarget.dataset.id)); carregarFinanceiroPlanilha(); }
     });
   });
 
@@ -394,17 +398,56 @@ function exportarFinanceiroPlanilha() {
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `Controle_Orcamentario_Atletas.csv`; a.click(); URL.revokeObjectURL(url);
 }
 
+// =====================================================
+// 📅 AGENDA
+// =====================================================
+function setupAgenda() {
+  const modal = document.getElementById("modalEvento");
+  if(document.getElementById("abrirModalEvento")) document.getElementById("abrirModalEvento").addEventListener("click", () => modal.style.display = "flex");
+  if(document.getElementById("fecharModalEvento")) document.getElementById("fecharModalEvento").addEventListener("click", () => modal.style.display = "none");
+  if(document.getElementById("salvarEventoBtn")) document.getElementById("salvarEventoBtn").addEventListener("click", async (e) => {
+    const titulo = document.getElementById("eventoTitulo").value.trim(), local = document.getElementById("eventoLocal").value.trim(), mod = document.getElementById("eventoModalidade").value, data = document.getElementById("eventoData").value;
+    if (!titulo || !data) return showToast("Título e Data são obrigatórios!", "error");
+    e.target.textContent = "Salvando..."; e.target.disabled = true;
+    await addDoc(collection(db, "agenda_eventos"), { titulo: titulo, local: local, modalidade: mod, data: data, criadoEm: new Date().toISOString() });
+    modal.style.display = "none"; document.getElementById("eventoTitulo").value = ""; document.getElementById("eventoLocal").value = ""; showToast("Evento agendado!", "success"); 
+    e.target.textContent = "Salvar Evento"; e.target.disabled = false; atualizarTelas();
+  });
+}
+
+async function carregarAgenda() {
+  const snap = await getDocs(query(collection(db, "agenda_eventos")));
+  cacheEventos = []; snap.forEach(d => cacheEventos.push({id: d.id, ...d.data()}));
+  cacheEventos.sort((a,b) => new Date(a.data) - new Date(b.data)); 
+  
+  const htmlDropdown = '<option value="">Nenhum (Lançamento Avulso)</option>' + cacheEventos.map(e => `<option value="${e.id}">${e.titulo} (${new Date(e.data+"T00:00:00").toLocaleDateString('pt-BR')})</option>`).join('');
+  if(document.getElementById("lancarEventoSelect")) document.getElementById("lancarEventoSelect").innerHTML = htmlDropdown;
+
+  const hoje = new Date().toISOString().split('T')[0];
+  const futuros = cacheEventos.filter(e => e.data >= hoje).slice(0, 4); 
+  let html = "";
+  const hasGestao = userRole === "admin" || userPermissoes.includes("gestao");
+  
+  futuros.forEach(e => {
+    const d = new Date(e.data + "T00:00:00"); const mes = d.toLocaleString('pt-BR', {month: 'short'}).replace('.',''); const dia = d.getDate().toString().padStart(2, '0');
+    let icon = e.modalidade === "Bicicleta" ? "🚴" : e.modalidade === "Corrida" ? "🏃" : "🤝";
+    const btnExcluir = hasGestao ? `<button class="btn-excluir-evento" data-id="${e.id}" style="background:transparent; border:none; color:var(--danger); cursor:pointer; float:right;"><i data-lucide="x" style="width:16px;"></i></button>` : '';
+    html += `<div class="agenda-item"><div class="agenda-data"><span>${mes}</span><strong>${dia}</strong></div><div class="agenda-info" style="flex:1;">${btnExcluir}<h4>${e.titulo}</h4><p>${icon} ${e.local}</p></div></div>`;
+  });
+  if(document.getElementById("listaEventosAgenda")) document.getElementById("listaEventosAgenda").innerHTML = html || `<div class="empty-state" style="padding:10px;"><p style="font-size:0.85rem;">Nenhum evento agendado.</p></div>`;
+  lucide.createIcons();
+  document.querySelectorAll(".btn-excluir-evento").forEach(btn => { btn.addEventListener("click", async (e) => { if(confirm("Cancelar evento?")) { await deleteDoc(doc(db, "agenda_eventos", e.currentTarget.dataset.id)); atualizarTelas(); } }); });
+}
 
 // =====================================================
 // 👥 EQUIPES E DASHBOARD C-LEVEL
 // =====================================================
 async function carregarEquipesEDashboard() {
-  const snap = await getDocs(query(collection(db, "atletas"), where("status", "==", "Aprovado")));
   let htmlFilaBike = "", htmlFilaCorrida = "", htmlBike = "", htmlCorrida = "", htmlComite = "";
   let contFila = 0, contBike = 0, contCorrida = 0, contComite = 0, ptsBike = 0, ptsCorrida = 0;
-  let todosAtletas = []; mapAtletas = {}; 
+  let todosAtletas = []; 
 
-  let listaOrdenada = []; snap.forEach(d => { mapAtletas[d.id] = { id: d.id, ...d.data() }; listaOrdenada.push(mapAtletas[d.id]); });
+  let listaOrdenada = Object.values(mapAtletas);
   const filaEspera = listaOrdenada.filter(u => u.equipe === "Fila - Bicicleta" || u.equipe === "Fila - Corrida" || u.equipe === "Fila de Espera");
   const titulares = listaOrdenada.filter(u => u.equipe !== "Fila - Bicicleta" && u.equipe !== "Fila - Corrida" && u.equipe !== "Fila de Espera");
   
@@ -520,7 +563,7 @@ async function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike, 
   document.getElementById("mediaBike").textContent = totalBike > 0 ? Math.round(ptsBike / totalBike) : 0;
   document.getElementById("mediaCorrida").textContent = totalCorrida > 0 ? Math.round(ptsCorrida / totalCorrida) : 0;
 
-  // CORREÇÃO DO PÓDIO: Flexbox rígido
+  // Pódio com Truncate
   const htmlPodio = (arr) => {
     if(arr.length===0) return "<li style='color:#999; font-size:0.85rem;'>Sem pontos</li>";
     return arr.map((a,i) => `
@@ -538,7 +581,7 @@ async function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike, 
   if(document.getElementById("listaPodioBike")) document.getElementById("listaPodioBike").innerHTML = htmlPodio(bikeAtletas);
   if(document.getElementById("listaPodioCorrida")) document.getElementById("listaPodioCorrida").innerHTML = htmlPodio(corridaAtletas);
 
-  // CORREÇÃO DA EVASÃO
+  // Evasão com Truncate
   const radarBike = arrayAtletas.filter(a => a.diasAusente > 30 && (a.eq === 'Bicicleta' || a.eq === 'Bike')).sort((a,b) => b.diasAusente - a.diasAusente).slice(0, 5);
   const radarCorrida = arrayAtletas.filter(a => a.diasAusente > 30 && a.eq === 'Corrida').sort((a,b) => b.diasAusente - a.diasAusente).slice(0, 5);
   const htmlEvasao = (arr) => {
@@ -630,11 +673,6 @@ async function salvarPontuacoesEmLote() {
   } catch (error) { showToast("Erro ao salvar lote.", "error"); } finally { btn.innerHTML = `Salvar Lançamentos em Lote`; btn.disabled = false; }
 }
 
-async function carregarHistorico() {
-  const snap = await getDocs(collection(db, "historico_pontos")); historicoCompleto = []; snap.forEach(d => { historicoCompleto.push({ id: d.id, ...d.data() }); });
-  historicoCompleto.sort((a, b) => new Date(b.dataTreino || "1970-01-01") - new Date(a.dataTreino || "1970-01-01")); filtrarHistorico();
-}
-
 function filtrarHistorico() {
   const mes = document.getElementById("filtroMesHistorico").value; const eq = document.getElementById("filtroEquipeHistorico").value; const nomeBusca = document.getElementById("filtroNomeHistorico").value.toLowerCase(); const statusFiltro = document.getElementById("filtroStatusHistorico").value;
   const dados = historicoCompleto.filter(h => { const atleta = mapAtletas[h.atletaId]; const isAtivo = atleta ? (atleta.ativo !== false) : false; if (statusFiltro === "ativos" && !isAtivo) return false; const nomeFiltro = h.atletaNome || (atleta ? atleta.nome : ""); const eqFiltro = h.atletaEquipe || (atleta ? atleta.equipe : ""); return (!mes || (h.dataTreino||"").startsWith(mes)) && (!eq || eqFiltro === eq) && (!nomeBusca || nomeFiltro.toLowerCase().includes(nomeBusca)); });
@@ -653,6 +691,11 @@ function filtrarHistorico() {
   lucide.createIcons();
   
   document.querySelectorAll(".btn-estornar").forEach(btn => { btn.addEventListener("click", async (e) => { const histId = e.currentTarget.dataset.id, atlId = e.currentTarget.dataset.atleta, pts = parseInt(e.currentTarget.dataset.pontos); if(!confirm(`Estornar?`)) return; try { if (mapAtletas[atlId] && pts > 0) { await updateDoc(doc(db, "atletas", atlId), { pontuacaoTotal: increment(-pts) }); } await deleteDoc(doc(db, "historico_pontos", histId)); showToast("Estornado!", "success"); atualizarTelas(); } catch (err) { showToast("Erro.", "error"); } }); });
+}
+
+async function carregarHistorico() {
+  const snap = await getDocs(collection(db, "historico_pontos")); historicoCompleto = []; snap.forEach(d => { historicoCompleto.push({ id: d.id, ...d.data() }); });
+  historicoCompleto.sort((a, b) => new Date(b.dataTreino || "1970-01-01") - new Date(a.dataTreino || "1970-01-01")); filtrarHistorico();
 }
 
 ["filtroMesHistorico", "filtroEquipeHistorico", "filtroNomeHistorico", "filtroStatusHistorico"].forEach(id => { document.getElementById(id).addEventListener("input", filtrarHistorico); });
