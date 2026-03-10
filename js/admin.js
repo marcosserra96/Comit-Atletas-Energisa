@@ -94,14 +94,12 @@ function setupSubTabs() {
   document.querySelectorAll(".t-tab").forEach(tab => { tab.addEventListener("click", () => { const p = tab.closest('.sub-content'); p.querySelectorAll(".t-tab").forEach(t => t.classList.remove("active")); p.querySelectorAll(".t-content").forEach(c => c.classList.remove("active")); tab.classList.add("active"); document.getElementById(tab.dataset.target).classList.add("active"); }); });
 }
 
-// Ordem segura: carrega atletas primeiro para evitar o erro de nomes vazios no histórico
 async function atualizarTelas() {
   if (userRole === "admin" || userPermissoes.includes("gestao")) setupAprovacoes();
   await carregarAgenda(); 
   
   const snapA = await getDocs(query(collection(db, "atletas"), where("status", "==", "Aprovado")));
-  mapAtletas = {};
-  snapA.forEach(d => { mapAtletas[d.id] = { id: d.id, ...d.data() }; });
+  mapAtletas = {}; snapA.forEach(d => { mapAtletas[d.id] = { id: d.id, ...d.data() }; });
 
   await carregarHistorico(); 
   await carregarEquipesEDashboard(); 
@@ -237,6 +235,7 @@ function setupFinanceiroPlanilha() {
     const totalRealizado = p("vRealizadoTotal");
     const desvio = totalProp - totalRealizado;
 
+    // Salvando na coleção 'despesas' que já tem regras de segurança autorizadas!
     const dados = {
       categoria: cat, equipe: eq, evento: ev, avulso: chkAvulso ? chkAvulso.checked : false,
       propInsc: propInsc, propTransp: propTransp, propHosp: propHosp, propAlim: propAlim, propDemais: propDemais,
@@ -246,10 +245,20 @@ function setupFinanceiroPlanilha() {
 
     e.target.textContent = "Salvando..."; e.target.disabled = true;
     try {
-      if(idEdit) { await updateDoc(doc(db, "verbas_excel"), idEdit, dados); showToast("Linha atualizada!", "success"); }
-      else { dados.criadoEm = new Date().toISOString(); await addDoc(collection(db, "verbas_excel"), dados); showToast("Linha adicionada!", "success"); }
-      modal.style.display = "none"; carregarFinanceiroPlanilha();
-    } catch(err) { showToast("Erro ao gravar.", "error"); }
+      if(idEdit) { 
+          await updateDoc(doc(db, "despesas", idEdit), dados); 
+          showToast("Linha atualizada!", "success"); 
+      } else { 
+          dados.criadoEm = new Date().toISOString(); 
+          await addDoc(collection(db, "despesas"), dados); 
+          showToast("Linha adicionada!", "success"); 
+      }
+      modal.style.display = "none"; 
+      carregarFinanceiroPlanilha();
+    } catch(err) { 
+      console.error("Erro Firebase:", err);
+      showToast("Erro ao gravar! " + err.message, "error"); 
+    }
     e.target.textContent = "Salvar na Planilha"; e.target.disabled = false;
   });
 
@@ -257,9 +266,16 @@ function setupFinanceiroPlanilha() {
 }
 
 async function carregarFinanceiroPlanilha() {
-  const snap = await getDocs(query(collection(db, "verbas_excel"), orderBy("criadoEm", "asc")));
-  historicoFinanceiro = [];
+  // Puxa da coleção "despesas" para garantir compatibilidade e não estourar Index no Firebase
+  const snap = await getDocs(collection(db, "despesas"));
   
+  let tempDocs = [];
+  snap.forEach(d => tempDocs.push({id: d.id, ...d.data()}));
+  
+  // Ordena via Javascript para não causar falha no 'orderBy' do Firestore
+  tempDocs.sort((a, b) => new Date(a.criadoEm || a.dataBase || 0) - new Date(b.criadoEm || b.dataBase || 0));
+  historicoFinanceiro = tempDocs;
+
   let htmlMaster = "";
   let resumoEquipes = { Corrida: { prop: 0, real: 0 }, Bike: { prop: 0, real: 0 }, Ambas: { prop: 0, real: 0 } };
   let resumoCategorias = { 
@@ -275,47 +291,49 @@ async function carregarFinanceiroPlanilha() {
   const num = (v) => (v||0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
   const moneyStr = (v) => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
 
-  snap.forEach(d => {
-    const v = d.data();
-    historicoFinanceiro.push({id: d.id, ...v});
-    
-    globalProp += v.totalProposto || 0;
-    globalReal += v.totalRealizado || 0;
+  historicoFinanceiro.forEach(v => {
+    // Compatibilidade com as despesas antigas já gravadas
+    const equipe = v.equipe || "Ambas";
+    const categoria = v.categoria || "Outros";
+    const evento = v.evento || v.descricao || "Custo Antigo";
+    const totalProp = v.totalProposto || v.orcadoTotal || 0;
+    const totalReal = v.totalRealizado || 0;
+    const desvio = v.desvio !== undefined ? v.desvio : (totalProp - totalReal);
 
-    // Resumo Equipes
-    if(v.equipe === "Corrida") { resumoEquipes.Corrida.prop += v.totalProposto; resumoEquipes.Corrida.real += v.totalRealizado; }
-    else if(v.equipe === "Bicicleta" || v.equipe === "Bike") { resumoEquipes.Bike.prop += v.totalProposto; resumoEquipes.Bike.real += v.totalRealizado; }
-    else { resumoEquipes.Ambas.prop += v.totalProposto; resumoEquipes.Ambas.real += v.totalRealizado; }
+    globalProp += totalProp;
+    globalReal += totalReal;
 
-    // Resumo Categorias Estratégicas
-    if(resumoCategorias[v.categoria]) {
-        resumoCategorias[v.categoria].prop += v.totalProposto;
-        resumoCategorias[v.categoria].real += v.totalRealizado;
+    if(equipe === "Corrida") { resumoEquipes.Corrida.prop += totalProp; resumoEquipes.Corrida.real += totalReal; }
+    else if(equipe === "Bicicleta" || equipe === "Bike") { resumoEquipes.Bike.prop += totalProp; resumoEquipes.Bike.real += totalReal; }
+    else { resumoEquipes.Ambas.prop += totalProp; resumoEquipes.Ambas.real += totalReal; }
+
+    if(resumoCategorias[categoria]) {
+        resumoCategorias[categoria].prop += totalProp;
+        resumoCategorias[categoria].real += totalReal;
     } else {
-        resumoCategorias["Outros"].prop += v.totalProposto;
-        resumoCategorias["Outros"].real += v.totalRealizado;
+        resumoCategorias["Outros"].prop += totalProp;
+        resumoCategorias["Outros"].real += totalReal;
     }
 
-    // Tabela Master
     const isAvulso = v.avulso ? `<span title="Lançamento Não Previsto" style="color:var(--accent); font-size:0.75rem; font-weight:bold;">[AVULSO]</span>` : "";
-    const corDesvio = v.desvio < 0 ? "color: var(--danger); font-weight:bold;" : "color: var(--secondary);";
-    const bgReal = v.totalRealizado > 0 ? "background: rgba(39, 174, 96, 0.05);" : "";
+    const corDesvio = desvio < 0 ? "color: var(--danger); font-weight:bold;" : "color: var(--secondary);";
+    const bgReal = totalReal > 0 ? "background: rgba(39, 174, 96, 0.05);" : "";
     let btnAcoes = "";
-    if(canEdit) { btnAcoes = `<button class="btn-acao btn-edit-verba" data-id="${d.id}" style="color:var(--primary); padding:4px;"><i data-lucide="edit-2" style="width:14px;"></i></button> <button class="btn-acao btn-del-verba" data-id="${d.id}" style="color:var(--danger); padding:4px;"><i data-lucide="trash" style="width:14px;"></i></button>`; }
+    if(canEdit) { btnAcoes = `<button class="btn-acao btn-edit-verba" data-id="${v.id}" style="color:var(--primary); padding:4px;"><i data-lucide="edit-2" style="width:14px;"></i></button> <button class="btn-acao btn-del-verba" data-id="${v.id}" style="color:var(--danger); padding:4px;"><i data-lucide="trash" style="width:14px;"></i></button>`; }
 
     htmlMaster += `
       <tr>
-        <td><small style="font-weight:600;">${v.equipe}</small></td>
-        <td><span style="font-size:0.75rem; color:var(--text-light); background:var(--border); padding:2px 6px; border-radius:4px;">${v.categoria}</span></td>
-        <td><strong>${v.evento}</strong> ${isAvulso}</td>
+        <td><small style="font-weight:600;">${equipe}</small></td>
+        <td><span style="font-size:0.75rem; color:var(--text-light); background:var(--border); padding:2px 6px; border-radius:4px;">${categoria}</span></td>
+        <td><strong>${evento}</strong> ${isAvulso}</td>
         <td>${v.propInsc > 0 ? num(v.propInsc) : '-'}</td>
         <td>${v.propTransp > 0 ? num(v.propTransp) : '-'}</td>
         <td>${v.propHosp > 0 ? num(v.propHosp) : '-'}</td>
         <td>${v.propAlim > 0 ? num(v.propAlim) : '-'}</td>
         <td>${v.propDemais > 0 ? num(v.propDemais) : '-'}</td>
-        <td style="font-weight:600; background: rgba(0,0,0,0.02);">${num(v.totalProposto)}</td>
-        <td style="font-weight:600; color: #27ae60; ${bgReal}">${num(v.totalRealizado)}</td>
-        <td style="${corDesvio}">${num(v.desvio)}</td>
+        <td style="font-weight:600; background: rgba(0,0,0,0.02);">${num(totalProp)}</td>
+        <td style="font-weight:600; color: #27ae60; ${bgReal}">${num(totalReal)}</td>
+        <td style="${corDesvio}">${num(desvio)}</td>
         <td style="text-align:right; white-space:nowrap;">${btnAcoes}</td>
       </tr>
     `;
@@ -367,19 +385,26 @@ async function carregarFinanceiroPlanilha() {
 
   document.querySelectorAll(".btn-del-verba").forEach(btn => {
     btn.addEventListener("click", async (e) => {
-      if(confirm("Excluir linha permanentemente?")) { e.currentTarget.disabled = true; await deleteDoc(doc(db, "verbas_excel", e.currentTarget.dataset.id)); carregarFinanceiroPlanilha(); }
+      if(confirm("Excluir linha permanentemente?")) { e.currentTarget.disabled = true; await deleteDoc(doc(db, "despesas", e.currentTarget.dataset.id)); carregarFinanceiroPlanilha(); }
     });
   });
 
   document.querySelectorAll(".btn-edit-verba").forEach(btn => {
     btn.addEventListener("click", (e) => {
       const id = e.currentTarget.dataset.id; const v = historicoFinanceiro.find(x => x.id === id); if(!v) return;
-      document.getElementById("verbaEditId").value = v.id; document.getElementById("verbaCategoria").value = v.categoria || "Outros"; document.getElementById("verbaEquipe").value = v.equipe; document.getElementById("verbaEvento").value = v.evento;
+      document.getElementById("verbaEditId").value = v.id; 
+      document.getElementById("verbaCategoria").value = v.categoria || "Outros"; 
+      document.getElementById("verbaEquipe").value = v.equipe || "Corrida e Bike"; 
+      document.getElementById("verbaEvento").value = v.evento || v.descricao || "";
       
       const chkAvulso = document.getElementById("checkAvulso");
       if(chkAvulso) { chkAvulso.checked = v.avulso === true; chkAvulso.dispatchEvent(new Event('change')); }
 
-      document.getElementById("vPropInsc").value = v.propInsc || ""; document.getElementById("vPropTransp").value = v.propTransp || ""; document.getElementById("vPropHosp").value = v.propHosp || ""; document.getElementById("vPropAlim").value = v.propAlim || ""; document.getElementById("vPropDemais").value = v.propDemais || "";
+      document.getElementById("vPropInsc").value = v.propInsc || ""; 
+      document.getElementById("vPropTransp").value = v.propTransp || ""; 
+      document.getElementById("vPropHosp").value = v.propHosp || ""; 
+      document.getElementById("vPropAlim").value = v.propAlim || ""; 
+      document.getElementById("vPropDemais").value = v.propDemais || "";
       document.getElementById("vRealizadoTotal").value = v.totalRealizado || "";
       document.getElementById("modalLinhaVerba").style.display = "flex";
     });
@@ -392,14 +417,15 @@ function exportarFinanceiroPlanilha() {
   historicoFinanceiro.forEach(v => {
     const n = (val) => (val || 0).toFixed(2).replace('.', ',');
     const tipo = v.avulso ? "Avulso" : "Planejado";
-    let linha = [ v.equipe, v.categoria || "-", v.evento, tipo, n(v.propInsc), n(v.propTransp), n(v.propHosp), n(v.propAlim), n(v.propDemais), n(v.totalProposto), n(v.totalRealizado), n(v.desvio) ];
+    let linha = [ v.equipe || "Ambas", v.categoria || "-", v.evento || v.descricao, tipo, n(v.propInsc), n(v.propTransp), n(v.propHosp), n(v.propAlim), n(v.propDemais), n(v.totalProposto || v.orcadoTotal), n(v.totalRealizado), n(v.desvio !== undefined ? v.desvio : ((v.totalProposto||v.orcadoTotal||0) - (v.totalRealizado||0))) ];
     csv += linha.map(col => `"${String(col).replace(/"/g, '""')}"`).join(";") + "\r\n";
   });
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `Controle_Orcamentario_Atletas.csv`; a.click(); URL.revokeObjectURL(url);
 }
 
+
 // =====================================================
-// 📅 AGENDA
+// 📅 AGENDA E EVENTOS
 // =====================================================
 function setupAgenda() {
   const modal = document.getElementById("modalEvento");
@@ -744,7 +770,7 @@ function setupLimparBase() {
     if (!prompt("Digite sua senha de administrador para autorizar:")) return;
     const btn = document.getElementById("btnLimparBase"); btn.innerHTML = "Apagando..."; btn.disabled = true;
     try {
-      const col = ["historico_pontos", "regras_pontuacao", "despesas", "verbas_excel", "comentarios_atletas"];
+      const col = ["historico_pontos", "regras_pontuacao", "despesas", "comentarios_atletas"];
       for (let c of col) { const snap = await getDocs(collection(db, c)); snap.forEach(async (d) => { await deleteDoc(doc(db, c, d.id)); }); }
       const snapA = await getDocs(collection(db, "atletas")); snapA.forEach(async (d) => { if (d.id !== auth.currentUser.uid) await deleteDoc(doc(db, "atletas", d.id)); });
       showToast("Base Limpa!", "success"); setTimeout(() => window.location.reload(), 2000); 
