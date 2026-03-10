@@ -85,7 +85,7 @@ function construirMenu() {
 function iniciarPainelAdmin() {
   Chart.defaults.color = document.body.getAttribute('data-theme') === 'dark' ? '#aaa' : '#666';
   document.getElementById("logoutBtn").addEventListener("click", async () => { if(confirm("Sair?")) { await signOut(auth); window.location.href = "index.html"; } });
-  setupSubTabs(); setupCadastrarPessoa(); setupContabilizacao(); setupRelatorioConsolidado(); setupFinanceiro(); setupMetas(); setupPermissoesModal(); setupAgenda(); setupConfiguracoes(); setupModalRegras(); setupModalEditar(); setupLimparBase(); setupFichaAtleta();
+  setupSubTabs(); setupCadastrarPessoa(); setupContabilizacao(); setupRelatorioConsolidado(); setupFinanceiro(); setupPermissoesModal(); setupAgenda(); setupConfiguracoes(); setupModalRegras(); setupModalEditar(); setupLimparBase(); setupFichaAtleta();
   atualizarTelas();
 }
 
@@ -101,14 +101,6 @@ async function atualizarTelas() {
   await carregarFinanceiro(); 
   await carregarEquipesEDashboard(); 
   await carregarRegras();
-}
-
-// =====================================================
-// 🎯 METAS 
-// =====================================================
-async function setupMetas() {
-  const btn = document.getElementById("btnEditarMeta");
-  if(btn) { btn.addEventListener("click", async () => { const novaMeta = prompt("Digite a meta global de pontos (Digite 0 para ocultar):"); if(novaMeta !== null) { await setDoc(doc(db, "configuracoes", "metas"), { valor: Number(novaMeta) || 0 }); atualizarTelas(); } }); }
 }
 
 // =====================================================
@@ -239,7 +231,6 @@ async function carregarFinanceiro() {
   snap.forEach(d => {
     const desp = d.data();
     historicoFinanceiro.push({id: d.id, ...desp});
-    
     realizadoGeral += desp.realizadoTotal || 0;
     
     if(desp.equipe === "Bicicleta" || desp.equipe === "Ambas") { realizadoBike += desp.realizadoTotal || 0; }
@@ -264,15 +255,6 @@ async function carregarFinanceiro() {
 
   const moneyStr = (v) => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
   
-  // Atualiza Barra Geral no Estratégico (Runway)
-  if(document.getElementById("barraOrcamentoGeral")) {
-      const percGeral = orc.geral > 0 ? Math.min((realizadoGeral / orc.geral) * 100, 100) : 0;
-      document.getElementById("barraOrcamentoGeral").style.width = percGeral + "%";
-      document.getElementById("textoOrcamentoGeral").textContent = `Usado: ${moneyStr(realizadoGeral)} de ${moneyStr(orc.geral)} (${Math.round(percGeral)}%)`;
-      if(percGeral > 80) document.getElementById("barraOrcamentoGeral").style.background = "var(--danger)";
-      else if(percGeral > 50) document.getElementById("barraOrcamentoGeral").style.background = "#f39c12";
-      else document.getElementById("barraOrcamentoGeral").style.background = "linear-gradient(90deg, #27ae60, #2ecc71)";
-  }
   if(document.getElementById("totalInvestimento")) document.getElementById("totalInvestimento").textContent = moneyStr(realizadoGeral);
 
   // Atualiza Potes no Financeiro
@@ -377,7 +359,7 @@ async function carregarAgenda() {
 }
 
 // =====================================================
-// 👥 EQUIPES E DASHBOARD C-LEVEL (ROI E INATIVIDADE)
+// 👥 EQUIPES E DASHBOARD C-LEVEL
 // =====================================================
 async function carregarEquipesEDashboard() {
   const snap = await getDocs(query(collection(db, "atletas"), where("status", "==", "Aprovado")));
@@ -444,7 +426,6 @@ async function carregarEquipesEDashboard() {
   renderGraficosETop(ptsBike, ptsCorrida, todosAtletas, contBike, contCorrida);
   lucide.createIcons();
 
-  // Fila Passar a Vez
   document.querySelectorAll(".btn-aprovar-fila").forEach(btn => { btn.addEventListener("click", async (e) => { if(confirm(`Aprovar atleta?`)) { await updateDoc(doc(db, "atletas", e.currentTarget.dataset.id), { equipe: e.currentTarget.dataset.eq, recusas: 0 }); atualizarTelas(); }}); });
   document.querySelectorAll(".btn-pular-fila").forEach(btn => { 
     btn.addEventListener("click", async (e) => { 
@@ -593,13 +574,16 @@ async function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike, 
   if(document.getElementById("listaPodioBike")) document.getElementById("listaPodioBike").innerHTML = htmlPodio(bikeAtletas);
   if(document.getElementById("listaPodioCorrida")) document.getElementById("listaPodioCorrida").innerHTML = htmlPodio(corridaAtletas);
 
-  // Render da Inatividade Inteligente (> 30 dias)
-  const radarEvasao = arrayAtletas.filter(a => a.diasAusente > 30).sort((a,b) => b.diasAusente - a.diasAusente).slice(0, 8);
+  // Render do Radar Separado (Top 5 mais sumidos por equipe)
+  const radarBike = arrayAtletas.filter(a => a.diasAusente > 30 && a.eq === 'Bicicleta').sort((a,b) => b.diasAusente - a.diasAusente).slice(0, 5);
+  const radarCorrida = arrayAtletas.filter(a => a.diasAusente > 30 && a.eq === 'Corrida').sort((a,b) => b.diasAusente - a.diasAusente).slice(0, 5);
+  
   const htmlEvasao = (arr) => {
-    if(arr.length===0) return "<li style='color:var(--secondary); font-size:0.85rem;'>Nenhum alerta. Equipe super ativa! 🎉</li>";
-    return arr.map(a => `<li style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed var(--danger);"><span style="color:var(--danger);">⚠️ <strong>${a.nome}</strong></span><small style="color:#999; font-weight:600;">Ausente há ${a.diasAusente === 999 ? 'Sempre' : a.diasAusente + ' dias'}</small></li>`).join('');
+    if(arr.length===0) return "<li style='color:var(--secondary); font-size:0.85rem;'>Nenhum alerta.</li>";
+    return arr.map(a => `<li style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed var(--danger);"><span style="color:var(--danger); font-size:0.85rem;">⚠️ <strong>${a.nome}</strong></span><small style="color:#999; font-weight:600; font-size:0.75rem;">${a.diasAusente === 999 ? 'Nunca foi' : a.diasAusente + 'd'}</small></li>`).join('');
   };
-  if(document.getElementById("listaEvasao")) document.getElementById("listaEvasao").innerHTML = htmlEvasao(radarEvasao);
+  if(document.getElementById("listaEvasaoBike")) document.getElementById("listaEvasaoBike").innerHTML = htmlEvasao(radarBike);
+  if(document.getElementById("listaEvasaoCorrida")) document.getElementById("listaEvasaoCorrida").innerHTML = htmlEvasao(radarCorrida);
 
   // Indicadores Principais Topo
   const totalAtivosGerais = arrayAtletas.filter(a => a.ativo !== false).length;
@@ -610,17 +594,17 @@ async function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike, 
       document.getElementById("engajamento30d").textContent = percEngaj + "%";
   }
 
-  if(document.getElementById("roiPonto")) {
-      const roi = totalPontosGlobal > 0 ? (gastoTotalGlobal / totalPontosGlobal) : 0;
-      document.getElementById("roiPonto").textContent = roi.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+  if(document.getElementById("roiAtleta")) {
+      const roi = totalAtivosGerais > 0 ? (gastoTotalGlobal / totalAtivosGerais) : 0;
+      document.getElementById("roiAtleta").textContent = roi.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
   }
 
   // Gráficos
   let ativosBikeG = arrayAtletas.filter(a => a.eq === 'Bicicleta' && a.diasAusente <= 30 && a.diasAusente !== -1).length;
   let ativosCorridaG = arrayAtletas.filter(a => a.eq === 'Corrida' && a.diasAusente <= 30 && a.diasAusente !== -1).length;
   
-  document.getElementById('txtAtivosBike').textContent = totalBike === 0 ? "0% ativos nos últimos 30d" : `${Math.round((ativosBikeG/totalBike)*100)}% ativos nos últimos 30d`;
-  document.getElementById('txtAtivosCorrida').textContent = totalCorrida === 0 ? "0% ativos nos últimos 30d" : `${Math.round((ativosCorridaG/totalCorrida)*100)}% ativos nos últimos 30d`;
+  document.getElementById('txtAtivosBike').textContent = totalBike === 0 ? "0% ativos (30d)" : `${Math.round((ativosBikeG/totalBike)*100)}% ativos (30d)`;
+  document.getElementById('txtAtivosCorrida').textContent = totalCorrida === 0 ? "0% ativos (30d)" : `${Math.round((ativosCorridaG/totalCorrida)*100)}% ativos (30d)`;
 
   if(document.getElementById('graficoEngajBike')) {
     if(graficoEngajBike) graficoEngajBike.destroy();
@@ -750,7 +734,6 @@ async function salvarPontuacoesEmLote() {
 
 async function carregarHistorico() {
   const snap = await getDocs(collection(db, "historico_pontos")); historicoCompleto = []; snap.forEach(d => { historicoCompleto.push({ id: d.id, ...d.data() }); });
-  // Para que o Radar funcione, o histórico precisa estar em ordem cronológica de Treino (Descendente)
   historicoCompleto.sort((a, b) => new Date(b.dataTreino || 0) - new Date(a.dataTreino || 0));
   filtrarHistorico();
 }
