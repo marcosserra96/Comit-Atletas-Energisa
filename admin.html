@@ -166,35 +166,33 @@
 
     <section id="financeiro">
       <div class="sub-menu">
-        <button class="sub-tab active" data-target="sub-fin-dash"><i data-lucide="pie-chart"></i> Controle de Orçamento</button>
+        <button class="sub-tab active" data-target="sub-fin-dash"><i data-lucide="pie-chart"></i> Gestão Orçamental</button>
         <button class="sub-tab" data-target="sub-fin-lancamentos"><i data-lucide="list"></i> Lançar Despesa</button>
       </div>
 
       <div id="sub-fin-dash" class="sub-content active">
         <div class="header-acao">
           <button id="btnExportarFinExcel" class="btn-primario" style="background: #107c41;"><i data-lucide="sheet"></i> Exportar Relatório Excel</button>
-          <button id="btnDefinirOrcamento" class="btn-primario admin-only-element" style="background: #f39c12;"><i data-lucide="piggy-bank"></i> Definir Orçamento Anual</button>
+          <button id="btnDefinirOrcamento" class="btn-primario" style="background: #f39c12; display:none;"><i data-lucide="piggy-bank"></i> Definir Orçamento Anual</button>
+        </div>
+
+        <div class="cards" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 25px;">
+          <div class="card" style="border-left: 4px solid var(--primary); margin:0;"><h3 style="color:#666;">Orçamento Geral (Ano)</h3><p id="dashFinOrcadoTotal">R$ 0,00</p></div>
+          <div class="card" style="border-left: 4px solid var(--danger); margin:0;"><h3 style="color:#666;">Total Debitado (Realizado)</h3><p id="dashFinRealizadoTotal">R$ 0,00</p></div>
+          <div class="card" style="border-left: 4px solid #8e44ad; margin:0;"><h3 style="color:#666;">Saldo Livre Geral</h3><p id="dashFinSaldoTotal">R$ 0,00</p></div>
         </div>
 
         <div class="dashboard-grid">
-          <div class="card" style="margin: 0; border: 1px solid var(--primary);">
-            <h3 style="color: var(--primary);"><i data-lucide="bike"></i> Pote Anual: Bicicleta</h3>
-            <div style="display: flex; justify-content: space-between; margin-top: 15px;">
-              <div><small>Teto Anual</small><br><strong id="finBikeOrcado" style="color:#666; font-size:1.1rem;">R$ 0,00</strong></div>
-              <div style="text-align:right;"><small>Gasto Realizado</small><br><strong id="finBikeRealizado" style="color:var(--primary); font-size:1.1rem;">R$ 0,00</strong></div>
-            </div>
-            <div class="progress-bar-bg" style="margin-top: 10px;"><div id="barraBikeFin" class="progress-bar-fill" style="width: 0%; background: var(--primary);"></div></div>
-            <p id="finBikeSaldo" style="text-align:right; font-size:0.85rem; margin-top:5px; font-weight:600; color:var(--text-light);">Saldo: R$ 0,00</p>
+          <div style="display: flex; flex-direction: column; gap: 15px;">
+             <h3 style="color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 10px; margin:0;"><i data-lucide="pie-chart"></i> Consumo por Categoria</h3>
+             <div id="listaPotesOrcamento" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px;">
+                </div>
           </div>
-
-          <div class="card" style="margin: 0; border: 1px solid var(--secondary);">
-            <h3 style="color: var(--secondary);"><i data-lucide="footprints"></i> Pote Anual: Corrida</h3>
-             <div style="display: flex; justify-content: space-between; margin-top: 15px;">
-              <div><small>Teto Anual</small><br><strong id="finCorridaOrcado" style="color:#666; font-size:1.1rem;">R$ 0,00</strong></div>
-              <div style="text-align:right;"><small>Gasto Realizado</small><br><strong id="finCorridaRealizado" style="color:var(--secondary); font-size:1.1rem;">R$ 0,00</strong></div>
-            </div>
-            <div class="progress-bar-bg" style="margin-top: 10px;"><div id="barraCorridaFin" class="progress-bar-fill" style="width: 0%; background: var(--secondary);"></div></div>
-            <p id="finCorridaSaldo" style="text-align:right; font-size:0.85rem; margin-top:5px; font-weight:600; color:var(--text-light);">Saldo: R$ 0,00</p>
+          
+          <div class="card" style="margin: 0; align-self: start;">
+            <h3 style="color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 15px; margin-top:0;"><i data-lucide="clock"></i> Últimos Lançamentos</h3>
+            <div id="dashUltimasDespesas" style="font-size: 0.85rem;"></div>
+            <button class="btn-acao" style="width: 100%; margin-top: 15px; justify-content: center;" onclick="document.querySelector('[data-target=\'sub-fin-lancamentos\']').click()">Ver Histórico Completo</button>
           </div>
         </div>
       </div>
@@ -364,17 +362,21 @@
   </main>
 
   <div id="modalOrcamento" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:2000; justify-content:center; align-items:center;">
-    <div style="background: var(--bg-card); padding: 30px; border-radius: 12px; width: 90%; max-width: 400px;">
-      <h3 style="color: var(--primary); margin-top: 0;"><i data-lucide="piggy-bank"></i> Configurar Tetos Anuais</h3>
-      <label>Pote Geral / Total Liberado (R$)</label>
-      <input type="number" id="orcGeralEdit" step="0.01" />
-      <label style="color: var(--primary); margin-top: 10px;">Pote Equipe Bicicleta (R$)</label>
-      <input type="number" id="orcBikeEdit" step="0.01" />
-      <label style="color: var(--secondary); margin-top: 10px;">Pote Equipe Corrida (R$)</label>
-      <input type="number" id="orcCorridaEdit" step="0.01" />
-      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px;">
+    <div style="background: var(--bg-card); padding: 30px; border-radius: 12px; width: 90%; max-width: 500px;">
+      <h3 style="color: var(--primary); margin-top: 0;"><i data-lucide="piggy-bank"></i> Definir Orçamento Anual</h3>
+      <p style="font-size: 0.85rem; color: #666; margin-bottom: 15px;">Defina o teto de gastos aprovado para cada rubrica no ano.</p>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+        <div><label>Mensalidade Treinador</label><input type="number" id="orcTreinador" step="0.01" placeholder="0,00" /></div>
+        <div><label>Provas / Inscrições</label><input type="number" id="orcProva" step="0.01" placeholder="0,00" /></div>
+        <div><label>Encontros</label><input type="number" id="orcEncontros" step="0.01" placeholder="0,00" /></div>
+        <div><label>Uniformes</label><input type="number" id="orcUniformes" step="0.01" placeholder="0,00" /></div>
+        <div style="grid-column: span 2;"><label>Demais Despesas</label><input type="number" id="orcOutros" step="0.01" placeholder="0,00" /></div>
+      </div>
+      
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
         <button id="fecharModalOrcamento" style="background: var(--border); padding: 10px;">Cancelar</button>
-        <button id="salvarOrcamentoBtn" class="btn-primario">Salvar Tetos</button>
+        <button id="salvarOrcamentoBtn" class="btn-primario">Salvar Orçamento</button>
       </div>
     </div>
   </div>
@@ -465,7 +467,7 @@
 
   <div id="pdfOverlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.8); z-index:10000; align-items:center; justify-content:center; overflow-y: auto;">
       <div id="pdfPrintArea" style="width: 297mm; height: 210mm; background: #ffffff; color: #333333; padding: 10mm 15mm; box-sizing: border-box; font-family: Arial, sans-serif; margin: auto; display: flex; flex-direction: column;">
-          <h1 style="color:var(--primary); text-align:center;">Relatório em atualização estrutural...</h1>
+          <h1 style="color:var(--primary); text-align:center;">Relatório em atualização...</h1>
       </div>
   </div>
 
