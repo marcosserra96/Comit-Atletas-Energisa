@@ -166,46 +166,67 @@
 
     <section id="financeiro">
       <div class="sub-menu">
-        <button class="sub-tab active" data-target="sub-fin-dash"><i data-lucide="table"></i> Gestão de Verbas</button>
+        <button class="sub-tab active" data-target="sub-fin-dash"><i data-lucide="layout-dashboard"></i> Dashboard Estratégico</button>
+        <button class="sub-tab" data-target="sub-fin-planilha"><i data-lucide="table"></i> Planilha Master (Excel)</button>
       </div>
 
       <div id="sub-fin-dash" class="sub-content active">
-        
-        <div class="dashboard-grid" style="margin-bottom: 20px;">
+        <div class="cards" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 25px;">
+          <div class="card" style="border-left: 4px solid var(--primary); margin:0;"><h3 style="color:#666;">Total Geral Proposto</h3><p id="dashFinOrcadoTotal">R$ 0,00</p></div>
+          <div class="card" style="border-left: 4px solid var(--danger); margin:0;"><h3 style="color:#666;">Total Realizado</h3><p id="dashFinRealizadoTotal">R$ 0,00</p></div>
+          <div class="card" style="border-left: 4px solid #8e44ad; margin:0;"><h3 style="color:#666;">Saldo (Desvio Global)</h3><p id="dashFinSaldoTotal">R$ 0,00</p></div>
+        </div>
+
+        <div class="dashboard-grid">
           <div class="card" style="margin: 0;">
-            <h3 style="color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-top:0;"><i data-lucide="pie-chart"></i> Resumo por Equipe</h3>
+            <h3 style="color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-top:0;"><i data-lucide="calculator"></i> Tabela Resumo (Proposto x Realizado)</h3>
             <table class="tabela-simples" style="min-width: 100%; margin-top: 10px;">
-              <thead><tr><th style="padding:8px;">Equipe</th><th style="padding:8px;">Orçado</th><th style="padding:8px;">Realizado</th></tr></thead>
+              <thead><tr><th style="padding:8px;">Equipe</th><th style="padding:8px;">Total Proposto</th><th style="padding:8px;">Realizado</th><th style="padding:8px;">Desvio</th></tr></thead>
               <tbody id="tabelaResumoEquipes">
                 </tbody>
             </table>
           </div>
           
-          <div class="card admin-only-element" style="margin: 0; background: rgba(0,155,193,0.05); border: 1px dashed var(--primary);">
-             <h3 style="color: var(--primary); margin-top:0;"><i data-lucide="plus-circle"></i> Planejar Novo Evento/Item</h3>
-             <p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 15px;">Adicione uma nova linha de orçamento à planilha principal.</p>
-             <button id="btnAbrirModalDespesa" class="btn-primario" style="width: 100%; justify-content: center;">Nova Linha de Verba</button>
-             <button id="btnExportarFinExcel" class="btn-acao" style="width: 100%; justify-content: center; margin-top: 10px; color: #107c41; border-color: #107c41;"><i data-lucide="sheet"></i> Baixar Planilha (.csv)</button>
+          <div style="display: flex; flex-direction: column; gap: 15px;">
+             <h3 style="color: var(--text); padding-bottom: 5px; margin:0;"><i data-lucide="pie-chart"></i> Consumo Estratégico por Categoria</h3>
+             <div id="listaPotesOrcamento" style="display: flex; flex-direction: column; gap: 15px;">
+                </div>
           </div>
         </div>
+      </div>
 
-        <div class="card" style="padding: 0; overflow: hidden;">
+      <div id="sub-fin-planilha" class="sub-content">
+        <div id="areaAcoesFinanceiro" style="display: none; background: rgba(0,155,193,0.05); border: 1px dashed var(--primary); padding: 20px; border-radius: var(--radius); margin-bottom: 20px;">
+           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+             <div>
+               <h3 style="color: var(--primary); margin:0 0 5px 0;"><i data-lucide="plus-circle"></i> Ações da Planilha</h3>
+               <p style="font-size: 0.85rem; color: var(--text-light); margin: 0;">Adicione eventos planejados ou despesas avulsas extras à planilha principal.</p>
+             </div>
+             <div style="display: flex; gap: 10px;">
+               <button id="btnAbrirModalDespesa" class="btn-primario"><i data-lucide="file-plus"></i> Nova Linha / Lançamento</button>
+               <button id="btnExportarFinExcel" class="btn-acao" style="color: #107c41; border-color: #107c41;"><i data-lucide="sheet"></i> Baixar Excel (.csv)</button>
+             </div>
+           </div>
+        </div>
+
+        <div class="card" style="padding: 0; overflow: hidden; margin: 0;">
           <div style="padding: 20px; border-bottom: 1px solid var(--border);">
-            <h3 style="margin:0; color: #34495e;"><i data-lucide="file-spreadsheet"></i> Planilha de Controle Orçamentário</h3>
+            <h3 style="margin:0; color: #34495e;"><i data-lucide="file-spreadsheet"></i> Planilha de Controle de Verbas</h3>
           </div>
           <div class="tabela-container" style="max-height: 60vh; border-radius: 0; box-shadow: none;">
-            <table class="tabela-simples" style="min-width: 1000px; font-size: 0.85rem;">
+            <table class="tabela-simples" style="min-width: 1100px; font-size: 0.85rem;">
               <thead style="background: var(--table-header);">
                 <tr>
-                  <th>Equipe</th>
+                  <th>Eq.</th>
+                  <th>Categoria</th>
                   <th>Evento / Custo</th>
-                  <th>Inscrições</th>
-                  <th>Transporte</th>
-                  <th>Hospedagem</th>
-                  <th>Alimentação</th>
-                  <th>Demais Custos</th>
-                  <th style="background: rgba(0,0,0,0.03);">Total Proposto</th>
-                  <th style="background: rgba(39, 174, 96, 0.1); color: #27ae60;">Total Realizado</th>
+                  <th>Inscrição</th>
+                  <th>Transp.</th>
+                  <th>Hosped.</th>
+                  <th>Aliment.</th>
+                  <th>Outros</th>
+                  <th style="background: rgba(0,0,0,0.03);">Proposto</th>
+                  <th style="background: rgba(39, 174, 96, 0.1); color: #27ae60;">Realizado</th>
                   <th>Desvio</th>
                   <th>Ações</th>
                 </tr>
@@ -321,30 +342,52 @@
 
   <div id="modalLinhaVerba" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:2000; justify-content:center; align-items:center;">
     <div style="background: var(--bg-card); padding: 30px; border-radius: 12px; width: 95%; max-width: 600px; max-height: 90vh; overflow-y: auto;">
-      <h3 style="color: var(--primary); margin-top: 0; border-bottom: 1px solid var(--border); padding-bottom: 10px;"><i data-lucide="file-plus"></i> Planejamento de Custo</h3>
+      <h3 style="color: var(--primary); margin-top: 0; border-bottom: 1px solid var(--border); padding-bottom: 10px;"><i data-lucide="file-plus"></i> Edição / Nova Linha</h3>
       
       <input type="hidden" id="verbaEditId" value="" />
+
+      <div style="background: rgba(243, 112, 33, 0.05); border: 1px solid var(--accent); padding: 10px 15px; border-radius: 8px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+        <input type="checkbox" id="checkAvulso" style="width: 20px; height: 20px; margin: 0;" />
+        <div>
+          <label style="margin:0; color: var(--accent); font-weight: bold; cursor: pointer;" for="checkAvulso">É um Custo Avulso (Não Previsto)?</label>
+          <small style="color: var(--text-light); line-height: 1.2; display: block;">Se marcado, o sistema zerará o Orçado e lançará o valor diretamente no Realizado (gerando desvio).</small>
+        </div>
+      </div>
       
-      <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px; margin-bottom: 15px;">
-        <div><label>Equipe</label><select id="verbaEquipe"><option value="Corrida e Bike">Corrida e Bike (Ambas)</option><option value="Corrida">Corrida</option><option value="Bike">Bike</option></select></div>
-        <div><label>Evento / Custo Principal</label><input type="text" id="verbaEvento" placeholder="Ex: Faminas (bate-volta)" style="margin:0;" /></div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+        <div>
+          <label>Categoria Estratégica</label>
+          <select id="verbaCategoria">
+            <option value="Provas / Inscrições">Provas / Inscrições</option>
+            <option value="Mensalidade Treinador">Mensalidade Treinador</option>
+            <option value="Encontros e Eventos">Encontros / Confraternizações</option>
+            <option value="Uniformes e Materiais">Uniformes / Materiais</option>
+            <option value="Outros">Outros (Manutenção, etc)</option>
+          </select>
+        </div>
+        <div><label>Equipe</label><select id="verbaEquipe"><option value="Corrida e Bike">Ambas (Uso Geral)</option><option value="Corrida">Corrida</option><option value="Bike">Bike</option></select></div>
+      </div>
+      
+      <div style="margin-bottom: 15px;">
+        <label>Título / Descrição do Custo</label>
+        <input type="text" id="verbaEvento" placeholder="Ex: Compra de Windbanner / Faminas..." style="margin:0;" />
       </div>
 
-      <div style="background: rgba(0,155,193,0.05); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+      <div id="areaProposto" style="background: rgba(0,155,193,0.05); padding: 15px; border-radius: 8px; margin-bottom: 15px; transition: 0.3s;">
         <h4 style="margin: 0 0 10px 0; color: var(--primary);">Desdobramento do Orçamento (Proposto)</h4>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div><label>Inscrições (R$)</label><input type="number" id="vPropInsc" step="0.01" placeholder="0.00" style="margin:0;"/></div>
           <div><label>Transporte (R$)</label><input type="number" id="vPropTransp" step="0.01" placeholder="0.00" style="margin:0;"/></div>
           <div><label>Hospedagem (R$)</label><input type="number" id="vPropHosp" step="0.01" placeholder="0.00" style="margin:0;"/></div>
           <div><label>Alimentação (R$)</label><input type="number" id="vPropAlim" step="0.01" placeholder="0.00" style="margin:0;"/></div>
-          <div style="grid-column: span 2;"><label>Demais Custos (R$)</label><input type="number" id="vPropDemais" step="0.01" placeholder="0.00" style="margin:0;"/></div>
+          <div style="grid-column: span 2;"><label>Demais Custos Genéricos (R$)</label><input type="number" id="vPropDemais" step="0.01" placeholder="0.00" style="margin:0;"/></div>
         </div>
       </div>
 
       <div style="background: rgba(39, 174, 96, 0.05); padding: 15px; border-radius: 8px;">
-        <h4 style="margin: 0 0 10px 0; color: #27ae60;">Execução Financeira (Opcional por agora)</h4>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: end;">
-           <div style="grid-column: span 2;"><label>Total Realmente Gasto no Fim (R$)</label><input type="number" id="vRealizadoTotal" step="0.01" placeholder="0.00" style="margin:0; border-color:#27ae60;" /></div>
+        <h4 style="margin: 0 0 10px 0; color: #27ae60;">Execução Financeira (Opcional no planejamento)</h4>
+        <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+           <div><label>Total Realmente Gasto no Fim (R$)</label><input type="number" id="vRealizadoTotal" step="0.01" placeholder="0.00" style="margin:0; border-color:#27ae60;" /></div>
         </div>
       </div>
 
@@ -459,12 +502,8 @@
            <p id="pdfAtivos" style="margin: 3px 0 0 0; font-size: 18px; font-weight: bold; color: #009bc1;">0</p>
          </div>
          <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 6px; padding: 8px; text-align: center;">
-           <h3 style="margin: 0; font-size: 10px; color: #666; font-weight: normal;">Equipe Bike</h3>
-           <p id="pdfBike" style="margin: 3px 0 0 0; font-size: 18px; font-weight: bold; color: #009bc1;">0</p>
-         </div>
-         <div style="flex: 1; border: 1px solid #e3e6eb; border-radius: 6px; padding: 8px; text-align: center;">
-           <h3 style="margin: 0; font-size: 10px; color: #666; font-weight: normal;">Equipe Corrida</h3>
-           <p id="pdfCorrida" style="margin: 3px 0 0 0; font-size: 18px; font-weight: bold; color: #009bc1;">0</p>
+           <h3 style="margin: 0; font-size: 10px; color: #666; font-weight: normal;">Engajamento (30d)</h3>
+           <p id="pdfEngajamento" style="margin: 3px 0 0 0; font-size: 18px; font-weight: bold; color: #009bc1;">0%</p>
          </div>
          <div style="flex: 1; border: 1px solid #27ae60; background: rgba(39,174,96,0.05); border-radius: 6px; padding: 8px; text-align: center;">
            <h3 style="margin: 0; font-size: 10px; color: #27ae60; font-weight: normal;">Investimento Total</h3>
