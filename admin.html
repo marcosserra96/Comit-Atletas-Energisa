@@ -50,12 +50,14 @@
           <div class="card" style="margin: 0; display: flex; gap: 20px; flex-wrap: wrap;">
             <div style="flex: 1; text-align: center; min-width: 120px;">
               <h3 style="color: var(--primary); justify-content: center;"><i data-lucide="bike"></i> Base Bike</h3>
-              <p id="totalBike" style="font-size: 2rem; font-weight: bold; color: var(--primary); margin: 10px 0;">0</p>
+              <div style="position: relative; height: 70px; width: 70px; margin: 10px auto;"><canvas id="graficoEngajBike"></canvas></div>
+              <p id="totalBike" style="font-size: 1.8rem; font-weight: bold; color: var(--primary); margin: 0;">0</p>
               <small id="txtAtivosBike" style="color: var(--text-light);">0% ativos (30d)</small>
             </div>
             <div style="flex: 1; text-align: center; border-left: 1px solid var(--border); min-width: 120px;">
               <h3 style="color: var(--secondary); justify-content: center;"><i data-lucide="footprints"></i> Base Corrida</h3>
-              <p id="totalCorrida" style="font-size: 2rem; font-weight: bold; color: var(--secondary); margin: 10px 0;">0</p>
+              <div style="position: relative; height: 70px; width: 70px; margin: 10px auto;"><canvas id="graficoEngajCorrida"></canvas></div>
+              <p id="totalCorrida" style="font-size: 1.8rem; font-weight: bold; color: var(--secondary); margin: 0;">0</p>
               <small id="txtAtivosCorrida" style="color: var(--text-light);">0% ativos (30d)</small>
             </div>
           </div>
@@ -365,7 +367,7 @@
             <option value="Outros">Outros (Manutenção, etc)</option>
           </select>
         </div>
-        <div><label>Equipe</label><select id="verbaEquipe"><option value="Corrida e Bike">Ambas (Uso Geral)</option><option value="Corrida">Corrida</option><option value="Bike">Bike</option></select></div>
+        <div><label>Equipe</label><select id="verbaEquipe"><option value="Corrida e Bike">Ambas (Uso Geral)</option><option value="Corrida">Corrida</option><option value="Bicicleta">Bicicleta</option></select></div>
       </div>
       
       <div style="margin-bottom: 15px;">
