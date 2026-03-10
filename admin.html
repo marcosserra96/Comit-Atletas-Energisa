@@ -33,18 +33,12 @@
         <h2>Visão Estratégica</h2>
         <button id="btnExportarPDF" class="btn-primario" style="background: #2c3e50;"><i data-lucide="printer"></i> Exportar Report Oficial</button>
       </div>
-      
-      <div class="card" style="margin-bottom: 20px;">
-        <h3 style="color: #34495e; margin-bottom: 10px;"><i data-lucide="wallet"></i> Saúde do Orçamento Anual (Runway)</h3>
-        <div class="progress-bar-bg" style="height: 18px;"><div id="barraOrcamentoGeral" class="progress-bar-fill" style="width: 0%; background: linear-gradient(90deg, #27ae60, #2ecc71);"></div></div>
-        <p id="textoOrcamentoGeral" style="font-size: 0.95rem; font-weight: 600; text-align: right; margin-top: 8px; color: var(--text);"></p>
-      </div>
 
       <div class="cards">
         <div class="card"><i data-lucide="users"></i><h3>Atletas Ativos</h3><p id="totalAtivosGeral">0</p></div>
         <div class="card"><i data-lucide="activity" style="color: var(--primary);"></i><h3>Engajamento (30d)</h3><p id="engajamento30d" style="color: var(--primary);">0%</p></div>
         <div class="card"><i data-lucide="dollar-sign" style="color: #e67e22;"></i><h3>Custo Realizado</h3><p id="totalInvestimento" style="color: #e67e22;">R$ 0,00</p></div>
-        <div class="card" style="background: rgba(39, 174, 96, 0.1); border: 1px solid #27ae60;"><i data-lucide="line-chart"></i><h3 style="color:#27ae60;">ROI: Custo / Ponto</h3><p id="roiPonto" style="color:#27ae60;">R$ 0,00</p></div>
+        <div class="card" style="background: rgba(39, 174, 96, 0.1); border: 1px solid #27ae60;"><i data-lucide="line-chart"></i><h3 style="color:#27ae60;">Custo p/ Atleta Ativo</h3><p id="roiAtleta" style="color:#27ae60;">R$ 0,00</p></div>
       </div>
 
       <div class="dashboard-grid">
@@ -57,12 +51,12 @@
             <div style="flex: 1; text-align: center; min-width: 120px;">
               <h3 style="color: var(--primary); justify-content: center;"><i data-lucide="bike"></i> Base Bike</h3>
               <p id="totalBike" style="font-size: 2rem; font-weight: bold; color: var(--primary); margin: 10px 0;">0</p>
-              <small id="txtAtivosBike" style="color: var(--text-light);">0% de participação ativa</small>
+              <small id="txtAtivosBike" style="color: var(--text-light);">0% ativos (30d)</small>
             </div>
             <div style="flex: 1; text-align: center; border-left: 1px solid var(--border); min-width: 120px;">
               <h3 style="color: var(--secondary); justify-content: center;"><i data-lucide="footprints"></i> Base Corrida</h3>
               <p id="totalCorrida" style="font-size: 2rem; font-weight: bold; color: var(--secondary); margin: 10px 0;">0</p>
-              <small id="txtAtivosCorrida" style="color: var(--text-light);">0% de participação ativa</small>
+              <small id="txtAtivosCorrida" style="color: var(--text-light);">0% ativos (30d)</small>
             </div>
           </div>
         </div>
@@ -93,9 +87,18 @@
 
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
         <div class="card" style="margin: 0;">
-          <h3 style="color: var(--danger); border-bottom: 1px solid var(--border); padding-bottom: 10px;"><i data-lucide="alert-triangle"></i> Radar de Inatividade Inteligente</h3>
-          <p style="font-size: 0.85rem; color: #999; margin-bottom: 10px;">Atletas que estão há mais de 30 dias sem pontuar.</p>
-          <ul id="listaEvasao" style="list-style: none; padding: 0; margin: 0;"></ul>
+          <h3 style="color: var(--danger); border-bottom: 1px solid var(--border); padding-bottom: 10px;"><i data-lucide="alert-triangle"></i> Radar de Inatividade</h3>
+          <p style="font-size: 0.85rem; color: #999; margin-bottom: 10px;">Atletas ausentes há mais de 30 dias.</p>
+          <div style="display: flex; gap: 15px;">
+            <div style="flex: 1;">
+              <h4 style="color: var(--primary); font-size: 0.9rem; margin: 0 0 5px 0;">🚴 Bike</h4>
+              <ul id="listaEvasaoBike" style="list-style: none; padding: 0; margin: 0;"></ul>
+            </div>
+            <div style="flex: 1; border-left: 1px solid var(--border); padding-left: 15px;">
+              <h4 style="color: var(--secondary); font-size: 0.9rem; margin: 0 0 5px 0;">🏃 Corrida</h4>
+              <ul id="listaEvasaoCorrida" style="list-style: none; padding: 0; margin: 0;"></ul>
+            </div>
+          </div>
         </div>
         <div class="card" style="margin: 0; display: flex; flex-direction: column;">
           <h3 style="color: #8e44ad; border-bottom: 1px solid var(--border); padding-bottom: 10px;"><i data-lucide="calendar"></i> Próximos Eventos</h3>
@@ -170,7 +173,7 @@
       <div id="sub-fin-dash" class="sub-content active">
         <div class="header-acao">
           <button id="btnExportarFinExcel" class="btn-primario" style="background: #107c41;"><i data-lucide="sheet"></i> Exportar Relatório Excel</button>
-          <button id="btnDefinirOrcamento" class="btn-acao admin-only-element" style="background: var(--warning); color: #333; border:none;"><i data-lucide="settings"></i> Ajustar Teto Anual</button>
+          <button id="btnDefinirOrcamento" class="btn-primario admin-only-element" style="background: #f39c12;"><i data-lucide="piggy-bank"></i> Definir Orçamento Anual</button>
         </div>
 
         <div class="dashboard-grid">
