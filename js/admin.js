@@ -348,7 +348,15 @@ async function carregarFinanceiroPlanilha() {
   if(document.getElementById("dashFinSaldoTotal")) {
     const desvioTotal = globalProp - globalReal;
     const el = document.getElementById("dashFinSaldoTotal");
-    el.textContent = moneyStr(desvioTotal); el.style.color = desvioTotal < 0 ? 'var(--danger)' : '#8e44ad';
+    el.textContent = moneyStr(desvioTotal); 
+    
+    // Altera a cor do texto do Saldo
+    el.style.color = desvioTotal < 0 ? 'var(--danger)' : 'var(--secondary)';
+    
+    // Altera a cor da margem (borda) esquerda do Card do Saldo
+    if (el.parentElement) {
+      el.parentElement.style.borderLeftColor = desvioTotal < 0 ? 'var(--danger)' : 'var(--secondary)';
+    }
   }
 
   // Tabela Consolidada Excel
