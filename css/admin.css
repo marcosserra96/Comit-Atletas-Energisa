@@ -22,6 +22,14 @@ button { cursor: pointer; font-family: var(--font-main); border: none; }
 input:checked + .slider { background-color: var(--secondary); }
 input:checked + .slider:before { transform: translateX(16px); }
 
+/* Classes Utilitárias de Responsividade */
+.grid-2-col { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: end; }
+.flex-2-col { display: flex; gap: 15px; }
+
+/* Ocultar barra de rolagem estética mantendo funcionalidade */
+.sub-menu::-webkit-scrollbar, .tertiary-menu::-webkit-scrollbar, .menu-flutuante::-webkit-scrollbar { display: none; }
+.sub-menu, .tertiary-menu, .menu-flutuante { -ms-overflow-style: none; scrollbar-width: none; }
+
 /* =======================================================
    🌟 TOPO E MENU
 ======================================================= */
@@ -119,8 +127,31 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
   .dashboard-grid { grid-template-columns: 1fr; } 
   .ficha-grid { grid-template-columns: 1fr; }
 }
+
 @media (max-width: 768px) {
+  /* Adaptação do menu mobile e topos */
   .menu-item span { display: none; } .menu-item { padding: 12px; border-radius: 50%; }
   .portal-nome { display: none; } 
   .tabela-simples th, .tabela-simples td { padding: 10px 8px; font-size: 0.85rem; }
+  
+  /* Redução de Padding para otimizar espaço lateral */
+  main { padding: 80px 10px 90px; }
+  .card { padding: 15px; }
+
+  /* Reorganização de colunas (Grids -> Flex Vertical) */
+  .grid-2-col { grid-template-columns: 1fr; gap: 10px; }
+  .flex-2-col { flex-direction: column; gap: 10px !important; margin-top: 10px !important;}
+  .flex-2-col > div { border-left: none !important; padding-left: 0 !important; border-top: 1px solid var(--border); padding-top: 15px; margin-top: 5px; }
+
+  /* Melhoria nos botões dentro dos modais para facilitar toque com dedo (Fat Finger) */
+  .modal-content > div[style*="justify-content: flex-end"], 
+  div[id^="modal"] > div > div[style*="justify-content: flex-end"] {
+    flex-direction: column-reverse; /* Inverte a ordem: Salvar em cima, Cancelar embaixo */
+    gap: 12px !important;
+  }
+  div[id^="modal"] > div > div[style*="justify-content: flex-end"] button {
+    width: 100%;
+    justify-content: center;
+    padding: 12px;
+  }
 }
