@@ -46,18 +46,37 @@ input:checked + .slider:before { transform: translateX(16px); }
 .menu-item.active { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(0, 155, 193, 0.3); }
 
 /* =======================================================
-   📐 LAYOUT E COMPONENTES
+   📐 LAYOUT E COMPONENTES (Animações Suaves)
 ======================================================= */
 main { padding: 90px 20px 100px; max-width: 1200px; margin: 0 auto; }
 section { display: none; animation: fadeIn 0.4s ease; }
 .active-section { display: block; }
+
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 
 .header-acao { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
 h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
 
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; }
-.card { background: var(--bg-card); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); border: 1px solid transparent; margin-bottom: 20px; }
+
+.card { 
+  background: var(--bg-card); 
+  border-radius: var(--radius); 
+  padding: 24px; 
+  box-shadow: var(--shadow); 
+  border: 1px solid transparent; 
+  margin-bottom: 20px; 
+  animation: fadeInUp 0.4s ease backwards; 
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  will-change: transform, opacity;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+}
+
 .card h3 { margin: 0 0 10px 0; font-size: 1rem; color: var(--text); display: flex; align-items: center; gap: 8px; }
 .card p { margin: 0; font-size: 1.5rem; font-weight: 700; color: var(--text-light); }
 
@@ -77,10 +96,16 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
 .agenda-info h4 { margin: 0 0 4px 0; color: var(--text); font-size: 0.95rem; }
 .agenda-info p { margin: 0; color: var(--text-light); font-size: 0.8rem; }
 
+/* =======================================================
+   📋 TABELAS COM EFEITO HOVER
+======================================================= */
 .tabela-container { overflow-x: auto; overflow-y: auto; max-height: 65vh; border-radius: var(--radius); box-shadow: var(--shadow); background: var(--bg-card);}
 .tabela-simples { width: 100%; border-collapse: collapse; min-width: 600px; }
 .tabela-simples th { background: var(--table-header); color: var(--primary); padding: 15px; text-align: left; position: sticky; top: 0; z-index: 10; }
-.tabela-simples td { padding: 15px; border-bottom: 1px solid var(--border); color: var(--text); }
+.tabela-simples td { padding: 15px; border-bottom: 1px solid var(--border); color: var(--text); transition: background-color 0.2s ease; }
+
+.tabela-simples tbody tr { transition: background-color 0.2s ease; }
+.tabela-simples tbody tr:hover td { background-color: rgba(0, 155, 193, 0.04); }
 
 .btn-primario { background: var(--primary); color: white; padding: 10px 20px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; }
 .btn-primario:hover { filter: brightness(1.1); transform: translateY(-1px); }
