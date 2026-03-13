@@ -189,7 +189,14 @@ async function atualizarTelas() {
   await carregarFinanceiroPlanilha(); 
   await carregarEquipesEDashboard(); 
   
+  // Carrega as regras agora que elas existem no script
   await carregarRegras();
+
+  // ATUALIZAÇÃO REATIVA (AUTO-REFRESH DA TABELA DE LANÇAMENTOS)
+  const modTreinoSelect = document.getElementById("modTreino");
+  if (modTreinoSelect && modTreinoSelect.value) {
+      modTreinoSelect.dispatchEvent(new Event('change'));
+  }
 }
 
 // =====================================================
@@ -197,24 +204,6 @@ async function atualizarTelas() {
 // =====================================================
 function setupContabilizacao() {
   document.getElementById("dataTreino").valueAsDate = new Date();
-  
-  const btnRefresh = document.getElementById("btnRefreshContabilizacao");
-  if(btnRefresh) {
-    btnRefresh.addEventListener("click", async () => {
-      const btn = document.getElementById("btnRefreshContabilizacao");
-      btn.innerHTML = `<i data-lucide="loader"></i> Sincronizando...`; 
-      lucide.createIcons();
-      
-      await atualizarTelas();
-      
-      // Dá um dispatch na select atual para recarregar a tabela de lançamento
-      document.getElementById("modTreino").dispatchEvent(new Event('change'));
-      
-      btn.innerHTML = `<i data-lucide="refresh-cw"></i> Sincronizar Base`; 
-      lucide.createIcons();
-      showToast("Base de Atletas e Regras Atualizada!", "success");
-    });
-  }
 
   document.getElementById("lancarEventoSelect").addEventListener("change", (e) => { 
     const evId = e.target.value; 
@@ -1892,4 +1881,146 @@ function setupConfiguracoes() {
     btn.innerHTML = `Salvar Alterações`; 
     btn.disabled = false; 
   }); 
+}
+
+// =====================================================
+// ⚙️ GESTÃO DE REGRAS DE PONTUAÇÃO
+// =====================================================
+function setupModalRegras() {
+  const modal = document.getElementById("modalRegra");
+  if (!modal) return;
+
+  document.getElementById("abrirModalRegra")?.addEventListener("click", () => {
+    document.getElementById("regraEditId").value = "";
+    document.getElementById("regraDescricao").value = "";
+    document.getElementById("regraModalidade").value = "Ambas";
+    document.getElementById("regraPontos").value = "";
+    renderizarVinculosRegras([]); 
+    modal.style.display = "flex";
+  });
+
+  document.getElementById("fecharModalRegra")?.addEventListener("click", () => {
+    modal.style.display = "none";
+  });
+
+  document.getElementById("salvarRegraBtn")?.addEventListener("click", async (e) => {
+    const id = document.getElementById("regraEditId").value;
+    const desc = document.getElementById("regraDescricao").value.trim();
+    const mod = document.getElementById("regraModalidade").value;
+    const pts = Number(document.getElementById("regraPontos").value);
+
+    if (!desc || isNaN(pts)) return showToast("Preencha a descrição e defina os pontos!", "error");
+
+    let vinculadas = [];
+    document.querySelectorAll(".chk-vinculo-regra:checked").forEach(chk => vinculadas.push(chk.value));
+
+    e.target.disabled = true;
+    e.target.textContent = "Salvando...";
+
+    try {
+      const dados = {
+        descricao: desc,
+        modalidade: mod,
+        pontos: pts,
+        regrasVinculadas: vinculadas,
+        atualizadoEm: new Date().toISOString()
+      };
+
+      if (id) {
+        await updateDoc(doc(db, "regras_pontuacao", id), dados);
+        showToast("Regra atualizada com sucesso!", "success");
+      } else {
+        dados.criadoEm = new Date().toISOString();
+        await addDoc(collection(db, "regras_pontuacao"), dados);
+        showToast("Nova regra criada!", "success");
+      }
+      
+      modal.style.display = "none";
+      await carregarRegras(); 
+    } catch (err) {
+      showToast("Erro ao salvar regra: " + err.message, "error");
+    }
+
+    e.target.disabled = false;
+    e.target.textContent = "Salvar Regra";
+  });
+}
+
+async function carregarRegras() {
+  try {
+    const snap = await getDocs(query(collection(db, "regras_pontuacao")));
+    listaTodasRegras = [];
+    snap.forEach(d => listaTodasRegras.push({ id: d.id, ...d.data() }));
+
+    const tbody = document.getElementById("listaRegras");
+    if (!tbody) return;
+
+    let html = "";
+    if (listaTodasRegras.length === 0) {
+      html = "<tr><td colspan='4' style='text-align:center;'>Nenhuma regra cadastrada.</td></tr>";
+    } else {
+      listaTodasRegras.forEach(r => {
+        html += `
+          <tr>
+            <td><strong>${r.descricao}</strong></td>
+            <td>${r.modalidade}</td>
+            <td style="color:var(--primary); font-weight:bold;">+${r.pontos}</td>
+            <td style="text-align:right;">
+              <button class="btn-acao btn-edit-regra" data-id="${r.id}" style="color:var(--primary); padding:6px; margin-right:5px;" title="Editar Regra"><i data-lucide="edit-2" style="width:16px;"></i></button>
+              <button class="btn-acao btn-del-regra" data-id="${r.id}" style="color:var(--danger); padding:6px;" title="Excluir Regra"><i data-lucide="trash" style="width:16px;"></i></button>
+            </td>
+          </tr>`;
+      });
+    }
+    
+    tbody.innerHTML = html;
+    if(typeof lucide !== 'undefined') lucide.createIcons();
+
+    document.querySelectorAll(".btn-del-regra").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        if(confirm("Deseja realmente excluir esta regra? Isso pode afetar lançamentos futuros.")) {
+          await deleteDoc(doc(db, "regras_pontuacao", e.currentTarget.dataset.id));
+          await carregarRegras();
+          showToast("Regra removida", "info");
+        }
+      });
+    });
+
+    document.querySelectorAll(".btn-edit-regra").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const r = listaTodasRegras.find(x => x.id === e.currentTarget.dataset.id);
+        if(!r) return;
+        
+        document.getElementById("regraEditId").value = r.id;
+        document.getElementById("regraDescricao").value = r.descricao;
+        document.getElementById("regraModalidade").value = r.modalidade;
+        document.getElementById("regraPontos").value = r.pontos;
+        
+        renderizarVinculosRegras(r.regrasVinculadas || [], r.id);
+        document.getElementById("modalRegra").style.display = "flex";
+      });
+    });
+
+  } catch (err) {
+    console.error("Erro ao carregar regras:", err);
+  }
+}
+
+function renderizarVinculosRegras(selecionadas = [], idIgnorado = null) {
+  const div = document.getElementById("listaVinculosRegras");
+  if (!div) return;
+  
+  let html = "";
+  listaTodasRegras.forEach(r => {
+    if (r.id === idIgnorado) return; 
+    
+    const checked = selecionadas.includes(r.id) ? "checked" : "";
+    html += `
+      <label style="display:flex; align-items:center; gap:8px; margin-bottom:8px; cursor:pointer;">
+        <input type="checkbox" class="chk-vinculo-regra" value="${r.id}" ${checked}> 
+        <span style="color:var(--text);">${r.descricao}</span>
+      </label>`;
+  });
+  
+  div.innerHTML = html || "<small style='color:var(--text-light);'>Nenhuma outra regra cadastrada ainda.</small>";
 }
