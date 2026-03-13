@@ -185,14 +185,11 @@ async function atualizarTelas() {
   
   await carregarHistorico(); 
   
-  // Ordem mantida para calcular o financeiro antes de usar no Dashboard
   await carregarFinanceiroPlanilha(); 
   await carregarEquipesEDashboard(); 
-  
-  // Carrega as regras agora que elas existem no script
   await carregarRegras();
 
-  // ATUALIZAÇÃO REATIVA (AUTO-REFRESH DA TABELA DE LANÇAMENTOS)
+  // ATUALIZAÇÃO REATIVA DA TABELA DE LANÇAMENTOS
   const modTreinoSelect = document.getElementById("modTreino");
   if (modTreinoSelect && modTreinoSelect.value) {
       modTreinoSelect.dispatchEvent(new Event('change'));
@@ -279,7 +276,6 @@ async function gerarTabelaContabilizacao(modalidade, regras) {
       <tr>
         <th style="vertical-align:middle; font-size:1rem; position:sticky; left:0; background:var(--table-header); z-index:20;">Nome do Atleta</th>`;
                  
-  // Monta o cabeçalho das regras
   regras.forEach(r => { 
     thead += `
         <th style="text-align:center; vertical-align:middle; min-width: 100px;">
@@ -290,7 +286,6 @@ async function gerarTabelaContabilizacao(modalidade, regras) {
         </th>`; 
   });
   
-  // Primeiro a Falta, e no fim a Observação
   thead += `
         <th style="text-align:center; color:var(--accent); vertical-align:middle; min-width: 90px; border-left: 2px solid var(--border);">
           <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
@@ -305,13 +300,11 @@ async function gerarTabelaContabilizacao(modalidade, regras) {
     </thead>
     <tbody>`;
   
-  // Monta as linhas dos atletas
   atletas.forEach(a => {
     thead += `
       <tr>
         <td style="vertical-align:middle; font-weight:500; position:sticky; left:0; background:var(--bg-card); z-index:10;">${a.nome}</td>`;
     
-    // Pontos (Regras)
     regras.forEach(r => { 
       thead += `
         <td style="text-align:center; vertical-align:middle;">
@@ -326,7 +319,6 @@ async function gerarTabelaContabilizacao(modalidade, regras) {
         </td>`; 
     });
     
-    // Falta Justificada
     thead += `
         <td style="text-align:center; background: rgba(243,112,33,0.05); vertical-align:middle; border-left: 2px solid var(--border);">
           <input type="checkbox" class="check-falta" 
@@ -335,7 +327,6 @@ async function gerarTabelaContabilizacao(modalidade, regras) {
                  data-atleta-equipe="${a.equipe}">
         </td>`;
                 
-    // Observação (Escondido por padrão)
     thead += `
         <td style="vertical-align:middle; border-left: 1px solid var(--border);">
           <input type="text" class="input-obs" 
@@ -349,7 +340,6 @@ async function gerarTabelaContabilizacao(modalidade, regras) {
   thead += `</tbody>`; 
   tabela.innerHTML = thead;
   
-  // Função auxiliar para exibir/esconder a observação
   const updateObsVisibility = (tr) => {
     const hasChecked = tr.querySelectorAll('.check-ponto:checked, .check-falta:checked').length > 0;
     const obsInput = tr.querySelector('.input-obs');
@@ -358,12 +348,11 @@ async function gerarTabelaContabilizacao(modalidade, regras) {
         obsInput.style.display = 'block';
       } else {
         obsInput.style.display = 'none';
-        obsInput.value = ''; // Limpa o texto se o utilizador desmarcar tudo
+        obsInput.value = ''; 
       }
     }
   };
   
-  // Lógica de Exclusividade Cruzada (Regras Vinculadas) e de exibir observação
   document.querySelectorAll(".check-ponto").forEach(chk => { 
     chk.addEventListener("change", (e) => { 
       const tr = e.target.closest("tr");
@@ -377,7 +366,6 @@ async function gerarTabelaContabilizacao(modalidade, regras) {
             const outroId = other.dataset.regraId;
             const outroExclui = other.dataset.exclui ? other.dataset.exclui.split(",") : [];
             
-            // Verificação bidirecional: desmarca se for concorrente
             if (excluiClicado.includes(outroId) || outroExclui.includes(idClicado)) {
                other.checked = false;
             }
@@ -389,7 +377,6 @@ async function gerarTabelaContabilizacao(modalidade, regras) {
     }); 
   });
 
-  // Master Checkbox de Falta
   document.getElementById("checkMasterFalta").addEventListener("change", (e) => { 
     document.querySelectorAll(".check-falta").forEach(chk => { 
       chk.checked = e.target.checked; 
@@ -397,19 +384,13 @@ async function gerarTabelaContabilizacao(modalidade, regras) {
     }); 
   });
   
-  // Ação individual do checkbox de falta
   document.querySelectorAll(".check-falta").forEach(chk => { 
     chk.addEventListener("change", (e) => { 
       const tr = e.target.closest("tr"); 
-      
-      // Se marcou falta, desabilita e desmarca todos os pontos
       tr.querySelectorAll(".check-ponto").forEach(p => { 
         p.disabled = e.target.checked; 
-        if(e.target.checked) {
-          p.checked = false; 
-        }
+        if(e.target.checked) p.checked = false; 
       }); 
-      
       updateObsVisibility(tr);
     }); 
   });
@@ -420,24 +401,16 @@ async function salvarPontuacoesEmLote() {
   const data = document.getElementById("dataTreino").value;
   const hoje = new Date().toISOString().split('T')[0]; 
   
-  if (data > hoje) {
-    return showToast("Não é permitido lançar dados em datas futuras!", "error");
-  }
+  if (data > hoje) return showToast("Não é permitido lançar dados em datas futuras!", "error");
   
   const eventoIdSelecionado = document.getElementById("lancarEventoSelect").value;
   const checksPontos = document.querySelectorAll(".check-ponto:checked");
   const checksFaltas = document.querySelectorAll(".check-falta:checked");
   const observacoes = document.querySelectorAll(".input-obs");
   
-  if (checksPontos.length === 0 && checksFaltas.length === 0) {
-    return showToast("Nenhum atleta foi selecionado na tabela!", "error");
-  }
-  if (!desc || !data) {
-    return showToast("Preencha a Descrição e a Data do treino!", "error");
-  }
-  if (!confirm(`Confirmar gravação deste lote de registos na base de dados?`)) {
-    return;
-  }
+  if (checksPontos.length === 0 && checksFaltas.length === 0) return showToast("Nenhum atleta foi selecionado na tabela!", "error");
+  if (!desc || !data) return showToast("Preencha a Descrição e a Data do treino!", "error");
+  if (!confirm(`Confirmar gravação deste lote de registos na base de dados?`)) return;
   
   const btn = document.getElementById("btnSalvarPontuacao"); 
   btn.innerHTML = "Gravando na Base..."; 
@@ -448,7 +421,6 @@ async function salvarPontuacoesEmLote() {
     let pontosPorAtleta = {};
     const meuNome = mapAtletas[auth.currentUser?.uid] ? mapAtletas[auth.currentUser.uid].nome : "Comitê Gestor";
     
-    // Processar Faltas
     for (let f of checksFaltas) { 
       batch.set(doc(collection(db, "historico_pontos")), { 
         atletaId: f.dataset.atletaId, 
@@ -464,7 +436,6 @@ async function salvarPontuacoesEmLote() {
       }); 
     }
     
-    // Processar Pontos
     for (let check of checksPontos) {
       const aId = check.dataset.atletaId; 
       const pts = Number(check.dataset.pontos) || 0;
@@ -482,20 +453,16 @@ async function salvarPontuacoesEmLote() {
         criadoEm: new Date().toISOString() 
       });
       
-      if (!pontosPorAtleta[aId]) {
-        pontosPorAtleta[aId] = 0; 
-      }
+      if (!pontosPorAtleta[aId]) pontosPorAtleta[aId] = 0; 
       pontosPorAtleta[aId] += pts;
     }
     
-    // Atualizar saldos totais de pontos na base do atleta
     for (let aId in pontosPorAtleta) { 
       batch.update(doc(db, "atletas", aId), { 
         pontuacaoTotal: increment(pontosPorAtleta[aId]) 
       }); 
     }
 
-    // Processar Observações (apenas se o campo estiver visível e preenchido)
     for (let obs of observacoes) {
         if (obs.value.trim() !== "" && obs.style.display !== "none") {
             const tr = obs.closest("tr");
@@ -513,7 +480,6 @@ async function salvarPontuacoesEmLote() {
     }
     
     await batch.commit(); 
-    
     showToast("Lançamentos gravados com sucesso!", "success"); 
     
     document.getElementById("areaTabelaPontuacao").style.display = "none"; 
@@ -522,7 +488,6 @@ async function salvarPontuacoesEmLote() {
     document.getElementById("modTreino").value = ""; 
     
     atualizarTelas(); 
-    
   } catch (error) { 
     showToast("Erro ao processar lote: " + error.message, "error"); 
   } finally { 
@@ -614,7 +579,6 @@ function filtrarHistorico() {
           await updateDoc(doc(db, "atletas", atlId), { pontuacaoTotal: increment(-pts) }); 
         } 
         await deleteDoc(doc(db, "historico_pontos", histId)); 
-        
         showToast("Lançamento estornado!", "success"); 
         atualizarTelas(); 
       } catch (err) { 
@@ -641,26 +605,32 @@ function setupRelatorioConsolidado() {
   document.querySelector('[data-target="sub-relatorio"]').addEventListener("click", gerarRelatorioConsolidado); 
   document.getElementById("btnGerarRelatorio").addEventListener("click", gerarRelatorioConsolidado); 
   
+  document.getElementById("chkTodosMeses")?.addEventListener("change", (e) => {
+    document.querySelectorAll(".chk-mes-relatorio").forEach(chk => chk.checked = e.target.checked);
+  });
+
+  document.querySelectorAll(".chk-mes-relatorio").forEach(chk => {
+    chk.addEventListener("change", () => {
+      const allChecked = document.querySelectorAll(".chk-mes-relatorio:checked").length === 12;
+      document.getElementById("chkTodosMeses").checked = allChecked;
+    });
+  });
+
   document.getElementById("btnExportarExcel").addEventListener("click", () => { 
     const tbody = document.getElementById("listaRelatorio"); 
-    
     if(tbody.innerText.includes("Clique em Filtrar") || tbody.innerText.includes("Nenhum atleta")) {
       return showToast("Gere o relatório primeiro!", "error"); 
     }
-    
     const rows = document.getElementById("tabelaConsolidada").querySelectorAll("tr"); 
     let csv = "\uFEFF"; 
-    
     rows.forEach(row => { 
       const cols = row.querySelectorAll("th, td"); 
       const rowData = Array.from(cols).map(c => `"${c.innerText.replace(/"/g, '""')}"`); 
       csv += rowData.join(";") + "\r\n"; 
     }); 
-    
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); 
     const url = URL.createObjectURL(blob); 
     const a = document.createElement("a"); 
-    
     a.href = url; 
     a.download = `Relatorio_Consolidado.csv`; 
     a.click(); 
@@ -672,52 +642,73 @@ function gerarRelatorioConsolidado() {
   const ano = String(document.getElementById("filtroAnoRelatorio").value).trim(); 
   const eqFiltro = document.getElementById("filtroEquipeRelatorio").value; 
   const tbody = document.getElementById("listaRelatorio"); 
+  const thead = document.getElementById("headRelatorio");
+
+  const mesesSelecionados = [];
+  const nomesMeses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+  
+  document.querySelectorAll(".chk-mes-relatorio:checked").forEach(chk => {
+    mesesSelecionados.push(parseInt(chk.value, 10));
+  });
+
+  if (mesesSelecionados.length === 0) {
+    return showToast("Selecione pelo menos um mês para avaliar!", "error");
+  }
+
+  let theadHTML = `<tr><th>Atleta</th><th>Eq</th>`;
+  mesesSelecionados.forEach(m => {
+    theadHTML += `<th>${nomesMeses[m - 1]}</th>`;
+  });
+  theadHTML += `<th style="text-align:center;">Total (${mesesSelecionados.length}m)</th></tr>`;
+  thead.innerHTML = theadHTML;
   
   const histAno = historicoCompleto.filter(h => h.dataTreino && h.dataTreino.startsWith(ano)); 
   let atletasRelatorio = Object.values(mapAtletas).filter(a => a.role === "atleta" && !a.equipe.startsWith("Fila") && a.equipe !== "Nenhuma"); 
   
-  if (eqFiltro) {
-    atletasRelatorio = atletasRelatorio.filter(a => a.equipe === eqFiltro); 
-  }
+  if (eqFiltro) atletasRelatorio = atletasRelatorio.filter(a => a.equipe === eqFiltro); 
   
   if(atletasRelatorio.length === 0) { 
-    tbody.innerHTML = `<tr><td colspan='15' style='text-align:center;'>Nenhum atleta processado.</td></tr>`; 
+    tbody.innerHTML = `<tr><td colspan='${mesesSelecionados.length + 3}' style='text-align:center;'>Nenhum atleta processado.</td></tr>`; 
     return; 
   } 
   
   let html = ""; 
   atletasRelatorio.forEach(atleta => { 
-    atleta.totalAnoTemp = 0; 
-    atleta.ptsMesTemp = [0,0,0,0,0,0,0,0,0,0,0,0]; 
+    atleta.totalPeriodo = 0; 
+    atleta.ptsMesTemp = {}; 
+    mesesSelecionados.forEach(m => atleta.ptsMesTemp[m] = 0);
     
     histAno.filter(h => h.atletaId === atleta.id).forEach(l => { 
       if(l.dataTreino && l.dataTreino.includes("-")) { 
         const mesInt = parseInt(l.dataTreino.split("-")[1], 10); 
-        if(!isNaN(mesInt) && mesInt >= 1 && mesInt <= 12) { 
+        if(mesesSelecionados.includes(mesInt)) { 
           const pts = Number(l.pontos) || 0; 
-          atleta.ptsMesTemp[mesInt - 1] += pts; 
-          atleta.totalAnoTemp += pts; 
+          atleta.ptsMesTemp[mesInt] += pts; 
+          atleta.totalPeriodo += pts; 
         } 
       } 
     }); 
   }); 
   
-  atletasRelatorio.sort((a, b) => b.totalAnoTemp - a.totalAnoTemp); 
+  atletasRelatorio.sort((a, b) => b.totalPeriodo - a.totalPeriodo); 
   
   atletasRelatorio.forEach(atleta => { 
     let colunas = ""; 
-    atleta.ptsMesTemp.forEach(p => { 
+    mesesSelecionados.forEach(m => { 
+      const p = atleta.ptsMesTemp[m];
       colunas += `<td style="text-align: center; color: ${p > 0 ? 'var(--secondary)' : '#ccc'}; font-weight: ${p > 0 ? '600' : '400'};">${p}</td>`; 
     }); 
+    
     html += `<tr>
                <td><strong>${atleta.nome}</strong></td>
                <td><small>${atleta.equipe}</small></td>
                ${colunas}
-               <td style="text-align: center; font-weight: bold; color: var(--primary);">${atleta.totalAnoTemp}</td>
+               <td style="text-align: center; font-weight: bold; color: var(--primary);">${atleta.totalPeriodo}</td>
              </tr>`; 
   }); 
   
   tbody.innerHTML = html; 
+  if(typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 // =====================================================
@@ -734,26 +725,31 @@ document.getElementById("btnExportarPDF").addEventListener("click", () => {
   }
   
   setTimeout(() => {
-    document.getElementById("pdfDataHoje").textContent = new Date().toLocaleDateString('pt-BR'); 
+    // Blidagem de Nulos ao tentar injetar no template HTML do PDF
+    const elDataHoje = document.getElementById("pdfDataHoje");
+    if(elDataHoje) elDataHoje.textContent = new Date().toLocaleDateString('pt-BR'); 
     
-    if(document.getElementById("pdfAtivos")) document.getElementById("pdfAtivos").textContent = document.getElementById("totalAtivosGeral").textContent; 
-    if(document.getElementById("pdfEngajamento")) document.getElementById("pdfEngajamento").textContent = document.getElementById("engajamento30d").textContent; 
-    if(document.getElementById("pdfInvest")) document.getElementById("pdfInvest").textContent = document.getElementById("totalInvestimento").textContent; 
-    if(document.getElementById("pdfRoi")) document.getElementById("pdfRoi").textContent = document.getElementById("roiAtleta").textContent; 
+    if(document.getElementById("pdfAtivos")) document.getElementById("pdfAtivos").textContent = document.getElementById("totalAtivosGeral")?.textContent || "0"; 
+    if(document.getElementById("pdfEngajamento")) document.getElementById("pdfEngajamento").textContent = document.getElementById("engajamento30d")?.textContent || "0%"; 
+    if(document.getElementById("pdfInvest")) document.getElementById("pdfInvest").textContent = document.getElementById("totalInvestimento")?.textContent || "R$ 0"; 
+    if(document.getElementById("pdfRoi")) document.getElementById("pdfRoi").textContent = document.getElementById("roiAtleta")?.textContent || "R$ 0"; 
     
-    if(document.getElementById("pdfMediaBike")) document.getElementById("pdfMediaBike").textContent = document.getElementById("mediaBike").textContent; 
-    if(document.getElementById("pdfMediaCorrida")) document.getElementById("pdfMediaCorrida").textContent = document.getElementById("mediaCorrida").textContent; 
+    if(document.getElementById("pdfMediaBike")) document.getElementById("pdfMediaBike").textContent = document.getElementById("mediaBike")?.textContent || "0"; 
+    if(document.getElementById("pdfMediaCorrida")) document.getElementById("pdfMediaCorrida").textContent = document.getElementById("mediaCorrida")?.textContent || "0"; 
     
-    if(document.getElementById("pdfTopBike")) document.getElementById("pdfTopBike").innerHTML = document.getElementById("listaPodioBike").innerHTML; 
-    if(document.getElementById("pdfTopCorrida")) document.getElementById("pdfTopCorrida").innerHTML = document.getElementById("listaPodioCorrida").innerHTML; 
+    if(document.getElementById("pdfTopBike")) document.getElementById("pdfTopBike").innerHTML = document.getElementById("listaPodioBike")?.innerHTML || ""; 
+    if(document.getElementById("pdfTopCorrida")) document.getElementById("pdfTopCorrida").innerHTML = document.getElementById("listaPodioCorrida")?.innerHTML || ""; 
     
     if(document.getElementById("pdfListaEvasao")) {
-      document.getElementById("pdfListaEvasao").innerHTML = document.getElementById("listaEvasaoBike").innerHTML + document.getElementById("listaEvasaoCorrida").innerHTML; 
+      document.getElementById("pdfListaEvasao").innerHTML = (document.getElementById("listaEvasaoBike")?.innerHTML || "") + (document.getElementById("listaEvasaoCorrida")?.innerHTML || ""); 
     }
     
-    const agendaClone = document.getElementById("listaEventosAgenda").cloneNode(true); 
-    agendaClone.querySelectorAll("button").forEach(b => b.remove()); 
-    if(document.getElementById("pdfProximosEventos")) document.getElementById("pdfProximosEventos").innerHTML = agendaClone.innerHTML;
+    const elAgenda = document.getElementById("listaEventosAgenda");
+    if(elAgenda) {
+      const agendaClone = elAgenda.cloneNode(true); 
+      agendaClone.querySelectorAll("button").forEach(b => b.remove()); 
+      if(document.getElementById("pdfProximosEventos")) document.getElementById("pdfProximosEventos").innerHTML = agendaClone.innerHTML;
+    }
     
     const eventosPassados = {}; 
     historicoCompleto.forEach(h => { 
@@ -775,14 +771,16 @@ document.getElementById("btnExportarPDF").addEventListener("click", () => {
     }
     
     const canvasLinha = document.getElementById('graficoTendencia'); 
-    const widthOriginal = canvasLinha.style.width; 
-    const heightOriginal = canvasLinha.style.height; 
+    let widthOriginal, heightOriginal;
     
     if(canvasLinha) { 
+      widthOriginal = canvasLinha.style.width; 
+      heightOriginal = canvasLinha.style.height; 
       canvasLinha.style.width = '700px'; 
       canvasLinha.style.height = '200px'; 
       if(graficoLinhaInstancia) graficoLinhaInstancia.resize(); 
-      document.getElementById('pdfImgTendencia').src = canvasLinha.toDataURL("image/png", 1.0); 
+      const pdfImg = document.getElementById('pdfImgTendencia');
+      if(pdfImg) pdfImg.src = canvasLinha.toDataURL("image/png", 1.0); 
     }
     
     const modalPdf = document.getElementById("pdfOverlay"); 
@@ -790,9 +788,10 @@ document.getElementById("btnExportarPDF").addEventListener("click", () => {
     modalPdf.style.display = "flex";
     
     setTimeout(() => { 
+      const txtDataHoje = document.getElementById("pdfDataHoje")?.textContent || "report";
       const opt = { 
         margin: 0, 
-        filename: `Report_Atletas_${document.getElementById("pdfDataHoje").textContent.replace(/\//g, '-')}.pdf`, 
+        filename: `Report_Atletas_${txtDataHoje.replace(/\//g, '-')}.pdf`, 
         image: { type: 'jpeg', quality: 0.98 }, 
         html2canvas: { scale: 2, useCORS: true }, 
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
