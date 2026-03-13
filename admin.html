@@ -173,15 +173,33 @@
       <div id="sub-relatorio" class="sub-content">
         <div class="header-acao"><button id="btnExportarExcel" class="btn-primario" style="background: #107c41;"><i data-lucide="sheet"></i> Exportar Excel</button></div>
         <div class="card" style="margin-bottom: 20px;">
-          <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: end;">
+          <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: end; margin-bottom: 15px;">
             <div style="flex:1"><label>Ano Base</label><input type="number" id="filtroAnoRelatorio" style="margin-bottom: 0;" /></div>
             <div style="flex:1"><label>Equipe</label><select id="filtroEquipeRelatorio" style="margin-bottom: 0;"><option value="">Todas</option><option value="Bicicleta">Bike</option><option value="Corrida">Corrida</option></select></div>
             <div><label style="visibility:hidden; display:block; margin-bottom: 4px;">.</label><button id="btnGerarRelatorio" class="btn-primario" style="margin-bottom: 0;">Filtrar Dados</button></div>
           </div>
+          <div style="border-top: 1px dashed var(--border); padding-top: 15px;">
+            <label style="color: var(--primary); margin-bottom: 10px; display:flex; align-items:center; gap:5px;"><i data-lucide="calendar-days" style="width:16px;"></i> Período de Avaliação (Meses)</label>
+            <div id="containerMesesRelatorio" style="display: flex; flex-wrap: wrap; gap: 15px; font-size: 0.85rem;">
+              <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="chkTodosMeses" checked> <strong style="color:var(--text);">Todos</strong></label>
+              <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="chk-mes-relatorio" value="1" checked> Jan</label>
+              <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="chk-mes-relatorio" value="2" checked> Fev</label>
+              <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="chk-mes-relatorio" value="3" checked> Mar</label>
+              <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="chk-mes-relatorio" value="4" checked> Abr</label>
+              <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="chk-mes-relatorio" value="5" checked> Mai</label>
+              <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="chk-mes-relatorio" value="6" checked> Jun</label>
+              <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="chk-mes-relatorio" value="7" checked> Jul</label>
+              <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="chk-mes-relatorio" value="8" checked> Ago</label>
+              <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="chk-mes-relatorio" value="9" checked> Set</label>
+              <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="chk-mes-relatorio" value="10" checked> Out</label>
+              <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="chk-mes-relatorio" value="11" checked> Nov</label>
+              <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="chk-mes-relatorio" value="12" checked> Dez</label>
+            </div>
+          </div>
         </div>
         <div class="tabela-container">
           <table class="tabela-simples" id="tabelaConsolidada">
-            <thead><tr><th>Atleta</th><th>Eq</th><th>Jan</th><th>Fev</th><th>Mar</th><th>Abr</th><th>Mai</th><th>Jun</th><th>Jul</th><th>Ago</th><th>Set</th><th>Out</th><th>Nov</th><th>Dez</th><th>Total</th></tr></thead>
+            <thead id="headRelatorio"></thead>
             <tbody id="listaRelatorio"></tbody>
           </table>
         </div>
@@ -487,7 +505,73 @@
   </div>
 
   <div id="pdfOverlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.8); z-index:10000; align-items:center; justify-content:center; overflow-y:auto;">
-    <div id="pdfPrintArea" style="width: 297mm; height: 210mm; background: #fff; padding: 12mm 15mm; box-sizing: border-box; margin: auto; font-family: sans-serif; display: flex; flex-direction: column;">
+    <div id="pdfPrintArea" style="width: 297mm; min-height: 210mm; background: #fff; padding: 12mm 15mm; box-sizing: border-box; margin: auto; font-family: 'Poppins', sans-serif; display: flex; flex-direction: column; color: #333;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #009bc1; padding-bottom:10px; margin-bottom:15px;">
+        <div>
+          <h1 style="margin:0; color:#009bc1; font-size:1.5rem;">Report Executivo - Atletas Energisa</h1>
+          <p style="margin:0; color:#666; font-size:0.9rem;">Gerado em: <strong id="pdfDataHoje"></strong></p>
+        </div>
+        <img src="assets/logo-energisa-branca.svg" alt="Energisa" style="height:30px; filter: brightness(0) invert(0);" onerror="this.style.display='none';" />
+      </div>
+
+      <div style="display:flex; gap:10px; margin-bottom:15px;">
+        <div style="flex:1; background:#f5f7fa; padding:10px; border-radius:8px; text-align:center;">
+          <p style="margin:0; font-size:0.8rem; color:#666;">Atletas Ativos</p>
+          <h3 id="pdfAtivos" style="margin:5px 0 0 0; color:#009bc1; font-size:1.3rem;">0</h3>
+        </div>
+        <div style="flex:1; background:#f5f7fa; padding:10px; border-radius:8px; text-align:center;">
+          <p style="margin:0; font-size:0.8rem; color:#666;">Engajamento (30d)</p>
+          <h3 id="pdfEngajamento" style="margin:5px 0 0 0; color:#009bc1; font-size:1.3rem;">0%</h3>
+        </div>
+        <div style="flex:1; background:#f5f7fa; padding:10px; border-radius:8px; text-align:center;">
+          <p style="margin:0; font-size:0.8rem; color:#666;">Investimento</p>
+          <h3 id="pdfInvest" style="margin:5px 0 0 0; color:#e67e22; font-size:1.3rem;">R$ 0,00</h3>
+        </div>
+        <div style="flex:1; background:rgba(39, 174, 96, 0.1); padding:10px; border-radius:8px; text-align:center;">
+          <p style="margin:0; font-size:0.8rem; color:#27ae60;">Custo/Atleta</p>
+          <h3 id="pdfRoi" style="margin:5px 0 0 0; color:#27ae60; font-size:1.3rem;">R$ 0,00</h3>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:15px; margin-bottom:15px;">
+        <div style="flex:2; border:1px solid #e3e6eb; border-radius:8px; padding:10px;">
+          <h4 style="margin:0 0 10px 0; color:#009bc1; font-size:1rem; border-bottom:1px solid #e3e6eb; padding-bottom:5px;">Evolução Anual</h4>
+          <img id="pdfImgTendencia" src="" style="width:100%; height:auto;" />
+        </div>
+        <div style="flex:1; border:1px solid #e3e6eb; border-radius:8px; padding:10px;">
+          <h4 style="margin:0 0 10px 0; color:#34495e; font-size:1rem; border-bottom:1px solid #e3e6eb; padding-bottom:5px;">Média (Pts/Atleta)</h4>
+          <div style="display:flex; justify-content:space-around; align-items:center; margin-top:15px;">
+            <div style="text-align:center;"><span style="font-size:1.2rem;">🚴</span><br><strong id="pdfMediaBike" style="color:#009bc1; font-size:1.2rem;">0</strong></div>
+            <div style="text-align:center;"><span style="font-size:1.2rem;">🏃</span><br><strong id="pdfMediaCorrida" style="color:#00b37e; font-size:1.2rem;">0</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:15px; margin-bottom:15px;">
+        <div style="flex:1; border:1px solid #e3e6eb; border-radius:8px; padding:10px;">
+          <h4 style="margin:0 0 10px 0; color:#009bc1; font-size:0.9rem;">Pódio Bike 🚴</h4>
+          <ul id="pdfTopBike" style="list-style:none; padding:0; margin:0; font-size:0.85rem;"></ul>
+        </div>
+        <div style="flex:1; border:1px solid #e3e6eb; border-radius:8px; padding:10px;">
+          <h4 style="margin:0 0 10px 0; color:#00b37e; font-size:0.9rem;">Pódio Corrida 🏃</h4>
+          <ul id="pdfTopCorrida" style="list-style:none; padding:0; margin:0; font-size:0.85rem;"></ul>
+        </div>
+        <div style="flex:1; border:1px solid #e3e6eb; border-radius:8px; padding:10px;">
+          <h4 style="margin:0 0 10px 0; color:#e63946; font-size:0.9rem;">Radar Inatividade ⚠️</h4>
+          <ul id="pdfListaEvasao" style="list-style:none; padding:0; margin:0; font-size:0.8rem;"></ul>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:15px; flex:1;">
+        <div style="flex:1; border:1px solid #e3e6eb; border-radius:8px; padding:10px;">
+          <h4 style="margin:0 0 10px 0; color:#8e44ad; font-size:0.9rem;">Últimos Lançamentos</h4>
+          <div id="pdfUltimosEventos" style="font-size:0.8rem;"></div>
+        </div>
+        <div style="flex:1; border:1px solid #e3e6eb; border-radius:8px; padding:10px;">
+          <h4 style="margin:0 0 10px 0; color:#8e44ad; font-size:0.9rem;">Agenda Futura</h4>
+          <div id="pdfProximosEventos" style="font-size:0.8rem;"></div>
+        </div>
+      </div>
     </div>
   </div>
 
