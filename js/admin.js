@@ -91,6 +91,7 @@ function construirMenu() {
 
   const badge = document.getElementById("userGroupBadge"); 
   badge.style.display = "inline-block";
+  
   if (userRole === "admin") { 
     badge.textContent = "Admin"; 
     badge.style.background = "var(--danger)"; 
@@ -107,13 +108,17 @@ function construirMenu() {
     item.addEventListener("click", () => {
       document.querySelectorAll(".menu-item").forEach(btn => btn.classList.remove("active")); 
       item.classList.add("active");
+      
       document.querySelectorAll("main section").forEach(sec => { 
         sec.classList.remove("active-section"); 
-        if (sec.id === item.dataset.section) sec.classList.add("active-section"); 
+        if (sec.id === item.dataset.section) {
+          sec.classList.add("active-section"); 
+        }
       });
       lucide.createIcons();
     });
   });
+  
   lucide.createIcons();
 }
 
@@ -153,6 +158,7 @@ function setupSubTabs() {
       document.getElementById(tab.dataset.target).classList.add("active"); 
     }); 
   });
+  
   document.querySelectorAll(".t-tab").forEach(tab => { 
     tab.addEventListener("click", () => { 
       const p = tab.closest('.sub-content'); 
@@ -165,17 +171,24 @@ function setupSubTabs() {
 }
 
 async function atualizarTelas() {
-  if (userRole === "admin" || userPermissoes.includes("gestao")) setupAprovacoes();
+  if (userRole === "admin" || userPermissoes.includes("gestao")) {
+    setupAprovacoes();
+  }
   
   await carregarAgenda(); 
   
   const snapA = await getDocs(query(collection(db, "atletas"), where("status", "==", "Aprovado")));
   mapAtletas = {}; 
-  snapA.forEach(d => { mapAtletas[d.id] = { id: d.id, ...d.data() }; });
+  snapA.forEach(d => { 
+    mapAtletas[d.id] = { id: d.id, ...d.data() }; 
+  });
   
   await carregarHistorico(); 
+  
+  // Ordem mantida para calcular o financeiro antes de usar no Dashboard
   await carregarFinanceiroPlanilha(); 
   await carregarEquipesEDashboard(); 
+  
   await carregarRegras();
 }
 
@@ -185,21 +198,23 @@ async function atualizarTelas() {
 function setupContabilizacao() {
   document.getElementById("dataTreino").valueAsDate = new Date();
   
-  // Botão Sincronizar Base
-  document.getElementById("btnRefreshContabilizacao")?.addEventListener("click", async () => {
-    const btn = document.getElementById("btnRefreshContabilizacao");
-    btn.innerHTML = `<i data-lucide="loader"></i> Sincronizando...`; 
-    lucide.createIcons();
-    
-    await atualizarTelas();
-    
-    // Atualiza a tabela ativa de lançamentos
-    document.getElementById("modTreino").dispatchEvent(new Event('change'));
-    
-    btn.innerHTML = `<i data-lucide="refresh-cw"></i> Sincronizar Base`; 
-    lucide.createIcons();
-    showToast("Base de Atletas e Regras Atualizada!", "success");
-  });
+  const btnRefresh = document.getElementById("btnRefreshContabilizacao");
+  if(btnRefresh) {
+    btnRefresh.addEventListener("click", async () => {
+      const btn = document.getElementById("btnRefreshContabilizacao");
+      btn.innerHTML = `<i data-lucide="loader"></i> Sincronizando...`; 
+      lucide.createIcons();
+      
+      await atualizarTelas();
+      
+      // Dá um dispatch na select atual para recarregar a tabela de lançamento
+      document.getElementById("modTreino").dispatchEvent(new Event('change'));
+      
+      btn.innerHTML = `<i data-lucide="refresh-cw"></i> Sincronizar Base`; 
+      lucide.createIcons();
+      showToast("Base de Atletas e Regras Atualizada!", "success");
+    });
+  }
 
   document.getElementById("lancarEventoSelect").addEventListener("change", (e) => { 
     const evId = e.target.value; 
@@ -227,7 +242,9 @@ function setupContabilizacao() {
     
     try {
       const snapRegras = await getDocs(query(collection(db, "regras_pontuacao"), where("modalidade", "in", ["Ambas", mod]))); 
-      if (snapRegras.empty) return showToast("Nenhuma regra criada ainda.", "error"); 
+      if (snapRegras.empty) {
+        return showToast("Nenhuma regra criada ainda.", "error"); 
+      }
       
       let regrasArray = []; 
       snapRegras.forEach(d => { 
@@ -256,76 +273,134 @@ async function gerarTabelaContabilizacao(modalidade, regras) {
   let atletas = []; 
   
   snapAtletas.forEach(d => { 
-    if(d.data().ativo !== false) atletas.push({id: d.id, ...d.data()}); 
+    if(d.data().ativo !== false) {
+      atletas.push({id: d.id, ...d.data()}); 
+    }
   });
+  
   atletas.sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || "")));
   
   if (atletas.length === 0) { 
-    tabela.innerHTML = `<tr><td style='text-align:center; padding:20px;'>Nenhum atleta ativo.</td></tr>`; 
+    tabela.innerHTML = `<tr><td style='text-align:center; padding:20px;'>Nenhum atleta ativo na equipe.</td></tr>`; 
     return; 
   }
 
-  let thead = `<thead><tr>
-                 <th style="vertical-align:middle; font-size:1rem; position:sticky; left:0; background:var(--table-header); z-index:20;">Nome do Atleta</th>`;
+  let thead = `
+    <thead>
+      <tr>
+        <th style="vertical-align:middle; font-size:1rem; position:sticky; left:0; background:var(--table-header); z-index:20;">Nome do Atleta</th>`;
                  
+  // Monta o cabeçalho das regras
   regras.forEach(r => { 
-    thead += `<th style="text-align:center; vertical-align:middle; min-width: 100px;">
-                <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
-                  <span style="font-size:0.75rem; line-height:1.2; font-weight:normal;">${r.descricao}</span>
-                  <strong style="color:var(--primary); font-size:0.95rem;">+${r.pontos}</strong>
-                </div>
-              </th>`; 
+    thead += `
+        <th style="text-align:center; vertical-align:middle; min-width: 100px;">
+          <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
+            <span style="font-size:0.75rem; line-height:1.2; font-weight:normal;">${r.descricao}</span>
+            <strong style="color:var(--primary); font-size:0.95rem;">+${r.pontos}</strong>
+          </div>
+        </th>`; 
   });
   
-  thead += `<th style="text-align:left; vertical-align:middle; min-width: 180px;">Observação / Ficha</th>`;
-  thead += `<th style="text-align:center; color:var(--accent); vertical-align:middle; min-width: 90px; border-left: 2px solid var(--border);">
-               <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
-                 <span style="font-weight:bold; font-size: 0.8rem;">Falta Justificada</span>
-                 <label style="font-size:0.75rem; display:flex; align-items:center; gap:4px; cursor:pointer; margin:0;"><input type="checkbox" id="checkMasterFalta"> Todo Time</label>
-               </div>
-             </th></tr></thead><tbody>`;
+  // Primeiro a Falta, e no fim a Observação
+  thead += `
+        <th style="text-align:center; color:var(--accent); vertical-align:middle; min-width: 90px; border-left: 2px solid var(--border);">
+          <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
+            <span style="font-weight:bold; font-size: 0.8rem;">Falta Justificada</span>
+            <label style="font-size:0.75rem; display:flex; align-items:center; gap:4px; cursor:pointer; margin:0;">
+              <input type="checkbox" id="checkMasterFalta"> Todo Time
+            </label>
+          </div>
+        </th>
+        <th style="text-align:left; vertical-align:middle; min-width: 180px; border-left: 1px solid var(--border);">Observação / Ficha</th>
+      </tr>
+    </thead>
+    <tbody>`;
   
+  // Monta as linhas dos atletas
   atletas.forEach(a => {
-    thead += `<tr>
-                <td style="vertical-align:middle; font-weight:500; position:sticky; left:0; background:var(--bg-card); z-index:10;">${a.nome}</td>`;
+    thead += `
+      <tr>
+        <td style="vertical-align:middle; font-weight:500; position:sticky; left:0; background:var(--bg-card); z-index:10;">${a.nome}</td>`;
+    
+    // Pontos (Regras)
     regras.forEach(r => { 
-      thead += `<td style="text-align:center; vertical-align:middle;">
-                  <input type="checkbox" class="check-ponto" data-atleta-id="${a.id}" data-atleta-nome="${a.nome}" data-atleta-equipe="${a.equipe}" data-regra-id="${r.id}" data-regra-desc="${r.descricao}" data-pontos="${r.pontos}" data-exclui="${(r.regrasVinculadas||[]).join(',')}">
-                </td>`; 
+      thead += `
+        <td style="text-align:center; vertical-align:middle;">
+          <input type="checkbox" class="check-ponto" 
+                 data-atleta-id="${a.id}" 
+                 data-atleta-nome="${a.nome}" 
+                 data-atleta-equipe="${a.equipe}" 
+                 data-regra-id="${r.id}" 
+                 data-regra-desc="${r.descricao}" 
+                 data-pontos="${r.pontos}" 
+                 data-exclui="${(r.regrasVinculadas||[]).join(',')}">
+        </td>`; 
     });
-    thead += `<td style="vertical-align:middle;">
-                <input type="text" class="input-obs" data-atleta-id="${a.id}" placeholder="Nota p/ ficha (lesão, atestado...)" style="margin:0; padding:8px; font-size:0.8rem;">
-              </td>`;
-    thead += `<td style="text-align:center; background: rgba(243,112,33,0.05); vertical-align:middle; border-left: 2px solid var(--border);">
-                  <input type="checkbox" class="check-falta" data-atleta-id="${a.id}" data-atleta-nome="${a.nome}" data-atleta-equipe="${a.equipe}">
-                </td></tr>`;
+    
+    // Falta Justificada
+    thead += `
+        <td style="text-align:center; background: rgba(243,112,33,0.05); vertical-align:middle; border-left: 2px solid var(--border);">
+          <input type="checkbox" class="check-falta" 
+                 data-atleta-id="${a.id}" 
+                 data-atleta-nome="${a.nome}" 
+                 data-atleta-equipe="${a.equipe}">
+        </td>`;
+                
+    // Observação (Escondido por padrão)
+    thead += `
+        <td style="vertical-align:middle; border-left: 1px solid var(--border);">
+          <input type="text" class="input-obs" 
+                 data-atleta-id="${a.id}" 
+                 placeholder="Nota p/ ficha (lesão, atestado...)" 
+                 style="display:none; margin:0; padding:8px; font-size:0.8rem; width: 100%; box-sizing: border-box;">
+        </td>
+      </tr>`;
   }); 
   
-  thead += "</tbody>"; 
+  thead += `</tbody>`; 
   tabela.innerHTML = thead;
   
-  // Lógica de Exclusividade Cruzada
+  // Função auxiliar para exibir/esconder a observação
+  const updateObsVisibility = (tr) => {
+    const hasChecked = tr.querySelectorAll('.check-ponto:checked, .check-falta:checked').length > 0;
+    const obsInput = tr.querySelector('.input-obs');
+    if (obsInput) {
+      if (hasChecked) {
+        obsInput.style.display = 'block';
+      } else {
+        obsInput.style.display = 'none';
+        obsInput.value = ''; // Limpa o texto se o utilizador desmarcar tudo
+      }
+    }
+  };
+  
+  // Lógica de Exclusividade Cruzada (Regras Vinculadas) e de exibir observação
   document.querySelectorAll(".check-ponto").forEach(chk => { 
     chk.addEventListener("change", (e) => { 
+      const tr = e.target.closest("tr");
+      
       if (e.target.checked) {
         const idClicado = e.target.dataset.regraId;
         const excluiClicado = e.target.dataset.exclui ? e.target.dataset.exclui.split(",") : [];
         
-        const tr = e.target.closest("tr");
         tr.querySelectorAll(".check-ponto").forEach(other => {
           if (other !== e.target) {
             const outroId = other.dataset.regraId;
             const outroExclui = other.dataset.exclui ? other.dataset.exclui.split(",") : [];
             
+            // Verificação bidirecional: desmarca se for concorrente
             if (excluiClicado.includes(outroId) || outroExclui.includes(idClicado)) {
                other.checked = false;
             }
           }
         });
       }
+      
+      updateObsVisibility(tr);
     }); 
   });
 
+  // Master Checkbox de Falta
   document.getElementById("checkMasterFalta").addEventListener("change", (e) => { 
     document.querySelectorAll(".check-falta").forEach(chk => { 
       chk.checked = e.target.checked; 
@@ -333,13 +408,20 @@ async function gerarTabelaContabilizacao(modalidade, regras) {
     }); 
   });
   
+  // Ação individual do checkbox de falta
   document.querySelectorAll(".check-falta").forEach(chk => { 
     chk.addEventListener("change", (e) => { 
       const tr = e.target.closest("tr"); 
+      
+      // Se marcou falta, desabilita e desmarca todos os pontos
       tr.querySelectorAll(".check-ponto").forEach(p => { 
         p.disabled = e.target.checked; 
-        if(e.target.checked) p.checked = false; 
+        if(e.target.checked) {
+          p.checked = false; 
+        }
       }); 
+      
+      updateObsVisibility(tr);
     }); 
   });
 }
@@ -349,19 +431,27 @@ async function salvarPontuacoesEmLote() {
   const data = document.getElementById("dataTreino").value;
   const hoje = new Date().toISOString().split('T')[0]; 
   
-  if (data > hoje) return showToast("Não é permitido lançar em datas futuras!", "error");
+  if (data > hoje) {
+    return showToast("Não é permitido lançar dados em datas futuras!", "error");
+  }
   
   const eventoIdSelecionado = document.getElementById("lancarEventoSelect").value;
   const checksPontos = document.querySelectorAll(".check-ponto:checked");
   const checksFaltas = document.querySelectorAll(".check-falta:checked");
   const observacoes = document.querySelectorAll(".input-obs");
   
-  if (checksPontos.length === 0 && checksFaltas.length === 0) return showToast("Nenhum atleta foi selecionado!", "error");
-  if(!desc || !data) return showToast("Preencha Descrição e Data!", "error");
-  if (!confirm(`Confirmar gravação deste lote de registos?`)) return;
+  if (checksPontos.length === 0 && checksFaltas.length === 0) {
+    return showToast("Nenhum atleta foi selecionado na tabela!", "error");
+  }
+  if (!desc || !data) {
+    return showToast("Preencha a Descrição e a Data do treino!", "error");
+  }
+  if (!confirm(`Confirmar gravação deste lote de registos na base de dados?`)) {
+    return;
+  }
   
   const btn = document.getElementById("btnSalvarPontuacao"); 
-  btn.innerHTML = "Gravando..."; 
+  btn.innerHTML = "Gravando na Base..."; 
   btn.disabled = true;
 
   try {
@@ -389,6 +479,7 @@ async function salvarPontuacoesEmLote() {
     for (let check of checksPontos) {
       const aId = check.dataset.atletaId; 
       const pts = Number(check.dataset.pontos) || 0;
+      
       batch.set(doc(collection(db, "historico_pontos")), { 
         atletaId: aId, 
         atletaNome: check.dataset.atletaNome, 
@@ -401,22 +492,26 @@ async function salvarPontuacoesEmLote() {
         eventoId: eventoIdSelecionado, 
         criadoEm: new Date().toISOString() 
       });
-      if (!pontosPorAtleta[aId]) pontosPorAtleta[aId] = 0; 
+      
+      if (!pontosPorAtleta[aId]) {
+        pontosPorAtleta[aId] = 0; 
+      }
       pontosPorAtleta[aId] += pts;
     }
     
-    // Atualizar saldos de pontos
+    // Atualizar saldos totais de pontos na base do atleta
     for (let aId in pontosPorAtleta) { 
       batch.update(doc(db, "atletas", aId), { 
         pontuacaoTotal: increment(pontosPorAtleta[aId]) 
       }); 
     }
 
-    // Processar Observações
+    // Processar Observações (apenas se o campo estiver visível e preenchido)
     for (let obs of observacoes) {
-        if (obs.value.trim() !== "") {
+        if (obs.value.trim() !== "" && obs.style.display !== "none") {
             const tr = obs.closest("tr");
             const hasLancemento = tr.querySelector(".check-ponto:checked") || tr.querySelector(".check-falta:checked");
+            
             if (hasLancemento) {
                 batch.set(doc(collection(db, "comentarios_atletas")), { 
                     atletaId: obs.dataset.atletaId, 
@@ -429,163 +524,22 @@ async function salvarPontuacoesEmLote() {
     }
     
     await batch.commit(); 
+    
     showToast("Lançamentos gravados com sucesso!", "success"); 
+    
     document.getElementById("areaTabelaPontuacao").style.display = "none"; 
     document.getElementById("descTreino").value = ""; 
     document.getElementById("lancarEventoSelect").value = ""; 
     document.getElementById("modTreino").value = ""; 
+    
     atualizarTelas(); 
+    
   } catch (error) { 
     showToast("Erro ao processar lote: " + error.message, "error"); 
   } finally { 
     btn.innerHTML = `Gravar Lançamentos na Base`; 
     btn.disabled = false; 
   }
-}
-
-// =====================================================
-// REGRAS DE PONTUAÇÃO (Com Popup de Vínculos)
-// =====================================================
-async function carregarRegras() {
-  const tbody = document.getElementById("listaRegras"); 
-  try {
-    const snap = await getDocs(collection(db, "regras_pontuacao")); 
-    tbody.innerHTML = "";
-    
-    listaTodasRegras = []; 
-    snap.forEach(d => { listaTodasRegras.push({ id: d.id, ...d.data() }); });
-    
-    if (listaTodasRegras.length === 0) { 
-      tbody.innerHTML = `<tr><td colspan='4'>Nenhuma regra criada.</td></tr>`; 
-      return; 
-    }
-    
-    const canEdit = userRole === "admin" || userPermissoes.includes("gestao");
-    
-    listaTodasRegras.forEach(r => { 
-      const temVinculo = r.regrasVinculadas && r.regrasVinculadas.length > 0;
-      const badgeVinculo = temVinculo ? `<br><small style="color:var(--accent); font-size:0.75rem;"><i data-lucide="link" style="width:10px; display:inline;"></i> Possui restrições conjuntas</small>` : '';
-      
-      const btnEditar = canEdit ? `<button class="btn-acao btn-edit-regra" data-id="${r.id}" data-desc="${r.descricao}" data-mod="${r.modalidade}" data-pts="${r.pontos}" data-vinculos="${(r.regrasVinculadas||[]).join(',')}" style="color:var(--primary); border-color:var(--primary); margin-right:5px;"><i data-lucide="edit-2" style="width:16px;"></i></button>` : '';
-      const btnExcluir = canEdit ? `<button class="btn-acao btn-excluir-regra" data-id="${r.id}" style="color:var(--danger); border-color:var(--danger);"><i data-lucide="trash" style="width:16px;"></i></button>` : ''; 
-      
-      tbody.innerHTML += `<tr>
-                            <td><strong>${r.descricao}</strong>${badgeVinculo}</td>
-                            <td>${r.modalidade}</td>
-                            <td><strong style="color:var(--primary);">+ ${r.pontos}</strong></td>
-                            <td style="text-align:center; white-space:nowrap;">${btnEditar} ${btnExcluir}</td>
-                          </tr>`; 
-    });
-    lucide.createIcons();
-    
-    document.querySelectorAll(".btn-excluir-regra").forEach(btn => { 
-      btn.addEventListener("click", async (e) => { 
-        if(confirm("Apagar regra de pontuação?")) { 
-          e.currentTarget.disabled = true; 
-          await deleteDoc(doc(db, "regras_pontuacao", e.currentTarget.dataset.id)); 
-          carregarRegras(); 
-        } 
-      }); 
-    });
-
-    document.querySelectorAll(".btn-edit-regra").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        const b = e.currentTarget;
-        document.getElementById("regraEditId").value = b.dataset.id;
-        document.getElementById("regraDescricao").value = b.dataset.desc;
-        document.getElementById("regraModalidade").value = b.dataset.mod;
-        document.getElementById("regraPontos").value = b.dataset.pts;
-        
-        abrirModalComVinculos(b.dataset.id, b.dataset.vinculos);
-      });
-    });
-  } catch(err) { 
-    console.error("Erro ao carregar regras:", err); 
-  }
-}
-
-function abrirModalComVinculos(idEditando, vinculosStr = "") {
-  const container = document.getElementById("listaVinculosRegras");
-  container.innerHTML = "";
-  
-  const vinculosArray = vinculosStr.split(",").filter(v => v);
-  let regrasDisponiveis = listaTodasRegras.filter(r => r.id !== idEditando); 
-  
-  if (regrasDisponiveis.length === 0) {
-    container.innerHTML = "<p style='color:#999; text-align:center; margin:0;'>Nenhuma outra regra para vincular.</p>";
-  } else {
-    regrasDisponiveis.forEach(r => {
-      const isChecked = vinculosArray.includes(r.id) ? "checked" : "";
-      container.innerHTML += `
-        <label style="display:flex; align-items:center; gap:8px; margin-bottom:6px; cursor:pointer; color:var(--text);">
-           <input type="checkbox" class="chk-vinculo-regra" value="${r.id}" ${isChecked} style="margin:0; width:16px; height:16px;">
-           ${r.descricao} <small style="color:var(--primary);">(${r.modalidade})</small>
-        </label>`;
-    });
-  }
-  document.getElementById("modalRegra").style.display = "flex";
-}
-
-function setupModalRegras() {
-  const modal = document.getElementById("modalRegra");
-  
-  document.getElementById("abrirModalRegra").addEventListener("click", () => {
-    document.getElementById("regraEditId").value = "";
-    document.getElementById("regraDescricao").value = "";
-    document.getElementById("regraPontos").value = "";
-    abrirModalComVinculos(""); 
-  });
-  
-  document.getElementById("fecharModalRegra").addEventListener("click", () => {
-    modal.style.display = "none";
-  });
-  
-  document.getElementById("salvarRegraBtn").addEventListener("click", async (e) => {
-    if (userRole !== "admin" && !userPermissoes.includes("gestao")) return showToast("Acesso negado.", "error");
-    
-    const idEdit = document.getElementById("regraEditId").value;
-    const desc = document.getElementById("regraDescricao").value.trim();
-    const mod = document.getElementById("regraModalidade").value;
-    const pts = document.getElementById("regraPontos").value.trim();
-    
-    let selecionadas = [];
-    document.querySelectorAll(".chk-vinculo-regra:checked").forEach(chk => {
-      selecionadas.push(chk.value);
-    });
-    
-    if (!desc || !pts) return showToast("Preencha descrição e pontos", "error");
-    
-    e.target.textContent = "Salvando..."; 
-    e.target.disabled = true;
-    
-    try {
-      if (idEdit) {
-        await updateDoc(doc(db, "regras_pontuacao", idEdit), { 
-          descricao: desc, 
-          modalidade: mod, 
-          pontos: Number(pts), 
-          regrasVinculadas: selecionadas 
-        });
-        showToast("Regra atualizada!", "success"); 
-      } else {
-        await addDoc(collection(db, "regras_pontuacao"), { 
-          descricao: desc, 
-          modalidade: mod, 
-          pontos: Number(pts), 
-          regrasVinculadas: selecionadas, 
-          criadoEm: new Date().toISOString() 
-        });
-        showToast("Regra criada!", "success"); 
-      }
-      modal.style.display = "none"; 
-      carregarRegras();
-    } catch (err) { 
-      showToast("Erro ao salvar regra: " + err.message, "error"); 
-    }
-    
-    e.target.textContent = "Salvar Regra"; 
-    e.target.disabled = false;
-  });
 }
 
 // =====================================================
@@ -610,6 +564,7 @@ function filtrarHistorico() {
   const dados = historicoCompleto.filter(h => { 
     const atleta = mapAtletas[h.atletaId]; 
     const isAtivo = atleta ? (atleta.ativo !== false) : false; 
+    
     if (statusFiltro === "ativos" && !isAtivo) return false; 
     
     const nomeFiltro = h.atletaNome || (atleta ? atleta.nome : ""); 
@@ -644,14 +599,15 @@ function filtrarHistorico() {
     let ptsV = Number(h.pontos) === 0 ? `<span style="color:var(--accent);">Justificada</span>` : `+${h.pontos}`;
     const btnEstorno = podeEstornar ? `<button class="btn-acao btn-estornar" data-id="${h.id}" data-atleta="${h.atletaId}" data-pontos="${h.pontos}" style="color:var(--danger); border-color:var(--danger);"><i data-lucide="undo-2" style="width:16px;"></i></button>` : '';
     
-    tbody.innerHTML += `<tr>
-                          <td>${(h.dataTreino?new Date(h.dataTreino+"T00:00:00").toLocaleDateString('pt-BR'):"-")}</td>
-                          <td><strong>${nomeDisplay}</strong></td>
-                          <td>${eqDisplay}</td>
-                          <td>${h.descTreino}<br><small style="color:var(--primary);">${h.regraDesc}</small></td>
-                          <td style="text-align:center; color:var(--secondary); font-weight:bold;">${ptsV}</td>
-                          <td style="text-align:right;">${btnEstorno}</td>
-                        </tr>`;
+    tbody.innerHTML += `
+      <tr>
+        <td>${(h.dataTreino?new Date(h.dataTreino+"T00:00:00").toLocaleDateString('pt-BR'):"-")}</td>
+        <td><strong>${nomeDisplay}</strong></td>
+        <td>${eqDisplay}</td>
+        <td>${h.descTreino}<br><small style="color:var(--primary);">${h.regraDesc}</small></td>
+        <td style="text-align:center; color:var(--secondary); font-weight:bold;">${ptsV}</td>
+        <td style="text-align:right;">${btnEstorno}</td>
+      </tr>`;
   });
   
   lucide.createIcons();
@@ -661,13 +617,15 @@ function filtrarHistorico() {
       const histId = e.currentTarget.dataset.id; 
       const atlId = e.currentTarget.dataset.atleta; 
       const pts = parseInt(e.currentTarget.dataset.pontos); 
-      if(!confirm(`Estornar este lançamento?`)) return; 
+      
+      if(!confirm(`Estornar este lançamento? A pontuação será deduzida do atleta.`)) return; 
       
       try { 
         if (mapAtletas[atlId] && pts > 0) { 
           await updateDoc(doc(db, "atletas", atlId), { pontuacaoTotal: increment(-pts) }); 
         } 
         await deleteDoc(doc(db, "historico_pontos", histId)); 
+        
         showToast("Lançamento estornado!", "success"); 
         atualizarTelas(); 
       } catch (err) { 
@@ -677,6 +635,18 @@ function filtrarHistorico() {
   });
 }
 
+["filtroMesHistorico", "filtroEquipeHistorico", "filtroNomeHistorico", "filtroStatusHistorico"].forEach(id => { 
+  document.getElementById(id).addEventListener("input", filtrarHistorico); 
+});
+
+document.getElementById("btnLimparFiltrosExtrato").addEventListener("click", () => { 
+  document.getElementById("filtroMesHistorico").value = ""; 
+  document.getElementById("filtroEquipeHistorico").value = ""; 
+  document.getElementById("filtroNomeHistorico").value = ""; 
+  document.getElementById("filtroStatusHistorico").value = "ativos"; 
+  filtrarHistorico(); 
+});
+
 function setupRelatorioConsolidado() { 
   document.getElementById("filtroAnoRelatorio").value = new Date().getFullYear(); 
   document.querySelector('[data-target="sub-relatorio"]').addEventListener("click", gerarRelatorioConsolidado); 
@@ -684,7 +654,10 @@ function setupRelatorioConsolidado() {
   
   document.getElementById("btnExportarExcel").addEventListener("click", () => { 
     const tbody = document.getElementById("listaRelatorio"); 
-    if(tbody.innerText.includes("Clique em Filtrar") || tbody.innerText.includes("Nenhum atleta")) return showToast("Gere o relatório primeiro!", "error"); 
+    
+    if(tbody.innerText.includes("Clique em Filtrar") || tbody.innerText.includes("Nenhum atleta")) {
+      return showToast("Gere o relatório primeiro!", "error"); 
+    }
     
     const rows = document.getElementById("tabelaConsolidada").querySelectorAll("tr"); 
     let csv = "\uFEFF"; 
@@ -698,6 +671,7 @@ function setupRelatorioConsolidado() {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); 
     const url = URL.createObjectURL(blob); 
     const a = document.createElement("a"); 
+    
     a.href = url; 
     a.download = `Relatorio_Consolidado.csv`; 
     a.click(); 
@@ -713,7 +687,10 @@ function gerarRelatorioConsolidado() {
   const histAno = historicoCompleto.filter(h => h.dataTreino && h.dataTreino.startsWith(ano)); 
   let atletasRelatorio = Object.values(mapAtletas).filter(a => a.role === "atleta" && !a.equipe.startsWith("Fila") && a.equipe !== "Nenhuma"); 
   
-  if (eqFiltro) atletasRelatorio = atletasRelatorio.filter(a => a.equipe === eqFiltro); 
+  if (eqFiltro) {
+    atletasRelatorio = atletasRelatorio.filter(a => a.equipe === eqFiltro); 
+  }
+  
   if(atletasRelatorio.length === 0) { 
     tbody.innerHTML = `<tr><td colspan='15' style='text-align:center;'>Nenhum atleta processado.</td></tr>`; 
     return; 
@@ -723,6 +700,7 @@ function gerarRelatorioConsolidado() {
   atletasRelatorio.forEach(atleta => { 
     atleta.totalAnoTemp = 0; 
     atleta.ptsMesTemp = [0,0,0,0,0,0,0,0,0,0,0,0]; 
+    
     histAno.filter(h => h.atletaId === atleta.id).forEach(l => { 
       if(l.dataTreino && l.dataTreino.includes("-")) { 
         const mesInt = parseInt(l.dataTreino.split("-")[1], 10); 
@@ -742,16 +720,23 @@ function gerarRelatorioConsolidado() {
     atleta.ptsMesTemp.forEach(p => { 
       colunas += `<td style="text-align: center; color: ${p > 0 ? 'var(--secondary)' : '#ccc'}; font-weight: ${p > 0 ? '600' : '400'};">${p}</td>`; 
     }); 
-    html += `<tr><td><strong>${atleta.nome}</strong></td><td><small>${atleta.equipe}</small></td>${colunas}<td style="text-align: center; font-weight: bold; color: var(--primary);">${atleta.totalAnoTemp}</td></tr>`; 
+    html += `<tr>
+               <td><strong>${atleta.nome}</strong></td>
+               <td><small>${atleta.equipe}</small></td>
+               ${colunas}
+               <td style="text-align: center; font-weight: bold; color: var(--primary);">${atleta.totalAnoTemp}</td>
+             </tr>`; 
   }); 
+  
   tbody.innerHTML = html; 
 }
 
 // =====================================================
-// DASHBOARD, PDF E FINANCEIRO
+// DASHBOARD & EXPORTAÇÃO PDF
 // =====================================================
 document.getElementById("btnExportarPDF").addEventListener("click", () => {
   showToast("Montando painel corporativo...", "info"); 
+  
   const temaAtual = document.body.getAttribute("data-theme"); 
   if (temaAtual === "dark") { 
     document.body.removeAttribute("data-theme"); 
@@ -761,15 +746,21 @@ document.getElementById("btnExportarPDF").addEventListener("click", () => {
   
   setTimeout(() => {
     document.getElementById("pdfDataHoje").textContent = new Date().toLocaleDateString('pt-BR'); 
+    
     if(document.getElementById("pdfAtivos")) document.getElementById("pdfAtivos").textContent = document.getElementById("totalAtivosGeral").textContent; 
     if(document.getElementById("pdfEngajamento")) document.getElementById("pdfEngajamento").textContent = document.getElementById("engajamento30d").textContent; 
     if(document.getElementById("pdfInvest")) document.getElementById("pdfInvest").textContent = document.getElementById("totalInvestimento").textContent; 
     if(document.getElementById("pdfRoi")) document.getElementById("pdfRoi").textContent = document.getElementById("roiAtleta").textContent; 
+    
     if(document.getElementById("pdfMediaBike")) document.getElementById("pdfMediaBike").textContent = document.getElementById("mediaBike").textContent; 
     if(document.getElementById("pdfMediaCorrida")) document.getElementById("pdfMediaCorrida").textContent = document.getElementById("mediaCorrida").textContent; 
+    
     if(document.getElementById("pdfTopBike")) document.getElementById("pdfTopBike").innerHTML = document.getElementById("listaPodioBike").innerHTML; 
     if(document.getElementById("pdfTopCorrida")) document.getElementById("pdfTopCorrida").innerHTML = document.getElementById("listaPodioCorrida").innerHTML; 
-    if(document.getElementById("pdfListaEvasao")) document.getElementById("pdfListaEvasao").innerHTML = document.getElementById("listaEvasaoBike").innerHTML + document.getElementById("listaEvasaoCorrida").innerHTML; 
+    
+    if(document.getElementById("pdfListaEvasao")) {
+      document.getElementById("pdfListaEvasao").innerHTML = document.getElementById("listaEvasaoBike").innerHTML + document.getElementById("listaEvasaoCorrida").innerHTML; 
+    }
     
     const agendaClone = document.getElementById("listaEventosAgenda").cloneNode(true); 
     agendaClone.querySelectorAll("button").forEach(b => b.remove()); 
@@ -790,7 +781,9 @@ document.getElementById("btnExportarPDF").addEventListener("click", () => {
       htmlUltimos += `<div style="display:flex; justify-content:space-between; margin-bottom:4px; border-bottom:1px solid #f5f5f5; padding-bottom:4px;"><span style="color:#666;"><strong>${d}</strong> - ${e.desc}</span><strong style="color:var(--primary);">${e.atletas.size} 👤</strong></div>`; 
     }); 
     
-    if(document.getElementById("pdfUltimosEventos")) document.getElementById("pdfUltimosEventos").innerHTML = htmlUltimos || "<p style='color:#999; text-align:center;'>Nenhum evento processado.</p>";
+    if(document.getElementById("pdfUltimosEventos")) {
+      document.getElementById("pdfUltimosEventos").innerHTML = htmlUltimos || "<p style='color:#999; text-align:center;'>Nenhum evento processado.</p>";
+    }
     
     const canvasLinha = document.getElementById('graficoTendencia'); 
     const widthOriginal = canvasLinha.style.width; 
@@ -815,13 +808,16 @@ document.getElementById("btnExportarPDF").addEventListener("click", () => {
         html2canvas: { scale: 2, useCORS: true }, 
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
       }; 
+      
       html2pdf().set(opt).from(printArea).save().then(() => { 
         modalPdf.style.display = "none"; 
+        
         if(canvasLinha) { 
           canvasLinha.style.width = widthOriginal; 
           canvasLinha.style.height = heightOriginal; 
           if(graficoLinhaInstancia) graficoLinhaInstancia.resize(); 
         } 
+        
         if (temaAtual === "dark") { 
           document.body.setAttribute("data-theme", "dark"); 
           Chart.defaults.color = '#aaa'; 
@@ -852,13 +848,17 @@ async function carregarEquipesEDashboard() {
     const strikes = u.recusas || 0; 
     const badgeStrike = strikes > 0 ? `<span class="strike-badge">⚠️ ${strikes}/3</span>` : ''; 
     let acoesHTML = ""; 
+    
     if(hasGestao) { 
-      acoesHTML = `<button class="btn-acao btn-aprovar-fila" data-id="${u.id}" data-eq="${u.equipe === 'Fila - Corrida' ? 'Corrida' : 'Bicicleta'}" style="color:var(--secondary); padding:4px;"><i data-lucide="check" style="width:16px;"></i></button> <button class="btn-acao btn-pular-fila" data-id="${u.id}" data-strikes="${strikes}" style="color:#f39c12; padding:4px;"><i data-lucide="skip-forward" style="width:16px;"></i></button>`; 
+      acoesHTML = `<button class="btn-acao btn-aprovar-fila" data-id="${u.id}" data-eq="${u.equipe === 'Fila - Corrida' ? 'Corrida' : 'Bicicleta'}" style="color:var(--secondary); padding:4px;"><i data-lucide="check" style="width:16px;"></i></button> 
+                   <button class="btn-acao btn-pular-fila" data-id="${u.id}" data-strikes="${strikes}" style="color:#f39c12; padding:4px;"><i data-lucide="skip-forward" style="width:16px;"></i></button>`; 
     } 
+    
     if(u.equipe === "Fila - Bicicleta" || u.equipe === "Fila de Espera") { 
       htmlFilaBike += `<tr><td><strong>${idxBike}º - ${u.nome}</strong> ${badgeStrike}</td><td style="text-align: right; display:flex; justify-content:flex-end; gap:5px;">${acoesHTML}</td></tr>`; 
       idxBike++; contFila++; 
     } 
+    
     if (u.equipe === "Fila - Corrida") { 
       htmlFilaCorrida += `<tr><td><strong>${idxCorrida}º - ${u.nome}</strong> ${badgeStrike}</td><td style="text-align: right; display:flex; justify-content:flex-end; gap:5px;">${acoesHTML}</td></tr>`; 
       idxCorrida++; contFila++; 
@@ -878,28 +878,33 @@ async function carregarEquipesEDashboard() {
     const linha = `<tr><td class="${!ativo ? 'inativo-txt' : ''}" style="vertical-align:middle;"><strong>${u.nome}</strong>${displayPts}</td><td style="text-align: right; display:flex; justify-content:flex-end; align-items:center; min-height: 40px;">${switchAtivo} ${btnFicha} ${btnPerm} ${btnEditar} ${btnExcluir}</td></tr>`; 
     
     if (u.role === "admin" || u.role === "comite") { 
-      htmlComite += linha; contComite++; 
+      htmlComite += linha; 
+      contComite++; 
     } else if (u.equipe === "Corrida") { 
-      htmlCorrida += linha; contCorrida++; ptsCorrida += pts; 
+      htmlCorrida += linha; 
+      contCorrida++; 
+      ptsCorrida += pts; 
       todosAtletas.push({nome: u.nome, pts: pts, eq: u.equipe, id: u.id, ativo: ativo}); 
     } else if (u.equipe === "Bicicleta" || u.equipe === "Bike") { 
-      htmlBike += linha; contBike++; ptsBike += pts; 
+      htmlBike += linha; 
+      contBike++; 
+      ptsBike += pts; 
       todosAtletas.push({nome: u.nome, pts: pts, eq: u.equipe, id: u.id, ativo: ativo}); 
     } 
   });
   
   if(document.getElementById("listaFilaBike")) document.getElementById("listaFilaBike").innerHTML = htmlFilaBike || `<tr><td colspan='2'>Ninguém na fila.</td></tr>`; 
   if(document.getElementById("listaFilaCorrida")) document.getElementById("listaFilaCorrida").innerHTML = htmlFilaCorrida || `<tr><td colspan='2'>Ninguém na fila.</td></tr>`; 
-  if(document.getElementById("listaBicicleta")) document.getElementById("listaBicicleta").innerHTML = htmlBike || `<tr><td colspan='2'>Equipa vazia.</td></tr>`; 
-  if(document.getElementById("listaCorrida")) document.getElementById("listaCorrida").innerHTML = htmlCorrida || `<tr><td colspan='2'>Equipa vazia.</td></tr>`; 
+  if(document.getElementById("listaBicicleta")) document.getElementById("listaBicicleta").innerHTML = htmlBike || `<tr><td colspan='2'>Equipe vazia.</td></tr>`; 
+  if(document.getElementById("listaCorrida")) document.getElementById("listaCorrida").innerHTML = htmlCorrida || `<tr><td colspan='2'>Equipe vazia.</td></tr>`; 
   if(document.getElementById("listaComite")) document.getElementById("listaComite").innerHTML = htmlComite || `<tr><td colspan='2'>Sem membros.</td></tr>`; 
+  
   if(document.getElementById("totalBike")) document.getElementById("totalBike").textContent = contBike; 
   if(document.getElementById("totalCorrida")) document.getElementById("totalCorrida").textContent = contCorrida;
   
   renderGraficosETop(ptsBike, ptsCorrida, todosAtletas, contBike, contCorrida); 
   lucide.createIcons();
   
-  // Listeners das ações de equipa
   document.querySelectorAll(".btn-aprovar-fila").forEach(btn => { 
     btn.addEventListener("click", async (e) => { 
       if(confirm(`Aprovar atleta?`)) { 
@@ -1058,6 +1063,7 @@ async function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike, 
   if(document.getElementById("listaEvasaoCorrida")) document.getElementById("listaEvasaoCorrida").innerHTML = htmlEvasao(radarCorrida);
   
   const totalAtivosGerais = arrayAtletas.filter(a => a.ativo !== false).length;
+  
   if(document.getElementById("totalAtivosGeral")) document.getElementById("totalAtivosGeral").textContent = totalAtivosGerais; 
   if(document.getElementById("engajamento30d")) document.getElementById("engajamento30d").textContent = (totalAtivosGerais > 0 ? Math.round((engajados30d / totalAtivosGerais)*100) : 0) + "%"; 
   if(document.getElementById("roiAtleta")) document.getElementById("roiAtleta").textContent = (totalAtivosGerais > 0 ? (gastoTotalGlobal / totalAtivosGerais) : 0).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}); 
@@ -1065,17 +1071,25 @@ async function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike, 
   let ativosBikeG = arrayAtletas.filter(a => (a.eq === 'Bicicleta' || a.eq === 'Bike') && a.diasAusente <= 30 && a.diasAusente !== -1).length; 
   let ativosCorridaG = arrayAtletas.filter(a => a.eq === 'Corrida' && a.diasAusente <= 30 && a.diasAusente !== -1).length;
   
-  document.getElementById('txtAtivosBike').textContent = totalBike === 0 ? "0% ativos (30d)" : `${Math.round((ativosBikeG/totalBike)*100)}% ativos (30d)`; 
-  document.getElementById('txtAtivosCorrida').textContent = totalCorrida === 0 ? "0% ativos (30d)" : `${Math.round((ativosCorridaG/totalCorrida)*100)}% ativos (30d)`;
+  if(document.getElementById('txtAtivosBike')) document.getElementById('txtAtivosBike').textContent = totalBike === 0 ? "0% ativos (30d)" : `${Math.round((ativosBikeG/totalBike)*100)}% ativos (30d)`; 
+  if(document.getElementById('txtAtivosCorrida')) document.getElementById('txtAtivosCorrida').textContent = totalCorrida === 0 ? "0% ativos (30d)" : `${Math.round((ativosCorridaG/totalCorrida)*100)}% ativos (30d)`;
   
   if(document.getElementById('graficoEngajBike')) { 
     if(graficoEngajBike) graficoEngajBike.destroy(); 
-    graficoEngajBike = new Chart(document.getElementById('graficoEngajBike'), { type: 'doughnut', data: { datasets: [{ data: [ativosBikeG, (totalBike - ativosBikeG)], backgroundColor: ['#009bc1', '#e3e6eb'], borderWidth: 0 }] }, options: { cutout: '75%', plugins: { tooltip:{enabled:false} } } }); 
+    graficoEngajBike = new Chart(document.getElementById('graficoEngajBike'), { 
+      type: 'doughnut', 
+      data: { datasets: [{ data: [ativosBikeG, (totalBike - ativosBikeG)], backgroundColor: ['#009bc1', '#e3e6eb'], borderWidth: 0 }] }, 
+      options: { cutout: '75%', plugins: { tooltip:{enabled:false} } } 
+    }); 
   }
   
   if(document.getElementById('graficoEngajCorrida')) { 
     if(graficoEngajCorrida) graficoEngajCorrida.destroy(); 
-    graficoEngajCorrida = new Chart(document.getElementById('graficoEngajCorrida'), { type: 'doughnut', data: { datasets: [{ data: [ativosCorridaG, (totalCorrida - ativosCorridaG)], backgroundColor: ['#00b37e', '#e3e6eb'], borderWidth: 0 }] }, options: { cutout: '75%', plugins: { tooltip:{enabled:false} } } }); 
+    graficoEngajCorrida = new Chart(document.getElementById('graficoEngajCorrida'), { 
+      type: 'doughnut', 
+      data: { datasets: [{ data: [ativosCorridaG, (totalCorrida - ativosCorridaG)], backgroundColor: ['#00b37e', '#e3e6eb'], borderWidth: 0 }] }, 
+      options: { cutout: '75%', plugins: { tooltip:{enabled:false} } } 
+    }); 
   }
   
   if(document.getElementById('graficoTendencia')) { 
@@ -1090,16 +1104,25 @@ async function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike, 
     }); 
     graficoLinhaInstancia = new Chart(document.getElementById('graficoTendencia'), { 
       type: 'line', 
-      data: { labels: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'], datasets: [{ data: ptsPorMes, borderColor: '#009bc1', backgroundColor: 'rgba(0,155,193,0.1)', fill: true, tension: 0.4 }] }, 
+      data: { 
+        labels: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'], 
+        datasets: [{ data: ptsPorMes, borderColor: '#009bc1', backgroundColor: 'rgba(0,155,193,0.1)', fill: true, tension: 0.4 }] 
+      }, 
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } 
     }); 
   }
 }
 
+// =====================================================
+// 💰 FINANCEIRO (PLANILHA E CATEGORIAS)
+// =====================================================
 function setupFinanceiroPlanilha() { 
   const modal = document.getElementById("modalLinhaVerba"); 
   const canEdit = userRole === "admin" || userPermissoes.includes("financeiro_edit"); 
-  if(document.getElementById("areaAcoesFinanceiro")) document.getElementById("areaAcoesFinanceiro").style.display = canEdit ? "block" : "none"; 
+  
+  if(document.getElementById("areaAcoesFinanceiro")) {
+    document.getElementById("areaAcoesFinanceiro").style.display = canEdit ? "block" : "none"; 
+  }
   
   const chkAvulso = document.getElementById("checkAvulso"); 
   const areaProposto = document.getElementById("areaProposto"); 
@@ -1107,10 +1130,16 @@ function setupFinanceiroPlanilha() {
   if(chkAvulso) { 
     chkAvulso.addEventListener("change", (e) => { 
       if(e.target.checked) { 
-        areaProposto.style.opacity = "0.3"; areaProposto.style.pointerEvents = "none"; 
-        document.getElementById("vPropInsc").value = ""; document.getElementById("vPropTransp").value = ""; document.getElementById("vPropHosp").value = ""; document.getElementById("vPropAlim").value = ""; document.getElementById("vPropDemais").value = ""; 
+        areaProposto.style.opacity = "0.3"; 
+        areaProposto.style.pointerEvents = "none"; 
+        document.getElementById("vPropInsc").value = ""; 
+        document.getElementById("vPropTransp").value = ""; 
+        document.getElementById("vPropHosp").value = ""; 
+        document.getElementById("vPropAlim").value = ""; 
+        document.getElementById("vPropDemais").value = ""; 
       } else { 
-        areaProposto.style.opacity = "1"; areaProposto.style.pointerEvents = "auto"; 
+        areaProposto.style.opacity = "1"; 
+        areaProposto.style.pointerEvents = "auto"; 
       } 
     }); 
   } 
@@ -1121,8 +1150,16 @@ function setupFinanceiroPlanilha() {
       document.getElementById("verbaCategoria").value = "Provas / Inscrições"; 
       document.getElementById("verbaEquipe").value = "Corrida e Bike"; 
       document.getElementById("verbaEvento").value = ""; 
-      if(chkAvulso) { chkAvulso.checked = false; chkAvulso.dispatchEvent(new Event('change')); } 
-      document.getElementById("vPropInsc").value = ""; document.getElementById("vPropTransp").value = ""; document.getElementById("vPropHosp").value = ""; document.getElementById("vPropAlim").value = ""; document.getElementById("vPropDemais").value = ""; 
+      
+      if(chkAvulso) { 
+        chkAvulso.checked = false; 
+        chkAvulso.dispatchEvent(new Event('change')); 
+      } 
+      document.getElementById("vPropInsc").value = ""; 
+      document.getElementById("vPropTransp").value = ""; 
+      document.getElementById("vPropHosp").value = ""; 
+      document.getElementById("vPropAlim").value = ""; 
+      document.getElementById("vPropDemais").value = ""; 
       document.getElementById("vRealizadoTotal").value = ""; 
       modal.style.display = "flex"; 
     }); 
@@ -1135,21 +1172,43 @@ function setupFinanceiroPlanilha() {
     const cat = document.getElementById("verbaCategoria").value; 
     const eq = document.getElementById("verbaEquipe").value; 
     const ev = document.getElementById("verbaEvento").value.trim(); 
+    
     if(!ev) return showToast("Informe o Título/Evento!", "error"); 
     
     const p = (id) => parseFloat(document.getElementById(id).value) || 0; 
     let propInsc = 0, propTransp = 0, propHosp = 0, propAlim = 0, propDemais = 0, totalProp = 0; 
     
     if(chkAvulso && !chkAvulso.checked) { 
-      propInsc = p("vPropInsc"); propTransp = p("vPropTransp"); propHosp = p("vPropHosp"); propAlim = p("vPropAlim"); propDemais = p("vPropDemais"); 
+      propInsc = p("vPropInsc"); 
+      propTransp = p("vPropTransp"); 
+      propHosp = p("vPropHosp"); 
+      propAlim = p("vPropAlim"); 
+      propDemais = p("vPropDemais"); 
       totalProp = propInsc + propTransp + propHosp + propAlim + propDemais; 
     } 
     
     const totalRealizado = p("vRealizadoTotal"); 
     const desvio = totalProp - totalRealizado; 
-    const dados = { categoria: cat, equipe: eq, evento: ev, avulso: chkAvulso ? chkAvulso.checked : false, propInsc: propInsc, propTransp: propTransp, propHosp: propHosp, propAlim: propAlim, propDemais: propDemais, totalProposto: totalProp, totalRealizado: totalRealizado, desvio: desvio, atualizadoEm: new Date().toISOString() }; 
     
-    e.target.textContent = "Salvando..."; e.target.disabled = true; 
+    const dados = { 
+      categoria: cat, 
+      equipe: eq, 
+      evento: ev, 
+      avulso: chkAvulso ? chkAvulso.checked : false, 
+      propInsc: propInsc, 
+      propTransp: propTransp, 
+      propHosp: propHosp, 
+      propAlim: propAlim, 
+      propDemais: propDemais, 
+      totalProposto: totalProp, 
+      totalRealizado: totalRealizado, 
+      desvio: desvio, 
+      atualizadoEm: new Date().toISOString() 
+    }; 
+    
+    e.target.textContent = "Salvando..."; 
+    e.target.disabled = true; 
+    
     try { 
       if(idEdit) { 
         await updateDoc(doc(db, "despesas", idEdit), dados); 
@@ -1159,11 +1218,13 @@ function setupFinanceiroPlanilha() {
         await addDoc(collection(db, "despesas"), dados); 
         showToast("Linha adicionada!", "success"); 
       } 
-      modal.style.display = "none"; carregarFinanceiroPlanilha(); 
+      modal.style.display = "none"; 
+      carregarFinanceiroPlanilha(); 
     } catch(err) { 
       showToast("Erro ao gravar financeiro.", "error"); 
     } 
-    e.target.textContent = "Salvar na Planilha"; e.target.disabled = false; 
+    e.target.textContent = "Salvar na Planilha"; 
+    e.target.disabled = false; 
   }); 
   
   document.getElementById("btnExportarFinExcel")?.addEventListener("click", exportarFinanceiroPlanilha); 
@@ -1174,29 +1235,52 @@ async function carregarFinanceiroPlanilha() {
     const snap = await getDocs(collection(db, "despesas")); 
     let tempDocs = []; 
     snap.forEach(d => tempDocs.push({id: d.id, ...d.data()})); 
+    
     tempDocs.sort((a, b) => new Date(a.criadoEm || a.dataBase || 0) - new Date(b.criadoEm || b.dataBase || 0)); 
     historicoFinanceiro = tempDocs; 
     
     let htmlMaster = ""; 
     let resumoEquipes = { Corrida: { prop: 0, real: 0 }, Bike: { prop: 0, real: 0 }, Ambas: { prop: 0, real: 0 } }; 
-    let resumoCategorias = { "Provas / Inscrições": { prop: 0, real: 0, color: "var(--secondary)" }, "Mensalidade Treinador": { prop: 0, real: 0, color: "#3498db" }, "Encontros e Eventos": { prop: 0, real: 0, color: "#f39c12" }, "Uniformes e Materiais": { prop: 0, real: 0, color: "var(--primary)" }, "Outros": { prop: 0, real: 0, color: "#95a5a6" } }; 
+    let resumoCategorias = { 
+      "Provas / Inscrições": { prop: 0, real: 0, color: "var(--secondary)" }, 
+      "Mensalidade Treinador": { prop: 0, real: 0, color: "#3498db" }, 
+      "Encontros e Eventos": { prop: 0, real: 0, color: "#f39c12" }, 
+      "Uniformes e Materiais": { prop: 0, real: 0, color: "var(--primary)" }, 
+      "Outros": { prop: 0, real: 0, color: "#95a5a6" } 
+    }; 
     
-    let globalProp = 0; let globalReal = 0; 
+    let globalProp = 0; 
+    let globalReal = 0; 
     const canEdit = userRole === "admin" || userPermissoes.includes("financeiro_edit"); 
     const num = (v) => (v||0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}); 
     const moneyStr = (v) => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}); 
     
     historicoFinanceiro.forEach(v => { 
-      const equipe = v.equipe || "Ambas"; const categoria = v.categoria || "Outros"; const evento = v.evento || v.descricao || "Custo Antigo"; 
-      const totalProp = v.totalProposto || v.orcadoTotal || 0; const totalReal = v.totalRealizado || 0; const desvio = v.desvio !== undefined ? v.desvio : (totalProp - totalReal); 
-      globalProp += totalProp; globalReal += totalReal; 
+      const equipe = v.equipe || "Ambas"; 
+      const categoria = v.categoria || "Outros"; 
+      const evento = v.evento || v.descricao || "Custo Antigo"; 
+      const totalProp = v.totalProposto || v.orcadoTotal || 0; 
+      const totalReal = v.totalRealizado || 0; 
+      const desvio = v.desvio !== undefined ? v.desvio : (totalProp - totalReal); 
       
-      if(equipe === "Corrida") { resumoEquipes.Corrida.prop += totalProp; resumoEquipes.Corrida.real += totalReal; } 
-      else if(equipe === "Bicicleta" || equipe === "Bike") { resumoEquipes.Bike.prop += totalProp; resumoEquipes.Bike.real += totalReal; } 
-      else { resumoEquipes.Ambas.prop += totalProp; resumoEquipes.Ambas.real += totalReal; } 
+      globalProp += totalProp; 
+      globalReal += totalReal; 
       
-      if(resumoCategorias[categoria]) { resumoCategorias[categoria].prop += totalProp; resumoCategorias[categoria].real += totalReal; } 
-      else { resumoCategorias["Outros"].prop += totalProp; resumoCategorias["Outros"].real += totalReal; } 
+      if(equipe === "Corrida") { 
+        resumoEquipes.Corrida.prop += totalProp; resumoEquipes.Corrida.real += totalReal; 
+      } else if(equipe === "Bicicleta" || equipe === "Bike") { 
+        resumoEquipes.Bike.prop += totalProp; resumoEquipes.Bike.real += totalReal; 
+      } else { 
+        resumoEquipes.Ambas.prop += totalProp; resumoEquipes.Ambas.real += totalReal; 
+      } 
+      
+      if(resumoCategorias[categoria]) { 
+        resumoCategorias[categoria].prop += totalProp; 
+        resumoCategorias[categoria].real += totalReal; 
+      } else { 
+        resumoCategorias["Outros"].prop += totalProp; 
+        resumoCategorias["Outros"].real += totalReal; 
+      } 
       
       const isAvulso = v.avulso ? `<span title="Lançamento Não Previsto" style="color:var(--accent); font-size:0.75rem; font-weight:bold;">[AVULSO]</span>` : ""; 
       const corDesvio = desvio < 0 ? "color: var(--danger); font-weight:bold;" : "color: var(--secondary);"; 
@@ -1204,30 +1288,50 @@ async function carregarFinanceiroPlanilha() {
       
       let btnAcoes = ""; 
       if(canEdit) { 
-        btnAcoes = `<button class="btn-acao btn-edit-verba" data-id="${v.id}" style="color:var(--primary); padding:4px;"><i data-lucide="edit-2" style="width:14px;"></i></button> <button class="btn-acao btn-del-verba" data-id="${v.id}" style="color:var(--danger); padding:4px;"><i data-lucide="trash" style="width:14px;"></i></button>`; 
+        btnAcoes = `<button class="btn-acao btn-edit-verba" data-id="${v.id}" style="color:var(--primary); padding:4px;"><i data-lucide="edit-2" style="width:14px;"></i></button> 
+                    <button class="btn-acao btn-del-verba" data-id="${v.id}" style="color:var(--danger); padding:4px;"><i data-lucide="trash" style="width:14px;"></i></button>`; 
       } 
       
-      htmlMaster += `<tr><td><small style="font-weight:600;">${equipe}</small></td><td><span style="font-size:0.75rem; color:var(--text-light); background:var(--border); padding:2px 6px; border-radius:4px;">${categoria}</span></td><td><strong>${evento}</strong> ${isAvulso}</td><td>${v.propInsc > 0 ? num(v.propInsc) : '-'}</td><td>${v.propTransp > 0 ? num(v.propTransp) : '-'}</td><td>${v.propHosp > 0 ? num(v.propHosp) : '-'}</td><td>${v.propAlim > 0 ? num(v.propAlim) : '-'}</td><td>${v.propDemais > 0 ? num(v.propDemais) : '-'}</td><td style="font-weight:600; background: rgba(0,0,0,0.02);">${num(totalProp)}</td><td style="font-weight:600; color: #27ae60; ${bgReal}">${num(totalReal)}</td><td style="${corDesvio}">${num(desvio)}</td><td style="text-align:right; white-space:nowrap;">${btnAcoes}</td></tr>`; 
+      htmlMaster += `
+        <tr>
+          <td><small style="font-weight:600;">${equipe}</small></td>
+          <td><span style="font-size:0.75rem; color:var(--text-light); background:var(--border); padding:2px 6px; border-radius:4px;">${categoria}</span></td>
+          <td><strong>${evento}</strong> ${isAvulso}</td>
+          <td>${v.propInsc > 0 ? num(v.propInsc) : '-'}</td>
+          <td>${v.propTransp > 0 ? num(v.propTransp) : '-'}</td>
+          <td>${v.propHosp > 0 ? num(v.propHosp) : '-'}</td>
+          <td>${v.propAlim > 0 ? num(v.propAlim) : '-'}</td>
+          <td>${v.propDemais > 0 ? num(v.propDemais) : '-'}</td>
+          <td style="font-weight:600; background: rgba(0,0,0,0.02);">${num(totalProp)}</td>
+          <td style="font-weight:600; color: #27ae60; ${bgReal}">${num(totalReal)}</td>
+          <td style="${corDesvio}">${num(desvio)}</td>
+          <td style="text-align:right; white-space:nowrap;">${btnAcoes}</td>
+        </tr>`; 
     }); 
     
-    if(document.getElementById("tabelaMasterFin")) document.getElementById("tabelaMasterFin").innerHTML = htmlMaster || `<tr><td colspan='12' style='text-align:center;'>Nenhum planeamento registado.</td></tr>`; 
+    if(document.getElementById("tabelaMasterFin")) document.getElementById("tabelaMasterFin").innerHTML = htmlMaster || `<tr><td colspan='12' style='text-align:center;'>Nenhum planejamento registado.</td></tr>`; 
     
     gastoTotalGlobal = globalReal || 0; 
+    
     if(document.getElementById("totalInvestimento")) document.getElementById("totalInvestimento").textContent = moneyStr(globalReal); 
     if(document.getElementById("dashFinOrcadoTotal")) document.getElementById("dashFinOrcadoTotal").textContent = moneyStr(globalProp); 
     if(document.getElementById("dashFinRealizadoTotal")) document.getElementById("dashFinRealizadoTotal").textContent = moneyStr(globalReal); 
     
     if(document.getElementById("dashFinSaldoTotal")) { 
-      const desvioTotal = globalProp - globalReal; const el = document.getElementById("dashFinSaldoTotal"); 
-      el.textContent = moneyStr(desvioTotal); el.style.color = desvioTotal < 0 ? 'var(--danger)' : 'var(--secondary)'; 
+      const desvioTotal = globalProp - globalReal; 
+      const el = document.getElementById("dashFinSaldoTotal"); 
+      el.textContent = moneyStr(desvioTotal); 
+      el.style.color = desvioTotal < 0 ? 'var(--danger)' : 'var(--secondary)'; 
       if (el.parentElement) el.parentElement.style.borderLeftColor = desvioTotal < 0 ? 'var(--danger)' : 'var(--secondary)'; 
     } 
     
     let htmlResumo = ""; 
     const arrResumo = [{nome: "Corrida", data: resumoEquipes.Corrida}, {nome: "Bicicleta", data: resumoEquipes.Bike}, {nome: "Equipa Geral (Ambas)", data: resumoEquipes.Ambas}]; 
+    
     arrResumo.forEach(r => { 
       if(r.data.prop > 0 || r.data.real > 0) { 
-        const desvioEquipe = r.data.prop - r.data.real; const cor = desvioEquipe < 0 ? "color:var(--danger);" : "color:var(--secondary);"; 
+        const desvioEquipe = r.data.prop - r.data.real; 
+        const cor = desvioEquipe < 0 ? "color:var(--danger);" : "color:var(--secondary);"; 
         htmlResumo += `<tr><td><strong>${r.nome}</strong></td><td>R$ ${num(r.data.prop)}</td><td style="color:var(--danger); font-weight:bold;">R$ ${num(r.data.real)}</td><td style="font-weight:bold; ${cor}">R$ ${num(desvioEquipe)}</td></tr>`; 
       } 
     }); 
@@ -1238,8 +1342,24 @@ async function carregarFinanceiroPlanilha() {
     Object.keys(resumoCategorias).forEach(nomeCat => { 
       const c = resumoCategorias[nomeCat]; 
       if(c.prop > 0 || c.real > 0) { 
-        const perc = c.prop > 0 ? Math.min((c.real / c.prop) * 100, 100) : 100; const corBarra = (c.real > c.prop && c.prop > 0) || (c.prop === 0 && c.real > 0) ? "var(--danger)" : c.color; 
-        htmlCategorias += `<div class="card" style="margin:0; padding:15px; border-left: 4px solid ${c.color}; animation: none;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><strong style="color:var(--text); font-size:0.9rem;">${nomeCat}</strong></div><div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:5px;"><span style="color:#666;">Proposto: ${moneyStr(c.prop)}</span><span style="color:${c.color}; font-weight:bold;">Real: ${moneyStr(c.real)}</span></div><div class="progress-bar-bg" style="height:6px; margin-bottom:5px;"><div class="progress-bar-fill" style="width: ${perc}%; background: ${corBarra};"></div></div><div style="text-align:right; font-size:0.75rem; color:#999;">Desvio: <strong style="${c.prop - c.real < 0 ? 'color:var(--danger)' : ''}">${moneyStr(c.prop - c.real)}</strong></div></div>`; 
+        const perc = c.prop > 0 ? Math.min((c.real / c.prop) * 100, 100) : 100; 
+        const corBarra = (c.real > c.prop && c.prop > 0) || (c.prop === 0 && c.real > 0) ? "var(--danger)" : c.color; 
+        htmlCategorias += `
+          <div class="card" style="margin:0; padding:15px; border-left: 4px solid ${c.color}; animation: none;">
+             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+               <strong style="color:var(--text); font-size:0.9rem;">${nomeCat}</strong>
+             </div>
+             <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:5px;">
+               <span style="color:#666;">Proposto: ${moneyStr(c.prop)}</span>
+               <span style="color:${c.color}; font-weight:bold;">Real: ${moneyStr(c.real)}</span>
+             </div>
+             <div class="progress-bar-bg" style="height:6px; margin-bottom:5px;">
+               <div class="progress-bar-fill" style="width: ${perc}%; background: ${corBarra};"></div>
+             </div>
+             <div style="text-align:right; font-size:0.75rem; color:#999;">
+               Desvio: <strong style="${c.prop - c.real < 0 ? 'color:var(--danger)' : ''}">${moneyStr(c.prop - c.real)}</strong>
+             </div>
+          </div>`; 
       } 
     }); 
     
@@ -1262,13 +1382,23 @@ async function carregarFinanceiroPlanilha() {
         const id = e.currentTarget.dataset.id; 
         const v = historicoFinanceiro.find(x => x.id === id); 
         if(!v) return; 
+        
         document.getElementById("verbaEditId").value = v.id; 
         document.getElementById("verbaCategoria").value = v.categoria || "Outros"; 
         document.getElementById("verbaEquipe").value = v.equipe || "Corrida e Bike"; 
         document.getElementById("verbaEvento").value = v.evento || v.descricao || ""; 
+        
         const chkAvulso = document.getElementById("checkAvulso"); 
-        if(chkAvulso) { chkAvulso.checked = v.avulso === true; chkAvulso.dispatchEvent(new Event('change')); } 
-        document.getElementById("vPropInsc").value = v.propInsc || ""; document.getElementById("vPropTransp").value = v.propTransp || ""; document.getElementById("vPropHosp").value = v.propHosp || ""; document.getElementById("vPropAlim").value = v.propAlim || ""; document.getElementById("vPropDemais").value = v.propDemais || ""; 
+        if(chkAvulso) { 
+          chkAvulso.checked = v.avulso === true; 
+          chkAvulso.dispatchEvent(new Event('change')); 
+        } 
+        
+        document.getElementById("vPropInsc").value = v.propInsc || ""; 
+        document.getElementById("vPropTransp").value = v.propTransp || ""; 
+        document.getElementById("vPropHosp").value = v.propHosp || ""; 
+        document.getElementById("vPropAlim").value = v.propAlim || ""; 
+        document.getElementById("vPropDemais").value = v.propDemais || ""; 
         document.getElementById("vRealizadoTotal").value = v.totalRealizado || ""; 
         document.getElementById("modalLinhaVerba").style.display = "flex"; 
       }); 
@@ -1280,41 +1410,78 @@ async function carregarFinanceiroPlanilha() {
 
 function exportarFinanceiroPlanilha() { 
   if(historicoFinanceiro.length === 0) return showToast("Nenhuma linha para exportar.", "error"); 
+  
   let csv = "\uFEFFEquipe;Categoria;Evento_Custo;Tipo;Inscrições;Transporte;Hospedagem;Alimentação;Demais Custos;Total Proposto;Total Realizado;Desvio\r\n"; 
+  
   historicoFinanceiro.forEach(v => { 
     const n = (val) => (val || 0).toFixed(2).replace('.', ','); 
     const tipo = v.avulso ? "Avulso" : "Planejado"; 
-    let linha = [ v.equipe || "Ambas", v.categoria || "-", v.evento || v.descricao, tipo, n(v.propInsc), n(v.propTransp), n(v.propHosp), n(v.propAlim), n(v.propDemais), n(v.totalProposto || v.orcadoTotal), n(v.totalRealizado), n(v.desvio !== undefined ? v.desvio : ((v.totalProposto||v.orcadoTotal||0) - (v.totalRealizado||0))) ]; 
+    let linha = [ 
+      v.equipe || "Ambas", v.categoria || "-", v.evento || v.descricao, tipo, 
+      n(v.propInsc), n(v.propTransp), n(v.propHosp), n(v.propAlim), n(v.propDemais), 
+      n(v.totalProposto || v.orcadoTotal), n(v.totalRealizado), 
+      n(v.desvio !== undefined ? v.desvio : ((v.totalProposto||v.orcadoTotal||0) - (v.totalRealizado||0))) 
+    ]; 
     csv += linha.map(col => `"${String(col).replace(/"/g, '""')}"`).join(";") + "\r\n"; 
   }); 
+  
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); 
   const url = URL.createObjectURL(blob); 
   const a = document.createElement("a"); 
-  a.href = url; a.download = `Controle_Orcamentario_Atletas.csv`; a.click(); 
+  
+  a.href = url; 
+  a.download = `Controle_Orcamentario_Atletas.csv`; 
+  a.click(); 
   URL.revokeObjectURL(url); 
 }
 
+// =====================================================
+// 📅 AGENDA DE EVENTOS E OUTRAS CONFIGURAÇÕES
+// =====================================================
 function setupAgenda() { 
   const modal = document.getElementById("modalEvento"); 
-  if(document.getElementById("abrirModalEvento")) document.getElementById("abrirModalEvento").addEventListener("click", () => modal.style.display = "flex"); 
-  if(document.getElementById("fecharModalEvento")) document.getElementById("fecharModalEvento").addEventListener("click", () => modal.style.display = "none"); 
+  
+  if(document.getElementById("abrirModalEvento")) {
+    document.getElementById("abrirModalEvento").addEventListener("click", () => modal.style.display = "flex"); 
+  }
+  
+  if(document.getElementById("fecharModalEvento")) {
+    document.getElementById("fecharModalEvento").addEventListener("click", () => modal.style.display = "none"); 
+  }
   
   if(document.getElementById("salvarEventoBtn")) { 
     document.getElementById("salvarEventoBtn").addEventListener("click", async (e) => { 
-      const titulo = document.getElementById("eventoTitulo").value.trim(), local = document.getElementById("eventoLocal").value.trim(), mod = document.getElementById("eventoModalidade").value, data = document.getElementById("eventoData").value; 
+      const titulo = document.getElementById("eventoTitulo").value.trim();
+      const local = document.getElementById("eventoLocal").value.trim();
+      const mod = document.getElementById("eventoModalidade").value;
+      const data = document.getElementById("eventoData").value; 
+      
       if (!titulo || !data) return showToast("Título e Data são obrigatórios!", "error"); 
-      e.target.textContent = "Salvando..."; e.target.disabled = true; 
+      
+      e.target.textContent = "Salvando..."; 
+      e.target.disabled = true; 
+      
       try { 
-        await addDoc(collection(db, "agenda_eventos"), { titulo: titulo, local: local, modalidade: mod, data: data, criadoEm: new Date().toISOString() }); 
+        await addDoc(collection(db, "agenda_eventos"), { 
+          titulo: titulo, 
+          local: local, 
+          modalidade: mod, 
+          data: data, 
+          criadoEm: new Date().toISOString() 
+        }); 
+        
         modal.style.display = "none"; 
         document.getElementById("eventoTitulo").value = ""; 
         document.getElementById("eventoLocal").value = ""; 
+        
         showToast("Evento agendado!", "success"); 
         atualizarTelas(); 
       } catch (err) { 
         showToast("Erro ao agendar: " + err.message, "error"); 
       } 
-      e.target.textContent = "Salvar Evento"; e.target.disabled = false; 
+      
+      e.target.textContent = "Salvar Evento"; 
+      e.target.disabled = false; 
     }); 
   } 
 }
@@ -1340,10 +1507,25 @@ async function carregarAgenda() {
       const dia = d.getDate().toString().padStart(2, '0'); 
       let icon = e.modalidade === "Bicicleta" ? "🚴" : e.modalidade === "Corrida" ? "🏃" : "🤝"; 
       const btnExcluir = hasGestao ? `<button class="btn-excluir-evento" data-id="${e.id}" style="background:transparent; border:none; color:var(--danger); cursor:pointer; float:right;"><i data-lucide="x" style="width:16px;"></i></button>` : ''; 
-      html += `<div class="agenda-item"><div class="agenda-data"><span>${mes}</span><strong>${dia}</strong></div><div class="agenda-info" style="flex:1;">${btnExcluir}<h4>${e.titulo}</h4><p>${icon} ${e.local}</p></div></div>`; 
+      
+      html += `
+        <div class="agenda-item">
+          <div class="agenda-data">
+            <span>${mes}</span>
+            <strong>${dia}</strong>
+          </div>
+          <div class="agenda-info" style="flex:1;">
+            ${btnExcluir}
+            <h4>${e.titulo}</h4>
+            <p>${icon} ${e.local}</p>
+          </div>
+        </div>`; 
     }); 
     
-    if(document.getElementById("listaEventosAgenda")) document.getElementById("listaEventosAgenda").innerHTML = html || `<div class="empty-state" style="padding:10px;"><p style="font-size:0.85rem;">Nenhum evento agendado.</p></div>`; 
+    if(document.getElementById("listaEventosAgenda")) {
+      document.getElementById("listaEventosAgenda").innerHTML = html || `<div class="empty-state" style="padding:10px;"><p style="font-size:0.85rem;">Nenhum evento agendado.</p></div>`; 
+    }
+    
     lucide.createIcons(); 
     
     document.querySelectorAll(".btn-excluir-evento").forEach(btn => { 
@@ -1362,14 +1544,19 @@ async function carregarAgenda() {
 function setupPermissoesModal() { 
   const modal = document.getElementById("modalPermissoes"); 
   if(!modal) return; 
+  
   document.getElementById("fecharModalPermissoes").addEventListener("click", () => modal.style.display = "none"); 
+  
   document.getElementById("salvarPermissoesBtn").addEventListener("click", async (e) => { 
     const id = document.getElementById("permUserId").value; 
     let selecionadas = []; 
     document.querySelectorAll(".chk-perm:checked").forEach(chk => selecionadas.push(chk.value)); 
+    
     if(selecionadas.length === 0) return showToast("Precisa ter pelo menos uma aba marcada.", "error"); 
     
-    e.target.textContent = "Salvando..."; e.target.disabled = true; 
+    e.target.textContent = "Salvando..."; 
+    e.target.disabled = true; 
+    
     try { 
       await updateDoc(doc(db, "atletas", id), { permissoes: selecionadas }); 
       showToast("Permissões atualizadas!", "success"); 
@@ -1378,12 +1565,15 @@ function setupPermissoesModal() {
     } catch(err) { 
       showToast("Erro ao gravar permissões.", "error"); 
     } 
-    e.target.textContent = "Salvar Acessos"; e.target.disabled = false; 
+    
+    e.target.textContent = "Salvar Acessos"; 
+    e.target.disabled = false; 
   }); 
 }
 
 function setupFichaAtleta() { 
   document.getElementById("fecharModalFicha").addEventListener("click", () => document.getElementById("modalFichaAtleta").style.display = "none"); 
+  
   document.getElementById("btnSalvarComentario").addEventListener("click", async () => { 
     const aId = document.getElementById("fichaAtletaId").value; 
     const txt = document.getElementById("novoComentarioFicha").value.trim(); 
@@ -1391,17 +1581,25 @@ function setupFichaAtleta() {
     
     const meuNome = mapAtletas[auth.currentUser.uid] ? mapAtletas[auth.currentUser.uid].nome : "Comitê"; 
     const btn = document.getElementById("btnSalvarComentario"); 
-    btn.disabled = true; btn.textContent = "Salvando..."; 
+    btn.disabled = true; 
+    btn.textContent = "Salvando..."; 
     
     try { 
-      await addDoc(collection(db, "comentarios_atletas"), { atletaId: aId, texto: txt, autorNome: meuNome, criadoEm: new Date().toISOString() }); 
+      await addDoc(collection(db, "comentarios_atletas"), { 
+        atletaId: aId, 
+        texto: txt, 
+        autorNome: meuNome, 
+        criadoEm: new Date().toISOString() 
+      }); 
+      
       document.getElementById("novoComentarioFicha").value = ""; 
       carregarComentarios(aId); 
       showToast("Comentário salvo!", "success"); 
     } catch(e) { 
       showToast("Erro ao guardar comentário.", "error"); 
     } 
-    btn.disabled = false; btn.textContent = "Adicionar Comentário"; 
+    btn.disabled = false; 
+    btn.textContent = "Adicionar Comentário"; 
   }); 
 }
 
@@ -1415,14 +1613,17 @@ async function abrirFichaAtleta(id) {
   const statusEl = document.getElementById("fichaStatus"); 
   
   if(a.ativo !== false) { 
-    statusEl.textContent = "Ativo no Sistema"; statusEl.style.color = "var(--secondary)"; 
+    statusEl.textContent = "Ativo no Sistema"; 
+    statusEl.style.color = "var(--secondary)"; 
   } else { 
-    statusEl.textContent = "Desativado"; statusEl.style.color = "var(--danger)"; 
+    statusEl.textContent = "Desativado"; 
+    statusEl.style.color = "var(--danger)"; 
   } 
   
   document.getElementById("fichaAtletaId").value = id; 
   const hist = historicoCompleto.filter(h => h.atletaId === id); 
   let htmlH = ""; 
+  
   if(hist.length === 0) htmlH = "<p style='color:#999; margin-top: 10px;'>Nenhum registo encontrado.</p>"; 
   
   hist.forEach(h => { 
@@ -1430,7 +1631,12 @@ async function abrirFichaAtleta(id) {
     const isFalta = Number(h.pontos) === 0; 
     const cor = isFalta ? "var(--accent)" : "var(--secondary)"; 
     const ptsStr = isFalta ? "Falta Justificada" : `+${h.pontos} pts`; 
-    htmlH += `<div style="border-bottom: 1px solid var(--border); padding: 8px 0; display:flex; justify-content:space-between; align-items:center;"><div><strong>${dataF}</strong> - ${h.descTreino}<br><small style="color:#666;">${h.regraDesc}</small></div><div style="color:${cor}; font-weight:bold; text-align:right;">${ptsStr}</div></div>`; 
+    
+    htmlH += `
+      <div style="border-bottom: 1px solid var(--border); padding: 8px 0; display:flex; justify-content:space-between; align-items:center;">
+        <div><strong>${dataF}</strong> - ${h.descTreino}<br><small style="color:#666;">${h.regraDesc}</small></div>
+        <div style="color:${cor}; font-weight:bold; text-align:right;">${ptsStr}</div>
+      </div>`; 
   }); 
   
   document.getElementById("fichaHistorico").innerHTML = htmlH; 
@@ -1448,7 +1654,14 @@ async function carregarComentarios(id) {
     let html = ""; 
     coments.forEach(c => { 
       const d = new Date(c.criadoEm).toLocaleDateString('pt-BR') + " às " + new Date(c.criadoEm).toLocaleTimeString('pt-BR').substring(0,5); 
-      html += `<div class="comentario-box"><div class="comentario-header"><span class="comentario-autor">${c.autorNome}</span> <span>${d}</span></div><div style="margin-top: 4px;">${c.texto}</div></div>`; 
+      html += `
+        <div class="comentario-box">
+          <div class="comentario-header">
+            <span class="comentario-autor">${c.autorNome}</span> 
+            <span>${d}</span>
+          </div>
+          <div style="margin-top: 4px;">${c.texto}</div>
+        </div>`; 
     }); 
     
     document.getElementById("fichaComentariosLista").innerHTML = html || "<p style='color:#999; font-size:0.85rem;'>Nenhum comentário registado.</p>"; 
@@ -1471,7 +1684,16 @@ async function setupAprovacoes() {
   
   snap.forEach(d => { 
     const u = d.data(); 
-    tbody.innerHTML += `<tr><td><strong>${u.nome}</strong></td><td>${u.email}</td><td>Comitê</td><td><button class="btn-acao btn-aprovar" data-id="${d.id}" style="color:var(--secondary); border-color:var(--secondary); margin-right:5px;">Aprovar</button><button class="btn-acao btn-rejeitar" data-id="${d.id}" style="color:var(--danger); border-color:var(--danger);">Rejeitar</button></td></tr>`; 
+    tbody.innerHTML += `
+      <tr>
+        <td><strong>${u.nome}</strong></td>
+        <td>${u.email}</td>
+        <td>Comitê</td>
+        <td>
+          <button class="btn-acao btn-aprovar" data-id="${d.id}" style="color:var(--secondary); border-color:var(--secondary); margin-right:5px;">Aprovar</button>
+          <button class="btn-acao btn-rejeitar" data-id="${d.id}" style="color:var(--danger); border-color:var(--danger);">Rejeitar</button>
+        </td>
+      </tr>`; 
   }); 
   
   document.querySelectorAll(".btn-aprovar").forEach(btn => btn.addEventListener("click", async (e) => { 
@@ -1493,13 +1715,28 @@ async function setupAprovacoes() {
 
 function setupCadastrarPessoa() { 
   document.getElementById("btnCadastrarPessoa").addEventListener("click", async (e) => { 
-    const nome = document.getElementById("novoNome").value.trim(), email = document.getElementById("novoEmail").value.trim(), papel = document.getElementById("novoPapel").value, btn = e.target; 
+    const nome = document.getElementById("novoNome").value.trim();
+    const email = document.getElementById("novoEmail").value.trim();
+    const papel = document.getElementById("novoPapel").value;
+    const btn = e.target; 
     
     if (!nome) return showToast("Preencha o nome!", "error"); 
     
     try { 
-      btn.textContent = "Salvando..."; btn.disabled = true; 
-      await addDoc(collection(db, "atletas"), { nome: nome, email: email, role: "atleta", equipe: papel, status: "Aprovado", ativo: true, pontuacaoTotal: 0, recusas: 0, criadoEm: new Date().toISOString() }); 
+      btn.textContent = "Salvando..."; 
+      btn.disabled = true; 
+      
+      await addDoc(collection(db, "atletas"), { 
+        nome: nome, 
+        email: email, 
+        role: "atleta", 
+        equipe: papel, 
+        status: "Aprovado", 
+        ativo: true, 
+        pontuacaoTotal: 0, 
+        recusas: 0, 
+        criadoEm: new Date().toISOString() 
+      }); 
       
       document.getElementById("novoNome").value = ""; 
       document.getElementById("novoEmail").value = ""; 
@@ -1510,11 +1747,13 @@ function setupCadastrarPessoa() {
       else if (papel === "Bicicleta") document.querySelector('[data-target="tab-bike"]').click(); 
       else if (papel === "Corrida") document.querySelector('[data-target="tab-corrida"]').click(); 
       
-      btn.textContent = "Adicionar"; btn.disabled = false; 
+      btn.textContent = "Adicionar"; 
+      btn.disabled = false; 
       atualizarTelas(); 
     } catch (error) { 
       showToast("Erro ao adicionar: " + error.message, "error"); 
-      btn.textContent = "Adicionar"; btn.disabled = false; 
+      btn.textContent = "Adicionar"; 
+      btn.disabled = false; 
     } 
   }); 
 }
@@ -1524,13 +1763,22 @@ function setupModalEditar() {
   document.getElementById("fecharModalEdit").addEventListener("click", () => modal.style.display = "none"); 
   
   document.getElementById("salvarEditBtn").addEventListener("click", async (e) => { 
-    const id = document.getElementById("editId").value, nome = document.getElementById("editNome").value.trim(), email = document.getElementById("editEmail").value.trim(), papel = document.getElementById("editPapel").value; 
+    const id = document.getElementById("editId").value;
+    const nome = document.getElementById("editNome").value.trim();
+    const email = document.getElementById("editEmail").value.trim();
+    const papel = document.getElementById("editPapel").value; 
+    
     if (!nome) return; 
     
-    let role = "atleta"; let equipe = papel; 
-    if (papel === "Comitê") { role = "comite"; equipe = "Nenhuma"; } 
+    let role = "atleta"; 
+    let equipe = papel; 
     
-    e.target.textContent = "Salvando..."; e.target.disabled = true; 
+    if (papel === "Comitê") { 
+      role = "comite"; equipe = "Nenhuma"; 
+    } 
+    
+    e.target.textContent = "Salvando..."; 
+    e.target.disabled = true; 
     
     try { 
       await updateDoc(doc(db, "atletas", id), { nome: nome, email: email, role: role, equipe: equipe }); 
@@ -1541,7 +1789,8 @@ function setupModalEditar() {
       showToast("Erro ao editar dados.", "error"); 
     } 
     
-    e.target.textContent = "Atualizar"; e.target.disabled = false; 
+    e.target.textContent = "Atualizar"; 
+    e.target.disabled = false; 
   }); 
 }
 
@@ -1551,21 +1800,28 @@ function setupLimparBase() {
   
   btnL.addEventListener("click", async () => { 
     if (userRole !== "admin") return; 
+    
     if (prompt("CUIDADO EXTREMO! Isso apagará TODOS os dados.\nDigite 'LIMPAR' para confirmar:") !== "LIMPAR") return; 
     if (!prompt("Digite sua senha de administrador para autorizar:")) return; 
     
     const btn = document.getElementById("btnLimparBase"); 
-    btn.innerHTML = "Apagando base..."; btn.disabled = true; 
+    btn.innerHTML = "Apagando base..."; 
+    btn.disabled = true; 
     
     try { 
       const col = ["historico_pontos", "regras_pontuacao", "despesas", "comentarios_atletas"]; 
       for (let c of col) { 
         const snap = await getDocs(collection(db, c)); 
-        snap.forEach(async (d) => { await deleteDoc(doc(db, c, d.id)); }); 
+        snap.forEach(async (d) => { 
+          await deleteDoc(doc(db, c, d.id)); 
+        }); 
       } 
+      
       const snapA = await getDocs(collection(db, "atletas")); 
       snapA.forEach(async (d) => { 
-        if (d.id !== auth.currentUser.uid) await deleteDoc(doc(db, "atletas", d.id)); 
+        if (d.id !== auth.currentUser.uid) {
+          await deleteDoc(doc(db, "atletas", d.id)); 
+        }
       }); 
       
       showToast("Base Limpa permanentemente!", "success"); 
@@ -1599,15 +1855,22 @@ function setupConfiguracoes() {
   }; 
   
   if (localStorage.getItem("theme") === "dark") aplicarTema("dark"); 
+  
   document.getElementById("btnTemaClaro").addEventListener("click", () => aplicarTema("light")); 
   document.getElementById("btnTemaEscuro").addEventListener("click", () => aplicarTema("dark")); 
   
   document.getElementById("btnSalvarConta").addEventListener("click", async () => { 
-    const senhaAtual = document.getElementById("confSenhaAtual").value, novoEmail = document.getElementById("confNovoEmail").value.trim(), novaSenha = document.getElementById("confNovaSenha").value.trim(), btn = document.getElementById("btnSalvarConta"); 
+    const senhaAtual = document.getElementById("confSenhaAtual").value;
+    const novoEmail = document.getElementById("confNovoEmail").value.trim();
+    const novaSenha = document.getElementById("confNovaSenha").value.trim();
+    const btn = document.getElementById("btnSalvarConta"); 
+    
     if(!senhaAtual) return showToast("A senha atual é obrigatória para validar.", "error"); 
     if(!novoEmail && !novaSenha) return; 
     
-    btn.textContent = "Autenticando..."; btn.disabled = true; 
+    btn.textContent = "Autenticando..."; 
+    btn.disabled = true; 
+    
     try { 
       const user = auth.currentUser; 
       const credential = EmailAuthProvider.credential(user.email, senhaAtual); 
@@ -1618,12 +1881,15 @@ function setupConfiguracoes() {
       if(novaSenha) { await updatePassword(user, novaSenha); } 
       
       showToast("Conta atualizada!", "success"); 
+      
       document.getElementById("confSenhaAtual").value = ""; 
       document.getElementById("confNovoEmail").value = ""; 
       document.getElementById("confNovaSenha").value = ""; 
     } catch(err) { 
-      showToast("Erro ao salvar conta.", "error"); 
+      showToast("Erro ao atualizar a conta.", "error"); 
     } 
-    btn.innerHTML = `Salvar Alterações`; btn.disabled = false; 
+    
+    btn.innerHTML = `Salvar Alterações`; 
+    btn.disabled = false; 
   }); 
 }
