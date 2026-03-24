@@ -1,31 +1,18 @@
+// =====================================================
+// js/admin.js - ORQUESTRADOR PRINCIPAL
+// =====================================================
 import { 
-  auth, db, collection, getDocs, doc, getDoc, updateDoc, deleteDoc, addDoc, setDoc,
-  onAuthStateChanged, signOut, query, where, orderBy, writeBatch, increment,
-  updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider
+  auth, db, collection, getDocs, doc, getDoc, updateDoc, deleteDoc, addDoc, 
+  onAuthStateChanged, signOut, query, where, writeBatch, increment 
 } from "./firebase.js";
 
-let userRole = "atleta";
-let userPermissoes = [];
-let historicoCompleto = []; 
-let historicoFinanceiro = []; 
-let mapAtletas = {};        
-let graficoLinhaInstancia = null; 
-let graficoEngajBike = null;
-let graficoEngajCorrida = null;
-let gastoTotalGlobal = 0; 
-let cacheEventos = [];
-let listaTodasRegras = [];
-
-function showToast(message, type = "info") {
-  const container = document.getElementById("toastContainer"); 
-  if (!container) return;
-  const t = document.createElement("div"); 
-  t.className = `toast ${type}`; 
-  t.innerHTML = message;
-  container.appendChild(t); 
-  lucide.createIcons(); 
-  setTimeout(() => t.remove(), 4000);
-}
+// Importação dos Módulos
+import { appState } from "./modules/state.js";
+import { showToast, mostrarConfirmacao, setupSubTabs, setupConfiguracoesGerais } from "./modules/ui.js";
+import { setupDashboard, renderGraficosETop } from "./modules/dashboard.js";
+import { setupFinanceiroPlanilha, carregarFinanceiroPlanilha } from "./modules/financeiro.js";
+import { setupContabilizacao, setAtualizarTelasCallback } from "./modules/pontuacao.js";
+import { setupCadastrarPessoa, setupToggleAtivos, setupLimparBase, setAtualizarTelasGestao } from "./modules/gestao.js";
 
 // =====================================================
 // 🔒 INICIALIZAÇÃO E PERMISSÕES
@@ -35,8 +22,8 @@ onAuthStateChanged(auth, async (user) => {
     try {
       const docSnap = await getDoc(doc(db, "atletas", user.uid));
       if (docSnap.exists() && (docSnap.data().role === "admin" || docSnap.data().role === "comite")) {
-        userRole = docSnap.data().role;
-        userPermissoes = userRole === "admin" ? 
+        appState.userRole = docSnap.data().role;
+        appState.userPermissoes = appState.userRole === "admin" ? 
           ["visao-geral", "contabilizacao", "financeiro_view", "financeiro_edit", "gestao", "configuracoes"] : 
           (docSnap.data().permissoes || ["visao-geral", "configuracoes"]);
         
@@ -69,12 +56,12 @@ function construirMenu() {
   itensDisponiveis.forEach(item => {
     let hasAccess = false;
     if (item.permCheck) { 
-      hasAccess = item.permCheck.some(p => userPermissoes.includes(p)); 
+      hasAccess = item.permCheck.some(p => appState.userPermissoes.includes(p)); 
     } else { 
-      hasAccess = userPermissoes.includes(item.id); 
+      hasAccess = appState.userPermissoes.includes(item.id); 
     }
 
-    if (hasAccess || userRole === "admin") {
+    if (hasAccess || appState.userRole === "admin") {
       const isFirst = !abaAtiva; 
       if(isFirst) abaAtiva = true;
       menu.innerHTML += `<div class="menu-item ${isFirst ? 'active' : ''}" data-section="${item.id}"><i data-lucide="${item.icon}"></i><span>${item.text}</span></div>`;
@@ -90,17 +77,18 @@ function construirMenu() {
   });
 
   const badge = document.getElementById("userGroupBadge"); 
-  badge.style.display = "inline-block";
-  
-  if (userRole === "admin") { 
-    badge.textContent = "Admin"; 
-    badge.style.background = "var(--danger)"; 
-  } else { 
-    badge.textContent = "Comitê"; 
-    badge.style.background = "var(--primary)"; 
+  if(badge) {
+    badge.style.display = "inline-block";
+    if (appState.userRole === "admin") { 
+      badge.textContent = "Admin"; 
+      badge.style.background = "var(--danger)"; 
+    } else { 
+      badge.textContent = "Comitê"; 
+      badge.style.background = "var(--primary)"; 
+    }
   }
 
-  if (userRole !== "admin") { 
+  if (appState.userRole !== "admin") { 
     document.querySelectorAll(".admin-only-element").forEach(el => el.style.display = "none"); 
   }
   
@@ -111,85 +99,62 @@ function construirMenu() {
       
       document.querySelectorAll("main section").forEach(sec => { 
         sec.classList.remove("active-section"); 
-        if (sec.id === item.dataset.section) {
-          sec.classList.add("active-section"); 
-        }
+        if (sec.id === item.dataset.section) sec.classList.add("active-section"); 
       });
-      lucide.createIcons();
+      if(typeof lucide !== 'undefined') lucide.createIcons();
     });
   });
   
-  lucide.createIcons();
+  if(typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function iniciarPainelAdmin() {
-  Chart.defaults.color = document.body.getAttribute('data-theme') === 'dark' ? '#aaa' : '#666';
-  
-  document.getElementById("logoutBtn").addEventListener("click", async () => { 
-    if(confirm("Sair?")) { 
-      await signOut(auth); 
-      window.location.href = "index.html"; 
-    } 
-  });
-  
+  // Inicializa Módulos UI
   setupSubTabs(); 
-  setupCadastrarPessoa(); 
-  setupContabilizacao(); 
+  setupConfiguracoesGerais();
+  
+  // Inicializa Módulos de Funcionalidades
+  setupDashboard();
+  setupFinanceiroPlanilha();
+  setupContabilizacao();
+  setupCadastrarPessoa();
+  setupToggleAtivos();
+  setupLimparBase();
+
+  // Liga os callbacks de atualização para que os módulos possam pedir "refresh" à tela
+  setAtualizarTelasCallback(atualizarTelas);
+  setAtualizarTelasGestao(atualizarTelas);
+
+  // Inicializa Funcionalidades Locais (Controller)
   setupRelatorioConsolidado(); 
-  setupFinanceiroPlanilha(); 
   setupPermissoesModal(); 
   setupAgenda(); 
-  setupConfiguracoes(); 
   setupModalRegras(); 
   setupModalEditar(); 
-  setupLimparBase(); 
   setupFichaAtleta();
   
+  // Arranque dos Dados
   atualizarTelas();
 }
 
-function setupSubTabs() {
-  document.querySelectorAll(".sub-tab").forEach(tab => { 
-    tab.addEventListener("click", () => { 
-      const p = tab.closest('section'); 
-      p.querySelectorAll(".sub-tab").forEach(t => t.classList.remove("active")); 
-      p.querySelectorAll(".sub-content").forEach(c => c.classList.remove("active")); 
-      tab.classList.add("active"); 
-      document.getElementById(tab.dataset.target).classList.add("active"); 
-    }); 
-  });
-  
-  document.querySelectorAll(".t-tab").forEach(tab => { 
-    tab.addEventListener("click", () => { 
-      const p = tab.closest('.sub-content'); 
-      p.querySelectorAll(".t-tab").forEach(t => t.classList.remove("active")); 
-      p.querySelectorAll(".t-content").forEach(c => c.classList.remove("active")); 
-      tab.classList.add("active"); 
-      document.getElementById(tab.dataset.target).classList.add("active"); 
-    }); 
-  });
-}
-
 async function atualizarTelas() {
-  if (userRole === "admin" || userPermissoes.includes("gestao")) {
+  if (appState.userRole === "admin" || appState.userPermissoes.includes("gestao")) {
     setupAprovacoes();
   }
   
   await carregarAgenda(); 
   
   const snapA = await getDocs(query(collection(db, "atletas"), where("status", "==", "Aprovado")));
-  mapAtletas = {}; 
+  appState.mapAtletas = {}; 
   snapA.forEach(d => { 
-    mapAtletas[d.id] = { id: d.id, ...d.data() }; 
+    appState.mapAtletas[d.id] = { id: d.id, ...d.data() }; 
   });
   
   await carregarHistorico(); 
-  
   await carregarFinanceiroPlanilha(); 
   await carregarEquipesEDashboard(); 
   await carregarRegras();
 
-  // ATUALIZAÇÃO REATIVA DA TABELA DE LANÇAMENTOS
   const modTreinoSelect = document.getElementById("modTreino");
   if (modTreinoSelect && modTreinoSelect.value) {
       modTreinoSelect.dispatchEvent(new Event('change'));
@@ -197,303 +162,166 @@ async function atualizarTelas() {
 }
 
 // =====================================================
-// 📝 LANÇAMENTO LOTE INTELIGENTE & CONTABILIZAÇÃO
+// 📊 ORQUESTRAÇÃO DE DADOS (GETTERS) E TABELAS
 // =====================================================
-function setupContabilizacao() {
-  document.getElementById("dataTreino").valueAsDate = new Date();
 
-  document.getElementById("lancarEventoSelect").addEventListener("change", (e) => { 
-    const evId = e.target.value; 
-    if(evId) { 
-      const evento = cacheEventos.find(x => x.id === evId); 
-      if(evento) { 
-        document.getElementById("descTreino").value = evento.titulo; 
-        document.getElementById("dataTreino").value = evento.data; 
-        if(evento.modalidade !== "Ambas") { 
-          document.getElementById("modTreino").value = evento.modalidade; 
-          document.getElementById("modTreino").dispatchEvent(new Event('change')); 
-        } 
-      } 
-    } else { 
-      document.getElementById("descTreino").value = ""; 
-      document.getElementById("dataTreino").valueAsDate = new Date(); 
+async function carregarEquipesEDashboard() {
+  let htmlFilaBike = "", htmlFilaCorrida = "", htmlBike = "", htmlCorrida = "", htmlComite = ""; 
+  let contFila = 0, contBike = 0, contCorrida = 0, contComite = 0, ptsBike = 0, ptsCorrida = 0; 
+  let todosAtletas = []; 
+  
+  let listaOrdenada = Object.values(appState.mapAtletas); 
+  const filaEspera = listaOrdenada.filter(u => u.equipe === "Fila - Bicicleta" || u.equipe === "Fila - Corrida" || u.equipe === "Fila de Espera"); 
+  const titulares = listaOrdenada.filter(u => u.equipe !== "Fila - Bicicleta" && u.equipe !== "Fila - Corrida" && u.equipe !== "Fila de Espera"); 
+  
+  filaEspera.sort((a, b) => new Date(a.criadoEm || 0) - new Date(b.criadoEm || 0)); 
+  titulares.sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""))); 
+  
+  const hasGestao = appState.userRole === "admin" || appState.userPermissoes.includes("gestao");
+  
+  let idxBike = 1, idxCorrida = 1; 
+  filaEspera.forEach((u) => { 
+    const strikes = u.recusas || 0; 
+    const badgeStrike = strikes > 0 ? `<span class="strike-badge">⚠️ ${strikes}/3</span>` : ''; 
+    let acoesHTML = ""; 
+    
+    if(hasGestao) { 
+      acoesHTML = `<button class="btn-acao btn-aprovar-fila" data-id="${u.id}" data-eq="${u.equipe === 'Fila - Corrida' ? 'Corrida' : 'Bicicleta'}" style="color:var(--secondary); padding:4px;"><i data-lucide="check" style="width:16px;"></i></button> 
+                   <button class="btn-acao btn-pular-fila" data-id="${u.id}" data-strikes="${strikes}" style="color:#f39c12; padding:4px;"><i data-lucide="skip-forward" style="width:16px;"></i></button>`; 
+    } 
+    
+    if(u.equipe === "Fila - Bicicleta" || u.equipe === "Fila de Espera") { 
+      htmlFilaBike += `<tr><td data-label="Atleta"><strong>${idxBike}º - ${u.nome}</strong> ${badgeStrike}</td><td data-label="Ações" style="text-align: right; display:flex; justify-content:flex-end; gap:5px;">${acoesHTML}</td></tr>`; 
+      idxBike++; contFila++; 
+    } 
+    
+    if (u.equipe === "Fila - Corrida") { 
+      htmlFilaCorrida += `<tr><td data-label="Atleta"><strong>${idxCorrida}º - ${u.nome}</strong> ${badgeStrike}</td><td data-label="Ações" style="text-align: right; display:flex; justify-content:flex-end; gap:5px;">${acoesHTML}</td></tr>`; 
+      idxCorrida++; contFila++; 
     } 
   });
   
-  document.getElementById("modTreino").addEventListener("change", async (e) => { 
-    const mod = e.target.value; 
-    document.getElementById("areaTabelaPontuacao").style.display = "none"; 
+  titulares.forEach(u => { 
+    const pts = Number(u.pontuacaoTotal) || 0; 
+    const ativo = u.ativo !== false; 
+    const switchAtivo = (hasGestao && u.role !== 'admin') ? `<label class="switch" title="Ativar/Desativar"><input type="checkbox" class="toggle-ativo" data-id="${u.id}" ${ativo ? 'checked' : ''}><span class="slider"></span></label>` : ''; 
+    const btnFicha = `<button class="btn-acao btn-ficha" data-id="${u.id}" style="color: var(--primary); border-color: var(--primary); padding: 4px; margin-left: 5px;" title="Ver Ficha Completa"><i data-lucide="clipboard-list" style="width: 16px;"></i></button>`; 
+    const btnPerm = (u.role === 'comite' && appState.userRole === 'admin') ? `<button class="btn-primario btn-permissoes" data-id="${u.id}" data-nome="${u.nome}" style="background: #f39c12; padding: 6px 10px; font-size: 0.8rem; margin-left: 5px;"><i data-lucide="key" style="width: 14px;"></i></button>` : ''; 
+    const btnEditar = hasGestao ? `<button class="btn-acao btn-editar-membro" data-id="${u.id}" data-nome="${u.nome}" data-email="${u.email}" data-eq="${u.equipe}" style="color: var(--warning); border-color: var(--warning); padding: 4px; margin-left: 5px;"><i data-lucide="edit-2" style="width: 16px;"></i></button>` : ''; 
+    const btnExcluir = (auth.currentUser?.uid !== u.id && hasGestao) ? `<button class="btn-acao btn-excluir-membro" data-id="${u.id}" style="color: red; border: 0; padding: 4px; margin-left: 5px;"><i data-lucide="x-circle" style="width: 18px;"></i></button>` : ''; 
+    const displayPts = u.role === 'atleta' ? `<br><small style="color: var(--primary);">🏆 ${pts} pts</small>` : ''; 
     
-    if (!mod) return; 
+    const linha = `<tr><td data-label="Atleta" class="${!ativo ? 'inativo-txt' : ''}" style="vertical-align:middle; text-align:left;"><strong>${u.nome}</strong>${displayPts}</td><td data-label="Ações" style="text-align: right; display:flex; justify-content:flex-end; align-items:center; min-height: 40px;">${switchAtivo} ${btnFicha} ${btnPerm} ${btnEditar} ${btnExcluir}</td></tr>`; 
     
-    try {
-      const snapRegras = await getDocs(query(collection(db, "regras_pontuacao"), where("modalidade", "in", ["Ambas", mod]))); 
-      if (snapRegras.empty) {
-        return showToast("Nenhuma regra criada ainda.", "error"); 
-      }
-      
-      let regrasArray = []; 
-      snapRegras.forEach(d => { 
-        const r = d.data(); 
-        regrasArray.push({ 
-          id: d.id, 
-          descricao: r.descricao, 
-          pontos: r.pontos, 
-          regrasVinculadas: r.regrasVinculadas || [] 
-        }); 
-      }); 
-      
-      await gerarTabelaContabilizacao(mod, regrasArray); 
-      document.getElementById("areaTabelaPontuacao").style.display = "block"; 
-    } catch(err) { 
-      showToast("Erro ao carregar equipas: " + err.message, "error"); 
-    }
+    if (u.role === "admin" || u.role === "comite") { 
+      htmlComite += linha; contComite++; 
+    } else if (u.equipe === "Corrida") { 
+      htmlCorrida += linha; contCorrida++; ptsCorrida += pts; 
+      todosAtletas.push({nome: u.nome, pts: pts, eq: u.equipe, id: u.id, ativo: ativo}); 
+    } else if (u.equipe === "Bicicleta" || u.equipe === "Bike") { 
+      htmlBike += linha; contBike++; ptsBike += pts; 
+      todosAtletas.push({nome: u.nome, pts: pts, eq: u.equipe, id: u.id, ativo: ativo}); 
+    } 
   });
   
-  document.getElementById("btnSalvarPontuacao").addEventListener("click", salvarPontuacoesEmLote);
-}
-
-async function gerarTabelaContabilizacao(modalidade, regras) {
-  const tabela = document.getElementById("tabelaPontuacao");
-  const snapAtletas = await getDocs(query(collection(db, "atletas"), where("status", "==", "Aprovado"), where("equipe", "==", modalidade)));
-  let atletas = []; 
+  if(document.getElementById("listaFilaBike")) document.getElementById("listaFilaBike").innerHTML = htmlFilaBike || `<tr><td colspan='2'>Ninguém na fila.</td></tr>`; 
+  if(document.getElementById("listaFilaCorrida")) document.getElementById("listaFilaCorrida").innerHTML = htmlFilaCorrida || `<tr><td colspan='2'>Ninguém na fila.</td></tr>`; 
+  if(document.getElementById("listaBicicleta")) document.getElementById("listaBicicleta").innerHTML = htmlBike || `<tr><td colspan='2'>Equipe vazia.</td></tr>`; 
+  if(document.getElementById("listaCorrida")) document.getElementById("listaCorrida").innerHTML = htmlCorrida || `<tr><td colspan='2'>Equipe vazia.</td></tr>`; 
+  if(document.getElementById("listaComite")) document.getElementById("listaComite").innerHTML = htmlComite || `<tr><td colspan='2'>Sem membros.</td></tr>`; 
   
-  snapAtletas.forEach(d => { 
-    if(d.data().ativo !== false) {
-      atletas.push({id: d.id, ...d.data()}); 
-    }
-  });
+  if(document.getElementById("totalBike")) document.getElementById("totalBike").textContent = contBike; 
+  if(document.getElementById("totalCorrida")) document.getElementById("totalCorrida").textContent = contCorrida;
   
-  atletas.sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || "")));
+  renderGraficosETop(ptsBike, ptsCorrida, todosAtletas, contBike, contCorrida); 
+  if(typeof lucide !== 'undefined') lucide.createIcons();
   
-  if (atletas.length === 0) { 
-    tabela.innerHTML = `<tr><td style='text-align:center; padding:20px;'>Nenhum atleta ativo na equipe.</td></tr>`; 
-    return; 
-  }
-
-  let thead = `
-    <thead>
-      <tr>
-        <th style="vertical-align:middle; font-size:1rem; position:sticky; left:0; background:var(--table-header); z-index:20;">Nome do Atleta</th>`;
-                 
-  regras.forEach(r => { 
-    thead += `
-        <th style="text-align:center; vertical-align:middle; min-width: 100px;">
-          <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
-            <span style="font-size:0.75rem; line-height:1.2; font-weight:normal;">${r.descricao}</span>
-            <strong style="color:var(--primary); font-size:0.95rem;">+${r.pontos}</strong>
-          </div>
-        </th>`; 
-  });
-  
-  thead += `
-        <th style="text-align:center; color:var(--accent); vertical-align:middle; min-width: 90px; border-left: 2px solid var(--border);">
-          <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
-            <span style="font-weight:bold; font-size: 0.8rem;">Falta Justificada</span>
-            <label style="font-size:0.75rem; display:flex; align-items:center; gap:4px; cursor:pointer; margin:0;">
-              <input type="checkbox" id="checkMasterFalta"> Todo Time
-            </label>
-          </div>
-        </th>
-        <th style="text-align:left; vertical-align:middle; min-width: 180px; border-left: 1px solid var(--border);">Observação / Ficha</th>
-      </tr>
-    </thead>
-    <tbody>`;
-  
-  atletas.forEach(a => {
-    thead += `
-      <tr>
-        <td style="vertical-align:middle; font-weight:500; position:sticky; left:0; background:var(--bg-card); z-index:10;">${a.nome}</td>`;
-    
-    regras.forEach(r => { 
-      thead += `
-        <td style="text-align:center; vertical-align:middle;">
-          <input type="checkbox" class="check-ponto" 
-                 data-atleta-id="${a.id}" 
-                 data-atleta-nome="${a.nome}" 
-                 data-atleta-equipe="${a.equipe}" 
-                 data-regra-id="${r.id}" 
-                 data-regra-desc="${r.descricao}" 
-                 data-pontos="${r.pontos}" 
-                 data-exclui="${(r.regrasVinculadas||[]).join(',')}">
-        </td>`; 
-    });
-    
-    thead += `
-        <td style="text-align:center; background: rgba(243,112,33,0.05); vertical-align:middle; border-left: 2px solid var(--border);">
-          <input type="checkbox" class="check-falta" 
-                 data-atleta-id="${a.id}" 
-                 data-atleta-nome="${a.nome}" 
-                 data-atleta-equipe="${a.equipe}">
-        </td>`;
-                
-    thead += `
-        <td style="vertical-align:middle; border-left: 1px solid var(--border);">
-          <input type="text" class="input-obs" 
-                 data-atleta-id="${a.id}" 
-                 placeholder="Nota p/ ficha (lesão, atestado...)" 
-                 style="display:none; margin:0; padding:8px; font-size:0.8rem; width: 100%; box-sizing: border-box;">
-        </td>
-      </tr>`;
+  // Event Listeners das Ações da Tabela
+  document.querySelectorAll(".btn-aprovar-fila").forEach(btn => { 
+    btn.addEventListener("click", async (e) => { 
+      mostrarConfirmacao("Aprovar Atleta", "Mover o atleta da fila para a equipe principal?", async () => {
+        e.currentTarget.disabled = true; 
+        try { 
+          await updateDoc(doc(db, "atletas", e.currentTarget.dataset.id), { equipe: e.currentTarget.dataset.eq, recusas: 0 }); 
+          atualizarTelas(); 
+        } catch(err) { showToast("Erro ao aprovar.", "error"); } 
+      });
+    }); 
   }); 
   
-  thead += `</tbody>`; 
-  tabela.innerHTML = thead;
-  
-  const updateObsVisibility = (tr) => {
-    const hasChecked = tr.querySelectorAll('.check-ponto:checked, .check-falta:checked').length > 0;
-    const obsInput = tr.querySelector('.input-obs');
-    if (obsInput) {
-      if (hasChecked) {
-        obsInput.style.display = 'block';
-      } else {
-        obsInput.style.display = 'none';
-        obsInput.value = ''; 
-      }
-    }
-  };
-  
-  document.querySelectorAll(".check-ponto").forEach(chk => { 
-    chk.addEventListener("change", (e) => { 
-      const tr = e.target.closest("tr");
-      
-      if (e.target.checked) {
-        const idClicado = e.target.dataset.regraId;
-        const excluiClicado = e.target.dataset.exclui ? e.target.dataset.exclui.split(",") : [];
-        
-        tr.querySelectorAll(".check-ponto").forEach(other => {
-          if (other !== e.target) {
-            const outroId = other.dataset.regraId;
-            const outroExclui = other.dataset.exclui ? other.dataset.exclui.split(",") : [];
-            
-            if (excluiClicado.includes(outroId) || outroExclui.includes(idClicado)) {
-               other.checked = false;
-            }
-          }
-        });
-      }
-      
-      updateObsVisibility(tr);
-    }); 
-  });
-
-  document.getElementById("checkMasterFalta").addEventListener("change", (e) => { 
-    document.querySelectorAll(".check-falta").forEach(chk => { 
-      chk.checked = e.target.checked; 
-      chk.dispatchEvent(new Event('change')); 
-    }); 
-  });
-  
-  document.querySelectorAll(".check-falta").forEach(chk => { 
-    chk.addEventListener("change", (e) => { 
-      const tr = e.target.closest("tr"); 
-      tr.querySelectorAll(".check-ponto").forEach(p => { 
-        p.disabled = e.target.checked; 
-        if(e.target.checked) p.checked = false; 
-      }); 
-      updateObsVisibility(tr);
-    }); 
-  });
-}
-
-async function salvarPontuacoesEmLote() {
-  const desc = document.getElementById("descTreino").value.trim();
-  const data = document.getElementById("dataTreino").value;
-  const hoje = new Date().toISOString().split('T')[0]; 
-  
-  if (data > hoje) return showToast("Não é permitido lançar dados em datas futuras!", "error");
-  
-  const eventoIdSelecionado = document.getElementById("lancarEventoSelect").value;
-  const checksPontos = document.querySelectorAll(".check-ponto:checked");
-  const checksFaltas = document.querySelectorAll(".check-falta:checked");
-  const observacoes = document.querySelectorAll(".input-obs");
-  
-  if (checksPontos.length === 0 && checksFaltas.length === 0) return showToast("Nenhum atleta foi selecionado na tabela!", "error");
-  if (!desc || !data) return showToast("Preencha a Descrição e a Data do treino!", "error");
-  if (!confirm(`Confirmar gravação deste lote de registos na base de dados?`)) return;
-  
-  const btn = document.getElementById("btnSalvarPontuacao"); 
-  btn.innerHTML = "Gravando na Base..."; 
-  btn.disabled = true;
-
-  try {
-    const batch = writeBatch(db); 
-    let pontosPorAtleta = {};
-    const meuNome = mapAtletas[auth.currentUser?.uid] ? mapAtletas[auth.currentUser.uid].nome : "Comitê Gestor";
-    
-    for (let f of checksFaltas) { 
-      batch.set(doc(collection(db, "historico_pontos")), { 
-        atletaId: f.dataset.atletaId, 
-        atletaNome: f.dataset.atletaNome, 
-        atletaEquipe: f.dataset.atletaEquipe, 
-        regraId: "falta_just", 
-        regraDesc: "Falta Justificada", 
-        pontos: 0, 
-        descTreino: desc, 
-        dataTreino: data, 
-        eventoId: eventoIdSelecionado, 
-        criadoEm: new Date().toISOString() 
-      }); 
-    }
-    
-    for (let check of checksPontos) {
-      const aId = check.dataset.atletaId; 
-      const pts = Number(check.dataset.pontos) || 0;
-      
-      batch.set(doc(collection(db, "historico_pontos")), { 
-        atletaId: aId, 
-        atletaNome: check.dataset.atletaNome, 
-        atletaEquipe: check.dataset.atletaEquipe, 
-        regraId: check.dataset.regraId, 
-        regraDesc: check.dataset.regraDesc, 
-        pontos: pts, 
-        descTreino: desc, 
-        dataTreino: data, 
-        eventoId: eventoIdSelecionado, 
-        criadoEm: new Date().toISOString() 
+  document.querySelectorAll(".btn-pular-fila").forEach(btn => { 
+    btn.addEventListener("click", async (e) => { 
+      const id = e.currentTarget.dataset.id; 
+      let st = parseInt(e.currentTarget.dataset.strikes); 
+      mostrarConfirmacao("Pular Fila", "Passar a vez do atleta? Ele trocará de posição com o próximo.", async () => {
+        st++; 
+        if(st >= 3) { 
+          mostrarConfirmacao("Aviso de 3 Recusas", "O atleta atingiu 3 recusas. Remover da fila e inativar?", async () => {
+            await updateDoc(doc(db, "atletas", id), { ativo: false, equipe: "Nenhuma" }); 
+            showToast("Removido da fila.", "info"); atualizarTelas(); 
+          }, "danger");
+          return;
+        } 
+        try { 
+          const eqFila = appState.mapAtletas[id].equipe; 
+          const filaAtual = Object.values(appState.mapAtletas).filter(a => a.equipe === eqFila && a.ativo !== false).sort((a, b) => new Date(a.criadoEm || 0) - new Date(b.criadoEm || 0)); 
+          const idx = filaAtual.findIndex(a => a.id === id); 
+          if (idx >= 0 && idx < filaAtual.length - 1) { 
+            const idProximo = filaAtual[idx + 1].id; 
+            const dataAtual = appState.mapAtletas[id].criadoEm; 
+            const dataProximo = appState.mapAtletas[idProximo].criadoEm; 
+            await updateDoc(doc(db, "atletas", id), { recusas: st, criadoEm: dataProximo }); 
+            await updateDoc(doc(db, "atletas", idProximo), { criadoEm: dataAtual }); 
+            showToast("Posições trocadas!", "success"); 
+          } else { 
+            await updateDoc(doc(db, "atletas", id), { recusas: st }); 
+            showToast("Último da fila. Apenas recusa registada.", "info"); 
+          } 
+          atualizarTelas(); 
+        } catch(err) { showToast("Erro ao pular fila.", "error"); } 
       });
-      
-      if (!pontosPorAtleta[aId]) pontosPorAtleta[aId] = 0; 
-      pontosPorAtleta[aId] += pts;
-    }
-    
-    for (let aId in pontosPorAtleta) { 
-      batch.update(doc(db, "atletas", aId), { 
-        pontuacaoTotal: increment(pontosPorAtleta[aId]) 
+    }); 
+  }); 
+  
+  document.querySelectorAll(".btn-excluir-membro").forEach(btn => { 
+    btn.addEventListener("click", (e) => { 
+      mostrarConfirmacao("Excluir Definitivo", "Apagar este membro permanentemente do sistema?", async () => {
+        e.currentTarget.disabled = true; 
+        try { 
+          await deleteDoc(doc(db, "atletas", e.currentTarget.dataset.id)); 
+          atualizarTelas(); 
+        } catch(err) { showToast("Erro ao apagar.", "error"); } 
+      }, "danger");
+    }); 
+  }); 
+  
+  document.querySelectorAll(".btn-editar-membro").forEach(btn => { 
+    btn.addEventListener("click", (e) => { 
+      const b = e.currentTarget; 
+      document.getElementById("editId").value = b.dataset.id; 
+      document.getElementById("editNome").value = b.dataset.nome; 
+      document.getElementById("editEmail").value = b.dataset.email !== "undefined" ? b.dataset.email : ""; 
+      document.getElementById("editPapel").value = b.dataset.eq; 
+      document.getElementById("modalEditarAtleta").style.display = "flex"; 
+    }); 
+  }); 
+  
+  document.querySelectorAll(".btn-ficha").forEach(btn => { 
+    btn.addEventListener("click", (e) => abrirFichaAtleta(e.currentTarget.dataset.id)); 
+  }); 
+  
+  document.querySelectorAll(".btn-permissoes").forEach(btn => { 
+    btn.addEventListener("click", (e) => { 
+      const b = e.currentTarget; 
+      document.getElementById("permNomeUsuario").textContent = b.dataset.nome; 
+      document.getElementById("permUserId").value = b.dataset.id; 
+      const permissoesDB = appState.mapAtletas[b.dataset.id].permissoes || ["visao-geral"]; 
+      document.querySelectorAll(".chk-perm").forEach(chk => { 
+        chk.checked = permissoesDB.includes(chk.value) || (permissoesDB.includes("financeiro") && chk.value.startsWith("financeiro")); 
       }); 
-    }
-
-    for (let obs of observacoes) {
-        if (obs.value.trim() !== "" && obs.style.display !== "none") {
-            const tr = obs.closest("tr");
-            const hasLancemento = tr.querySelector(".check-ponto:checked") || tr.querySelector(".check-falta:checked");
-            
-            if (hasLancemento) {
-                batch.set(doc(collection(db, "comentarios_atletas")), { 
-                    atletaId: obs.dataset.atletaId, 
-                    texto: `[Ref: ${data.split('-').reverse().join('/')} - ${desc}] ${obs.value.trim()}`, 
-                    autorNome: meuNome, 
-                    criadoEm: new Date().toISOString() 
-                });
-            }
-        }
-    }
-    
-    await batch.commit(); 
-    showToast("Lançamentos gravados com sucesso!", "success"); 
-    
-    document.getElementById("areaTabelaPontuacao").style.display = "none"; 
-    document.getElementById("descTreino").value = ""; 
-    document.getElementById("lancarEventoSelect").value = ""; 
-    document.getElementById("modTreino").value = ""; 
-    
-    atualizarTelas(); 
-  } catch (error) { 
-    showToast("Erro ao processar lote: " + error.message, "error"); 
-  } finally { 
-    btn.innerHTML = `Gravar Lançamentos na Base`; 
-    btn.disabled = false; 
-  }
+      document.getElementById("modalPermissoes").style.display = "flex"; 
+    }); 
+  });
 }
 
 // =====================================================
@@ -501,22 +329,20 @@ async function salvarPontuacoesEmLote() {
 // =====================================================
 async function carregarHistorico() { 
   const snap = await getDocs(collection(db, "historico_pontos")); 
-  historicoCompleto = []; 
-  snap.forEach(d => { 
-    historicoCompleto.push({ id: d.id, ...d.data() }); 
-  }); 
-  historicoCompleto.sort((a, b) => new Date(b.dataTreino || "1970-01-01") - new Date(a.dataTreino || "1970-01-01")); 
+  appState.historicoCompleto = []; 
+  snap.forEach(d => { appState.historicoCompleto.push({ id: d.id, ...d.data() }); }); 
+  appState.historicoCompleto.sort((a, b) => new Date(b.dataTreino || "1970-01-01") - new Date(a.dataTreino || "1970-01-01")); 
   filtrarHistorico(); 
 }
 
 function filtrarHistorico() {
-  const mes = document.getElementById("filtroMesHistorico").value; 
-  const eq = document.getElementById("filtroEquipeHistorico").value; 
-  const nomeBusca = document.getElementById("filtroNomeHistorico").value.toLowerCase(); 
-  const statusFiltro = document.getElementById("filtroStatusHistorico").value;
+  const mes = document.getElementById("filtroMesHistorico")?.value; 
+  const eq = document.getElementById("filtroEquipeHistorico")?.value; 
+  const nomeBusca = document.getElementById("filtroNomeHistorico")?.value.toLowerCase(); 
+  const statusFiltro = document.getElementById("filtroStatusHistorico")?.value;
   
-  const dados = historicoCompleto.filter(h => { 
-    const atleta = mapAtletas[h.atletaId]; 
+  const dados = appState.historicoCompleto.filter(h => { 
+    const atleta = appState.mapAtletas[h.atletaId]; 
     const isAtivo = atleta ? (atleta.ativo !== false) : false; 
     
     if (statusFiltro === "ativos" && !isAtivo) return false; 
@@ -530,6 +356,7 @@ function filtrarHistorico() {
   });
   
   const tbody = document.getElementById("listaHistorico"); 
+  if(!tbody) return;
   tbody.innerHTML = "";
   
   if (dados.length === 0) { 
@@ -537,10 +364,10 @@ function filtrarHistorico() {
     return; 
   }
   
-  const podeEstornar = userRole === "admin" || userPermissoes.includes("contabilizacao");
+  const podeEstornar = appState.userRole === "admin" || appState.userPermissoes.includes("contabilizacao");
   
   dados.forEach(h => {
-    const atleta = mapAtletas[h.atletaId]; 
+    const atleta = appState.mapAtletas[h.atletaId]; 
     let nomeDisplay = h.atletaNome || (atleta ? atleta.nome : "Desconhecido"); 
     let eqDisplay = h.atletaEquipe || (atleta ? atleta.equipe : "-");
     
@@ -551,48 +378,46 @@ function filtrarHistorico() {
     }
     
     let ptsV = Number(h.pontos) === 0 ? `<span style="color:var(--accent);">Justificada</span>` : `+${h.pontos}`;
-    const btnEstorno = podeEstornar ? `<button class="btn-acao btn-estornar" data-id="${h.id}" data-atleta="${h.atletaId}" data-pontos="${h.pontos}" style="color:var(--danger); border-color:var(--danger);"><i data-lucide="undo-2" style="width:16px;"></i></button>` : '';
+    const btnEstorno = podeEstornar ? `<button class="btn-acao btn-estornar" aria-label="Estornar lançamento" data-id="${h.id}" data-atleta="${h.atletaId}" data-pontos="${h.pontos}" style="color:var(--danger); border-color:var(--danger);"><i data-lucide="undo-2" style="width:16px;"></i></button>` : '';
     
     tbody.innerHTML += `
       <tr>
-        <td>${(h.dataTreino?new Date(h.dataTreino+"T00:00:00").toLocaleDateString('pt-BR'):"-")}</td>
-        <td><strong>${nomeDisplay}</strong></td>
-        <td>${eqDisplay}</td>
-        <td>${h.descTreino}<br><small style="color:var(--primary);">${h.regraDesc}</small></td>
-        <td style="text-align:center; color:var(--secondary); font-weight:bold;">${ptsV}</td>
-        <td style="text-align:right;">${btnEstorno}</td>
+        <td data-label="Data">${(h.dataTreino?new Date(h.dataTreino+"T00:00:00").toLocaleDateString('pt-BR'):"-")}</td>
+        <td data-label="Atleta" style="text-align: left;"><strong>${nomeDisplay}</strong></td>
+        <td data-label="Eq.">${eqDisplay}</td>
+        <td data-label="Motivo">${h.descTreino}<br><small style="color:var(--primary);">${h.regraDesc}</small></td>
+        <td data-label="Pts" style="text-align:center; color:var(--secondary); font-weight:bold;">${ptsV}</td>
+        <td data-label="Ação" style="text-align:right;">${btnEstorno}</td>
       </tr>`;
   });
   
-  lucide.createIcons();
+  if(typeof lucide !== 'undefined') lucide.createIcons();
   
   document.querySelectorAll(".btn-estornar").forEach(btn => { 
-    btn.addEventListener("click", async (e) => { 
+    btn.addEventListener("click", (e) => { 
       const histId = e.currentTarget.dataset.id; 
       const atlId = e.currentTarget.dataset.atleta; 
       const pts = parseInt(e.currentTarget.dataset.pontos); 
       
-      if(!confirm(`Estornar este lançamento? A pontuação será deduzida do atleta.`)) return; 
-      
-      try { 
-        if (mapAtletas[atlId] && pts > 0) { 
-          await updateDoc(doc(db, "atletas", atlId), { pontuacaoTotal: increment(-pts) }); 
-        } 
-        await deleteDoc(doc(db, "historico_pontos", histId)); 
-        showToast("Lançamento estornado!", "success"); 
-        atualizarTelas(); 
-      } catch (err) { 
-        showToast("Erro ao estornar.", "error"); 
-      } 
+      mostrarConfirmacao("Estornar Lançamento", "Tem certeza? A pontuação será deduzida do atleta.", async () => {
+        try { 
+          if (appState.mapAtletas[atlId] && pts > 0) { 
+            await updateDoc(doc(db, "atletas", atlId), { pontuacaoTotal: increment(-pts) }); 
+          } 
+          await deleteDoc(doc(db, "historico_pontos", histId)); 
+          showToast("Lançamento estornado!", "success"); 
+          atualizarTelas(); 
+        } catch (err) { showToast("Erro ao estornar.", "error"); } 
+      }, "danger");
     }); 
   });
 }
 
 ["filtroMesHistorico", "filtroEquipeHistorico", "filtroNomeHistorico", "filtroStatusHistorico"].forEach(id => { 
-  document.getElementById(id).addEventListener("input", filtrarHistorico); 
+  document.getElementById(id)?.addEventListener("input", filtrarHistorico); 
 });
 
-document.getElementById("btnLimparFiltrosExtrato").addEventListener("click", () => { 
+document.getElementById("btnLimparFiltrosExtrato")?.addEventListener("click", () => { 
   document.getElementById("filtroMesHistorico").value = ""; 
   document.getElementById("filtroEquipeHistorico").value = ""; 
   document.getElementById("filtroNomeHistorico").value = ""; 
@@ -601,9 +426,9 @@ document.getElementById("btnLimparFiltrosExtrato").addEventListener("click", () 
 });
 
 function setupRelatorioConsolidado() { 
-  document.getElementById("filtroAnoRelatorio").value = new Date().getFullYear(); 
-  document.querySelector('[data-target="sub-relatorio"]').addEventListener("click", gerarRelatorioConsolidado); 
-  document.getElementById("btnGerarRelatorio").addEventListener("click", gerarRelatorioConsolidado); 
+  if(document.getElementById("filtroAnoRelatorio")) document.getElementById("filtroAnoRelatorio").value = new Date().getFullYear(); 
+  document.querySelector('[data-target="sub-relatorio"]')?.addEventListener("click", gerarRelatorioConsolidado); 
+  document.getElementById("btnGerarRelatorio")?.addEventListener("click", gerarRelatorioConsolidado); 
   
   document.getElementById("chkTodosMeses")?.addEventListener("change", (e) => {
     document.querySelectorAll(".chk-mes-relatorio").forEach(chk => chk.checked = e.target.checked);
@@ -616,9 +441,9 @@ function setupRelatorioConsolidado() {
     });
   });
 
-  document.getElementById("btnExportarExcel").addEventListener("click", () => { 
+  document.getElementById("btnExportarExcel")?.addEventListener("click", () => { 
     const tbody = document.getElementById("listaRelatorio"); 
-    if(tbody.innerText.includes("Clique em Filtrar") || tbody.innerText.includes("Nenhum atleta")) {
+    if(!tbody || tbody.innerText.includes("Clique em Filtrar") || tbody.innerText.includes("Nenhum atleta")) {
       return showToast("Gere o relatório primeiro!", "error"); 
     }
     const rows = document.getElementById("tabelaConsolidada").querySelectorAll("tr"); 
@@ -631,18 +456,18 @@ function setupRelatorioConsolidado() {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); 
     const url = URL.createObjectURL(blob); 
     const a = document.createElement("a"); 
-    a.href = url; 
-    a.download = `Relatorio_Consolidado.csv`; 
-    a.click(); 
-    URL.revokeObjectURL(url); 
+    a.href = url; a.download = `Relatorio_Consolidado.csv`; 
+    a.click(); URL.revokeObjectURL(url); 
   }); 
 }
 
 function gerarRelatorioConsolidado() { 
-  const ano = String(document.getElementById("filtroAnoRelatorio").value).trim(); 
-  const eqFiltro = document.getElementById("filtroEquipeRelatorio").value; 
+  const ano = String(document.getElementById("filtroAnoRelatorio")?.value).trim(); 
+  const eqFiltro = document.getElementById("filtroEquipeRelatorio")?.value; 
   const tbody = document.getElementById("listaRelatorio"); 
   const thead = document.getElementById("headRelatorio");
+
+  if (!tbody || !thead) return;
 
   const mesesSelecionados = [];
   const nomesMeses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -651,19 +476,15 @@ function gerarRelatorioConsolidado() {
     mesesSelecionados.push(parseInt(chk.value, 10));
   });
 
-  if (mesesSelecionados.length === 0) {
-    return showToast("Selecione pelo menos um mês para avaliar!", "error");
-  }
+  if (mesesSelecionados.length === 0) return showToast("Selecione pelo menos um mês para avaliar!", "error");
 
   let theadHTML = `<tr><th>Atleta</th><th>Eq</th>`;
-  mesesSelecionados.forEach(m => {
-    theadHTML += `<th>${nomesMeses[m - 1]}</th>`;
-  });
+  mesesSelecionados.forEach(m => { theadHTML += `<th>${nomesMeses[m - 1]}</th>`; });
   theadHTML += `<th style="text-align:center;">Total (${mesesSelecionados.length}m)</th></tr>`;
   thead.innerHTML = theadHTML;
   
-  const histAno = historicoCompleto.filter(h => h.dataTreino && h.dataTreino.startsWith(ano)); 
-  let atletasRelatorio = Object.values(mapAtletas).filter(a => a.role === "atleta" && !a.equipe.startsWith("Fila") && a.equipe !== "Nenhuma"); 
+  const histAno = appState.historicoCompleto.filter(h => h.dataTreino && h.dataTreino.startsWith(ano)); 
+  let atletasRelatorio = Object.values(appState.mapAtletas).filter(a => a.role === "atleta" && !a.equipe.startsWith("Fila") && a.equipe !== "Nenhuma"); 
   
   if (eqFiltro) atletasRelatorio = atletasRelatorio.filter(a => a.equipe === eqFiltro); 
   
@@ -696,14 +517,14 @@ function gerarRelatorioConsolidado() {
     let colunas = ""; 
     mesesSelecionados.forEach(m => { 
       const p = atleta.ptsMesTemp[m];
-      colunas += `<td style="text-align: center; color: ${p > 0 ? 'var(--secondary)' : '#ccc'}; font-weight: ${p > 0 ? '600' : '400'};">${p}</td>`; 
+      colunas += `<td data-label="${nomesMeses[m-1]}" style="text-align: center; color: ${p > 0 ? 'var(--secondary)' : '#ccc'}; font-weight: ${p > 0 ? '600' : '400'};">${p}</td>`; 
     }); 
     
     html += `<tr>
-               <td><strong>${atleta.nome}</strong></td>
-               <td><small>${atleta.equipe}</small></td>
+               <td data-label="Atleta" style="text-align:left;"><strong>${atleta.nome}</strong></td>
+               <td data-label="Equipa"><small>${atleta.equipe}</small></td>
                ${colunas}
-               <td style="text-align: center; font-weight: bold; color: var(--primary);">${atleta.totalPeriodo}</td>
+               <td data-label="Total" style="text-align: center; font-weight: bold; color: var(--primary);">${atleta.totalPeriodo}</td>
              </tr>`; 
   }); 
   
@@ -712,800 +533,73 @@ function gerarRelatorioConsolidado() {
 }
 
 // =====================================================
-// DASHBOARD & EXPORTAÇÃO PDF
-// =====================================================
-document.getElementById("btnExportarPDF").addEventListener("click", () => {
-  showToast("Montando painel corporativo...", "info"); 
-  
-  const temaAtual = document.body.getAttribute("data-theme"); 
-  if (temaAtual === "dark") { 
-    document.body.removeAttribute("data-theme"); 
-    Chart.defaults.color = '#666'; 
-    if(graficoLinhaInstancia) graficoLinhaInstancia.update(); 
-  }
-  
-  setTimeout(() => {
-    // Blidagem de Nulos ao tentar injetar no template HTML do PDF
-    const elDataHoje = document.getElementById("pdfDataHoje");
-    if(elDataHoje) elDataHoje.textContent = new Date().toLocaleDateString('pt-BR'); 
-    
-    if(document.getElementById("pdfAtivos")) document.getElementById("pdfAtivos").textContent = document.getElementById("totalAtivosGeral")?.textContent || "0"; 
-    if(document.getElementById("pdfEngajamento")) document.getElementById("pdfEngajamento").textContent = document.getElementById("engajamento30d")?.textContent || "0%"; 
-    if(document.getElementById("pdfInvest")) document.getElementById("pdfInvest").textContent = document.getElementById("totalInvestimento")?.textContent || "R$ 0"; 
-    if(document.getElementById("pdfRoi")) document.getElementById("pdfRoi").textContent = document.getElementById("roiAtleta")?.textContent || "R$ 0"; 
-    
-    if(document.getElementById("pdfMediaBike")) document.getElementById("pdfMediaBike").textContent = document.getElementById("mediaBike")?.textContent || "0"; 
-    if(document.getElementById("pdfMediaCorrida")) document.getElementById("pdfMediaCorrida").textContent = document.getElementById("mediaCorrida")?.textContent || "0"; 
-    
-    if(document.getElementById("pdfTopBike")) document.getElementById("pdfTopBike").innerHTML = document.getElementById("listaPodioBike")?.innerHTML || ""; 
-    if(document.getElementById("pdfTopCorrida")) document.getElementById("pdfTopCorrida").innerHTML = document.getElementById("listaPodioCorrida")?.innerHTML || ""; 
-    
-    if(document.getElementById("pdfListaEvasao")) {
-      document.getElementById("pdfListaEvasao").innerHTML = (document.getElementById("listaEvasaoBike")?.innerHTML || "") + (document.getElementById("listaEvasaoCorrida")?.innerHTML || ""); 
-    }
-    
-    const elAgenda = document.getElementById("listaEventosAgenda");
-    if(elAgenda) {
-      const agendaClone = elAgenda.cloneNode(true); 
-      agendaClone.querySelectorAll("button").forEach(b => b.remove()); 
-      if(document.getElementById("pdfProximosEventos")) document.getElementById("pdfProximosEventos").innerHTML = agendaClone.innerHTML;
-    }
-    
-    const eventosPassados = {}; 
-    historicoCompleto.forEach(h => { 
-      if(!h.dataTreino || !h.descTreino || h.descTreino.toLowerCase().includes("falta")) return; 
-      const key = `${h.dataTreino}::${h.descTreino}`; 
-      if(!eventosPassados[key]) eventosPassados[key] = { data: h.dataTreino, desc: h.descTreino, atletas: new Set() }; 
-      eventosPassados[key].atletas.add(h.atletaId); 
-    }); 
-    
-    const listaUltimos = Object.values(eventosPassados).sort((a,b) => new Date(b.data || "1970-01-01") - new Date(a.data || "1970-01-01")).slice(0, 4); 
-    let htmlUltimos = ""; 
-    listaUltimos.forEach(e => { 
-      const d = new Date(e.data + "T00:00:00").toLocaleDateString('pt-BR').substring(0,5); 
-      htmlUltimos += `<div style="display:flex; justify-content:space-between; margin-bottom:4px; border-bottom:1px solid #f5f5f5; padding-bottom:4px;"><span style="color:#666;"><strong>${d}</strong> - ${e.desc}</span><strong style="color:var(--primary);">${e.atletas.size} 👤</strong></div>`; 
-    }); 
-    
-    if(document.getElementById("pdfUltimosEventos")) {
-      document.getElementById("pdfUltimosEventos").innerHTML = htmlUltimos || "<p style='color:#999; text-align:center;'>Nenhum evento processado.</p>";
-    }
-    
-    const canvasLinha = document.getElementById('graficoTendencia'); 
-    let widthOriginal, heightOriginal;
-    
-    if(canvasLinha) { 
-      widthOriginal = canvasLinha.style.width; 
-      heightOriginal = canvasLinha.style.height; 
-      canvasLinha.style.width = '700px'; 
-      canvasLinha.style.height = '200px'; 
-      if(graficoLinhaInstancia) graficoLinhaInstancia.resize(); 
-      const pdfImg = document.getElementById('pdfImgTendencia');
-      if(pdfImg) pdfImg.src = canvasLinha.toDataURL("image/png", 1.0); 
-    }
-    
-    const modalPdf = document.getElementById("pdfOverlay"); 
-    const printArea = document.getElementById("pdfPrintArea"); 
-    modalPdf.style.display = "flex";
-    
-    setTimeout(() => { 
-      const txtDataHoje = document.getElementById("pdfDataHoje")?.textContent || "report";
-      const opt = { 
-        margin: 0, 
-        filename: `Report_Atletas_${txtDataHoje.replace(/\//g, '-')}.pdf`, 
-        image: { type: 'jpeg', quality: 0.98 }, 
-        html2canvas: { scale: 2, useCORS: true }, 
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
-      }; 
-      
-      html2pdf().set(opt).from(printArea).save().then(() => { 
-        modalPdf.style.display = "none"; 
-        
-        if(canvasLinha) { 
-          canvasLinha.style.width = widthOriginal; 
-          canvasLinha.style.height = heightOriginal; 
-          if(graficoLinhaInstancia) graficoLinhaInstancia.resize(); 
-        } 
-        
-        if (temaAtual === "dark") { 
-          document.body.setAttribute("data-theme", "dark"); 
-          Chart.defaults.color = '#aaa'; 
-          if(graficoLinhaInstancia) graficoLinhaInstancia.update(); 
-        } 
-        showToast("Download Concluído!", "success"); 
-      }); 
-    }, 600);
-  }, 150); 
-});
-
-async function carregarEquipesEDashboard() {
-  let htmlFilaBike = "", htmlFilaCorrida = "", htmlBike = "", htmlCorrida = "", htmlComite = ""; 
-  let contFila = 0, contBike = 0, contCorrida = 0, contComite = 0, ptsBike = 0, ptsCorrida = 0; 
-  let todosAtletas = []; 
-  
-  let listaOrdenada = Object.values(mapAtletas); 
-  const filaEspera = listaOrdenada.filter(u => u.equipe === "Fila - Bicicleta" || u.equipe === "Fila - Corrida" || u.equipe === "Fila de Espera"); 
-  const titulares = listaOrdenada.filter(u => u.equipe !== "Fila - Bicicleta" && u.equipe !== "Fila - Corrida" && u.equipe !== "Fila de Espera"); 
-  
-  filaEspera.sort((a, b) => new Date(a.criadoEm || 0) - new Date(b.criadoEm || 0)); 
-  titulares.sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""))); 
-  
-  const hasGestao = userRole === "admin" || userPermissoes.includes("gestao");
-  
-  let idxBike = 1, idxCorrida = 1; 
-  filaEspera.forEach((u) => { 
-    const strikes = u.recusas || 0; 
-    const badgeStrike = strikes > 0 ? `<span class="strike-badge">⚠️ ${strikes}/3</span>` : ''; 
-    let acoesHTML = ""; 
-    
-    if(hasGestao) { 
-      acoesHTML = `<button class="btn-acao btn-aprovar-fila" data-id="${u.id}" data-eq="${u.equipe === 'Fila - Corrida' ? 'Corrida' : 'Bicicleta'}" style="color:var(--secondary); padding:4px;"><i data-lucide="check" style="width:16px;"></i></button> 
-                   <button class="btn-acao btn-pular-fila" data-id="${u.id}" data-strikes="${strikes}" style="color:#f39c12; padding:4px;"><i data-lucide="skip-forward" style="width:16px;"></i></button>`; 
-    } 
-    
-    if(u.equipe === "Fila - Bicicleta" || u.equipe === "Fila de Espera") { 
-      htmlFilaBike += `<tr><td><strong>${idxBike}º - ${u.nome}</strong> ${badgeStrike}</td><td style="text-align: right; display:flex; justify-content:flex-end; gap:5px;">${acoesHTML}</td></tr>`; 
-      idxBike++; contFila++; 
-    } 
-    
-    if (u.equipe === "Fila - Corrida") { 
-      htmlFilaCorrida += `<tr><td><strong>${idxCorrida}º - ${u.nome}</strong> ${badgeStrike}</td><td style="text-align: right; display:flex; justify-content:flex-end; gap:5px;">${acoesHTML}</td></tr>`; 
-      idxCorrida++; contFila++; 
-    } 
-  });
-  
-  titulares.forEach(u => { 
-    const pts = Number(u.pontuacaoTotal) || 0; 
-    const ativo = u.ativo !== false; 
-    const switchAtivo = (hasGestao && u.role !== 'admin') ? `<label class="switch" title="Ativar/Desativar"><input type="checkbox" class="toggle-ativo" data-id="${u.id}" ${ativo ? 'checked' : ''}><span class="slider"></span></label>` : ''; 
-    const btnFicha = `<button class="btn-acao btn-ficha" data-id="${u.id}" style="color: var(--primary); border-color: var(--primary); padding: 4px; margin-left: 5px;" title="Ver Ficha Completa"><i data-lucide="clipboard-list" style="width: 16px;"></i></button>`; 
-    const btnPerm = (u.role === 'comite' && userRole === 'admin') ? `<button class="btn-primario btn-permissoes" data-id="${u.id}" data-nome="${u.nome}" style="background: #f39c12; padding: 6px 10px; font-size: 0.8rem; margin-left: 5px;"><i data-lucide="key" style="width: 14px;"></i></button>` : ''; 
-    const btnEditar = hasGestao ? `<button class="btn-acao btn-editar-membro" data-id="${u.id}" data-nome="${u.nome}" data-email="${u.email}" data-eq="${u.equipe}" style="color: var(--warning); border-color: var(--warning); padding: 4px; margin-left: 5px;"><i data-lucide="edit-2" style="width: 16px;"></i></button>` : ''; 
-    const btnExcluir = (auth.currentUser.uid !== u.id && hasGestao) ? `<button class="btn-acao btn-excluir-membro" data-id="${u.id}" style="color: red; border: 0; padding: 4px; margin-left: 5px;"><i data-lucide="x-circle" style="width: 18px;"></i></button>` : ''; 
-    const displayPts = u.role === 'atleta' ? `<br><small style="color: var(--primary);">🏆 ${pts} pts</small>` : ''; 
-    
-    const linha = `<tr><td class="${!ativo ? 'inativo-txt' : ''}" style="vertical-align:middle;"><strong>${u.nome}</strong>${displayPts}</td><td style="text-align: right; display:flex; justify-content:flex-end; align-items:center; min-height: 40px;">${switchAtivo} ${btnFicha} ${btnPerm} ${btnEditar} ${btnExcluir}</td></tr>`; 
-    
-    if (u.role === "admin" || u.role === "comite") { 
-      htmlComite += linha; 
-      contComite++; 
-    } else if (u.equipe === "Corrida") { 
-      htmlCorrida += linha; 
-      contCorrida++; 
-      ptsCorrida += pts; 
-      todosAtletas.push({nome: u.nome, pts: pts, eq: u.equipe, id: u.id, ativo: ativo}); 
-    } else if (u.equipe === "Bicicleta" || u.equipe === "Bike") { 
-      htmlBike += linha; 
-      contBike++; 
-      ptsBike += pts; 
-      todosAtletas.push({nome: u.nome, pts: pts, eq: u.equipe, id: u.id, ativo: ativo}); 
-    } 
-  });
-  
-  if(document.getElementById("listaFilaBike")) document.getElementById("listaFilaBike").innerHTML = htmlFilaBike || `<tr><td colspan='2'>Ninguém na fila.</td></tr>`; 
-  if(document.getElementById("listaFilaCorrida")) document.getElementById("listaFilaCorrida").innerHTML = htmlFilaCorrida || `<tr><td colspan='2'>Ninguém na fila.</td></tr>`; 
-  if(document.getElementById("listaBicicleta")) document.getElementById("listaBicicleta").innerHTML = htmlBike || `<tr><td colspan='2'>Equipe vazia.</td></tr>`; 
-  if(document.getElementById("listaCorrida")) document.getElementById("listaCorrida").innerHTML = htmlCorrida || `<tr><td colspan='2'>Equipe vazia.</td></tr>`; 
-  if(document.getElementById("listaComite")) document.getElementById("listaComite").innerHTML = htmlComite || `<tr><td colspan='2'>Sem membros.</td></tr>`; 
-  
-  if(document.getElementById("totalBike")) document.getElementById("totalBike").textContent = contBike; 
-  if(document.getElementById("totalCorrida")) document.getElementById("totalCorrida").textContent = contCorrida;
-  
-  renderGraficosETop(ptsBike, ptsCorrida, todosAtletas, contBike, contCorrida); 
-  lucide.createIcons();
-  
-  document.querySelectorAll(".btn-aprovar-fila").forEach(btn => { 
-    btn.addEventListener("click", async (e) => { 
-      if(confirm(`Aprovar atleta?`)) { 
-        e.currentTarget.disabled = true; 
-        try { 
-          await updateDoc(doc(db, "atletas", e.currentTarget.dataset.id), { equipe: e.currentTarget.dataset.eq, recusas: 0 }); 
-          atualizarTelas(); 
-        } catch(err) { 
-          showToast("Erro ao aprovar.", "error"); 
-        } 
-      } 
-    }); 
-  }); 
-  
-  document.querySelectorAll(".btn-pular-fila").forEach(btn => { 
-    btn.addEventListener("click", async (e) => { 
-      const id = e.currentTarget.dataset.id; 
-      let st = parseInt(e.currentTarget.dataset.strikes); 
-      if(confirm(`Passar a vez do atleta? Ele trocará de posição com o próximo da fila.`)) { 
-        st++; 
-        if(st >= 3) { 
-          if(confirm("3 recusas! Remover da fila?")) { 
-            await updateDoc(doc(db, "atletas", id), { ativo: false, equipe: "Nenhuma" }); 
-            showToast("Removido.", "info"); 
-            atualizarTelas(); 
-            return; 
-          } else { 
-            st = 0; 
-          } 
-        } 
-        try { 
-          const eqFila = mapAtletas[id].equipe; 
-          const filaAtual = Object.values(mapAtletas).filter(a => a.equipe === eqFila && a.ativo !== false).sort((a, b) => new Date(a.criadoEm || 0) - new Date(b.criadoEm || 0)); 
-          const idx = filaAtual.findIndex(a => a.id === id); 
-          if (idx >= 0 && idx < filaAtual.length - 1) { 
-            const idProximo = filaAtual[idx + 1].id; 
-            const dataAtual = mapAtletas[id].criadoEm; 
-            const dataProximo = mapAtletas[idProximo].criadoEm; 
-            await updateDoc(doc(db, "atletas", id), { recusas: st, criadoEm: dataProximo }); 
-            await updateDoc(doc(db, "atletas", idProximo), { criadoEm: dataAtual }); 
-            showToast("Posições trocadas!", "success"); 
-          } else { 
-            await updateDoc(doc(db, "atletas", id), { recusas: st }); 
-            showToast("Último da fila.", "info"); 
-          } 
-          atualizarTelas(); 
-        } catch(err) { 
-          showToast("Erro ao pular fila.", "error"); 
-        } 
-      } 
-    }); 
-  }); 
-  
-  document.querySelectorAll(".btn-excluir-membro").forEach(btn => { 
-    btn.addEventListener("click", async (e) => { 
-      if(confirm("Apagar definitivamente?")) { 
-        e.currentTarget.disabled = true; 
-        try { 
-          await deleteDoc(doc(db, "atletas", e.currentTarget.dataset.id)); 
-          atualizarTelas(); 
-        } catch(err) { 
-          showToast("Erro ao apagar.", "error"); 
-        } 
-      } 
-    }); 
-  }); 
-  
-  document.querySelectorAll(".btn-editar-membro").forEach(btn => { 
-    btn.addEventListener("click", (e) => { 
-      const b = e.currentTarget; 
-      document.getElementById("editId").value = b.dataset.id; 
-      document.getElementById("editNome").value = b.dataset.nome; 
-      document.getElementById("editEmail").value = b.dataset.email !== "undefined" ? b.dataset.email : ""; 
-      document.getElementById("editPapel").value = b.dataset.eq; 
-      document.getElementById("modalEditarAtleta").style.display = "flex"; 
-    }); 
-  }); 
-  
-  document.querySelectorAll(".toggle-ativo").forEach(chk => { 
-    chk.addEventListener("change", async (e) => { 
-      const isAtivo = e.target.checked; 
-      try { 
-        await updateDoc(doc(db, "atletas", e.target.dataset.id), { ativo: isAtivo }); 
-        const td = e.target.closest('tr').querySelector('td'); 
-        if(isAtivo) td.classList.remove('inativo-txt'); else td.classList.add('inativo-txt'); 
-        showToast(isAtivo ? "Atleta Ativado!" : "Atleta Inativado.", "info"); 
-      } catch(err) { 
-        showToast("Erro ao mudar estado.", "error"); 
-      } 
-    }); 
-  }); 
-  
-  document.querySelectorAll(".btn-ficha").forEach(btn => { 
-    btn.addEventListener("click", (e) => abrirFichaAtleta(e.currentTarget.dataset.id)); 
-  }); 
-  
-  document.querySelectorAll(".btn-permissoes").forEach(btn => { 
-    btn.addEventListener("click", (e) => { 
-      const b = e.currentTarget; 
-      document.getElementById("permNomeUsuario").textContent = b.dataset.nome; 
-      document.getElementById("permUserId").value = b.dataset.id; 
-      const permissoesDB = mapAtletas[b.dataset.id].permissoes || ["visao-geral"]; 
-      document.querySelectorAll(".chk-perm").forEach(chk => { 
-        chk.checked = permissoesDB.includes(chk.value) || (permissoesDB.includes("financeiro") && chk.value.startsWith("financeiro")); 
-      }); 
-      document.getElementById("modalPermissoes").style.display = "flex"; 
-    }); 
-  });
-}
-
-async function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike, totalCorrida) {
-  const hoje = new Date(); 
-  const limite30d = new Date(); limite30d.setDate(limite30d.getDate() - 30); 
-  let engajados30d = 0; let totalPontosGlobal = 0;
-  
-  arrayAtletas.forEach(a => { 
-    totalPontosGlobal += a.pts; 
-    if (a.ativo !== false) { 
-      const lastEntry = historicoCompleto.find(h => h.atletaId === a.id && Number(h.pontos) > 0); 
-      if (lastEntry && lastEntry.dataTreino) { 
-        const dataTreino = new Date(lastEntry.dataTreino + "T00:00:00"); 
-        const diffTime = Math.abs(hoje - dataTreino); 
-        a.diasAusente = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-        if (dataTreino >= limite30d) engajados30d++; 
-      } else { 
-        a.diasAusente = 999; 
-      } 
-    } else { 
-      a.diasAusente = -1; 
-    } 
-  });
-  
-  document.getElementById("mediaBike").textContent = totalBike > 0 ? Math.round(ptsBike / totalBike) : 0; 
-  document.getElementById("mediaCorrida").textContent = totalCorrida > 0 ? Math.round(ptsCorrida / totalCorrida) : 0;
-  
-  const htmlPodio = (arr) => { 
-    if(arr.length===0) return "<li style='color:#999; font-size:0.85rem;'>Sem pontos</li>"; 
-    return arr.map((a,i) => `<li style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--border);"><span style="display:flex; align-items:center; gap:5px; flex: 1; min-width: 0; margin-right: 10px;"><span style="font-size:0.85rem; flex-shrink: 0;">${i===0?'🥇':i===1?'🥈':'🥉'}</span><strong style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:0.85rem;" title="${a.nome}">${a.nome}</strong></span><strong style="font-size:0.85rem; flex-shrink: 0;">${a.pts}</strong></li>`).join(''); 
-  };
-  
-  const bikeAtletas = arrayAtletas.filter(a => a.eq === 'Bicicleta' || a.eq === 'Bike').sort((a,b) => b.pts - a.pts).slice(0,3); 
-  const corridaAtletas = arrayAtletas.filter(a => a.eq === 'Corrida').sort((a,b) => b.pts - a.pts).slice(0,3);
-  
-  if(document.getElementById("listaPodioBike")) document.getElementById("listaPodioBike").innerHTML = htmlPodio(bikeAtletas); 
-  if(document.getElementById("listaPodioCorrida")) document.getElementById("listaPodioCorrida").innerHTML = htmlPodio(corridaAtletas);
-  
-  const radarBike = arrayAtletas.filter(a => a.diasAusente > 30 && (a.eq === 'Bicicleta' || a.eq === 'Bike')).sort((a,b) => b.diasAusente - a.diasAusente).slice(0, 5); 
-  const radarCorrida = arrayAtletas.filter(a => a.diasAusente > 30 && a.eq === 'Corrida').sort((a,b) => b.diasAusente - a.diasAusente).slice(0, 5);
-  
-  const htmlEvasao = (arr) => { 
-    if(arr.length===0) return "<li style='color:var(--secondary); font-size:0.8rem;'>Nenhum alerta.</li>"; 
-    return arr.map(a => `<li style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; border-bottom:1px dashed var(--danger);"><span style="display:flex; align-items:center; gap:5px; flex: 1; min-width: 0; margin-right: 10px;"><span style="color:var(--danger); font-size:0.8rem; flex-shrink:0;">⚠️</span><strong style="color:var(--danger); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:0.8rem;" title="${a.nome}">${a.nome}</strong></span><small style="color:#999; font-weight:600; font-size:0.75rem; flex-shrink:0;">${a.diasAusente === 999 ? 'Nunca foi' : a.diasAusente + 'd'}</small></li>`).join(''); 
-  };
-  
-  if(document.getElementById("listaEvasaoBike")) document.getElementById("listaEvasaoBike").innerHTML = htmlEvasao(radarBike); 
-  if(document.getElementById("listaEvasaoCorrida")) document.getElementById("listaEvasaoCorrida").innerHTML = htmlEvasao(radarCorrida);
-  
-  const totalAtivosGerais = arrayAtletas.filter(a => a.ativo !== false).length;
-  
-  if(document.getElementById("totalAtivosGeral")) document.getElementById("totalAtivosGeral").textContent = totalAtivosGerais; 
-  if(document.getElementById("engajamento30d")) document.getElementById("engajamento30d").textContent = (totalAtivosGerais > 0 ? Math.round((engajados30d / totalAtivosGerais)*100) : 0) + "%"; 
-  if(document.getElementById("roiAtleta")) document.getElementById("roiAtleta").textContent = (totalAtivosGerais > 0 ? (gastoTotalGlobal / totalAtivosGerais) : 0).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}); 
-  
-  let ativosBikeG = arrayAtletas.filter(a => (a.eq === 'Bicicleta' || a.eq === 'Bike') && a.diasAusente <= 30 && a.diasAusente !== -1).length; 
-  let ativosCorridaG = arrayAtletas.filter(a => a.eq === 'Corrida' && a.diasAusente <= 30 && a.diasAusente !== -1).length;
-  
-  if(document.getElementById('txtAtivosBike')) document.getElementById('txtAtivosBike').textContent = totalBike === 0 ? "0% ativos (30d)" : `${Math.round((ativosBikeG/totalBike)*100)}% ativos (30d)`; 
-  if(document.getElementById('txtAtivosCorrida')) document.getElementById('txtAtivosCorrida').textContent = totalCorrida === 0 ? "0% ativos (30d)" : `${Math.round((ativosCorridaG/totalCorrida)*100)}% ativos (30d)`;
-  
-  if(document.getElementById('graficoEngajBike')) { 
-    if(graficoEngajBike) graficoEngajBike.destroy(); 
-    graficoEngajBike = new Chart(document.getElementById('graficoEngajBike'), { 
-      type: 'doughnut', 
-      data: { datasets: [{ data: [ativosBikeG, (totalBike - ativosBikeG)], backgroundColor: ['#009bc1', '#e3e6eb'], borderWidth: 0 }] }, 
-      options: { cutout: '75%', plugins: { tooltip:{enabled:false} } } 
-    }); 
-  }
-  
-  if(document.getElementById('graficoEngajCorrida')) { 
-    if(graficoEngajCorrida) graficoEngajCorrida.destroy(); 
-    graficoEngajCorrida = new Chart(document.getElementById('graficoEngajCorrida'), { 
-      type: 'doughnut', 
-      data: { datasets: [{ data: [ativosCorridaG, (totalCorrida - ativosCorridaG)], backgroundColor: ['#00b37e', '#e3e6eb'], borderWidth: 0 }] }, 
-      options: { cutout: '75%', plugins: { tooltip:{enabled:false} } } 
-    }); 
-  }
-  
-  if(document.getElementById('graficoTendencia')) { 
-    if(graficoLinhaInstancia) graficoLinhaInstancia.destroy(); 
-    const anoAtual = new Date().getFullYear().toString(); 
-    let ptsPorMes = [0,0,0,0,0,0,0,0,0,0,0,0]; 
-    historicoCompleto.forEach(h => { 
-      if(h.dataTreino && h.dataTreino.startsWith(anoAtual)) { 
-        const m = parseInt(h.dataTreino.split("-")[1], 10); 
-        if(!isNaN(m) && m >= 1 && m <= 12) ptsPorMes[m - 1] += (Number(h.pontos) || 0); 
-      } 
-    }); 
-    graficoLinhaInstancia = new Chart(document.getElementById('graficoTendencia'), { 
-      type: 'line', 
-      data: { 
-        labels: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'], 
-        datasets: [{ data: ptsPorMes, borderColor: '#009bc1', backgroundColor: 'rgba(0,155,193,0.1)', fill: true, tension: 0.4 }] 
-      }, 
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } 
-    }); 
-  }
-}
-
-// =====================================================
-// 💰 FINANCEIRO (PLANILHA E CATEGORIAS)
-// =====================================================
-function setupFinanceiroPlanilha() { 
-  const modal = document.getElementById("modalLinhaVerba"); 
-  const canEdit = userRole === "admin" || userPermissoes.includes("financeiro_edit"); 
-  
-  if(document.getElementById("areaAcoesFinanceiro")) {
-    document.getElementById("areaAcoesFinanceiro").style.display = canEdit ? "block" : "none"; 
-  }
-  
-  const chkAvulso = document.getElementById("checkAvulso"); 
-  const areaProposto = document.getElementById("areaProposto"); 
-  
-  if(chkAvulso) { 
-    chkAvulso.addEventListener("change", (e) => { 
-      if(e.target.checked) { 
-        areaProposto.style.opacity = "0.3"; 
-        areaProposto.style.pointerEvents = "none"; 
-        document.getElementById("vPropInsc").value = ""; 
-        document.getElementById("vPropTransp").value = ""; 
-        document.getElementById("vPropHosp").value = ""; 
-        document.getElementById("vPropAlim").value = ""; 
-        document.getElementById("vPropDemais").value = ""; 
-      } else { 
-        areaProposto.style.opacity = "1"; 
-        areaProposto.style.pointerEvents = "auto"; 
-      } 
-    }); 
-  } 
-  
-  if (document.getElementById("btnAbrirModalDespesa")) { 
-    document.getElementById("btnAbrirModalDespesa").addEventListener("click", () => { 
-      document.getElementById("verbaEditId").value = ""; 
-      document.getElementById("verbaCategoria").value = "Provas / Inscrições"; 
-      document.getElementById("verbaEquipe").value = "Corrida e Bike"; 
-      document.getElementById("verbaEvento").value = ""; 
-      
-      if(chkAvulso) { 
-        chkAvulso.checked = false; 
-        chkAvulso.dispatchEvent(new Event('change')); 
-      } 
-      document.getElementById("vPropInsc").value = ""; 
-      document.getElementById("vPropTransp").value = ""; 
-      document.getElementById("vPropHosp").value = ""; 
-      document.getElementById("vPropAlim").value = ""; 
-      document.getElementById("vPropDemais").value = ""; 
-      document.getElementById("vRealizadoTotal").value = ""; 
-      modal.style.display = "flex"; 
-    }); 
-  } 
-  
-  document.getElementById("fecharModalVerba")?.addEventListener("click", () => modal.style.display = "none"); 
-  
-  document.getElementById("salvarVerbaBtn")?.addEventListener("click", async (e) => { 
-    const idEdit = document.getElementById("verbaEditId").value; 
-    const cat = document.getElementById("verbaCategoria").value; 
-    const eq = document.getElementById("verbaEquipe").value; 
-    const ev = document.getElementById("verbaEvento").value.trim(); 
-    
-    if(!ev) return showToast("Informe o Título/Evento!", "error"); 
-    
-    const p = (id) => parseFloat(document.getElementById(id).value) || 0; 
-    let propInsc = 0, propTransp = 0, propHosp = 0, propAlim = 0, propDemais = 0, totalProp = 0; 
-    
-    if(chkAvulso && !chkAvulso.checked) { 
-      propInsc = p("vPropInsc"); 
-      propTransp = p("vPropTransp"); 
-      propHosp = p("vPropHosp"); 
-      propAlim = p("vPropAlim"); 
-      propDemais = p("vPropDemais"); 
-      totalProp = propInsc + propTransp + propHosp + propAlim + propDemais; 
-    } 
-    
-    const totalRealizado = p("vRealizadoTotal"); 
-    const desvio = totalProp - totalRealizado; 
-    
-    const dados = { 
-      categoria: cat, 
-      equipe: eq, 
-      evento: ev, 
-      avulso: chkAvulso ? chkAvulso.checked : false, 
-      propInsc: propInsc, 
-      propTransp: propTransp, 
-      propHosp: propHosp, 
-      propAlim: propAlim, 
-      propDemais: propDemais, 
-      totalProposto: totalProp, 
-      totalRealizado: totalRealizado, 
-      desvio: desvio, 
-      atualizadoEm: new Date().toISOString() 
-    }; 
-    
-    e.target.textContent = "Salvando..."; 
-    e.target.disabled = true; 
-    
-    try { 
-      if(idEdit) { 
-        await updateDoc(doc(db, "despesas", idEdit), dados); 
-        showToast("Linha atualizada!", "success"); 
-      } else { 
-        dados.criadoEm = new Date().toISOString(); 
-        await addDoc(collection(db, "despesas"), dados); 
-        showToast("Linha adicionada!", "success"); 
-      } 
-      modal.style.display = "none"; 
-      carregarFinanceiroPlanilha(); 
-    } catch(err) { 
-      showToast("Erro ao gravar financeiro.", "error"); 
-    } 
-    e.target.textContent = "Salvar na Planilha"; 
-    e.target.disabled = false; 
-  }); 
-  
-  document.getElementById("btnExportarFinExcel")?.addEventListener("click", exportarFinanceiroPlanilha); 
-}
-
-async function carregarFinanceiroPlanilha() { 
-  try { 
-    const snap = await getDocs(collection(db, "despesas")); 
-    let tempDocs = []; 
-    snap.forEach(d => tempDocs.push({id: d.id, ...d.data()})); 
-    
-    tempDocs.sort((a, b) => new Date(a.criadoEm || a.dataBase || 0) - new Date(b.criadoEm || b.dataBase || 0)); 
-    historicoFinanceiro = tempDocs; 
-    
-    let htmlMaster = ""; 
-    let resumoEquipes = { Corrida: { prop: 0, real: 0 }, Bike: { prop: 0, real: 0 }, Ambas: { prop: 0, real: 0 } }; 
-    let resumoCategorias = { 
-      "Provas / Inscrições": { prop: 0, real: 0, color: "var(--secondary)" }, 
-      "Mensalidade Treinador": { prop: 0, real: 0, color: "#3498db" }, 
-      "Encontros e Eventos": { prop: 0, real: 0, color: "#f39c12" }, 
-      "Uniformes e Materiais": { prop: 0, real: 0, color: "var(--primary)" }, 
-      "Outros": { prop: 0, real: 0, color: "#95a5a6" } 
-    }; 
-    
-    let globalProp = 0; 
-    let globalReal = 0; 
-    const canEdit = userRole === "admin" || userPermissoes.includes("financeiro_edit"); 
-    const num = (v) => (v||0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}); 
-    const moneyStr = (v) => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}); 
-    
-    historicoFinanceiro.forEach(v => { 
-      const equipe = v.equipe || "Ambas"; 
-      const categoria = v.categoria || "Outros"; 
-      const evento = v.evento || v.descricao || "Custo Antigo"; 
-      const totalProp = v.totalProposto || v.orcadoTotal || 0; 
-      const totalReal = v.totalRealizado || 0; 
-      const desvio = v.desvio !== undefined ? v.desvio : (totalProp - totalReal); 
-      
-      globalProp += totalProp; 
-      globalReal += totalReal; 
-      
-      if(equipe === "Corrida") { 
-        resumoEquipes.Corrida.prop += totalProp; resumoEquipes.Corrida.real += totalReal; 
-      } else if(equipe === "Bicicleta" || equipe === "Bike") { 
-        resumoEquipes.Bike.prop += totalProp; resumoEquipes.Bike.real += totalReal; 
-      } else { 
-        resumoEquipes.Ambas.prop += totalProp; resumoEquipes.Ambas.real += totalReal; 
-      } 
-      
-      if(resumoCategorias[categoria]) { 
-        resumoCategorias[categoria].prop += totalProp; 
-        resumoCategorias[categoria].real += totalReal; 
-      } else { 
-        resumoCategorias["Outros"].prop += totalProp; 
-        resumoCategorias["Outros"].real += totalReal; 
-      } 
-      
-      const isAvulso = v.avulso ? `<span title="Lançamento Não Previsto" style="color:var(--accent); font-size:0.75rem; font-weight:bold;">[AVULSO]</span>` : ""; 
-      const corDesvio = desvio < 0 ? "color: var(--danger); font-weight:bold;" : "color: var(--secondary);"; 
-      const bgReal = totalReal > 0 ? "background: rgba(39, 174, 96, 0.05);" : ""; 
-      
-      let btnAcoes = ""; 
-      if(canEdit) { 
-        btnAcoes = `<button class="btn-acao btn-edit-verba" data-id="${v.id}" style="color:var(--primary); padding:4px;"><i data-lucide="edit-2" style="width:14px;"></i></button> 
-                    <button class="btn-acao btn-del-verba" data-id="${v.id}" style="color:var(--danger); padding:4px;"><i data-lucide="trash" style="width:14px;"></i></button>`; 
-      } 
-      
-      htmlMaster += `
-        <tr>
-          <td><small style="font-weight:600;">${equipe}</small></td>
-          <td><span style="font-size:0.75rem; color:var(--text-light); background:var(--border); padding:2px 6px; border-radius:4px;">${categoria}</span></td>
-          <td><strong>${evento}</strong> ${isAvulso}</td>
-          <td>${v.propInsc > 0 ? num(v.propInsc) : '-'}</td>
-          <td>${v.propTransp > 0 ? num(v.propTransp) : '-'}</td>
-          <td>${v.propHosp > 0 ? num(v.propHosp) : '-'}</td>
-          <td>${v.propAlim > 0 ? num(v.propAlim) : '-'}</td>
-          <td>${v.propDemais > 0 ? num(v.propDemais) : '-'}</td>
-          <td style="font-weight:600; background: rgba(0,0,0,0.02);">${num(totalProp)}</td>
-          <td style="font-weight:600; color: #27ae60; ${bgReal}">${num(totalReal)}</td>
-          <td style="${corDesvio}">${num(desvio)}</td>
-          <td style="text-align:right; white-space:nowrap;">${btnAcoes}</td>
-        </tr>`; 
-    }); 
-    
-    if(document.getElementById("tabelaMasterFin")) document.getElementById("tabelaMasterFin").innerHTML = htmlMaster || `<tr><td colspan='12' style='text-align:center;'>Nenhum planejamento registado.</td></tr>`; 
-    
-    gastoTotalGlobal = globalReal || 0; 
-    
-    if(document.getElementById("totalInvestimento")) document.getElementById("totalInvestimento").textContent = moneyStr(globalReal); 
-    if(document.getElementById("dashFinOrcadoTotal")) document.getElementById("dashFinOrcadoTotal").textContent = moneyStr(globalProp); 
-    if(document.getElementById("dashFinRealizadoTotal")) document.getElementById("dashFinRealizadoTotal").textContent = moneyStr(globalReal); 
-    
-    if(document.getElementById("dashFinSaldoTotal")) { 
-      const desvioTotal = globalProp - globalReal; 
-      const el = document.getElementById("dashFinSaldoTotal"); 
-      el.textContent = moneyStr(desvioTotal); 
-      el.style.color = desvioTotal < 0 ? 'var(--danger)' : 'var(--secondary)'; 
-      if (el.parentElement) el.parentElement.style.borderLeftColor = desvioTotal < 0 ? 'var(--danger)' : 'var(--secondary)'; 
-    } 
-    
-    let htmlResumo = ""; 
-    const arrResumo = [{nome: "Corrida", data: resumoEquipes.Corrida}, {nome: "Bicicleta", data: resumoEquipes.Bike}, {nome: "Equipa Geral (Ambas)", data: resumoEquipes.Ambas}]; 
-    
-    arrResumo.forEach(r => { 
-      if(r.data.prop > 0 || r.data.real > 0) { 
-        const desvioEquipe = r.data.prop - r.data.real; 
-        const cor = desvioEquipe < 0 ? "color:var(--danger);" : "color:var(--secondary);"; 
-        htmlResumo += `<tr><td><strong>${r.nome}</strong></td><td>R$ ${num(r.data.prop)}</td><td style="color:var(--danger); font-weight:bold;">R$ ${num(r.data.real)}</td><td style="font-weight:bold; ${cor}">R$ ${num(desvioEquipe)}</td></tr>`; 
-      } 
-    }); 
-    
-    if(document.getElementById("tabelaResumoEquipes")) document.getElementById("tabelaResumoEquipes").innerHTML = htmlResumo || `<tr><td colspan='4'>Sem dados processados.</td></tr>`; 
-    
-    let htmlCategorias = ""; 
-    Object.keys(resumoCategorias).forEach(nomeCat => { 
-      const c = resumoCategorias[nomeCat]; 
-      if(c.prop > 0 || c.real > 0) { 
-        const perc = c.prop > 0 ? Math.min((c.real / c.prop) * 100, 100) : 100; 
-        const corBarra = (c.real > c.prop && c.prop > 0) || (c.prop === 0 && c.real > 0) ? "var(--danger)" : c.color; 
-        htmlCategorias += `
-          <div class="card" style="margin:0; padding:15px; border-left: 4px solid ${c.color}; animation: none;">
-             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-               <strong style="color:var(--text); font-size:0.9rem;">${nomeCat}</strong>
-             </div>
-             <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:5px;">
-               <span style="color:#666;">Proposto: ${moneyStr(c.prop)}</span>
-               <span style="color:${c.color}; font-weight:bold;">Real: ${moneyStr(c.real)}</span>
-             </div>
-             <div class="progress-bar-bg" style="height:6px; margin-bottom:5px;">
-               <div class="progress-bar-fill" style="width: ${perc}%; background: ${corBarra};"></div>
-             </div>
-             <div style="text-align:right; font-size:0.75rem; color:#999;">
-               Desvio: <strong style="${c.prop - c.real < 0 ? 'color:var(--danger)' : ''}">${moneyStr(c.prop - c.real)}</strong>
-             </div>
-          </div>`; 
-      } 
-    }); 
-    
-    if(document.getElementById("listaPotesOrcamento")) document.getElementById("listaPotesOrcamento").innerHTML = htmlCategorias || `<p style='color:#999; font-size:0.85rem;'>Sem desdobramento orçamentário.</p>`; 
-    
-    lucide.createIcons(); 
-    
-    document.querySelectorAll(".btn-del-verba").forEach(btn => { 
-      btn.addEventListener("click", async (e) => { 
-        if(confirm("Excluir linha permanentemente?")) { 
-          e.currentTarget.disabled = true; 
-          await deleteDoc(doc(db, "despesas", e.currentTarget.dataset.id)); 
-          carregarFinanceiroPlanilha(); 
-        } 
-      }); 
-    }); 
-    
-    document.querySelectorAll(".btn-edit-verba").forEach(btn => { 
-      btn.addEventListener("click", (e) => { 
-        const id = e.currentTarget.dataset.id; 
-        const v = historicoFinanceiro.find(x => x.id === id); 
-        if(!v) return; 
-        
-        document.getElementById("verbaEditId").value = v.id; 
-        document.getElementById("verbaCategoria").value = v.categoria || "Outros"; 
-        document.getElementById("verbaEquipe").value = v.equipe || "Corrida e Bike"; 
-        document.getElementById("verbaEvento").value = v.evento || v.descricao || ""; 
-        
-        const chkAvulso = document.getElementById("checkAvulso"); 
-        if(chkAvulso) { 
-          chkAvulso.checked = v.avulso === true; 
-          chkAvulso.dispatchEvent(new Event('change')); 
-        } 
-        
-        document.getElementById("vPropInsc").value = v.propInsc || ""; 
-        document.getElementById("vPropTransp").value = v.propTransp || ""; 
-        document.getElementById("vPropHosp").value = v.propHosp || ""; 
-        document.getElementById("vPropAlim").value = v.propAlim || ""; 
-        document.getElementById("vPropDemais").value = v.propDemais || ""; 
-        document.getElementById("vRealizadoTotal").value = v.totalRealizado || ""; 
-        document.getElementById("modalLinhaVerba").style.display = "flex"; 
-      }); 
-    }); 
-  } catch(err) { 
-    showToast("Erro ao carregar ficheiro financeiro.", "error"); 
-  } 
-}
-
-function exportarFinanceiroPlanilha() { 
-  if(historicoFinanceiro.length === 0) return showToast("Nenhuma linha para exportar.", "error"); 
-  
-  let csv = "\uFEFFEquipe;Categoria;Evento_Custo;Tipo;Inscrições;Transporte;Hospedagem;Alimentação;Demais Custos;Total Proposto;Total Realizado;Desvio\r\n"; 
-  
-  historicoFinanceiro.forEach(v => { 
-    const n = (val) => (val || 0).toFixed(2).replace('.', ','); 
-    const tipo = v.avulso ? "Avulso" : "Planejado"; 
-    let linha = [ 
-      v.equipe || "Ambas", v.categoria || "-", v.evento || v.descricao, tipo, 
-      n(v.propInsc), n(v.propTransp), n(v.propHosp), n(v.propAlim), n(v.propDemais), 
-      n(v.totalProposto || v.orcadoTotal), n(v.totalRealizado), 
-      n(v.desvio !== undefined ? v.desvio : ((v.totalProposto||v.orcadoTotal||0) - (v.totalRealizado||0))) 
-    ]; 
-    csv += linha.map(col => `"${String(col).replace(/"/g, '""')}"`).join(";") + "\r\n"; 
-  }); 
-  
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); 
-  const url = URL.createObjectURL(blob); 
-  const a = document.createElement("a"); 
-  
-  a.href = url; 
-  a.download = `Controle_Orcamentario_Atletas.csv`; 
-  a.click(); 
-  URL.revokeObjectURL(url); 
-}
-
-// =====================================================
 // 📅 AGENDA DE EVENTOS E OUTRAS CONFIGURAÇÕES
 // =====================================================
 function setupAgenda() { 
   const modal = document.getElementById("modalEvento"); 
+  if(!modal) return;
   
-  if(document.getElementById("abrirModalEvento")) {
-    document.getElementById("abrirModalEvento").addEventListener("click", () => modal.style.display = "flex"); 
-  }
+  document.getElementById("abrirModalEvento")?.addEventListener("click", () => modal.style.display = "flex"); 
+  document.getElementById("fecharModalEvento")?.addEventListener("click", () => modal.style.display = "none"); 
   
-  if(document.getElementById("fecharModalEvento")) {
-    document.getElementById("fecharModalEvento").addEventListener("click", () => modal.style.display = "none"); 
-  }
-  
-  if(document.getElementById("salvarEventoBtn")) { 
-    document.getElementById("salvarEventoBtn").addEventListener("click", async (e) => { 
-      const titulo = document.getElementById("eventoTitulo").value.trim();
-      const local = document.getElementById("eventoLocal").value.trim();
-      const mod = document.getElementById("eventoModalidade").value;
-      const data = document.getElementById("eventoData").value; 
+  document.getElementById("salvarEventoBtn")?.addEventListener("click", async (e) => { 
+    const titulo = document.getElementById("eventoTitulo").value.trim();
+    const local = document.getElementById("eventoLocal").value.trim();
+    const mod = document.getElementById("eventoModalidade").value;
+    const data = document.getElementById("eventoData").value; 
+    
+    if (!titulo || !data) return showToast("Título e Data são obrigatórios!", "error"); 
+    
+    e.target.textContent = "Salvando..."; e.target.classList.add("loading");
+    e.target.disabled = true; 
+    
+    try { 
+      await addDoc(collection(db, "agenda_eventos"), { 
+        titulo: titulo, local: local, modalidade: mod, data: data, 
+        criadoEm: new Date().toISOString() 
+      }); 
       
-      if (!titulo || !data) return showToast("Título e Data são obrigatórios!", "error"); 
+      modal.style.display = "none"; 
+      document.getElementById("eventoTitulo").value = ""; 
+      document.getElementById("eventoLocal").value = ""; 
       
-      e.target.textContent = "Salvando..."; 
-      e.target.disabled = true; 
-      
-      try { 
-        await addDoc(collection(db, "agenda_eventos"), { 
-          titulo: titulo, 
-          local: local, 
-          modalidade: mod, 
-          data: data, 
-          criadoEm: new Date().toISOString() 
-        }); 
-        
-        modal.style.display = "none"; 
-        document.getElementById("eventoTitulo").value = ""; 
-        document.getElementById("eventoLocal").value = ""; 
-        
-        showToast("Evento agendado!", "success"); 
-        atualizarTelas(); 
-      } catch (err) { 
-        showToast("Erro ao agendar: " + err.message, "error"); 
-      } 
-      
-      e.target.textContent = "Salvar Evento"; 
+      showToast("Evento agendado!", "success"); 
+      atualizarTelas(); 
+    } catch (err) { showToast("Erro ao agendar: " + err.message, "error"); } 
+    finally {
+      e.target.textContent = "Salvar Evento"; e.target.classList.remove("loading");
       e.target.disabled = false; 
-    }); 
-  } 
+    }
+  }); 
 }
 
 async function carregarAgenda() { 
   try { 
     const snap = await getDocs(query(collection(db, "agenda_eventos"))); 
-    cacheEventos = []; 
-    snap.forEach(d => cacheEventos.push({id: d.id, ...d.data()})); 
-    cacheEventos.sort((a,b) => new Date(a.data) - new Date(b.data)); 
+    appState.cacheEventos = []; 
+    snap.forEach(d => appState.cacheEventos.push({id: d.id, ...d.data()})); 
+    appState.cacheEventos.sort((a,b) => new Date(a.data) - new Date(b.data)); 
     
-    const htmlDropdown = '<option value="">Nenhum (Lançamento Avulso)</option>' + cacheEventos.map(e => `<option value="${e.id}">${e.titulo} (${new Date(e.data+"T00:00:00").toLocaleDateString('pt-BR')})</option>`).join(''); 
+    const htmlDropdown = '<option value="">Nenhum (Lançamento Avulso)</option>' + appState.cacheEventos.map(e => `<option value="${e.id}">${e.titulo} (${new Date(e.data+"T00:00:00").toLocaleDateString('pt-BR')})</option>`).join(''); 
     if(document.getElementById("lancarEventoSelect")) document.getElementById("lancarEventoSelect").innerHTML = htmlDropdown; 
     
     const hoje = new Date().toISOString().split('T')[0]; 
-    const futuros = cacheEventos.filter(e => e.data >= hoje).slice(0, 4); 
+    const futuros = appState.cacheEventos.filter(e => e.data >= hoje).slice(0, 4); 
     let html = ""; 
-    const hasGestao = userRole === "admin" || userPermissoes.includes("gestao"); 
+    const hasGestao = appState.userRole === "admin" || appState.userPermissoes.includes("gestao"); 
     
     futuros.forEach(e => { 
       const d = new Date(e.data + "T00:00:00"); 
       const mes = d.toLocaleString('pt-BR', {month: 'short'}).replace('.',''); 
       const dia = d.getDate().toString().padStart(2, '0'); 
       let icon = e.modalidade === "Bicicleta" ? "🚴" : e.modalidade === "Corrida" ? "🏃" : "🤝"; 
-      const btnExcluir = hasGestao ? `<button class="btn-excluir-evento" data-id="${e.id}" style="background:transparent; border:none; color:var(--danger); cursor:pointer; float:right;"><i data-lucide="x" style="width:16px;"></i></button>` : ''; 
+      const btnExcluir = hasGestao ? `<button class="btn-excluir-evento" aria-label="Cancelar evento" data-id="${e.id}" style="background:transparent; border:none; color:var(--danger); cursor:pointer; float:right;"><i data-lucide="x" style="width:16px;"></i></button>` : ''; 
       
       html += `
         <div class="agenda-item">
-          <div class="agenda-data">
-            <span>${mes}</span>
-            <strong>${dia}</strong>
-          </div>
+          <div class="agenda-data"><span>${mes}</span><strong>${dia}</strong></div>
           <div class="agenda-info" style="flex:1;">
-            ${btnExcluir}
-            <h4>${e.titulo}</h4>
-            <p>${icon} ${e.local}</p>
+            ${btnExcluir}<h4>${e.titulo}</h4><p>${icon} ${e.local}</p>
           </div>
         </div>`; 
     }); 
@@ -1514,35 +608,32 @@ async function carregarAgenda() {
       document.getElementById("listaEventosAgenda").innerHTML = html || `<div class="empty-state" style="padding:10px;"><p style="font-size:0.85rem;">Nenhum evento agendado.</p></div>`; 
     }
     
-    lucide.createIcons(); 
+    if(typeof lucide !== 'undefined') lucide.createIcons(); 
     
     document.querySelectorAll(".btn-excluir-evento").forEach(btn => { 
-      btn.addEventListener("click", async (e) => { 
-        if(confirm("Cancelar evento?")) { 
+      btn.addEventListener("click", (e) => { 
+        mostrarConfirmacao("Cancelar Evento", "Remover este evento da agenda?", async () => {
           await deleteDoc(doc(db, "agenda_eventos", e.currentTarget.dataset.id)); 
           atualizarTelas(); 
-        } 
+        }, "danger");
       }); 
     }); 
-  } catch (err) { 
-    console.error("Erro na agenda:", err); 
-  } 
+  } catch (err) { console.error("Erro na agenda:", err); } 
 }
 
 function setupPermissoesModal() { 
   const modal = document.getElementById("modalPermissoes"); 
   if(!modal) return; 
   
-  document.getElementById("fecharModalPermissoes").addEventListener("click", () => modal.style.display = "none"); 
-  
-  document.getElementById("salvarPermissoesBtn").addEventListener("click", async (e) => { 
+  document.getElementById("fecharModalPermissoes")?.addEventListener("click", () => modal.style.display = "none"); 
+  document.getElementById("salvarPermissoesBtn")?.addEventListener("click", async (e) => { 
     const id = document.getElementById("permUserId").value; 
     let selecionadas = []; 
     document.querySelectorAll(".chk-perm:checked").forEach(chk => selecionadas.push(chk.value)); 
     
     if(selecionadas.length === 0) return showToast("Precisa ter pelo menos uma aba marcada.", "error"); 
     
-    e.target.textContent = "Salvando..."; 
+    e.target.textContent = "Salvando..."; e.target.classList.add("loading");
     e.target.disabled = true; 
     
     try { 
@@ -1550,70 +641,66 @@ function setupPermissoesModal() {
       showToast("Permissões atualizadas!", "success"); 
       modal.style.display = "none"; 
       atualizarTelas(); 
-    } catch(err) { 
-      showToast("Erro ao gravar permissões.", "error"); 
-    } 
-    
-    e.target.textContent = "Salvar Acessos"; 
-    e.target.disabled = false; 
+    } catch(err) { showToast("Erro ao gravar permissões.", "error"); } 
+    finally {
+      e.target.textContent = "Salvar Acessos"; e.target.classList.remove("loading");
+      e.target.disabled = false; 
+    }
   }); 
 }
 
 function setupFichaAtleta() { 
-  document.getElementById("fecharModalFicha").addEventListener("click", () => document.getElementById("modalFichaAtleta").style.display = "none"); 
+  document.getElementById("fecharModalFicha")?.addEventListener("click", () => document.getElementById("modalFichaAtleta").style.display = "none"); 
   
-  document.getElementById("btnSalvarComentario").addEventListener("click", async () => { 
+  document.getElementById("btnSalvarComentario")?.addEventListener("click", async () => { 
     const aId = document.getElementById("fichaAtletaId").value; 
     const txt = document.getElementById("novoComentarioFicha").value.trim(); 
     if(!txt) return; 
     
-    const meuNome = mapAtletas[auth.currentUser.uid] ? mapAtletas[auth.currentUser.uid].nome : "Comitê"; 
+    const meuNome = appState.mapAtletas[auth.currentUser?.uid] ? appState.mapAtletas[auth.currentUser.uid].nome : "Comitê Gestor"; 
     const btn = document.getElementById("btnSalvarComentario"); 
-    btn.disabled = true; 
-    btn.textContent = "Salvando..."; 
+    btn.disabled = true; btn.textContent = "Salvando..."; 
     
     try { 
       await addDoc(collection(db, "comentarios_atletas"), { 
-        atletaId: aId, 
-        texto: txt, 
-        autorNome: meuNome, 
-        criadoEm: new Date().toISOString() 
+        atletaId: aId, texto: txt, autorNome: meuNome, criadoEm: new Date().toISOString() 
       }); 
       
       document.getElementById("novoComentarioFicha").value = ""; 
       carregarComentarios(aId); 
       showToast("Comentário salvo!", "success"); 
-    } catch(e) { 
-      showToast("Erro ao guardar comentário.", "error"); 
-    } 
-    btn.disabled = false; 
-    btn.textContent = "Adicionar Comentário"; 
+    } catch(e) { showToast("Erro ao guardar comentário.", "error"); } 
+    finally { btn.disabled = false; btn.textContent = "Adicionar Comentário"; }
   }); 
 }
 
 async function abrirFichaAtleta(id) { 
-  const a = mapAtletas[id]; 
+  const a = appState.mapAtletas[id]; 
   if(!a) return; 
   
   document.getElementById("fichaNome").textContent = a.nome; 
   document.getElementById("fichaEquipe").textContent = a.equipe; 
   document.getElementById("fichaPontos").textContent = a.pontuacaoTotal || 0; 
-  const statusEl = document.getElementById("fichaStatus"); 
   
+  // Renderiza Campos Completos da Ficha
+  const renderCampo = (idEl, val, fallback) => { if(document.getElementById(idEl)) document.getElementById(idEl).textContent = val || fallback; };
+  renderCampo("fichaLocalidade", a.localidade, "Não informada");
+  renderCampo("fichaNasc", a.dataNascimento ? new Date(a.dataNascimento+"T00:00:00").toLocaleDateString('pt-BR') : "Não informada", "");
+  renderCampo("fichaSexo", a.sexo, "Não informado");
+  renderCampo("fichaAnoEntrada", a.anoEntrada, "-");
+
+  const statusEl = document.getElementById("fichaStatus"); 
   if(a.ativo !== false) { 
-    statusEl.textContent = "Ativo no Sistema"; 
-    statusEl.style.color = "var(--secondary)"; 
+    statusEl.textContent = "Ativo no Sistema"; statusEl.style.color = "var(--secondary)"; 
   } else { 
-    statusEl.textContent = "Desativado"; 
-    statusEl.style.color = "var(--danger)"; 
+    statusEl.textContent = `Inativo: ${a.motivoSaida || 'Sem motivo'}`; statusEl.style.color = "var(--danger)"; 
   } 
   
   document.getElementById("fichaAtletaId").value = id; 
-  const hist = historicoCompleto.filter(h => h.atletaId === id); 
+  const hist = appState.historicoCompleto.filter(h => h.atletaId === id); 
   let htmlH = ""; 
   
   if(hist.length === 0) htmlH = "<p style='color:#999; margin-top: 10px;'>Nenhum registo encontrado.</p>"; 
-  
   hist.forEach(h => { 
     const dataF = new Date(h.dataTreino+"T00:00:00").toLocaleDateString('pt-BR'); 
     const isFalta = Number(h.pontos) === 0; 
@@ -1635,8 +722,7 @@ async function abrirFichaAtleta(id) {
 async function carregarComentarios(id) { 
   try { 
     const snap = await getDocs(query(collection(db, "comentarios_atletas"), where("atletaId", "==", id))); 
-    let coments = []; 
-    snap.forEach(d => coments.push(d.data())); 
+    let coments = []; snap.forEach(d => coments.push(d.data())); 
     coments.sort((a,b) => new Date(b.criadoEm) - new Date(a.criadoEm)); 
     
     let html = ""; 
@@ -1644,10 +730,7 @@ async function carregarComentarios(id) {
       const d = new Date(c.criadoEm).toLocaleDateString('pt-BR') + " às " + new Date(c.criadoEm).toLocaleTimeString('pt-BR').substring(0,5); 
       html += `
         <div class="comentario-box">
-          <div class="comentario-header">
-            <span class="comentario-autor">${c.autorNome}</span> 
-            <span>${d}</span>
-          </div>
+          <div class="comentario-header"><span class="comentario-autor">${c.autorNome}</span> <span>${d}</span></div>
           <div style="margin-top: 4px;">${c.texto}</div>
         </div>`; 
     }); 
@@ -1665,19 +748,15 @@ async function setupAprovacoes() {
   const snap = await getDocs(query(collection(db, "atletas"), where("status", "==", "Pendente"))); 
   tbody.innerHTML = ""; 
   
-  if (snap.empty) { 
-    tbody.innerHTML = "<tr><td colspan='4'>Nenhuma pendência.</td></tr>"; 
-    return; 
-  } 
+  if (snap.empty) { tbody.innerHTML = "<tr><td colspan='4'>Nenhuma pendência.</td></tr>"; return; } 
   
   snap.forEach(d => { 
     const u = d.data(); 
     tbody.innerHTML += `
       <tr>
-        <td><strong>${u.nome}</strong></td>
-        <td>${u.email}</td>
-        <td>Comitê</td>
-        <td>
+        <td data-label="Nome"><strong>${u.nome}</strong></td>
+        <td data-label="E-mail">${u.email}</td>
+        <td data-label="Ação">
           <button class="btn-acao btn-aprovar" data-id="${d.id}" style="color:var(--secondary); border-color:var(--secondary); margin-right:5px;">Aprovar</button>
           <button class="btn-acao btn-rejeitar" data-id="${d.id}" style="color:var(--danger); border-color:var(--danger);">Rejeitar</button>
         </td>
@@ -1685,200 +764,48 @@ async function setupAprovacoes() {
   }); 
   
   document.querySelectorAll(".btn-aprovar").forEach(btn => btn.addEventListener("click", async (e) => { 
-    if(confirm("Aprovar acesso?")) { 
+    mostrarConfirmacao("Aprovar Acesso", "Confirmar o acesso administrativo deste membro?", async () => {
       e.currentTarget.disabled = true; 
       await updateDoc(doc(db, "atletas", e.currentTarget.dataset.id), { status: "Aprovado" }); 
       atualizarTelas(); 
-    } 
+    });
   })); 
   
   document.querySelectorAll(".btn-rejeitar").forEach(btn => btn.addEventListener("click", async (e) => { 
-    if(confirm("Rejeitar pedido?")) { 
+    mostrarConfirmacao("Rejeitar Pedido", "Negar e excluir o pedido de acesso?", async () => {
       e.currentTarget.disabled = true; 
       await deleteDoc(doc(db, "atletas", e.currentTarget.dataset.id)); 
       atualizarTelas(); 
-    } 
+    }, "danger");
   })); 
-}
-
-function setupCadastrarPessoa() { 
-  document.getElementById("btnCadastrarPessoa").addEventListener("click", async (e) => { 
-    const nome = document.getElementById("novoNome").value.trim();
-    const email = document.getElementById("novoEmail").value.trim();
-    const papel = document.getElementById("novoPapel").value;
-    const btn = e.target; 
-    
-    if (!nome) return showToast("Preencha o nome!", "error"); 
-    
-    try { 
-      btn.textContent = "Salvando..."; 
-      btn.disabled = true; 
-      
-      await addDoc(collection(db, "atletas"), { 
-        nome: nome, 
-        email: email, 
-        role: "atleta", 
-        equipe: papel, 
-        status: "Aprovado", 
-        ativo: true, 
-        pontuacaoTotal: 0, 
-        recusas: 0, 
-        criadoEm: new Date().toISOString() 
-      }); 
-      
-      document.getElementById("novoNome").value = ""; 
-      document.getElementById("novoEmail").value = ""; 
-      showToast(`${nome} adicionado com sucesso!`, "success"); 
-      
-      document.querySelector('[data-target="sub-equipes"]').click(); 
-      if (papel.includes("Fila")) document.querySelector('[data-target="tab-fila"]').click(); 
-      else if (papel === "Bicicleta") document.querySelector('[data-target="tab-bike"]').click(); 
-      else if (papel === "Corrida") document.querySelector('[data-target="tab-corrida"]').click(); 
-      
-      btn.textContent = "Adicionar"; 
-      btn.disabled = false; 
-      atualizarTelas(); 
-    } catch (error) { 
-      showToast("Erro ao adicionar: " + error.message, "error"); 
-      btn.textContent = "Adicionar"; 
-      btn.disabled = false; 
-    } 
-  }); 
 }
 
 function setupModalEditar() { 
   const modal = document.getElementById("modalEditarAtleta"); 
-  document.getElementById("fecharModalEdit").addEventListener("click", () => modal.style.display = "none"); 
+  document.getElementById("fecharModalEdit")?.addEventListener("click", () => modal.style.display = "none"); 
   
-  document.getElementById("salvarEditBtn").addEventListener("click", async (e) => { 
+  document.getElementById("salvarEditBtn")?.addEventListener("click", async (e) => { 
     const id = document.getElementById("editId").value;
     const nome = document.getElementById("editNome").value.trim();
     const email = document.getElementById("editEmail").value.trim();
     const papel = document.getElementById("editPapel").value; 
     
     if (!nome) return; 
+    let role = "atleta"; let equipe = papel; 
+    if (papel === "Comitê") { role = "comite"; equipe = "Nenhuma"; } 
     
-    let role = "atleta"; 
-    let equipe = papel; 
-    
-    if (papel === "Comitê") { 
-      role = "comite"; equipe = "Nenhuma"; 
-    } 
-    
-    e.target.textContent = "Salvando..."; 
+    e.target.textContent = "Salvando..."; e.target.classList.add("loading");
     e.target.disabled = true; 
     
     try { 
       await updateDoc(doc(db, "atletas", id), { nome: nome, email: email, role: role, equipe: equipe }); 
       showToast("Dados atualizados!", "success"); 
-      modal.style.display = "none"; 
-      atualizarTelas(); 
-    } catch (err) { 
-      showToast("Erro ao editar dados.", "error"); 
-    } 
-    
-    e.target.textContent = "Atualizar"; 
-    e.target.disabled = false; 
-  }); 
-}
-
-function setupLimparBase() { 
-  const btnL = document.getElementById("btnLimparBase"); 
-  if(!btnL) return; 
-  
-  btnL.addEventListener("click", async () => { 
-    if (userRole !== "admin") return; 
-    
-    if (prompt("CUIDADO EXTREMO! Isso apagará TODOS os dados.\nDigite 'LIMPAR' para confirmar:") !== "LIMPAR") return; 
-    if (!prompt("Digite sua senha de administrador para autorizar:")) return; 
-    
-    const btn = document.getElementById("btnLimparBase"); 
-    btn.innerHTML = "Apagando base..."; 
-    btn.disabled = true; 
-    
-    try { 
-      const col = ["historico_pontos", "regras_pontuacao", "despesas", "comentarios_atletas"]; 
-      for (let c of col) { 
-        const snap = await getDocs(collection(db, c)); 
-        snap.forEach(async (d) => { 
-          await deleteDoc(doc(db, c, d.id)); 
-        }); 
-      } 
-      
-      const snapA = await getDocs(collection(db, "atletas")); 
-      snapA.forEach(async (d) => { 
-        if (d.id !== auth.currentUser.uid) {
-          await deleteDoc(doc(db, "atletas", d.id)); 
-        }
-      }); 
-      
-      showToast("Base Limpa permanentemente!", "success"); 
-      setTimeout(() => window.location.reload(), 2000); 
-    } catch(err) { 
-      showToast("Erro durante a exclusão: " + err.message, "error"); 
-      btn.disabled = false; 
-    } 
-  }); 
-}
-
-function setupConfiguracoes() { 
-  document.querySelectorAll(".btn-zoom").forEach(btn => { 
-    btn.addEventListener("click", (e) => { 
-      document.documentElement.style.fontSize = e.target.dataset.size; 
-    }); 
-  }); 
-  
-  const aplicarTema = (tema) => { 
-    if(tema === "dark") { 
-      document.body.setAttribute("data-theme", "dark"); 
-      localStorage.setItem("theme", "dark"); 
-    } else { 
-      document.body.removeAttribute("data-theme"); 
-      localStorage.setItem("theme", "light"); 
-    } 
-    Chart.defaults.color = tema === 'dark' ? '#aaa' : '#666'; 
-    if(graficoLinhaInstancia) graficoLinhaInstancia.update(); 
-    if(graficoEngajBike) graficoEngajBike.update(); 
-    if(graficoEngajCorrida) graficoEngajCorrida.update(); 
-  }; 
-  
-  if (localStorage.getItem("theme") === "dark") aplicarTema("dark"); 
-  
-  document.getElementById("btnTemaClaro").addEventListener("click", () => aplicarTema("light")); 
-  document.getElementById("btnTemaEscuro").addEventListener("click", () => aplicarTema("dark")); 
-  
-  document.getElementById("btnSalvarConta").addEventListener("click", async () => { 
-    const senhaAtual = document.getElementById("confSenhaAtual").value;
-    const novoEmail = document.getElementById("confNovoEmail").value.trim();
-    const novaSenha = document.getElementById("confNovaSenha").value.trim();
-    const btn = document.getElementById("btnSalvarConta"); 
-    
-    if(!senhaAtual) return showToast("A senha atual é obrigatória para validar.", "error"); 
-    if(!novoEmail && !novaSenha) return; 
-    
-    btn.textContent = "Autenticando..."; 
-    btn.disabled = true; 
-    
-    try { 
-      const user = auth.currentUser; 
-      const credential = EmailAuthProvider.credential(user.email, senhaAtual); 
-      await reauthenticateWithCredential(user, credential); 
-      
-      btn.textContent = "Salvando..."; 
-      if(novoEmail) { await updateEmail(user, novoEmail); } 
-      if(novaSenha) { await updatePassword(user, novaSenha); } 
-      
-      showToast("Conta atualizada!", "success"); 
-      
-      document.getElementById("confSenhaAtual").value = ""; 
-      document.getElementById("confNovoEmail").value = ""; 
-      document.getElementById("confNovaSenha").value = ""; 
-    } catch(err) { 
-      showToast("Erro ao atualizar a conta.", "error"); 
-    } 
-    
-    btn.innerHTML = `Salvar Alterações`; 
-    btn.disabled = false; 
+      modal.style.display = "none"; atualizarTelas(); 
+    } catch (err) { showToast("Erro ao editar dados.", "error"); } 
+    finally {
+      e.target.textContent = "Atualizar"; e.target.classList.remove("loading");
+      e.target.disabled = false; 
+    }
   }); 
 }
 
@@ -1898,9 +825,7 @@ function setupModalRegras() {
     modal.style.display = "flex";
   });
 
-  document.getElementById("fecharModalRegra")?.addEventListener("click", () => {
-    modal.style.display = "none";
-  });
+  document.getElementById("fecharModalRegra")?.addEventListener("click", () => modal.style.display = "none");
 
   document.getElementById("salvarRegraBtn")?.addEventListener("click", async (e) => {
     const id = document.getElementById("regraEditId").value;
@@ -1913,18 +838,10 @@ function setupModalRegras() {
     let vinculadas = [];
     document.querySelectorAll(".chk-vinculo-regra:checked").forEach(chk => vinculadas.push(chk.value));
 
-    e.target.disabled = true;
-    e.target.textContent = "Salvando...";
+    e.target.disabled = true; e.target.textContent = "Salvando..."; e.target.classList.add("loading");
 
     try {
-      const dados = {
-        descricao: desc,
-        modalidade: mod,
-        pontos: pts,
-        regrasVinculadas: vinculadas,
-        atualizadoEm: new Date().toISOString()
-      };
-
+      const dados = { descricao: desc, modalidade: mod, pontos: pts, regrasVinculadas: vinculadas, atualizadoEm: new Date().toISOString() };
       if (id) {
         await updateDoc(doc(db, "regras_pontuacao", id), dados);
         showToast("Regra atualizada com sucesso!", "success");
@@ -1933,40 +850,36 @@ function setupModalRegras() {
         await addDoc(collection(db, "regras_pontuacao"), dados);
         showToast("Nova regra criada!", "success");
       }
-      
-      modal.style.display = "none";
-      await carregarRegras(); 
-    } catch (err) {
-      showToast("Erro ao salvar regra: " + err.message, "error");
+      modal.style.display = "none"; await carregarRegras(); 
+    } catch (err) { showToast("Erro ao salvar regra: " + err.message, "error"); }
+    finally {
+      e.target.disabled = false; e.target.textContent = "Salvar Regra"; e.target.classList.remove("loading");
     }
-
-    e.target.disabled = false;
-    e.target.textContent = "Salvar Regra";
   });
 }
 
 async function carregarRegras() {
   try {
     const snap = await getDocs(query(collection(db, "regras_pontuacao")));
-    listaTodasRegras = [];
-    snap.forEach(d => listaTodasRegras.push({ id: d.id, ...d.data() }));
+    appState.listaTodasRegras = [];
+    snap.forEach(d => appState.listaTodasRegras.push({ id: d.id, ...d.data() }));
 
     const tbody = document.getElementById("listaRegras");
     if (!tbody) return;
 
     let html = "";
-    if (listaTodasRegras.length === 0) {
+    if (appState.listaTodasRegras.length === 0) {
       html = "<tr><td colspan='4' style='text-align:center;'>Nenhuma regra cadastrada.</td></tr>";
     } else {
-      listaTodasRegras.forEach(r => {
+      appState.listaTodasRegras.forEach(r => {
         html += `
           <tr>
-            <td><strong>${r.descricao}</strong></td>
-            <td>${r.modalidade}</td>
-            <td style="color:var(--primary); font-weight:bold;">+${r.pontos}</td>
-            <td style="text-align:right;">
-              <button class="btn-acao btn-edit-regra" data-id="${r.id}" style="color:var(--primary); padding:6px; margin-right:5px;" title="Editar Regra"><i data-lucide="edit-2" style="width:16px;"></i></button>
-              <button class="btn-acao btn-del-regra" data-id="${r.id}" style="color:var(--danger); padding:6px;" title="Excluir Regra"><i data-lucide="trash" style="width:16px;"></i></button>
+            <td data-label="Regra"><strong>${r.descricao}</strong></td>
+            <td data-label="Modalidade">${r.modalidade}</td>
+            <td data-label="Pontos" style="color:var(--primary); font-weight:bold;">+${r.pontos}</td>
+            <td data-label="Ações" style="text-align:right;">
+              <button class="btn-acao btn-edit-regra" aria-label="Editar Regra" data-id="${r.id}" style="color:var(--primary); padding:6px; margin-right:5px;"><i data-lucide="edit-2" style="width:16px;"></i></button>
+              <button class="btn-acao btn-del-regra" aria-label="Excluir Regra" data-id="${r.id}" style="color:var(--danger); padding:6px;"><i data-lucide="trash" style="width:16px;"></i></button>
             </td>
           </tr>`;
       });
@@ -1976,18 +889,18 @@ async function carregarRegras() {
     if(typeof lucide !== 'undefined') lucide.createIcons();
 
     document.querySelectorAll(".btn-del-regra").forEach(btn => {
-      btn.addEventListener("click", async (e) => {
-        if(confirm("Deseja realmente excluir esta regra? Isso pode afetar lançamentos futuros.")) {
+      btn.addEventListener("click", (e) => {
+        mostrarConfirmacao("Apagar Regra", "Deseja realmente excluir esta regra? Isso pode afetar lançamentos futuros.", async () => {
           await deleteDoc(doc(db, "regras_pontuacao", e.currentTarget.dataset.id));
           await carregarRegras();
           showToast("Regra removida", "info");
-        }
+        }, "danger");
       });
     });
 
     document.querySelectorAll(".btn-edit-regra").forEach(btn => {
       btn.addEventListener("click", (e) => {
-        const r = listaTodasRegras.find(x => x.id === e.currentTarget.dataset.id);
+        const r = appState.listaTodasRegras.find(x => x.id === e.currentTarget.dataset.id);
         if(!r) return;
         
         document.getElementById("regraEditId").value = r.id;
@@ -1999,10 +912,7 @@ async function carregarRegras() {
         document.getElementById("modalRegra").style.display = "flex";
       });
     });
-
-  } catch (err) {
-    console.error("Erro ao carregar regras:", err);
-  }
+  } catch (err) { console.error("Erro ao carregar regras:", err); }
 }
 
 function renderizarVinculosRegras(selecionadas = [], idIgnorado = null) {
@@ -2010,7 +920,7 @@ function renderizarVinculosRegras(selecionadas = [], idIgnorado = null) {
   if (!div) return;
   
   let html = "";
-  listaTodasRegras.forEach(r => {
+  appState.listaTodasRegras.forEach(r => {
     if (r.id === idIgnorado) return; 
     
     const checked = selecionadas.includes(r.id) ? "checked" : "";
