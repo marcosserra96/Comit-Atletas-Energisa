@@ -5,9 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gestão do Comitê | Atletas Energisa ⚡️</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  
   <link rel="stylesheet" href="css/admin.css" />
 </head>
 
@@ -118,8 +121,13 @@
       </div>
       
       <div id="sub-lancar" class="sub-content active">
-        <div class="header-acao" style="margin-bottom: 15px;">
-           <h3 style="margin:0; font-size:1.1rem; color:var(--text);">Gerar Lançamento em Lote</h3>
+        <div class="header-acao" style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <h3 style="margin:0; font-size:1.1rem; color:var(--text);">Gerar Lançamento em Lote</h3>
+          <div style="display: flex; gap: 10px;">
+            <button id="btnExportarModeloExcel" class="btn-acao" style="color: #107c41; border-color: #107c41;"><i data-lucide="download"></i> Baixar Modelo</button>
+            <label for="btnImportarExcel" class="btn-primario" style="background: #107c41; cursor: pointer; margin: 0;"><i data-lucide="upload"></i> Importar Planilha Preenchida</label>
+            <input type="file" id="btnImportarExcel" accept=".xlsx, .xls" style="display: none;" />
+          </div>
         </div>
         
         <div class="card" style="margin-bottom: 25px;">
@@ -279,16 +287,36 @@
       <div id="sub-aprovacoes" class="sub-content"><div class="tabela-container"><table class="tabela-simples"><tbody id="listaAprovacoes"></tbody></table></div></div>
       
       <div id="sub-cadastrar" class="sub-content active">
-        <div class="card" style="max-width: 500px; margin: 0 auto;">
-          <input type="text" id="novoNome" placeholder="Nome Completo" />
-          <input type="email" id="novoEmail" placeholder="E-mail (Para acesso)" />
-          <select id="novoPapel">
-            <option value="Bicicleta">Atleta - Bike</option>
-            <option value="Corrida">Atleta - Corrida</option>
-            <option value="Fila - Bicicleta">Fila de Espera - Bike</option>
-            <option value="Fila - Corrida">Fila de Espera - Corrida</option>
-          </select>
-          <button id="btnCadastrarPessoa" class="btn-primario" style="width:100%; justify-content:center;">Adicionar ao Sistema</button>
+        <div class="card" style="max-width: 600px; margin: 0 auto;">
+          <div class="grid-2-col">
+            <div><label>Nome Completo</label><input type="text" id="novoNome" placeholder="Ex: João Silva" /></div>
+            <div><label>E-mail Corporativo</label><input type="email" id="novoEmail" placeholder="joao@energisa.com" /></div>
+          </div>
+          <div class="grid-2-col">
+            <div>
+              <label>Sexo</label>
+              <select id="novoSexo" style="margin-bottom: 0;">
+                <option value="Masculino">Masculino</option>
+                <option value="Feminino">Feminino</option>
+                <option value="Prefiro não informar">Prefiro não informar</option>
+              </select>
+            </div>
+            <div><label>Data de Nascimento</label><input type="date" id="novaDataNasc" style="margin-bottom: 0;" /></div>
+          </div>
+          <div class="grid-2-col" style="margin-top: 10px;">
+            <div><label>Localidade / Polo</label><input type="text" id="novaLocalidade" placeholder="Ex: Sede, Polo X..." style="margin-bottom: 0;" /></div>
+            <div><label>Ano de Entrada no Programa</label><input type="number" id="novoAnoEntrada" placeholder="Ex: 2026" style="margin-bottom: 0;" /></div>
+          </div>
+          <div style="margin-top: 10px;">
+            <label>Equipe / Fila</label>
+            <select id="novoPapel" style="margin-bottom: 0;">
+              <option value="Bicicleta">Atleta - Bike</option>
+              <option value="Corrida">Atleta - Corrida</option>
+              <option value="Fila - Bicicleta">Fila de Espera - Bike</option>
+              <option value="Fila - Corrida">Fila de Espera - Corrida</option>
+            </select>
+          </div>
+          <button id="btnCadastrarPessoa" class="btn-primario" style="width:100%; justify-content:center; margin-top: 15px;">Adicionar ao Sistema</button>
         </div>
       </div>
 
@@ -411,14 +439,23 @@
         <div>
           <div style="display: flex; gap: 10px; margin-bottom: 20px;">
             <div style="flex: 1; background: var(--bg); padding: 15px; border-radius: 8px; text-align: center;"><span style="font-size: 0.8rem; color: #666; text-transform: uppercase;">Total de Pontos</span><h3 id="fichaPontos" style="margin: 5px 0 0 0; color: var(--primary); font-size: 1.5rem;">0</h3></div>
-            <div style="flex: 1; background: var(--bg); padding: 15px; border-radius: 8px; text-align: center;"><span style="font-size: 0.8rem; color: #666; text-transform: uppercase;">Status no Sistema</span><h3 id="fichaStatus" style="margin: 5px 0 0 0; font-size: 1.1rem;">Ativo</h3></div>
+            <div style="flex: 1; background: var(--bg); padding: 15px; border-radius: 8px; text-align: center;"><span style="font-size: 0.8rem; color: #666; text-transform: uppercase;">Status no Sistema</span><h3 id="fichaStatus" style="margin: 5px 0 0 0; font-size: 1.1rem; line-height: 1.2;">Ativo</h3></div>
+          </div>
+          <div style="background: rgba(0,155,193,0.05); border: 1px solid var(--border); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+             <h4 style="margin: 0 0 10px 0; color: var(--primary); font-size: 0.95rem;">Dados Cadastrais</h4>
+             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.85rem; color: var(--text);">
+                <div><strong>Localidade:</strong> <span id="fichaLocalidade">-</span></div>
+                <div><strong>Nascimento:</strong> <span id="fichaNasc">-</span></div>
+                <div><strong>Sexo:</strong> <span id="fichaSexo">-</span></div>
+                <div><strong>Entrou em:</strong> <span id="fichaAnoEntrada">-</span></div>
+             </div>
           </div>
           <h4 style="margin: 0 0 10px 0; color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 5px;">Histórico de Lançamentos</h4>
-          <div id="fichaHistorico" style="max-height: 300px; overflow-y: auto; font-size: 0.85rem; padding-right: 5px;"></div>
+          <div id="fichaHistorico" style="max-height: 200px; overflow-y: auto; font-size: 0.85rem; padding-right: 5px;"></div>
         </div>
         <div style="display: flex; flex-direction: column;">
           <h4 style="margin: 0 0 10px 0; color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 5px;">Comentários e Observações</h4>
-          <div id="fichaComentariosLista" style="flex: 1; max-height: 230px; overflow-y: auto; margin-bottom: 10px; padding-right: 5px;"></div>
+          <div id="fichaComentariosLista" style="flex: 1; max-height: 350px; overflow-y: auto; margin-bottom: 10px; padding-right: 5px;"></div>
           <div style="background: var(--bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border);">
             <input type="hidden" id="fichaAtletaId" />
             <textarea id="novoComentarioFicha" placeholder="Registe uma observação (lesão, aviso, atestado)..." rows="3" style="width: 100%; resize: none; margin-bottom: 10px;"></textarea>
@@ -501,6 +538,17 @@
       <select id="eventoModalidade"><option value="Ambas">Ambas</option><option value="Bicicleta">Bicicleta</option><option value="Corrida">Corrida</option></select>
       <input type="date" id="eventoData" />
       <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;"><button id="fecharModalEvento" style="background: var(--border); padding: 10px;">Cancelar</button><button id="salvarEventoBtn" class="btn-primario" style="background: #8e44ad;">Salvar Evento</button></div>
+    </div>
+  </div>
+  
+  <div id="modalConfirmacao" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background: var(--bg-card); padding: 30px; border-radius: 12px; width: 90%; max-width: 350px; text-align: center; animation: slideUp 0.3s ease;">
+      <h3 id="confirmTitulo" style="color: var(--primary); margin-top: 0; margin-bottom: 10px;">Confirmação</h3>
+      <p id="confirmMensagem" style="color: var(--text-light); margin-bottom: 25px; font-size: 0.95rem;">Tem certeza?</p>
+      <div style="display: flex; gap: 10px; justify-content: center;">
+        <button id="btnConfirmCancel" style="background: var(--border); color: var(--text); padding: 10px 20px; border-radius: 8px; flex: 1; font-weight: 600;">Cancelar</button>
+        <button id="btnConfirmOk" class="btn-primario" style="flex: 1; justify-content: center;">Confirmar</button>
+      </div>
     </div>
   </div>
 
