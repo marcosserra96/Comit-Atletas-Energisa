@@ -3,16 +3,15 @@
 // =====================================================
 import { 
   auth, db, collection, getDocs, doc, getDoc, updateDoc, deleteDoc, addDoc, 
-  onAuthStateChanged, signOut, query, where, writeBatch, increment 
+  onAuthStateChanged, signOut, query, where, increment 
 } from "./firebase.js";
 
-// Importação dos Módulos
 import { appState } from "./modules/state.js";
 import { showToast, mostrarConfirmacao, setupSubTabs, setupConfiguracoesGerais } from "./modules/ui.js";
 import { setupDashboard, renderGraficosETop } from "./modules/dashboard.js";
 import { setupFinanceiroPlanilha, carregarFinanceiroPlanilha } from "./modules/financeiro.js";
 import { setupContabilizacao, setAtualizarTelasCallback } from "./modules/pontuacao.js";
-import { setupCadastrarPessoa, setupToggleAtivos, setupLimparBase, setAtualizarTelasGestao } from "./modules/gestao.js";
+import { setupCadastrarPessoa, setupImportacaoAtletas, setupToggleAtivos, setupLimparBase, setAtualizarTelasGestao } from "./modules/gestao.js";
 
 // =====================================================
 // 🔒 INICIALIZAÇÃO E PERMISSÕES
@@ -109,23 +108,19 @@ function construirMenu() {
 }
 
 function iniciarPainelAdmin() {
-  // Inicializa Módulos UI
   setupSubTabs(); 
   setupConfiguracoesGerais();
-  
-  // Inicializa Módulos de Funcionalidades
   setupDashboard();
   setupFinanceiroPlanilha();
   setupContabilizacao();
   setupCadastrarPessoa();
+  setupImportacaoAtletas(); // NOVA FUNÇÃO EXCEL
   setupToggleAtivos();
   setupLimparBase();
 
-  // Liga os callbacks de atualização para que os módulos possam pedir "refresh" à tela
   setAtualizarTelasCallback(atualizarTelas);
   setAtualizarTelasGestao(atualizarTelas);
 
-  // Inicializa Funcionalidades Locais (Controller)
   setupRelatorioConsolidado(); 
   setupPermissoesModal(); 
   setupAgenda(); 
@@ -133,7 +128,6 @@ function iniciarPainelAdmin() {
   setupModalEditar(); 
   setupFichaAtleta();
   
-  // Arranque dos Dados
   atualizarTelas();
 }
 
@@ -204,14 +198,27 @@ async function carregarEquipesEDashboard() {
   titulares.forEach(u => { 
     const pts = Number(u.pontuacaoTotal) || 0; 
     const ativo = u.ativo !== false; 
+    
+    // Novo Tooltip com as informações estendidas
+    const n = u.dataNascimento ? new Date(u.dataNascimento+"T00:00:00").toLocaleDateString('pt-BR') : 'N/D';
+    const tooltipInfo = `📍 ${u.localidade || 'Local não informado'}\n🎂 Nasc: ${n}\n🗓️ Entrou em: ${u.anoEntrada || 'N/D'}`;
+
     const switchAtivo = (hasGestao && u.role !== 'admin') ? `<label class="switch" title="Ativar/Desativar"><input type="checkbox" class="toggle-ativo" data-id="${u.id}" ${ativo ? 'checked' : ''}><span class="slider"></span></label>` : ''; 
     const btnFicha = `<button class="btn-acao btn-ficha" data-id="${u.id}" style="color: var(--primary); border-color: var(--primary); padding: 4px; margin-left: 5px;" title="Ver Ficha Completa"><i data-lucide="clipboard-list" style="width: 16px;"></i></button>`; 
     const btnPerm = (u.role === 'comite' && appState.userRole === 'admin') ? `<button class="btn-primario btn-permissoes" data-id="${u.id}" data-nome="${u.nome}" style="background: #f39c12; padding: 6px 10px; font-size: 0.8rem; margin-left: 5px;"><i data-lucide="key" style="width: 14px;"></i></button>` : ''; 
-    const btnEditar = hasGestao ? `<button class="btn-acao btn-editar-membro" data-id="${u.id}" data-nome="${u.nome}" data-email="${u.email}" data-eq="${u.equipe}" style="color: var(--warning); border-color: var(--warning); padding: 4px; margin-left: 5px;"><i data-lucide="edit-2" style="width: 16px;"></i></button>` : ''; 
+    const btnEditar = hasGestao ? `<button class="btn-acao btn-editar-membro" data-id="${u.id}" style="color: var(--warning); border-color: var(--warning); padding: 4px; margin-left: 5px;"><i data-lucide="edit-2" style="width: 16px;"></i></button>` : ''; 
     const btnExcluir = (auth.currentUser?.uid !== u.id && hasGestao) ? `<button class="btn-acao btn-excluir-membro" data-id="${u.id}" style="color: red; border: 0; padding: 4px; margin-left: 5px;"><i data-lucide="x-circle" style="width: 18px;"></i></button>` : ''; 
     const displayPts = u.role === 'atleta' ? `<br><small style="color: var(--primary);">🏆 ${pts} pts</small>` : ''; 
     
-    const linha = `<tr><td data-label="Atleta" class="${!ativo ? 'inativo-txt' : ''}" style="vertical-align:middle; text-align:left;"><strong>${u.nome}</strong>${displayPts}</td><td data-label="Ações" style="text-align: right; display:flex; justify-content:flex-end; align-items:center; min-height: 40px;">${switchAtivo} ${btnFicha} ${btnPerm} ${btnEditar} ${btnExcluir}</td></tr>`; 
+    const linha = `
+      <tr>
+        <td data-label="Atleta" class="${!ativo ? 'inativo-txt' : ''}" style="vertical-align:middle; text-align:left;">
+          <strong title="${tooltipInfo}" style="cursor:help;">${u.nome}</strong>${displayPts}
+        </td>
+        <td data-label="Ações" style="text-align: right; display:flex; justify-content:flex-end; align-items:center; min-height: 40px;">
+          ${switchAtivo} ${btnFicha} ${btnPerm} ${btnEditar} ${btnExcluir}
+        </td>
+      </tr>`; 
     
     if (u.role === "admin" || u.role === "comite") { 
       htmlComite += linha; contComite++; 
@@ -236,7 +243,7 @@ async function carregarEquipesEDashboard() {
   renderGraficosETop(ptsBike, ptsCorrida, todosAtletas, contBike, contCorrida); 
   if(typeof lucide !== 'undefined') lucide.createIcons();
   
-  // Event Listeners das Ações da Tabela
+  // Eventos de Botões das Tabelas
   document.querySelectorAll(".btn-aprovar-fila").forEach(btn => { 
     btn.addEventListener("click", async (e) => { 
       mostrarConfirmacao("Aprovar Atleta", "Mover o atleta da fila para a equipe principal?", async () => {
@@ -295,13 +302,22 @@ async function carregarEquipesEDashboard() {
     }); 
   }); 
   
+  // Atualizado para puxar todos os dados para a edição
   document.querySelectorAll(".btn-editar-membro").forEach(btn => { 
     btn.addEventListener("click", (e) => { 
       const b = e.currentTarget; 
-      document.getElementById("editId").value = b.dataset.id; 
-      document.getElementById("editNome").value = b.dataset.nome; 
-      document.getElementById("editEmail").value = b.dataset.email !== "undefined" ? b.dataset.email : ""; 
-      document.getElementById("editPapel").value = b.dataset.eq; 
+      const u = appState.mapAtletas[b.dataset.id];
+      
+      document.getElementById("editId").value = u.id; 
+      document.getElementById("editNome").value = u.nome; 
+      document.getElementById("editEmail").value = u.email !== "undefined" ? (u.email || "") : ""; 
+      document.getElementById("editPapel").value = u.role === "comite" ? "Comitê" : u.equipe; 
+      
+      document.getElementById("editSexo").value = u.sexo || "Masculino";
+      document.getElementById("editNasc").value = u.dataNascimento || "";
+      document.getElementById("editLocalidade").value = u.localidade || "";
+      document.getElementById("editAnoEntrada").value = u.anoEntrada || "";
+      
       document.getElementById("modalEditarAtleta").style.display = "flex"; 
     }); 
   }); 
@@ -682,7 +698,6 @@ async function abrirFichaAtleta(id) {
   document.getElementById("fichaEquipe").textContent = a.equipe; 
   document.getElementById("fichaPontos").textContent = a.pontuacaoTotal || 0; 
   
-  // Renderiza Campos Completos da Ficha
   const renderCampo = (idEl, val, fallback) => { if(document.getElementById(idEl)) document.getElementById(idEl).textContent = val || fallback; };
   renderCampo("fichaLocalidade", a.localidade, "Não informada");
   renderCampo("fichaNasc", a.dataNascimento ? new Date(a.dataNascimento+"T00:00:00").toLocaleDateString('pt-BR') : "Não informada", "");
@@ -790,6 +805,12 @@ function setupModalEditar() {
     const email = document.getElementById("editEmail").value.trim();
     const papel = document.getElementById("editPapel").value; 
     
+    // Captura os novos campos
+    const sexo = document.getElementById("editSexo").value;
+    const nasc = document.getElementById("editNasc").value;
+    const localidade = document.getElementById("editLocalidade").value.trim();
+    const anoEntrada = document.getElementById("editAnoEntrada").value;
+    
     if (!nome) return; 
     let role = "atleta"; let equipe = papel; 
     if (papel === "Comitê") { role = "comite"; equipe = "Nenhuma"; } 
@@ -798,12 +819,17 @@ function setupModalEditar() {
     e.target.disabled = true; 
     
     try { 
-      await updateDoc(doc(db, "atletas", id), { nome: nome, email: email, role: role, equipe: equipe }); 
-      showToast("Dados atualizados!", "success"); 
-      modal.style.display = "none"; atualizarTelas(); 
+      await updateDoc(doc(db, "atletas", id), { 
+        nome, email, role, equipe, 
+        sexo, dataNascimento: nasc, localidade, anoEntrada 
+      }); 
+      showToast("Ficha atualizada com sucesso!", "success"); 
+      modal.style.display = "none"; 
+      atualizarTelas(); 
+      document.getElementById("modalFichaAtleta").style.display = "none";
     } catch (err) { showToast("Erro ao editar dados.", "error"); } 
     finally {
-      e.target.textContent = "Atualizar"; e.target.classList.remove("loading");
+      e.target.textContent = "Salvar Alterações"; e.target.classList.remove("loading");
       e.target.disabled = false; 
     }
   }); 
