@@ -12,6 +12,29 @@ export function showToast(message, type = "info") {
   setTimeout(() => t.remove(), 4000);
 }
 
+// O Novo Modal de Confirmação Customizado
+export function mostrarConfirmacao(titulo, mensagem, callbackSim, tipo = "primary") {
+  const modal = document.getElementById("modalConfirmacao");
+  if (!modal) return; // Prevenção de erro caso o HTML ainda não tenha o modal
+  
+  document.getElementById("confirmTitulo").textContent = titulo;
+  document.getElementById("confirmMensagem").textContent = mensagem;
+  
+  const btnOk = document.getElementById("btnConfirmOk");
+  btnOk.style.background = tipo === "danger" ? "var(--danger)" : "var(--primary)";
+  
+  // Clona o botão para remover event listeners de chamadas anteriores
+  const novoBtnOk = btnOk.cloneNode(true);
+  btnOk.parentNode.replaceChild(novoBtnOk, btnOk);
+  
+  const fechar = () => modal.style.display = "none";
+  
+  document.getElementById("btnConfirmCancel").onclick = fechar;
+  novoBtnOk.onclick = () => { fechar(); callbackSim(); };
+  
+  modal.style.display = "flex";
+}
+
 export function setupSubTabs() {
   document.querySelectorAll(".sub-tab").forEach(tab => { 
     tab.addEventListener("click", () => { 
@@ -35,14 +58,12 @@ export function setupSubTabs() {
 }
 
 export function setupConfiguracoesGerais() {
-  // Zoom
   document.querySelectorAll(".btn-zoom").forEach(btn => { 
     btn.addEventListener("click", (e) => { 
       document.documentElement.style.fontSize = e.target.dataset.size; 
     }); 
   }); 
   
-  // Tema Dark/Light
   const aplicarTema = (tema) => { 
     if(tema === "dark") { 
       document.body.setAttribute("data-theme", "dark"); 
@@ -51,7 +72,6 @@ export function setupConfiguracoesGerais() {
       document.body.removeAttribute("data-theme"); 
       localStorage.setItem("theme", "light"); 
     } 
-    // O Chart.js precisará ser atualizado pelo módulo do dashboard posteriormente
   }; 
   
   if (localStorage.getItem("theme") === "dark") aplicarTema("dark"); 
@@ -59,12 +79,10 @@ export function setupConfiguracoesGerais() {
   document.getElementById("btnTemaClaro")?.addEventListener("click", () => aplicarTema("light")); 
   document.getElementById("btnTemaEscuro")?.addEventListener("click", () => aplicarTema("dark")); 
   
-  // Logout
-  document.getElementById("logoutBtn")?.addEventListener("click", async () => { 
-    // Usaremos nosso novo modal customizado em breve, mas por enquanto:
-    if(confirm("Sair?")) { 
+  document.getElementById("logoutBtn")?.addEventListener("click", () => { 
+    mostrarConfirmacao("Sair do Sistema", "Deseja realmente encerrar a sessão?", async () => {
       await signOut(auth); 
       window.location.href = "index.html"; 
-    } 
+    });
   });
 }
