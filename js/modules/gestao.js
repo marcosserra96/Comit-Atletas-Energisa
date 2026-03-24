@@ -1,4 +1,6 @@
-// js/modules/gestao.js
+// =====================================================
+// js/modules/gestao.js - GESTÃO DE ATLETAS E BASE
+// =====================================================
 import { db, collection, addDoc, doc, updateDoc, deleteDoc, getDocs, query, where } from '../firebase.js';
 import { appState } from './state.js';
 import { showToast, mostrarConfirmacao } from './ui.js';
@@ -24,8 +26,8 @@ export function setupCadastrarPessoa() {
       btn.disabled = true; 
       
       await addDoc(collection(db, "atletas"), { 
-        nome, email: email || "", sexo: sexo || "", dataNascimento: dataNasc || "", 
-        localidade: localidade || "", anoEntrada: anoEntrada || "",
+        nome, email: email || "", sexo: sexo || "Masculino", dataNascimento: dataNasc || "", 
+        localidade: localidade || "", anoEntrada: anoEntrada || new Date().getFullYear(),
         role: "atleta", equipe: papel, status: "Aprovado", ativo: true, 
         pontuacaoTotal: 0, recusas: 0, criadoEm: new Date().toISOString() 
       }); 
@@ -44,6 +46,75 @@ export function setupCadastrarPessoa() {
   }); 
 }
 
+export function setupImportacaoAtletas() {
+  document.getElementById("btnExportarModeloAtletas")?.addEventListener("click", () => {
+    const dadosModelo = [{
+      "Nome Completo": "", "E-mail Corporativo": "", "Sexo (Masculino/Feminino)": "",
+      "Data Nascimento (AAAA-MM-DD)": "", "Localidade": "", "Ano Entrada": "",
+      "Equipe (Bicicleta / Corrida / Fila - Bicicleta / Fila - Corrida)": ""
+    }];
+
+    if (typeof XLSX !== 'undefined') {
+      const ws = XLSX.utils.json_to_sheet(dadosModelo);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Cadastro_Atletas");
+      XLSX.writeFile(wb, `Modelo_Cadastro_Atletas.xlsx`);
+    } else {
+      showToast("Biblioteca Excel não carregada.", "error");
+    }
+  });
+
+  document.getElementById("btnImportarAtletasExcel")?.addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+      await processarImportacaoAtletas(json);
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = ""; 
+  });
+}
+
+async function processarImportacaoAtletas(linhas) {
+  const cadastrosValidos = linhas.filter(l => l["Nome Completo"] && l["Equipe (Bicicleta / Corrida / Fila - Bicicleta / Fila - Corrida)"]);
+  if (cadastrosValidos.length === 0) return showToast("Nenhum atleta válido encontrado na planilha.", "error");
+
+  mostrarConfirmacao("Importar Atletas", `Deseja adicionar ${cadastrosValidos.length} novos membros ao sistema?`, async () => {
+    try {
+      showToast("Processando cadastros...", "info");
+      const { writeBatch } = await import('../firebase.js');
+      const batch = writeBatch(db);
+      
+      cadastrosValidos.forEach(l => {
+        const novoRef = doc(collection(db, "atletas")); 
+        batch.set(novoRef, {
+          nome: String(l["Nome Completo"]).trim(),
+          email: l["E-mail Corporativo"] || "",
+          sexo: l["Sexo (Masculino/Feminino)"] || "",
+          dataNascimento: l["Data Nascimento (AAAA-MM-DD)"] || "",
+          localidade: String(l["Localidade"] || "").trim(),
+          anoEntrada: l["Ano Entrada"] || new Date().getFullYear(),
+          equipe: String(l["Equipe (Bicicleta / Corrida / Fila - Bicicleta / Fila - Corrida)"]).trim(),
+          role: "atleta", status: "Aprovado", ativo: true,
+          pontuacaoTotal: 0, recusas: 0,
+          criadoEm: new Date().toISOString()
+        });
+      });
+
+      await batch.commit();
+      showToast("Atletas importados com sucesso!", "success");
+      if (atualizarTelasCallback) atualizarTelasCallback();
+    } catch (err) {
+      showToast("Erro ao importar: " + err.message, "error");
+    }
+  });
+}
+
 export function setupToggleAtivos() {
   document.addEventListener("change", async (e) => { 
     if(e.target.classList.contains("toggle-ativo")) {
@@ -51,7 +122,6 @@ export function setupToggleAtivos() {
       const id = e.target.dataset.id;
 
       if (!isAtivo) {
-        // Fluxo de Saída com o novo motivo
         const motivo = prompt("Qual o motivo da saída/desligamento do atleta do programa?"); 
         try { 
           await updateDoc(doc(db, "atletas", id), { 
@@ -62,7 +132,6 @@ export function setupToggleAtivos() {
           showToast("Atleta Inativado.", "info"); 
         } catch(err) { showToast("Erro ao inativar.", "error"); }
       } else {
-        // Fluxo de Retorno
         try { 
           await updateDoc(doc(db, "atletas", id), { 
             ativo: true, 
@@ -96,7 +165,6 @@ export function setupLimparBase() {
           snap.forEach(async (d) => await deleteDoc(doc(db, c, d.id))); 
         } 
         
-        // Mantém a conta administrativa atual segura (exigência da sua arquitetura)
         const snapA = await getDocs(collection(db, "atletas")); 
         snapA.forEach(async (d) => { 
           if (d.data().role !== "admin") {
