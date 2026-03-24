@@ -1,7 +1,7 @@
 // =====================================================
-// js/modules/gestao.js - GESTÃO DE ATLETAS E BASE
+// js/modules/gestao.js
 // =====================================================
-import { db, collection, addDoc, doc, updateDoc, deleteDoc, getDocs, query, where } from '../firebase.js';
+import { db, collection, addDoc, doc, updateDoc, deleteDoc, getDocs, query, where, writeBatch } from '../firebase.js';
 import { appState } from './state.js';
 import { showToast, mostrarConfirmacao } from './ui.js';
 
@@ -22,8 +22,7 @@ export function setupCadastrarPessoa() {
     if (!nome) return showToast("Preencha o nome obrigatório!", "error"); 
     
     try { 
-      btn.textContent = "Salvando..."; btn.classList.add("loading");
-      btn.disabled = true; 
+      btn.textContent = "Salvando..."; btn.classList.add("loading"); btn.disabled = true; 
       
       await addDoc(collection(db, "atletas"), { 
         nome, email: email || "", sexo: sexo || "Masculino", dataNascimento: dataNasc || "", 
@@ -40,8 +39,7 @@ export function setupCadastrarPessoa() {
     } catch (error) { 
       showToast("Erro ao adicionar: " + error.message, "error"); 
     } finally {
-      btn.textContent = "Adicionar ao Sistema"; btn.classList.remove("loading");
-      btn.disabled = false; 
+      btn.textContent = "Adicionar ao Sistema"; btn.classList.remove("loading"); btn.disabled = false; 
     }
   }); 
 }
@@ -87,7 +85,6 @@ async function processarImportacaoAtletas(linhas) {
   mostrarConfirmacao("Importar Atletas", `Deseja adicionar ${cadastrosValidos.length} novos membros ao sistema?`, async () => {
     try {
       showToast("Processando cadastros...", "info");
-      const { writeBatch } = await import('../firebase.js');
       const batch = writeBatch(db);
       
       cadastrosValidos.forEach(l => {
@@ -125,19 +122,13 @@ export function setupToggleAtivos() {
         const motivo = prompt("Qual o motivo da saída/desligamento do atleta do programa?"); 
         try { 
           await updateDoc(doc(db, "atletas", id), { 
-            ativo: false, 
-            dataSaida: new Date().toISOString(),
-            motivoSaida: motivo || "Não informado"
+            ativo: false, dataSaida: new Date().toISOString(), motivoSaida: motivo || "Não informado"
           }); 
           showToast("Atleta Inativado.", "info"); 
         } catch(err) { showToast("Erro ao inativar.", "error"); }
       } else {
         try { 
-          await updateDoc(doc(db, "atletas", id), { 
-            ativo: true, 
-            dataSaida: null, 
-            motivoSaida: null 
-          }); 
+          await updateDoc(doc(db, "atletas", id), { ativo: true, dataSaida: null, motivoSaida: null }); 
           showToast("Atleta Reativado!", "success"); 
         } catch(err) { showToast("Erro ao ativar.", "error"); }
       }
