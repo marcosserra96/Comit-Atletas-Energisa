@@ -18,7 +18,7 @@ import { setupCadastrarPessoa, setupImportacaoAtletas, setupToggleAtivos, setupL
 // =====================================================
 onAuthStateChanged(auth, async (user) => {
   if (user) {
-    appState.currentUser = user; // Guarda a info do utilizador logado no State
+    appState.currentUser = user; 
     try {
       const docSnap = await getDoc(doc(db, "atletas", user.uid));
       if (docSnap.exists() && (docSnap.data().role === "admin" || docSnap.data().role === "comite")) {
@@ -153,11 +153,11 @@ async function carregarEquipesEDashboard() {
                    <button class="btn-acao btn-pular-fila" data-id="${u.id}" data-strikes="${strikes}" style="color:#f39c12; padding:4px;"><i data-lucide="skip-forward" style="width:16px;"></i></button>`; 
     } 
     if(u.equipe === "Fila - Bicicleta" || u.equipe === "Fila de Espera") { 
-      htmlFilaBike += `<tr><td data-label="Atleta"><strong>${idxBike}º - ${u.nome}</strong> ${badgeStrike}</td><td data-label="Ações" style="text-align: right; display:flex; justify-content:flex-end; gap:5px;">${acoesHTML}</td></tr>`; 
+      htmlFilaBike += `<tr><td data-label="Atleta"><strong>${idxBike}º - ${u.nome}</strong> ${badgeStrike}</td><td data-label="Ações" style="text-align: right; vertical-align:middle;"><div style="display:inline-flex; justify-content:flex-end; gap:5px;">${acoesHTML}</div></td></tr>`; 
       idxBike++; contFila++; 
     } 
     if (u.equipe === "Fila - Corrida") { 
-      htmlFilaCorrida += `<tr><td data-label="Atleta"><strong>${idxCorrida}º - ${u.nome}</strong> ${badgeStrike}</td><td data-label="Ações" style="text-align: right; display:flex; justify-content:flex-end; gap:5px;">${acoesHTML}</td></tr>`; 
+      htmlFilaCorrida += `<tr><td data-label="Atleta"><strong>${idxCorrida}º - ${u.nome}</strong> ${badgeStrike}</td><td data-label="Ações" style="text-align: right; vertical-align:middle;"><div style="display:inline-flex; justify-content:flex-end; gap:5px;">${acoesHTML}</div></td></tr>`; 
       idxCorrida++; contFila++; 
     } 
   });
@@ -176,13 +176,16 @@ async function carregarEquipesEDashboard() {
     const btnExcluir = (auth.currentUser?.uid !== u.id && hasGestao) ? `<button class="btn-acao btn-excluir-membro" data-id="${u.id}" style="color: red; border: 0; padding: 4px; margin-left: 5px;"><i data-lucide="x-circle" style="width: 18px;"></i></button>` : ''; 
     const displayPts = u.role === 'atleta' ? `<br><small style="color: var(--primary);">🏆 ${pts} pts</small>` : ''; 
     
+    // A correção definitiva da linha (retiramos o flex direto do <td> e usamos um container <div>)
     const linha = `
       <tr>
         <td data-label="Atleta" class="${!ativo ? 'inativo-txt' : ''}" style="vertical-align:middle; text-align:left;">
-          <strong title="${tooltipInfo}" style="cursor:help;">${u.nome}</strong>${displayPts}
+          <strong title="${tooltipInfo}" style="cursor:help; border-bottom: 1px dashed var(--primary); padding-bottom: 2px;">${u.nome}</strong>${displayPts}
         </td>
-        <td data-label="Ações" style="text-align: right; display:flex; justify-content:flex-end; align-items:center; min-height: 40px;">
-          ${switchAtivo} ${btnFicha} ${btnPerm} ${btnEditar} ${btnExcluir}
+        <td data-label="Ações" style="text-align: right; vertical-align:middle;">
+          <div style="display:inline-flex; justify-content:flex-end; align-items:center; gap:5px;">
+            ${switchAtivo} ${btnFicha} ${btnPerm} ${btnEditar} ${btnExcluir}
+          </div>
         </td>
       </tr>`; 
     
@@ -196,6 +199,7 @@ async function carregarEquipesEDashboard() {
   if(document.getElementById("listaBicicleta")) document.getElementById("listaBicicleta").innerHTML = htmlBike || `<tr><td colspan='2'>Equipe vazia.</td></tr>`; 
   if(document.getElementById("listaCorrida")) document.getElementById("listaCorrida").innerHTML = htmlCorrida || `<tr><td colspan='2'>Equipe vazia.</td></tr>`; 
   if(document.getElementById("listaComite")) document.getElementById("listaComite").innerHTML = htmlComite || `<tr><td colspan='2'>Sem membros.</td></tr>`; 
+  
   if(document.getElementById("totalBike")) document.getElementById("totalBike").textContent = contBike; 
   if(document.getElementById("totalCorrida")) document.getElementById("totalCorrida").textContent = contCorrida;
   
