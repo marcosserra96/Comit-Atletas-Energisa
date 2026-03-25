@@ -261,11 +261,46 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
 .regra-chip input[type="checkbox"] { margin: 0; width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary); }
 .regra-chip.selected { background: rgba(0, 155, 193, 0.1); border-color: var(--primary); color: var(--primary); font-weight: 600; }
 
-.toast { padding: 14px 20px; border-radius: 12px; color: #fff; font-weight: 500; box-shadow: 0 8px 20px rgba(0,0,0,0.25); opacity: 0; animation: toastIn 0.4s forwards; display: flex; align-items: center; gap: 10px; min-width: 250px; z-index: 10001; }
+/* =======================================================
+   🍞 NOTIFICAÇÕES (TOASTS) - FIXAS E SOBREPOSTAS
+======================================================= */
+#toastContainer {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 99999; /* Fica acima de tudo, incluindo o header */
+  pointer-events: none; /* Não bloqueia cliques onde não há notificação */
+  max-width: 350px;
+  width: calc(100vw - 48px); /* Adapta-se em ecrãs menores */
+}
+
+.toast { 
+  pointer-events: auto; /* Permite interação apenas dentro da notificação */
+  padding: 14px 20px; 
+  border-radius: 12px; 
+  color: #fff; 
+  font-weight: 500; 
+  box-shadow: 0 8px 20px rgba(0,0,0,0.25); 
+  opacity: 0; 
+  animation: toastIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; 
+  display: flex; 
+  align-items: center; 
+  gap: 10px; 
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .toast.success { background: linear-gradient(135deg, var(--secondary), #009e6d); }
 .toast.error { background: linear-gradient(135deg, var(--danger), #c53030); }
 .toast.info { background: linear-gradient(135deg, var(--primary), #007fa0); }
-@keyframes toastIn { to { opacity: 1; transform: translateY(0); } }
+
+@keyframes toastIn { 
+  from { opacity: 0; transform: translateY(-20px) scale(0.9); } 
+  to { opacity: 1; transform: translateY(0) scale(1); } 
+}
 
 /* =======================================================
    📋 FICHA DO ATLETA E COMENTÁRIOS
@@ -298,9 +333,10 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
   .menu-item span { display: none; } 
   .menu-item { padding: 12px; border-radius: 50%; }
   .portal-nome { display: none; } 
+  .tabela-simples th, .tabela-simples td { padding: 10px 8px; font-size: 0.85rem; }
   
-  /* Redução de Padding para otimizar espaço lateral */
-  main { padding: 80px 10px 120px !important; } /* Aumentado para o menu flutuante não tapar o conteúdo */
+  /* Redução de Padding para otimizar espaço lateral e não ser tapado pelo menu flutuante */
+  main { padding: 80px 10px 120px !important; }
   .card { padding: 15px; }
 
   /* Reorganização de colunas (Grids -> Flex Vertical) */
