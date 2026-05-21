@@ -64,15 +64,27 @@ export function setupContabilizacao() {
         }
 
         const regrasArray = [];
+        const tipoAtual = getTipoLancamentoAtual();
         snapRegras.forEach(d => {
           const r = d.data();
+          const tiposPermitidos = Array.isArray(r.tiposLancamento) && r.tiposLancamento.length
+            ? r.tiposLancamento
+            : ["treino", "evento", "avulso"];
+
+          if (!tiposPermitidos.includes(tipoAtual)) return;
+
           regrasArray.push({
             id: d.id,
             descricao: r.descricao,
             pontos: r.pontos,
-            regrasVinculadas: r.regrasVinculadas || []
+            regrasVinculadas: r.regrasVinculadas || [],
+            tiposLancamento: tiposPermitidos
           });
         });
+
+        if (regrasArray.length === 0) {
+          return showToast("Nenhuma regra habilitada para este tipo de lançamento.", "error");
+        }
 
         await gerarTabelaContabilizacao(mod, regrasArray);
         if (areaTabela) areaTabela.style.display = "block";
@@ -216,6 +228,9 @@ function aplicarEstilosUXPontuacao() {
       box-shadow: var(--shadow);
       overflow: hidden;
       transition: .2s ease;
+      display: flex;
+      flex-direction: column;
+      min-height: 250px;
     }
 
     .lote-card:hover {
@@ -256,6 +271,10 @@ function aplicarEstilosUXPontuacao() {
 
     .lote-body {
       padding: 14px 16px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
 
     .lote-stats {
@@ -271,6 +290,10 @@ function aplicarEstilosUXPontuacao() {
       border-radius: 13px;
       padding: 9px 6px;
       text-align: center;
+      min-height: 54px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
 
     .lote-stat strong {

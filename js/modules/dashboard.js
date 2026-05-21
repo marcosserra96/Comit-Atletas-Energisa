@@ -106,103 +106,181 @@ export function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike,
 }
 
 function exportarPDFExecutivo() {
-  showToast("Montando painel corporativo...", "info"); 
-  
-  const temaAtual = document.body.getAttribute("data-theme"); 
-  if (temaAtual === "dark") { 
-    document.body.removeAttribute("data-theme"); 
-    Chart.defaults.color = '#666'; 
-    if(appState.graficoLinhaInstancia) appState.graficoLinhaInstancia.update(); 
+  showToast("Montando report oficial A4...", "info");
+
+  const temaAtual = document.body.getAttribute("data-theme");
+  if (temaAtual === "dark") {
+    document.body.removeAttribute("data-theme");
+    Chart.defaults.color = '#666';
+    if(appState.graficoLinhaInstancia) appState.graficoLinhaInstancia.update();
   }
-  
+
   setTimeout(() => {
-    const elDataHoje = document.getElementById("pdfDataHoje");
-    if(elDataHoje) elDataHoje.textContent = new Date().toLocaleDateString('pt-BR'); 
-    
-    if(document.getElementById("pdfAtivos")) document.getElementById("pdfAtivos").textContent = document.getElementById("totalAtivosGeral")?.textContent || "0"; 
-    if(document.getElementById("pdfEngajamento")) document.getElementById("pdfEngajamento").textContent = document.getElementById("engajamento30d")?.textContent || "0%"; 
-    if(document.getElementById("pdfInvest")) document.getElementById("pdfInvest").textContent = document.getElementById("totalInvestimento")?.textContent || "R$ 0"; 
-    if(document.getElementById("pdfRoi")) document.getElementById("pdfRoi").textContent = document.getElementById("roiAtleta")?.textContent || "R$ 0"; 
-    
-    if(document.getElementById("pdfMediaBike")) document.getElementById("pdfMediaBike").textContent = document.getElementById("mediaBike")?.textContent || "0"; 
-    if(document.getElementById("pdfMediaCorrida")) document.getElementById("pdfMediaCorrida").textContent = document.getElementById("mediaCorrida")?.textContent || "0"; 
-    
-    if(document.getElementById("pdfTopBike")) document.getElementById("pdfTopBike").innerHTML = document.getElementById("listaPodioBike")?.innerHTML || ""; 
-    if(document.getElementById("pdfTopCorrida")) document.getElementById("pdfTopCorrida").innerHTML = document.getElementById("listaPodioCorrida")?.innerHTML || ""; 
-    
-    if(document.getElementById("pdfListaEvasao")) {
-      document.getElementById("pdfListaEvasao").innerHTML = (document.getElementById("listaEvasaoBike")?.innerHTML || "") + (document.getElementById("listaEvasaoCorrida")?.innerHTML || ""); 
-    }
-    
-    const elAgenda = document.getElementById("listaEventosAgenda");
-    if(elAgenda) {
-      const agendaClone = elAgenda.cloneNode(true); 
-      agendaClone.querySelectorAll("button").forEach(b => b.remove()); 
-      if(document.getElementById("pdfProximosEventos")) document.getElementById("pdfProximosEventos").innerHTML = agendaClone.innerHTML;
-    }
-    
-    const eventosPassados = {}; 
-    appState.historicoCompleto.forEach(h => { 
-      if(!h.dataTreino || !h.descTreino || h.descTreino.toLowerCase().includes("falta")) return; 
-      const key = `${h.dataTreino}::${h.descTreino}`; 
-      if(!eventosPassados[key]) eventosPassados[key] = { data: h.dataTreino, desc: h.descTreino, atletas: new Set() }; 
-      eventosPassados[key].atletas.add(h.atletaId); 
-    }); 
-    
-    const listaUltimos = Object.values(eventosPassados).sort((a,b) => new Date(b.data || "1970-01-01") - new Date(a.data || "1970-01-01")).slice(0, 4); 
-    let htmlUltimos = ""; 
-    listaUltimos.forEach(e => { 
-      const d = new Date(e.data + "T00:00:00").toLocaleDateString('pt-BR').substring(0,5); 
-      htmlUltimos += `<div style="display:flex; justify-content:space-between; margin-bottom:4px; border-bottom:1px solid #f5f5f5; padding-bottom:4px;"><span style="color:#666;"><strong>${d}</strong> - ${e.desc}</span><strong style="color:var(--primary);">${e.atletas.size} 👤</strong></div>`; 
-    }); 
-    
-    if(document.getElementById("pdfUltimosEventos")) {
-      document.getElementById("pdfUltimosEventos").innerHTML = htmlUltimos || "<p style='color:#999; text-align:center;'>Nenhum evento processado.</p>";
-    }
-    
-    const canvasLinha = document.getElementById('graficoTendencia'); 
+    preencherDadosReportA4();
+
+    const canvasLinha = document.getElementById('graficoTendencia');
     let widthOriginal, heightOriginal;
-    
-    if(canvasLinha) { 
-      widthOriginal = canvasLinha.style.width; 
-      heightOriginal = canvasLinha.style.height; 
-      canvasLinha.style.width = '700px'; 
-      canvasLinha.style.height = '200px'; 
-      if(appState.graficoLinhaInstancia) appState.graficoLinhaInstancia.resize(); 
+
+    if(canvasLinha) {
+      widthOriginal = canvasLinha.style.width;
+      heightOriginal = canvasLinha.style.height;
+      canvasLinha.style.width = '680px';
+      canvasLinha.style.height = '230px';
+      if(appState.graficoLinhaInstancia) appState.graficoLinhaInstancia.resize();
       const pdfImg = document.getElementById('pdfImgTendencia');
-      if(pdfImg) pdfImg.src = canvasLinha.toDataURL("image/png", 1.0); 
+      if(pdfImg) pdfImg.src = canvasLinha.toDataURL("image/png", 1.0);
     }
-    
-    const modalPdf = document.getElementById("pdfOverlay"); 
-    const printArea = document.getElementById("pdfPrintArea"); 
+
+    const modalPdf = document.getElementById("pdfOverlay");
+    const printArea = document.getElementById("pdfPrintArea");
+    if (!modalPdf || !printArea) return showToast("Área do report não encontrada.", "error");
+
     modalPdf.style.display = "flex";
-    
-    setTimeout(() => { 
+
+    setTimeout(() => {
       const txtDataHoje = document.getElementById("pdfDataHoje")?.textContent || "report";
-      const opt = { 
-        margin: 0, 
-        filename: `Report_Atletas_${txtDataHoje.replace(/\//g, '-')}.pdf`, 
-        image: { type: 'jpeg', quality: 0.98 }, 
-        html2canvas: { scale: 2, useCORS: true }, 
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
-      }; 
-      
-      html2pdf().set(opt).from(printArea).save().then(() => { 
-        modalPdf.style.display = "none"; 
-        
-        if(canvasLinha) { 
-          canvasLinha.style.width = widthOriginal; 
-          canvasLinha.style.height = heightOriginal; 
-          if(appState.graficoLinhaInstancia) appState.graficoLinhaInstancia.resize(); 
-        } 
-        
-        if (temaAtual === "dark") { 
-          document.body.setAttribute("data-theme", "dark"); 
-          Chart.defaults.color = '#aaa'; 
-          if(appState.graficoLinhaInstancia) appState.graficoLinhaInstancia.update(); 
-        } 
-        showToast("Download Concluído!", "success"); 
-      }); 
+      const opt = {
+        margin: 0,
+        filename: `Report_Atletas_${txtDataHoje.replace(/\//g, '-')}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      };
+
+      html2pdf().set(opt).from(printArea).save().then(() => {
+        modalPdf.style.display = "none";
+
+        if(canvasLinha) {
+          canvasLinha.style.width = widthOriginal;
+          canvasLinha.style.height = heightOriginal;
+          if(appState.graficoLinhaInstancia) appState.graficoLinhaInstancia.resize();
+        }
+
+        if (temaAtual === "dark") {
+          document.body.setAttribute("data-theme", "dark");
+          Chart.defaults.color = '#aaa';
+          if(appState.graficoLinhaInstancia) appState.graficoLinhaInstancia.update();
+        }
+
+        showToast("Download concluído!", "success");
+      });
     }, 600);
-  }, 150); 
+  }, 150);
+}
+
+function preencherDadosReportA4() {
+  const setText = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
+  const setHtml = (id, html) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+  };
+
+  setText("pdfDataHoje", new Date().toLocaleDateString('pt-BR'));
+  setText("pdfAtivos", document.getElementById("totalAtivosGeral")?.textContent || "0");
+  setText("pdfEngajamento", document.getElementById("engajamento30d")?.textContent || "0%");
+  setText("pdfInvest", document.getElementById("totalInvestimento")?.textContent || "R$ 0,00");
+  setText("pdfRoi", document.getElementById("roiAtleta")?.textContent || "R$ 0,00");
+  setText("pdfMediaBike", document.getElementById("mediaBike")?.textContent || "0");
+  setText("pdfMediaCorrida", document.getElementById("mediaCorrida")?.textContent || "0");
+
+  const analytics = calcularAnalyticsReport();
+  setText("pdfKmTotal", `${formatarKm(analytics.kmTotal)} km`);
+  setText("pdfKmBike", `${formatarKm(analytics.kmBike)} km`);
+  setText("pdfKmCorrida", `${formatarKm(analytics.kmCorrida)} km`);
+  setText("pdfParticipacoes", analytics.participacoes);
+
+  setHtml("pdfTopBike", limparListaParaPdf(document.getElementById("listaPodioBike")?.innerHTML || ""));
+  setHtml("pdfTopCorrida", limparListaParaPdf(document.getElementById("listaPodioCorrida")?.innerHTML || ""));
+  setHtml("pdfListaEvasao", limparListaParaPdf((document.getElementById("listaEvasaoBike")?.innerHTML || "") + (document.getElementById("listaEvasaoCorrida")?.innerHTML || "")) || "<li>Nenhum alerta crítico.</li>");
+
+  const elAgenda = document.getElementById("listaEventosAgenda");
+  if(elAgenda) {
+    const agendaClone = elAgenda.cloneNode(true);
+    agendaClone.querySelectorAll("button").forEach(b => b.remove());
+    setHtml("pdfProximosEventos", agendaClone.innerHTML || "<p>Nenhum evento agendado.</p>");
+  }
+
+  setHtml("pdfUltimosEventos", montarUltimosLancamentosReport());
+}
+
+function calcularAnalyticsReport() {
+  const historico = appState.historicoCompleto || [];
+  const atletas = appState.mapAtletas || {};
+  const vistos = new Set();
+  let kmTotal = 0;
+  let kmBike = 0;
+  let kmCorrida = 0;
+  let participacoes = 0;
+
+  historico.forEach(h => {
+    if (!h.atletaId) return;
+    const chave = `${h.atletaId}|${h.loteId || h.eventoId || `${h.dataTreino || ''}|${h.descTreino || ''}`}`;
+    if (vistos.has(chave)) return;
+    vistos.add(chave);
+    participacoes++;
+
+    const km = Number(h.kmPercorrido || h.km || 0);
+    if (km > 0) {
+      kmTotal += km;
+      const eq = atletas[h.atletaId]?.equipe || h.atletaEquipe || "";
+      if (eq === "Corrida") kmCorrida += km;
+      if (eq === "Bicicleta" || eq === "Bike") kmBike += km;
+    }
+  });
+
+  return { kmTotal, kmBike, kmCorrida, participacoes };
+}
+
+function montarUltimosLancamentosReport() {
+  const grupos = {};
+  (appState.historicoCompleto || []).forEach(h => {
+    if(!h.dataTreino || !h.descTreino) return;
+    const key = h.loteId || `${h.dataTreino}::${h.descTreino}`;
+    if(!grupos[key]) grupos[key] = { data: h.dataTreino, desc: h.tituloLancamento || h.descTreino, atletas: new Set(), pontos: 0, km: 0, vistosKm: new Set() };
+    grupos[key].atletas.add(h.atletaId);
+    grupos[key].pontos += Number(h.pontos) || 0;
+    const kmKey = `${h.atletaId}|${key}`;
+    if(!grupos[key].vistosKm.has(kmKey)) {
+      grupos[key].vistosKm.add(kmKey);
+      grupos[key].km += Number(h.kmPercorrido || h.km || 0);
+    }
+  });
+
+  const lista = Object.values(grupos)
+    .sort((a,b) => new Date(b.data || "1970-01-01") - new Date(a.data || "1970-01-01"))
+    .slice(0, 6);
+
+  if(lista.length === 0) return "<p>Nenhum lançamento processado.</p>";
+
+  return lista.map(e => {
+    const d = new Date(e.data + "T00:00:00").toLocaleDateString('pt-BR').substring(0,5);
+    return `<div style="display:flex; justify-content:space-between; gap:8px; border-bottom:1px solid #eef3f5; padding:5px 0;"><span><strong>${d}</strong> - ${escapeHtml(e.desc)}</span><strong>${e.atletas.size} atletas · ${e.pontos} pts · ${formatarKm(e.km)} km</strong></div>`;
+  }).join("");
+}
+
+function limparListaParaPdf(html) {
+  return String(html || "")
+    .replaceAll('var(--border)', '#e5edf1')
+    .replaceAll('var(--danger)', '#e63946')
+    .replaceAll('var(--secondary)', '#00a693')
+    .replaceAll('var(--primary)', '#009bc1')
+    .replaceAll('var(--text-light)', '#607d8b');
+}
+
+function formatarKm(valor) {
+  const n = Number(valor) || 0;
+  return n.toLocaleString('pt-BR', { minimumFractionDigits: n % 1 === 0 ? 0 : 1, maximumFractionDigits: 1 });
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }

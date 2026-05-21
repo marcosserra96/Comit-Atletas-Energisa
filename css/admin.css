@@ -856,3 +856,230 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
     grid-template-columns: 1fr;
   }
 }
+
+
+/* =======================================================
+   ✨ REFINOS V3 - FILA, FICHA, EXTRATO E REPORT A4
+======================================================= */
+.fila-row {
+  cursor: grab;
+  transition: transform .18s ease, box-shadow .18s ease, background .18s ease, opacity .18s ease;
+}
+.fila-row:active { cursor: grabbing; }
+.fila-row .drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  margin-right: 10px;
+  border-radius: 10px;
+  background: rgba(0,155,193,.1);
+  color: var(--primary);
+  font-weight: 900;
+  letter-spacing: -2px;
+}
+.fila-row.dragging {
+  opacity: .45;
+  transform: scale(.985);
+}
+.fila-row.drag-over td {
+  background: rgba(0,155,193,.12) !important;
+  box-shadow: inset 4px 0 0 var(--primary);
+}
+.fila-row td:first-child strong {
+  vertical-align: middle;
+}
+.fila-helper {
+  color: var(--text-light);
+  font-size: .82rem;
+  margin: 0 0 10px;
+}
+
+.ficha-status-panel,
+.ficha-extra-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 16px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.04);
+}
+.ficha-status-head,
+.ficha-extra-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.ficha-status-head h4,
+.ficha-extra-head h4 {
+  margin: 0 0 4px;
+  color: var(--text);
+}
+.ficha-status-head small,
+.ficha-extra-head small {
+  color: var(--text-light);
+  line-height: 1.3;
+}
+.ficha-switch { flex: 0 0 auto; }
+.ficha-extra-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.ficha-extra-item {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px;
+}
+.ficha-extra-item strong { color: var(--primary); font-size: .82rem; }
+.ficha-extra-item span { color: var(--text); font-size: .85rem; }
+.ficha-extra-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  margin-top: 12px;
+  align-items: end;
+}
+.ficha-extra-form input { margin-bottom: 0; }
+
+.regra-tipo-box {
+  background: rgba(0,155,193,.05);
+  border: 1px solid rgba(0,155,193,.18);
+  padding: 14px;
+  border-radius: 10px;
+  margin-bottom: 15px;
+}
+.regra-tipo-grid {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.regra-tipo-grid label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 7px 10px;
+  border-radius: 999px;
+  margin: 0;
+  cursor: pointer;
+}
+.regra-tipo-grid input { width: 16px; height: 16px; margin: 0; }
+.regra-tipo-box small { color: var(--text-light); }
+
+.extrato-lotes-grid .lote-card { min-height: 250px; display: flex; flex-direction: column; }
+.extrato-lotes-grid .lote-card-head { min-height: 80px; }
+.extrato-lotes-grid .lote-body { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+.extrato-lotes-grid .lote-stats { grid-template-columns: repeat(4, minmax(0,1fr)); }
+.extrato-lotes-grid .lote-stat { min-height: 54px; display:flex; flex-direction:column; justify-content:center; }
+.extrato-lotes-grid .lote-actions { margin-top: auto; }
+
+.pdf-a4-report {
+  width: 210mm;
+  min-height: 297mm;
+  background: #fff;
+  color: #263238;
+  padding: 11mm 12mm;
+  box-sizing: border-box;
+  font-family: 'Poppins', Arial, sans-serif;
+  margin: auto;
+}
+.pdf-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg,#007b91,#00a693);
+  color: white;
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-bottom: 12px;
+}
+.pdf-header h1 { margin: 0; font-size: 20px; }
+.pdf-header p { margin: 3px 0 0; font-size: 11px; opacity: .9; }
+.pdf-header img { height: 28px; filter: brightness(0) invert(1); }
+.pdf-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.pdf-kpi-grid div,
+.pdf-mini-grid div {
+  border: 1px solid #e5edf1;
+  background: #f7fbfc;
+  border-radius: 12px;
+  padding: 10px;
+}
+.pdf-kpi-grid span,
+.pdf-mini-grid span {
+  display: block;
+  color: #607d8b;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .02em;
+}
+.pdf-kpi-grid strong,
+.pdf-mini-grid strong {
+  display: block;
+  margin-top: 4px;
+  color: #007b91;
+  font-size: 17px;
+}
+.pdf-section {
+  border: 1px solid #e5edf1;
+  border-radius: 14px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  background: #fff;
+  page-break-inside: avoid;
+}
+.pdf-section h2 {
+  margin: 0 0 8px;
+  color: #007b91;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .02em;
+}
+.pdf-chart-section img {
+  width: 100%;
+  max-height: 82mm;
+  object-fit: contain;
+}
+.pdf-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pdf-three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.pdf-mini-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pdf-clean-list,
+.pdf-clean-list ul { list-style: none !important; padding: 0 !important; margin: 0 !important; }
+.pdf-clean-list li {
+  display: flex !important;
+  justify-content: space-between !important;
+  gap: 6px;
+  padding: 5px 0 !important;
+  border-bottom: 1px solid #eef3f5 !important;
+  font-size: 10px !important;
+  color: #37474f !important;
+}
+.pdf-clean-list li * { font-size: 10px !important; }
+.pdf-compact-list { font-size: 10px; color: #37474f; }
+.pdf-compact-list .agenda-item { padding: 5px 0; gap: 8px; }
+.pdf-compact-list .agenda-data { min-width: 38px; padding: 6px; }
+.pdf-compact-list .agenda-info h4 { font-size: 10px; }
+.pdf-compact-list .agenda-info p { font-size: 9px; }
+.pdf-footer-section { margin-bottom: 0; }
+
+@media(max-width: 720px) {
+  .ficha-extra-form,
+  .ficha-extra-item { grid-template-columns: 1fr; }
+  .extrato-lotes-grid .lote-stats { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}

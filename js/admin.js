@@ -527,27 +527,35 @@ function setupPermissoesModal() {
 // =====================================================
 function setupDragDropFilas() {
   let draggedId = null;
+  let draggedEquipe = null;
 
   document.querySelectorAll(".fila-row").forEach(row => {
+    if (row.dataset.dragSetup === "1") return;
+    row.dataset.dragSetup = "1";
+
     row.addEventListener("dragstart", (e) => {
       draggedId = row.dataset.id;
+      draggedEquipe = row.dataset.equipeFila;
       row.classList.add("dragging");
       e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", draggedId || "");
     });
 
     row.addEventListener("dragend", () => {
       row.classList.remove("dragging");
+      document.querySelectorAll(".fila-row.drag-over").forEach(r => r.classList.remove("drag-over"));
       draggedId = null;
+      draggedEquipe = null;
     });
 
     row.addEventListener("dragover", (e) => {
       e.preventDefault();
+      if (!draggedId || draggedId === row.dataset.id) return;
+      if (draggedEquipe !== row.dataset.equipeFila) return;
       row.classList.add("drag-over");
     });
 
-    row.addEventListener("dragleave", () => {
-      row.classList.remove("drag-over");
-    });
+    row.addEventListener("dragleave", () => row.classList.remove("drag-over"));
 
     row.addEventListener("drop", async (e) => {
       e.preventDefault();
@@ -568,8 +576,17 @@ function setupDragDropFilas() {
         const origemCriadoEm = origem.criadoEm || new Date().toISOString();
         const destinoCriadoEm = destino.criadoEm || new Date().toISOString();
 
-        await updateDoc(doc(db, "atletas", draggedId), { criadoEm: destinoCriadoEm });
-        await updateDoc(doc(db, "atletas", targetId), { criadoEm: origemCriadoEm });
+        await updateDoc(doc(db, "atletas", draggedId), {
+          criadoEm: destinoCriadoEm,
+          ordemFilaAtualizadaEm: new Date().toISOString(),
+          ordemFilaAtualizadaPor: auth.currentUser?.uid || ""
+        });
+
+        await updateDoc(doc(db, "atletas", targetId), {
+          criadoEm: origemCriadoEm,
+          ordemFilaAtualizadaEm: new Date().toISOString(),
+          ordemFilaAtualizadaPor: auth.currentUser?.uid || ""
+        });
 
         showToast("Fila reorganizada com sucesso!", "success");
         atualizarTelas();
@@ -851,39 +868,159 @@ function escapeAttr(value) {
 
 function setupFichaAtleta() { 
   document.getElementById("fecharModalFicha")?.addEventListener("click", () => document.getElementById("modalFichaAtleta").style.display = "none"); 
+
   document.getElementById("btnSalvarComentario")?.addEventListener("click", async () => { 
-    const aId = document.getElementById("fichaAtletaId").value; const txt = document.getElementById("novoComentarioFicha").value.trim(); 
+    const aId = document.getElementById("fichaAtletaId").value; 
+    const txt = document.getElementById("novoComentarioFicha").value.trim(); 
     if(!txt) return; 
     const meuNome = appState.mapAtletas[auth.currentUser?.uid] ? appState.mapAtletas[auth.currentUser.uid].nome : "Comitê Gestor"; 
-    const btn = document.getElementById("btnSalvarComentario"); btn.disabled = true; btn.textContent = "Salvando..."; 
+    const btn = document.getElementById("btnSalvarComentario"); 
+    btn.disabled = true; 
+    btn.textContent = "Salvando..."; 
     try { 
       await addDoc(collection(db, "comentarios_atletas"), { atletaId: aId, texto: txt, autorNome: meuNome, criadoEm: new Date().toISOString() }); 
-      document.getElementById("novoComentarioFicha").value = ""; carregarComentarios(aId); showToast("Comentário salvo!", "success"); 
+      document.getElementById("novoComentarioFicha").value = ""; 
+      carregarComentarios(aId); 
+      showToast("Comentário salvo!", "success"); 
     } catch(e) { showToast("Erro ao guardar comentário.", "error"); } 
     finally { btn.disabled = false; btn.textContent = "Adicionar Comentário"; }
   }); 
+
+  document.getElementById("btnSalvarStatusFicha")?.addEventListener("click", salvarStatusFichaAtleta);
+  document.getElementById("btnAdicionarCampoExtra")?.addEventListener("click", salvarCampoExtraFicha);
 }
 
 async function abrirFichaAtleta(id) { 
-  const a = appState.mapAtletas[id]; if(!a) return; 
-  document.getElementById("fichaNome").textContent = a.nome; document.getElementById("fichaEquipe").textContent = a.equipe; document.getElementById("fichaPontos").textContent = a.pontuacaoTotal || 0; if(document.getElementById("fichaKm")) document.getElementById("fichaKm").textContent = `${formatarKm(calcularKmAtleta(id))} km`; 
+  const a = appState.mapAtletas[id]; 
+  if(!a) return; 
+
+  document.getElementById("fichaNome").textContent = a.nome; 
+  document.getElementById("fichaEquipe").textContent = a.equipe; 
+  document.getElementById("fichaPontos").textContent = a.pontuacaoTotal || 0; 
+  if(document.getElementById("fichaKm")) document.getElementById("fichaKm").textContent = `${formatarKm(calcularKmAtleta(id))} km`; 
+
   const renderCampo = (idEl, val, fallback) => { if(document.getElementById(idEl)) document.getElementById(idEl).textContent = val || fallback; };
-  renderCampo("fichaLocalidade", a.localidade, "Não informada"); renderCampo("fichaNasc", a.dataNascimento ? new Date(a.dataNascimento+"T00:00:00").toLocaleDateString('pt-BR') : "Não informada", ""); renderCampo("fichaSexo", a.sexo, "Não informado"); renderCampo("fichaAnoEntrada", a.anoEntrada, "-");
+  renderCampo("fichaLocalidade", a.localidade, "Não informada"); 
+  renderCampo("fichaNasc", a.dataNascimento ? new Date(a.dataNascimento+"T00:00:00").toLocaleDateString('pt-BR') : "Não informada", ""); 
+  renderCampo("fichaSexo", a.sexo, "Não informado"); 
+  renderCampo("fichaAnoEntrada", a.anoEntrada, "-");
+
   const statusEl = document.getElementById("fichaStatus"); 
-  if(a.ativo !== false) { statusEl.textContent = "Ativo no Sistema"; statusEl.style.color = "var(--secondary)"; } else { statusEl.textContent = `Inativo: ${a.motivoSaida || 'Sem motivo'}`; statusEl.style.color = "var(--danger)"; } 
-  
+  const ativo = a.ativo !== false;
+  if(statusEl) {
+    if(ativo) { statusEl.textContent = "Ativo"; statusEl.style.color = "var(--secondary)"; } 
+    else { statusEl.textContent = `Inativo`; statusEl.style.color = "var(--danger)"; } 
+  }
+
+  const toggleAtivo = document.getElementById("fichaToggleAtivo");
+  if(toggleAtivo) toggleAtivo.checked = ativo;
+  const motivo = document.getElementById("fichaMotivoStatus");
+  if(motivo) motivo.value = a.motivoSaida || a.motivoStatus || "";
   document.getElementById("fichaAtletaId").value = id; 
+
+  renderCamposExtrasFicha(a);
+
   const hist = appState.historicoCompleto.filter(h => h.atletaId === id); 
   let htmlH = ""; 
-  if(hist.length === 0) htmlH = "<p style='color:#999; margin-top: 10px;'>Nenhum registo encontrado.</p>"; 
+  if(hist.length === 0) htmlH = "<p style='color:#999; margin-top: 10px;'>Nenhum registro encontrado.</p>"; 
   hist.forEach(h => { 
-    const dataF = new Date(h.dataTreino+"T00:00:00").toLocaleDateString('pt-BR'); const isFalta = Number(h.pontos) === 0; const cor = isFalta ? "var(--accent)" : "var(--secondary)"; const ptsStr = isFalta ? "Falta Justificada" : `+${h.pontos} pts`; const kmInfo = Number(h.kmPercorrido || 0) > 0 ? `<br><small style="color:var(--primary);">${formatarKm(h.kmPercorrido)} km</small>` : "";
-    htmlH += `<div style="border-bottom: 1px solid var(--border); padding: 8px 0; display:flex; justify-content:space-between; align-items:center;"><div><strong>${dataF}</strong> - ${h.descTreino}<br><small style="color:#666;">${h.regraDesc}</small>${kmInfo}</div><div style="color:${cor}; font-weight:bold; text-align:right;">${ptsStr}</div></div>`; 
+    const dataF = new Date(h.dataTreino+"T00:00:00").toLocaleDateString('pt-BR'); 
+    const isFalta = Number(h.pontos) === 0; 
+    const cor = isFalta ? "var(--accent)" : "var(--secondary)"; 
+    const ptsStr = isFalta ? "Falta Justificada" : `+${h.pontos} pts`; 
+    const kmInfo = Number(h.kmPercorrido || 0) > 0 ? `<br><small style="color:var(--primary);">${formatarKm(h.kmPercorrido)} km</small>` : "";
+    htmlH += `<div style="border-bottom: 1px solid var(--border); padding: 8px 0; display:flex; justify-content:space-between; align-items:center; gap:10px;"><div><strong>${dataF}</strong> - ${escapeHtml(h.descTreino || "-")}<br><small style="color:#666;">${escapeHtml(h.regraDesc || "-")}</small>${kmInfo}</div><div style="color:${cor}; font-weight:bold; text-align:right; white-space:nowrap;">${ptsStr}</div></div>`; 
   }); 
   document.getElementById("fichaHistorico").innerHTML = htmlH; 
   await carregarComentarios(id); 
   document.getElementById("modalFichaAtleta").style.display = "flex"; 
 }
+
+function renderCamposExtrasFicha(atleta) {
+  const lista = document.getElementById("fichaCamposExtrasLista");
+  if(!lista) return;
+
+  const campos = atleta.camposExtras || {};
+  const entries = Object.entries(campos).filter(([k]) => k);
+
+  if(entries.length === 0) {
+    lista.innerHTML = `<small style="color:var(--text-light);">Nenhum campo adicional cadastrado para este atleta.</small>`;
+    return;
+  }
+
+  lista.innerHTML = entries.map(([campo, valor]) => `
+    <div class="ficha-extra-item">
+      <strong>${escapeHtml(campo)}</strong>
+      <span>${escapeHtml(valor || "-")}</span>
+      <button class="btn-acao btn-remover-campo-extra" data-campo="${escapeAttr(campo)}" style="color:var(--danger); padding:6px;"><i data-lucide="trash-2" style="width:15px;"></i></button>
+    </div>
+  `).join("");
+
+  lista.querySelectorAll(".btn-remover-campo-extra").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = document.getElementById("fichaAtletaId").value;
+      const atual = {...(appState.mapAtletas[id]?.camposExtras || {})};
+      delete atual[btn.dataset.campo];
+      try {
+        await updateDoc(doc(db, "atletas", id), { camposExtras: atual, atualizadoEm: new Date().toISOString() });
+        appState.mapAtletas[id].camposExtras = atual;
+        renderCamposExtrasFicha(appState.mapAtletas[id]);
+        showToast("Campo removido.", "success");
+      } catch(err) { showToast("Erro ao remover campo: " + err.message, "error"); }
+    });
+  });
+
+  if(typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+async function salvarCampoExtraFicha() {
+  const id = document.getElementById("fichaAtletaId")?.value;
+  const campo = document.getElementById("novoCampoExtraNome")?.value.trim();
+  const valor = document.getElementById("novoCampoExtraValor")?.value.trim();
+  if(!id || !campo) return showToast("Informe o nome do campo adicional.", "error");
+
+  const atual = {...(appState.mapAtletas[id]?.camposExtras || {})};
+  atual[campo] = valor || "-";
+
+  try {
+    await updateDoc(doc(db, "atletas", id), { camposExtras: atual, atualizadoEm: new Date().toISOString() });
+    appState.mapAtletas[id].camposExtras = atual;
+    document.getElementById("novoCampoExtraNome").value = "";
+    document.getElementById("novoCampoExtraValor").value = "";
+    renderCamposExtrasFicha(appState.mapAtletas[id]);
+    showToast("Campo adicional salvo.", "success");
+  } catch(err) { showToast("Erro ao salvar campo adicional: " + err.message, "error"); }
+}
+
+async function salvarStatusFichaAtleta() {
+  const id = document.getElementById("fichaAtletaId")?.value;
+  const ativo = document.getElementById("fichaToggleAtivo")?.checked;
+  const motivo = document.getElementById("fichaMotivoStatus")?.value.trim() || "";
+  if(!id) return;
+
+  if(ativo === false && !motivo) {
+    return showToast("Informe uma justificativa para desativar o atleta.", "error");
+  }
+
+  try {
+    await updateDoc(doc(db, "atletas", id), {
+      ativo,
+      motivoSaida: ativo ? "" : motivo,
+      motivoStatus: motivo,
+      statusAtualizadoEm: new Date().toISOString(),
+      statusAtualizadoPor: auth.currentUser?.uid || ""
+    });
+    if(appState.mapAtletas[id]) {
+      appState.mapAtletas[id].ativo = ativo;
+      appState.mapAtletas[id].motivoSaida = ativo ? "" : motivo;
+      appState.mapAtletas[id].motivoStatus = motivo;
+    }
+    showToast("Status atualizado.", "success");
+    await abrirFichaAtleta(id);
+    atualizarTelas();
+  } catch(err) { showToast("Erro ao atualizar status: " + err.message, "error"); }
+}
+
 
 async function carregarComentarios(id) { 
   try { 
@@ -942,63 +1079,147 @@ function setupModalEditar() {
 // ⚙️ GESTÃO DE REGRAS DE PONTUAÇÃO
 // =====================================================
 function setupModalRegras() {
-  const modal = document.getElementById("modalRegra"); if (!modal) return;
+  const modal = document.getElementById("modalRegra");
+  if (!modal) return;
+
   document.getElementById("abrirModalRegra")?.addEventListener("click", () => {
-    document.getElementById("regraEditId").value = ""; document.getElementById("regraDescricao").value = ""; document.getElementById("regraModalidade").value = "Ambas"; document.getElementById("regraPontos").value = ""; renderizarVinculosRegras([]); modal.style.display = "flex";
+    document.getElementById("regraEditId").value = "";
+    document.getElementById("regraDescricao").value = "";
+    document.getElementById("regraModalidade").value = "Ambas";
+    document.getElementById("regraPontos").value = "";
+    document.querySelectorAll(".chk-tipo-regra").forEach(chk => chk.checked = true);
+    renderizarVinculosRegras([]);
+    modal.style.display = "flex";
   });
+
   document.getElementById("fecharModalRegra")?.addEventListener("click", () => modal.style.display = "none");
+
   document.getElementById("salvarRegraBtn")?.addEventListener("click", async (e) => {
-    const id = document.getElementById("regraEditId").value; const desc = document.getElementById("regraDescricao").value.trim(); const mod = document.getElementById("regraModalidade").value; const pts = Number(document.getElementById("regraPontos").value);
+    const id = document.getElementById("regraEditId").value;
+    const desc = document.getElementById("regraDescricao").value.trim();
+    const mod = document.getElementById("regraModalidade").value;
+    const pts = Number(document.getElementById("regraPontos").value);
+
     if (!desc || isNaN(pts)) return showToast("Preencha a descrição e defina os pontos!", "error");
-    let vinculadas = []; document.querySelectorAll(".chk-vinculo-regra:checked").forEach(chk => vinculadas.push(chk.value));
-    e.target.disabled = true; e.target.textContent = "Salvando..."; e.target.classList.add("loading");
+
+    const vinculadas = [];
+    document.querySelectorAll(".chk-vinculo-regra:checked").forEach(chk => vinculadas.push(chk.value));
+
+    const tiposLancamento = [];
+    document.querySelectorAll(".chk-tipo-regra:checked").forEach(chk => tiposLancamento.push(chk.value));
+    if (tiposLancamento.length === 0) return showToast("Selecione pelo menos um tipo de lançamento para a regra.", "error");
+
+    e.target.disabled = true;
+    e.target.textContent = "Salvando...";
+    e.target.classList.add("loading");
 
     try {
-      const dados = { descricao: desc, modalidade: mod, pontos: pts, regrasVinculadas: vinculadas, atualizadoEm: new Date().toISOString() };
-      if (id) { await updateDoc(doc(db, "regras_pontuacao", id), dados); showToast("Regra atualizada com sucesso!", "success"); } 
-      else { dados.criadoEm = new Date().toISOString(); await addDoc(collection(db, "regras_pontuacao"), dados); showToast("Nova regra criada!", "success"); }
-      modal.style.display = "none"; await carregarRegras(); 
-    } catch (err) { showToast("Erro ao salvar regra: " + err.message, "error"); }
-    finally { e.target.disabled = false; e.target.textContent = "Salvar Regra"; e.target.classList.remove("loading"); }
+      const dados = {
+        descricao: desc,
+        modalidade: mod,
+        pontos: pts,
+        regrasVinculadas: vinculadas,
+        tiposLancamento,
+        atualizadoEm: new Date().toISOString()
+      };
+
+      if (id) {
+        await updateDoc(doc(db, "regras_pontuacao", id), dados);
+        showToast("Regra atualizada com sucesso!", "success");
+      } else {
+        dados.criadoEm = new Date().toISOString();
+        await addDoc(collection(db, "regras_pontuacao"), dados);
+        showToast("Nova regra criada!", "success");
+      }
+
+      modal.style.display = "none";
+      await carregarRegras();
+    } catch (err) {
+      showToast("Erro ao salvar regra: " + err.message, "error");
+    } finally {
+      e.target.disabled = false;
+      e.target.textContent = "Salvar Regra";
+      e.target.classList.remove("loading");
+    }
   });
 }
 
 async function carregarRegras() {
   try {
-    const snap = await getDocs(query(collection(db, "regras_pontuacao"))); appState.listaTodasRegras = []; snap.forEach(d => appState.listaTodasRegras.push({ id: d.id, ...d.data() }));
-    const tbody = document.getElementById("listaRegras"); if (!tbody) return; let html = "";
-    
-    if (appState.listaTodasRegras.length === 0) { html = "<tr><td colspan='4' style='text-align:center;'>Nenhuma regra cadastrada.</td></tr>"; } 
-    else {
+    const snap = await getDocs(query(collection(db, "regras_pontuacao")));
+    appState.listaTodasRegras = [];
+    snap.forEach(d => appState.listaTodasRegras.push({ id: d.id, ...d.data() }));
+
+    const tbody = document.getElementById("listaRegras");
+    if (!tbody) return;
+
+    let html = "";
+
+    if (appState.listaTodasRegras.length === 0) {
+      html = "<tr><td colspan='5' style='text-align:center;'>Nenhuma regra cadastrada.</td></tr>";
+    } else {
       appState.listaTodasRegras.forEach(r => {
-        html += `<tr><td data-label="Regra"><strong>${r.descricao}</strong></td><td data-label="Modalidade">${r.modalidade}</td><td data-label="Pontos" style="color:var(--primary); font-weight:bold;">+${r.pontos}</td><td data-label="Ações" style="text-align:right;"><button class="btn-acao btn-edit-regra" aria-label="Editar Regra" data-id="${r.id}" style="color:var(--primary); padding:6px; margin-right:5px;"><i data-lucide="edit-2" style="width:16px;"></i></button><button class="btn-acao btn-del-regra" aria-label="Excluir Regra" data-id="${r.id}" style="color:var(--danger); padding:6px;"><i data-lucide="trash" style="width:16px;"></i></button></td></tr>`;
+        const tipos = Array.isArray(r.tiposLancamento) && r.tiposLancamento.length ? r.tiposLancamento : ["treino", "evento", "avulso"];
+        const tiposTxt = tipos.map(t => ({treino:"Treino", evento:"Evento", avulso:"Avulso"}[t] || t)).join(", ");
+        html += `
+          <tr>
+            <td data-label="Regra"><strong>${escapeHtml(r.descricao)}</strong></td>
+            <td data-label="Modalidade">${escapeHtml(r.modalidade || "-")}</td>
+            <td data-label="Tipos"><small>${escapeHtml(tiposTxt)}</small></td>
+            <td data-label="Pontos" style="color:var(--primary); font-weight:bold;">+${Number(r.pontos) || 0}</td>
+            <td data-label="Ações" style="text-align:right;">
+              <button class="btn-acao btn-edit-regra" aria-label="Editar Regra" data-id="${r.id}" style="color:var(--primary); padding:6px; margin-right:5px;"><i data-lucide="edit-2" style="width:16px;"></i></button>
+              <button class="btn-acao btn-del-regra" aria-label="Excluir Regra" data-id="${r.id}" style="color:var(--danger); padding:6px;"><i data-lucide="trash" style="width:16px;"></i></button>
+            </td>
+          </tr>`;
       });
     }
-    
-    tbody.innerHTML = html; if(typeof lucide !== 'undefined') lucide.createIcons();
+
+    tbody.innerHTML = html;
+    if(typeof lucide !== 'undefined') lucide.createIcons();
+
     document.querySelectorAll(".btn-del-regra").forEach(btn => {
       btn.addEventListener("click", (e) => {
         mostrarConfirmacao("Apagar Regra", "Deseja realmente excluir esta regra? Isso pode afetar lançamentos futuros.", async () => {
-          await deleteDoc(doc(db, "regras_pontuacao", e.currentTarget.dataset.id)); await carregarRegras(); showToast("Regra removida", "info");
+          await deleteDoc(doc(db, "regras_pontuacao", e.currentTarget.dataset.id));
+          await carregarRegras();
+          showToast("Regra removida", "info");
         }, "danger");
       });
     });
+
     document.querySelectorAll(".btn-edit-regra").forEach(btn => {
       btn.addEventListener("click", (e) => {
-        const r = appState.listaTodasRegras.find(x => x.id === e.currentTarget.dataset.id); if(!r) return;
-        document.getElementById("regraEditId").value = r.id; document.getElementById("regraDescricao").value = r.descricao; document.getElementById("regraModalidade").value = r.modalidade; document.getElementById("regraPontos").value = r.pontos;
-        renderizarVinculosRegras(r.regrasVinculadas || [], r.id); document.getElementById("modalRegra").style.display = "flex";
+        const r = appState.listaTodasRegras.find(x => x.id === e.currentTarget.dataset.id);
+        if(!r) return;
+
+        document.getElementById("regraEditId").value = r.id;
+        document.getElementById("regraDescricao").value = r.descricao || "";
+        document.getElementById("regraModalidade").value = r.modalidade || "Ambas";
+        document.getElementById("regraPontos").value = r.pontos || 0;
+
+        const tipos = Array.isArray(r.tiposLancamento) && r.tiposLancamento.length ? r.tiposLancamento : ["treino", "evento", "avulso"];
+        document.querySelectorAll(".chk-tipo-regra").forEach(chk => chk.checked = tipos.includes(chk.value));
+
+        renderizarVinculosRegras(r.regrasVinculadas || [], r.id);
+        document.getElementById("modalRegra").style.display = "flex";
       });
     });
-  } catch (err) { console.error("Erro ao carregar regras:", err); }
+  } catch (err) {
+    console.error("Erro ao carregar regras:", err);
+  }
 }
 
 function renderizarVinculosRegras(selecionadas = [], idIgnorado = null) {
-  const div = document.getElementById("listaVinculosRegras"); if (!div) return; let html = "";
-  appState.listaTodasRegras.forEach(r => {
-    if (r.id === idIgnorado) return; 
+  const div = document.getElementById("listaVinculosRegras");
+  if (!div) return;
+
+  let html = "";
+  (appState.listaTodasRegras || []).forEach(r => {
+    if (r.id === idIgnorado) return;
     const checked = selecionadas.includes(r.id) ? "checked" : "";
-    html += `<label style="display:flex; align-items:center; gap:8px; margin-bottom:8px; cursor:pointer;"><input type="checkbox" class="chk-vinculo-regra" value="${r.id}" ${checked}> <span style="color:var(--text);">${r.descricao}</span></label>`;
+    html += `<label style="display:flex; align-items:center; gap:8px; margin-bottom:8px; cursor:pointer;"><input type="checkbox" class="chk-vinculo-regra" value="${r.id}" ${checked}> <span style="color:var(--text);">${escapeHtml(r.descricao || "-")}</span></label>`;
   });
+
   div.innerHTML = html || "<small style='color:var(--text-light);'>Nenhuma outra regra cadastrada ainda.</small>";
 }
