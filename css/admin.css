@@ -1331,3 +1331,200 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
 #pdfExportClone .pdf-compact-list {
   overflow: hidden !important;
 }
+
+/* =======================================================
+   FINAL - Estratégico e Admin Center
+======================================================= */
+.strategic-kpi-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+.strategic-command-center {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, .65fr);
+  gap: 20px;
+  margin: 20px 0;
+}
+.strategic-action-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+.strategic-action-card h3 {
+  margin: 0;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.strategic-action-card p {
+  margin: 6px 0 0;
+  font-size: .86rem;
+  color: var(--text-light);
+}
+.strategic-action-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+.strategic-action-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(0,155,193,.045);
+}
+.strategic-action-item.warning { background: rgba(241,196,15,.08); }
+.strategic-action-item.danger { background: rgba(230,57,70,.08); }
+.strategic-action-item.success { background: rgba(0,179,126,.08); }
+.strategic-action-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: rgba(0,155,193,.12);
+  color: var(--primary);
+  font-weight: 800;
+}
+.strategic-action-title {
+  font-weight: 800;
+  color: var(--text);
+  font-size: .92rem;
+}
+.strategic-action-desc {
+  color: var(--text-light);
+  font-size: .78rem;
+  margin-top: 2px;
+}
+.strategic-action-count {
+  font-weight: 900;
+  color: var(--primary);
+  font-size: 1.05rem;
+}
+.efficiency-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 16px;
+}
+.efficiency-grid div {
+  border: 1px solid rgba(0,155,193,.14);
+  background: rgba(0,155,193,.055);
+  border-radius: 14px;
+  padding: 12px;
+}
+.efficiency-grid span {
+  display: block;
+  font-size: .72rem;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: .02em;
+}
+.efficiency-grid strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 1rem;
+  color: var(--text);
+}
+.admin-data-grid {
+  display: grid;
+  grid-template-columns: 1.5fr .8fr;
+  gap: 20px;
+  align-items: stretch;
+}
+.admin-control-card {
+  margin: 0;
+}
+.admin-health-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 16px 0;
+}
+.admin-health-grid div {
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(0,155,193,.14);
+  background: rgba(0,155,193,.055);
+  text-align: center;
+}
+.admin-health-grid span {
+  display: block;
+  font-size: .72rem;
+  color: var(--text-light);
+  text-transform: uppercase;
+}
+.admin-health-grid strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 1.15rem;
+  color: var(--primary);
+}
+.admin-actions-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.admin-audit-card {
+  margin-top: 20px;
+}
+.admin-audit-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  max-height: 340px;
+  overflow: auto;
+}
+.admin-audit-item {
+  display: grid;
+  grid-template-columns: 150px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  font-size: .82rem;
+}
+.admin-audit-item strong {
+  color: var(--text);
+}
+.admin-audit-item small {
+  color: var(--text-light);
+}
+.perm-profile-box {
+  padding: 12px;
+  border: 1px solid rgba(243,156,18,.28);
+  border-radius: 12px;
+  background: rgba(243,156,18,.06);
+  margin-bottom: 14px;
+}
+.perm-profile-box label {
+  color: var(--warning);
+  font-weight: 800;
+}
+.perm-profile-box select {
+  margin: 6px 0 6px;
+}
+.perm-profile-box small {
+  color: var(--text-light);
+  font-size: .76rem;
+}
+@media (max-width: 900px) {
+  .strategic-command-center,
+  .admin-data-grid {
+    grid-template-columns: 1fr;
+  }
+  .admin-health-grid,
+  .efficiency-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .admin-audit-item {
+    grid-template-columns: 1fr;
+  }
+}

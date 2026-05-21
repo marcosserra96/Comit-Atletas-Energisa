@@ -42,11 +42,34 @@
         <button id="btnExportarPDF" class="btn-primario" style="background: #2c3e50;"><i data-lucide="printer"></i> Exportar Report Oficial</button>
       </div>
 
-      <div class="cards">
+      <div class="cards strategic-kpi-grid">
         <div class="card"><i data-lucide="users"></i><h3>Atletas Ativos</h3><p id="totalAtivosGeral">0</p></div>
         <div class="card"><i data-lucide="activity" style="color: var(--primary);"></i><h3>Engajamento (30d)</h3><p id="engajamento30d" style="color: var(--primary);">0%</p></div>
+        <div class="card"><i data-lucide="route" style="color: #00a693;"></i><h3>KM Total</h3><p id="dashKmTotal" style="color: #00a693;">0 km</p></div>
+        <div class="card"><i data-lucide="ticket-check" style="color: #8e44ad;"></i><h3>Participações</h3><p id="dashParticipacoes" style="color: #8e44ad;">0</p></div>
         <div class="card"><i data-lucide="dollar-sign" style="color: #e67e22;"></i><h3>Custo Realizado</h3><p id="totalInvestimento" style="color: #e67e22;">R$ 0,00</p></div>
         <div class="card" style="background: rgba(39, 174, 96, 0.1); border: 1px solid #27ae60;"><i data-lucide="line-chart"></i><h3 style="color:#27ae60;">Custo p/ Atleta Ativo</h3><p id="roiAtleta" style="color:#27ae60;">R$ 0,00</p></div>
+      </div>
+
+      <div class="strategic-command-center">
+        <div class="strategic-action-card">
+          <div class="strategic-action-header">
+            <div>
+              <h3><i data-lucide="sparkles"></i> Ações recomendadas</h3>
+              <p>Prioridades calculadas com base nos eventos, lançamentos, fila e engajamento.</p>
+            </div>
+          </div>
+          <div id="listaAcoesRecomendadas" class="strategic-action-list"></div>
+        </div>
+        <div class="strategic-action-card compact">
+          <h3><i data-lucide="gauge"></i> Eficiência</h3>
+          <div class="efficiency-grid">
+            <div><span>Custo / participação</span><strong id="dashCustoParticipacao">R$ 0,00</strong></div>
+            <div><span>Custo / km</span><strong id="dashCustoKm">R$ 0,00</strong></div>
+            <div><span>Eventos sem lançamento</span><strong id="dashEventosPendentes">0</strong></div>
+            <div><span>Fila aguardando</span><strong id="dashFilaAguardando">0</strong></div>
+          </div>
+        </div>
       </div>
 
       <div class="dashboard-grid">
@@ -444,19 +467,41 @@
       </div>
 
       <div id="sub-dados" class="sub-content admin-only-element">
-        <div class="card" style="max-width: 600px; margin: 0 auto; text-align: center;">
-          <h3 style="color: var(--primary); justify-content: center; font-size: 1.2rem;"><i data-lucide="info"></i> Gestão de Dados</h3>
-          <p style="color: var(--text-light); font-size: 0.95rem; margin-bottom: 25px;">
-            Para garantir a integridade, as edições são feitas diretamente nas telas:<br><br>
-            • <b>Ficha Resumo:</b> Em "Equipes", clique no ícone 📋 para ver Faltas e Comentários.<br>
-            • <b>Desativar Atleta:</b> Em "Equipes", use a chave (Switch) para ocultá-lo sem apagar dados.<br>
-            • <b>Apagar Pontos:</b> Em "Lançamentos > Extrato", use o botão vermelho de Estorno.
-          </p>
-          <div style="border-top: 1px dashed var(--border); padding-top: 25px;">
-            <h4 style="color: var(--danger); margin: 0 0 10px 0;"><i data-lucide="alert-octagon" style="display:inline; vertical-align:middle;"></i> Zona de Perigo Total</h4>
-            <p style="font-size: 0.85rem; color: #999; margin-bottom: 15px;">Formata toda a base e apaga o histórico (exceto a sua conta Admin).</p>
+        <div class="admin-data-grid">
+          <div class="card admin-control-card">
+            <h3 style="color: var(--primary); font-size: 1.2rem;"><i data-lucide="shield-check"></i> Centro do Admin</h3>
+            <p style="color: var(--text-light); font-size: 0.92rem; margin-bottom: 18px;">
+              Controle operacional, backup e rastreabilidade. Use esta área antes de mudanças sensíveis.
+            </p>
+            <div class="admin-health-grid">
+              <div><span>Atletas</span><strong id="adminQtdAtletas">0</strong></div>
+              <div><span>Lançamentos</span><strong id="adminQtdLancamentos">0</strong></div>
+              <div><span>Eventos</span><strong id="adminQtdEventos">0</strong></div>
+              <div><span>Auditoria</span><strong id="adminQtdAuditoria">0</strong></div>
+            </div>
+            <div class="admin-actions-row">
+              <button id="btnExportarBackupJson" class="btn-primario" type="button"><i data-lucide="download-cloud"></i> Exportar backup JSON</button>
+              <button id="btnCarregarAuditoria" class="btn-acao" type="button"><i data-lucide="list-filter"></i> Atualizar auditoria</button>
+            </div>
+          </div>
+
+          <div class="card admin-control-card danger-zone">
+            <h3 style="color: var(--danger); font-size: 1.2rem;"><i data-lucide="alert-octagon"></i> Zona de Perigo</h3>
+            <p style="font-size: 0.88rem; color: var(--text-light); margin-bottom: 15px;">
+              Apaga a base operacional. Antes disso, exporte o backup JSON.
+            </p>
             <button id="btnLimparBase" class="btn-acao" style="color: var(--danger); border-color: var(--danger); width: 100%; justify-content: center; padding: 12px;"><i data-lucide="trash-2"></i> Zerar Todo o Banco de Dados</button>
           </div>
+        </div>
+
+        <div class="card admin-audit-card">
+          <div class="admin-audit-header">
+            <div>
+              <h3 style="margin:0; color: var(--primary);"><i data-lucide="history"></i> Auditoria recente</h3>
+              <p style="margin:6px 0 0; color:var(--text-light); font-size:.86rem;">Últimas alterações sensíveis registradas no sistema.</p>
+            </div>
+          </div>
+          <div id="listaAuditoriaAdmin" class="admin-audit-list"></div>
         </div>
       </div>
     </section>
@@ -713,6 +758,18 @@
       <h3 style="color: var(--warning); margin-top: 0;"><i data-lucide="shield"></i> Permissões</h3>
       <p id="permNomeUsuario" style="font-weight:bold; margin-bottom:15px; color: var(--primary);"></p>
       <input type="hidden" id="permUserId" />
+      <div class="perm-profile-box">
+        <label>Perfil rápido</label>
+        <select id="permPerfilRapido">
+          <option value="">Selecionar perfil...</option>
+          <option value="consulta">Consulta</option>
+          <option value="pontuacao">Comitê Pontuação</option>
+          <option value="financeiro">Comitê Financeiro</option>
+          <option value="gestao">Comitê Gestão</option>
+          <option value="geral">Comitê Geral</option>
+        </select>
+        <small>Use o perfil para evitar combinações erradas de permissões.</small>
+      </div>
       <div class="perm-item"><label style="margin:0;">📊 Estratégico (Visualizar)</label><input type="checkbox" class="chk-perm" value="visao-geral" /></div>
       <div class="perm-item"><label style="margin:0;">📝 Contabilização (Lançamentos)</label><input type="checkbox" class="chk-perm" value="contabilizacao" /></div>
       <div class="perm-item"><label style="margin:0; color: #27ae60; font-weight: bold;">💰 Financeiro (Acesso e Edição)</label><input type="checkbox" class="chk-perm" value="financeiro_edit" /></div>

@@ -107,6 +107,7 @@ function iniciarPainelAdmin() {
   setupFichaAtleta();
   setupCamposFichaConfig();
   setupAtletasConsulta();
+  setupAdminCenter();
   
   atualizarTelas();
 }
@@ -125,6 +126,7 @@ async function atualizarTelas() {
   await carregarEquipesEDashboard(); 
   await carregarRegras();
   renderAtletasConsulta();
+  atualizarAdminCenterResumo();
 
   const modTreinoSelect = document.getElementById("modTreino");
   if (modTreinoSelect && modTreinoSelect.value) modTreinoSelect.dispatchEvent(new Event('change'));
@@ -286,6 +288,7 @@ async function carregarEquipesEDashboard() {
       const b = e.currentTarget; 
       document.getElementById("permNomeUsuario").textContent = b.dataset.nome; 
       document.getElementById("permUserId").value = b.dataset.id; 
+      const perfilRapido = document.getElementById("permPerfilRapido"); if (perfilRapido) perfilRapido.value = "";
       const permissoesDB = appState.mapAtletas[b.dataset.id].permissoes || ["visao-geral"]; 
       document.querySelectorAll(".chk-perm").forEach(chk => { chk.checked = permissoesDB.includes(chk.value) || (permissoesDB.includes("financeiro") && chk.value.startsWith("financeiro")); }); 
       document.getElementById("modalPermissoes").style.display = "flex"; 
@@ -510,16 +513,41 @@ async function carregarAgenda() {
 function setupPermissoesModal() { 
   const modal = document.getElementById("modalPermissoes"); if(!modal) return; 
   document.getElementById("fecharModalPermissoes")?.addEventListener("click", () => modal.style.display = "none"); 
+
+  const perfilRapido = document.getElementById("permPerfilRapido");
+  if (perfilRapido && !perfilRapido.dataset.listenerAplicado) {
+    perfilRapido.dataset.listenerAplicado = "1";
+    perfilRapido.addEventListener("change", () => aplicarPerfilPermissao(perfilRapido.value));
+  }
+
   document.getElementById("salvarPermissoesBtn")?.addEventListener("click", async (e) => { 
     const id = document.getElementById("permUserId").value; 
     let selecionadas = []; document.querySelectorAll(".chk-perm:checked").forEach(chk => selecionadas.push(chk.value)); 
     if(selecionadas.length === 0) return showToast("Precisa ter pelo menos uma aba marcada.", "error"); 
     
     e.target.textContent = "Salvando..."; e.target.classList.add("loading"); e.target.disabled = true; 
-    try { await updateDoc(doc(db, "atletas", id), { permissoes: selecionadas }); showToast("Permissões atualizadas!", "success"); modal.style.display = "none"; atualizarTelas(); } 
+    try { 
+      const antes = appState.mapAtletas[id]?.permissoes || [];
+      await updateDoc(doc(db, "atletas", id), { permissoes: selecionadas }); 
+      await registrarAuditoria("alterar_permissoes", "atletas", id, { antes, depois: selecionadas });
+      showToast("Permissões atualizadas!", "success"); modal.style.display = "none"; atualizarTelas(); 
+    } 
     catch(err) { showToast("Erro ao gravar permissões.", "error"); } 
     finally { e.target.textContent = "Salvar Acessos"; e.target.classList.remove("loading"); e.target.disabled = false; }
   }); 
+}
+
+function aplicarPerfilPermissao(perfil) {
+  const perfis = {
+    consulta: ["visao-geral", "configuracoes"],
+    pontuacao: ["visao-geral", "contabilizacao", "configuracoes"],
+    financeiro: ["visao-geral", "financeiro_edit", "configuracoes"],
+    gestao: ["visao-geral", "gestao", "configuracoes"],
+    geral: ["visao-geral", "contabilizacao", "financeiro_edit", "gestao", "configuracoes"]
+  };
+  const selecionadas = perfis[perfil];
+  if (!selecionadas) return;
+  document.querySelectorAll(".chk-perm").forEach(chk => { chk.checked = selecionadas.includes(chk.value); });
 }
 
 
@@ -890,6 +918,95 @@ async function registrarAuditoria(acao, entidade, entidadeId, dados = {}) {
   } catch (err) {
     console.warn("Falha ao registrar auditoria:", err);
   }
+}
+
+
+// =====================================================
+// 🛡️ CENTRO DO ADMIN, BACKUP E AUDITORIA
+// =====================================================
+function setupAdminCenter() {
+  const btnBackup = document.getElementById("btnExportarBackupJson");
+  if (btnBackup && !btnBackup.dataset.listenerAplicado) {
+    btnBackup.dataset.listenerAplicado = "1";
+    btnBackup.addEventListener("click", exportarBackupJson);
+  }
+
+  const btnAuditoria = document.getElementById("btnCarregarAuditoria");
+  if (btnAuditoria && !btnAuditoria.dataset.listenerAplicado) {
+    btnAuditoria.dataset.listenerAplicado = "1";
+    btnAuditoria.addEventListener("click", carregarAuditoriaAdmin);
+  }
+
+  atualizarAdminCenterResumo();
+  carregarAuditoriaAdmin();
+}
+
+function atualizarAdminCenterResumo() {
+  setTexto("adminQtdAtletas", Object.keys(appState.mapAtletas || {}).length);
+  setTexto("adminQtdLancamentos", (appState.historicoCompleto || []).length);
+  setTexto("adminQtdEventos", (appState.cacheEventos || []).length);
+}
+
+async function carregarAuditoriaAdmin() {
+  const lista = document.getElementById("listaAuditoriaAdmin");
+  if (!lista || appState.userRole !== "admin") return;
+
+  try {
+    const snap = await getDocs(collection(db, "auditoria"));
+    const itens = [];
+    snap.forEach(d => itens.push({ id: d.id, ...d.data() }));
+    itens.sort((a,b) => new Date(b.criadoEm || "1970-01-01") - new Date(a.criadoEm || "1970-01-01"));
+    setTexto("adminQtdAuditoria", itens.length);
+
+    if (itens.length === 0) {
+      lista.innerHTML = `<div class="empty-state" style="padding:18px;"><p>Nenhum registro de auditoria encontrado.</p></div>`;
+      return;
+    }
+
+    lista.innerHTML = itens.slice(0, 30).map(item => {
+      const data = item.criadoEm ? new Date(item.criadoEm).toLocaleString('pt-BR') : "-";
+      return `<div class="admin-audit-item">
+        <small>${data}</small>
+        <div><strong>${escapeHtml(item.acao || "ação")}</strong><br><small>${escapeHtml(item.entidade || "-")} ${item.entidadeId ? "• " + escapeHtml(item.entidadeId) : ""}</small></div>
+        <small>${escapeHtml(item.criadoPorNome || "Usuário")}</small>
+      </div>`;
+    }).join("");
+  } catch (err) {
+    lista.innerHTML = `<div class="empty-state" style="padding:18px;"><p>Sem permissão ou erro ao carregar auditoria.</p></div>`;
+  }
+}
+
+async function exportarBackupJson() {
+  if (appState.userRole !== "admin") return showToast("Apenas admin pode exportar backup.", "error");
+  showToast("Montando backup JSON...", "info");
+
+  const colecoes = ["atletas", "historico_pontos", "agenda_eventos", "regras_pontuacao", "financeiro", "campos_ficha", "auditoria"];
+  const backup = { geradoEm: new Date().toISOString(), geradoPor: auth.currentUser?.uid || "", colecoes: {} };
+
+  for (const nome of colecoes) {
+    try {
+      const snap = await getDocs(collection(db, nome));
+      backup.colecoes[nome] = [];
+      snap.forEach(d => backup.colecoes[nome].push({ id: d.id, ...d.data() }));
+    } catch (err) {
+      backup.colecoes[nome] = { erro: err.message };
+    }
+  }
+
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `backup_atletas_energisa_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  await registrarAuditoria("exportar_backup", "sistema", "backup", { colecoes });
+  showToast("Backup exportado.", "success");
+}
+
+function setTexto(id, valor) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = valor;
 }
 
 function setupFichaAtleta() { 

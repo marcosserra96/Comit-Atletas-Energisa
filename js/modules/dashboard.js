@@ -58,6 +58,8 @@ export function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike,
   if(document.getElementById("totalAtivosGeral")) document.getElementById("totalAtivosGeral").textContent = totalAtivosGerais; 
   if(document.getElementById("engajamento30d")) document.getElementById("engajamento30d").textContent = (totalAtivosGerais > 0 ? Math.round((engajados30d / totalAtivosGerais)*100) : 0) + "%"; 
   if(document.getElementById("roiAtleta")) document.getElementById("roiAtleta").textContent = (totalAtivosGerais > 0 ? (appState.gastoTotalGlobal / totalAtivosGerais) : 0).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}); 
+
+  atualizarPainelEstrategicoFinal(arrayAtletas, totalAtivosGerais);
   
   let ativosBikeG = arrayAtletas.filter(a => (a.eq === 'Bicicleta' || a.eq === 'Bike') && a.diasAusente <= 30 && a.diasAusente !== -1).length; 
   let ativosCorridaG = arrayAtletas.filter(a => a.eq === 'Corrida' && a.diasAusente <= 30 && a.diasAusente !== -1).length;
@@ -105,7 +107,7 @@ export function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike,
   }
 }
 
-function exportarPDFExecutivo() {
+async function exportarPDFExecutivo() {
   showToast("Montando report oficial A4...", "info");
 
   const temaAtual = document.body.getAttribute("data-theme");
@@ -115,11 +117,11 @@ function exportarPDFExecutivo() {
     if (appState.graficoLinhaInstancia) appState.graficoLinhaInstancia.update();
   }
 
-  setTimeout(() => {
-    preencherDadosReportA4();
+  const canvasLinha = document.getElementById('graficoTendencia');
+  let widthOriginal, heightOriginal;
 
-    const canvasLinha = document.getElementById('graficoTendencia');
-    let widthOriginal, heightOriginal;
+  try {
+    preencherDadosReportA4();
 
     if (canvasLinha) {
       widthOriginal = canvasLinha.style.width;
@@ -137,61 +139,74 @@ function exportarPDFExecutivo() {
     if (!modalPdf || !printArea) return showToast("Área do report não encontrada.", "error");
 
     modalPdf.style.display = "flex";
+    await aguardar(350);
 
-    setTimeout(() => {
-      const txtDataHoje = document.getElementById("pdfDataHoje")?.textContent || "report";
+    const txtDataHoje = document.getElementById("pdfDataHoje")?.textContent || "report";
+    const clone = prepararCloneA4ParaExportacao(printArea);
+    document.body.appendChild(clone);
 
-      const clone = prepararCloneA4ParaExportacao(printArea);
-      document.body.appendChild(clone);
+    await aguardar(250);
 
-      const opt = {
-        margin: 0,
-        filename: `Report_Atletas_${txtDataHoje.replace(/\//g, '-')}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: {
-          scale: 2,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: '#ffffff',
-          width: 794,
-          windowWidth: 794,
-          scrollX: 0,
-          scrollY: 0
-        },
-        jsPDF: { unit: 'pt', format: [794, 1123], orientation: 'portrait' },
-        pagebreak: { mode: ['css', 'legacy'], avoid: ['.pdf-header', '.pdf-kpi-grid', '.pdf-section'] }
-      };
+    if (typeof html2canvas === "undefined" || !window.jspdf?.jsPDF) {
+      clone.remove();
+      modalPdf.style.display = "none";
+      return showToast("Bibliotecas de PDF não carregadas.", "error");
+    }
 
-      html2pdf().set(opt).from(clone).save().then(() => {
-        clone.remove();
-        modalPdf.style.display = "none";
+    const pageWidth = 794;
+    const pageHeight = 1123;
+    const canvas = await html2canvas(clone, {
+      scale: 2,
+      backgroundColor: "#ffffff",
+      useCORS: true,
+      allowTaint: true,
+      width: pageWidth,
+      height: clone.scrollHeight,
+      windowWidth: pageWidth,
+      scrollX: 0,
+      scrollY: 0
+    });
 
-        if (canvasLinha) {
-          canvasLinha.style.width = widthOriginal;
-          canvasLinha.style.height = heightOriginal;
-          if (appState.graficoLinhaInstancia) appState.graficoLinhaInstancia.resize();
-        }
+    const imgData = canvas.toDataURL("image/jpeg", 0.98);
+    const pdf = new window.jspdf.jsPDF("p", "pt", [pageWidth, pageHeight]);
+    const imgHeight = canvas.height * pageWidth / canvas.width;
 
-        if (temaAtual === "dark") {
-          document.body.setAttribute("data-theme", "dark");
-          Chart.defaults.color = '#aaa';
-          if (appState.graficoLinhaInstancia) appState.graficoLinhaInstancia.update();
-        }
+    let heightLeft = imgHeight;
+    let position = 0;
 
-        showToast("Download concluído!", "success");
-      }).catch((err) => {
-        clone.remove();
-        modalPdf.style.display = "none";
-        console.error("Erro ao exportar PDF:", err);
-        showToast("Erro ao exportar o report.", "error");
+    pdf.addImage(imgData, "JPEG", 0, position, pageWidth, imgHeight, undefined, "FAST");
+    heightLeft -= pageHeight;
 
-        if (temaAtual === "dark") {
-          document.body.setAttribute("data-theme", "dark");
-          Chart.defaults.color = '#aaa';
-        }
-      });
-    }, 500);
-  }, 150);
+    while (heightLeft > 0) {
+      position -= pageHeight;
+      pdf.addPage([pageWidth, pageHeight], "p");
+      pdf.addImage(imgData, "JPEG", 0, position, pageWidth, imgHeight, undefined, "FAST");
+      heightLeft -= pageHeight;
+    }
+
+    pdf.save(`Report_Atletas_${txtDataHoje.replace(/\//g, '-')}.pdf`);
+    clone.remove();
+    modalPdf.style.display = "none";
+    showToast("Download concluído!", "success");
+  } catch (err) {
+    console.error("Erro ao exportar PDF:", err);
+    document.getElementById("pdfExportClone")?.remove();
+    const modalPdf = document.getElementById("pdfOverlay");
+    if (modalPdf) modalPdf.style.display = "none";
+    showToast("Erro ao exportar o report.", "error");
+  } finally {
+    if (canvasLinha) {
+      canvasLinha.style.width = widthOriginal || "";
+      canvasLinha.style.height = heightOriginal || "";
+      if (appState.graficoLinhaInstancia) appState.graficoLinhaInstancia.resize();
+    }
+
+    if (temaAtual === "dark") {
+      document.body.setAttribute("data-theme", "dark");
+      Chart.defaults.color = '#aaa';
+      if (appState.graficoLinhaInstancia) appState.graficoLinhaInstancia.update();
+    }
+  }
 }
 
 function prepararCloneA4ParaExportacao(printArea) {
@@ -200,7 +215,7 @@ function prepararCloneA4ParaExportacao(printArea) {
   clone.classList.add("pdf-export-clone");
 
   clone.style.position = "absolute";
-  clone.style.left = "0";
+  clone.style.left = "-9999px";
   clone.style.top = "0";
   clone.style.width = "794px";
   clone.style.maxWidth = "794px";
@@ -213,7 +228,7 @@ function prepararCloneA4ParaExportacao(printArea) {
   clone.style.color = "#0f2d35";
   clone.style.display = "block";
   clone.style.overflow = "visible";
-  clone.style.zIndex = "-1";
+  clone.style.zIndex = "0";
 
   clone.querySelectorAll("img").forEach(img => {
     img.crossOrigin = "anonymous";
@@ -259,6 +274,73 @@ function preencherDadosReportA4() {
   }
 
   setHtml("pdfUltimosEventos", montarUltimosLancamentosReport());
+}
+
+
+function atualizarPainelEstrategicoFinal(arrayAtletas, totalAtivosGerais) {
+  const analytics = calcularAnalyticsReport();
+  const eventosPendentes = contarEventosPendentesLancamento();
+  const filaAguardando = Object.values(appState.mapAtletas || {}).filter(a => String(a.equipe || "").startsWith("Fila")).length;
+  const regrasSemUso = contarRegrasSemUso();
+  const atletasInativos30d = arrayAtletas.filter(a => a.diasAusente > 30).length;
+  const custo = Number(appState.gastoTotalGlobal) || 0;
+  const custoParticipacao = analytics.participacoes ? custo / analytics.participacoes : 0;
+  const custoKm = analytics.kmTotal ? custo / analytics.kmTotal : 0;
+
+  setTextDashboard("dashKmTotal", `${formatarKm(analytics.kmTotal)} km`);
+  setTextDashboard("dashParticipacoes", analytics.participacoes);
+  setTextDashboard("dashCustoParticipacao", custoParticipacao.toLocaleString('pt-BR', {style:'currency', currency:'BRL'}));
+  setTextDashboard("dashCustoKm", custoKm.toLocaleString('pt-BR', {style:'currency', currency:'BRL'}));
+  setTextDashboard("dashEventosPendentes", eventosPendentes);
+  setTextDashboard("dashFilaAguardando", filaAguardando);
+
+  const acoes = [];
+  acoes.push({ tipo: eventosPendentes > 0 ? "warning" : "success", icon: "📅", titulo: "Eventos sem lançamento", desc: eventosPendentes > 0 ? "Eventos realizados nos últimos 7 dias ainda não foram lançados." : "Agenda recente sem pendências de lançamento.", valor: eventosPendentes });
+  acoes.push({ tipo: atletasInativos30d > 0 ? "danger" : "success", icon: "⚠️", titulo: "Atletas sem atividade 30d", desc: atletasInativos30d > 0 ? "Priorize contato, justificativa ou reengajamento." : "Base recente sem alertas críticos de inatividade.", valor: atletasInativos30d });
+  acoes.push({ tipo: filaAguardando > 0 ? "warning" : "success", icon: "↕️", titulo: "Fila aguardando decisão", desc: filaAguardando > 0 ? "Revise a ordem, recusas e movimentações pendentes." : "Nenhum atleta aguardando na fila.", valor: filaAguardando });
+  acoes.push({ tipo: regrasSemUso > 0 ? "warning" : "success", icon: "✅", titulo: "Regras sem uso", desc: regrasSemUso > 0 ? "Regras cadastradas que ainda não apareceram no histórico." : "Todas as regras cadastradas já foram utilizadas.", valor: regrasSemUso });
+  acoes.push({ tipo: analytics.semAtividade > 0 ? "warning" : "success", icon: "👤", titulo: "Atletas sem histórico", desc: analytics.semAtividade > 0 ? "Atletas ativos que nunca tiveram participação registrada." : "Todos os atletas ativos têm histórico de participação.", valor: analytics.semAtividade });
+
+  const container = document.getElementById("listaAcoesRecomendadas");
+  if (container) {
+    container.innerHTML = acoes.map(a => `
+      <div class="strategic-action-item ${a.tipo}">
+        <div class="strategic-action-icon">${a.icon}</div>
+        <div>
+          <div class="strategic-action-title">${escapeHtml(a.titulo)}</div>
+          <div class="strategic-action-desc">${escapeHtml(a.desc)}</div>
+        </div>
+        <div class="strategic-action-count">${a.valor}</div>
+      </div>
+    `).join("");
+  }
+}
+
+function setTextDashboard(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+
+function contarEventosPendentesLancamento() {
+  const historico = appState.historicoCompleto || [];
+  const eventosLancados = new Set(historico.filter(h => h.eventoId).map(h => h.eventoId));
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const limite = new Date(hoje); limite.setDate(limite.getDate() - 7);
+  return (appState.cacheEventos || []).filter(e => {
+    if (!e.id || !e.data || eventosLancados.has(e.id)) return false;
+    const d = new Date(e.data + "T00:00:00"); d.setHours(0,0,0,0);
+    return d < hoje && d >= limite;
+  }).length;
+}
+
+function contarRegrasSemUso() {
+  const usadas = new Set((appState.historicoCompleto || []).map(h => h.regraId).filter(Boolean));
+  const regras = appState.listaTodasRegras || [];
+  return regras.filter(r => r.id && !usadas.has(r.id)).length;
+}
+
+function aguardar(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function calcularAnalyticsReport() {
