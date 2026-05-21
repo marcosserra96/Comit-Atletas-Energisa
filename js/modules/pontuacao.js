@@ -33,6 +33,8 @@ export function setupContabilizacao() {
 
       document.getElementById("descTreino").value = evento.titulo || "";
       document.getElementById("dataTreino").value = evento.data || "";
+      const kmInput = document.getElementById("kmTreino");
+      if (kmInput) kmInput.value = Number(evento.km || 0) > 0 ? Number(evento.km || 0) : "";
 
       if (evento.modalidade && evento.modalidade !== "Ambas") {
         const modTreino = document.getElementById("modTreino");
@@ -258,7 +260,7 @@ function aplicarEstilosUXPontuacao() {
 
     .lote-stats {
       display: grid;
-      grid-template-columns: repeat(3,1fr);
+      grid-template-columns: repeat(4,1fr);
       gap: 8px;
       margin-bottom: 12px;
     }
@@ -421,6 +423,8 @@ function aplicarTipoLancamento(tipo) {
   campoEvento.style.display = "none";
   selectEvento.value = "";
   desc.value = "";
+  const kmInput = document.getElementById("kmTreino");
+  if (kmInput && tipo === "treino") kmInput.value = "";
   desc.placeholder = tipo === "avulso"
     ? "Ex: Ajuste aprovado pelo comitê / Participação externa"
     : "Ex: Treino de sábado / Treino especial";
@@ -682,6 +686,7 @@ async function salvarPontuacoesEmLote() {
   const tipoLancamento = getTipoLancamentoAtual();
   const desc = document.getElementById("descTreino").value.trim();
   const data = document.getElementById("dataTreino").value;
+  const kmPercorrido = Number(String(document.getElementById("kmTreino")?.value || "0").replace(",", ".")) || 0;
   const hoje = new Date().toISOString().split("T")[0];
 
   if (data > hoje) {
@@ -719,6 +724,7 @@ async function salvarPontuacoesEmLote() {
     `Tipo: ${rotuloTipo(tipoLancamento)}`,
     `Descrição: ${desc}`,
     `Data: ${formatarData(data)}`,
+    `KM por atleta: ${kmPercorrido > 0 ? formatarKm(kmPercorrido) + " km" : "não informado"}`,
     `Pontos totais: ${totalPontos}`
   ].join("\n");
 
@@ -758,6 +764,7 @@ async function salvarPontuacoesEmLote() {
           descTreino: desc,
           dataTreino: data,
           eventoId: eventoIdSelecionado,
+          kmPercorrido: 0,
           ...dadosLote
         });
       }
@@ -776,6 +783,7 @@ async function salvarPontuacoesEmLote() {
           descTreino: desc,
           dataTreino: data,
           eventoId: eventoIdSelecionado,
+          kmPercorrido,
           ...dadosLote
         });
 
@@ -812,6 +820,7 @@ async function salvarPontuacoesEmLote() {
       document.getElementById("descTreino").value = "";
       document.getElementById("lancarEventoSelect").value = "";
       document.getElementById("modTreino").value = "";
+      if (document.getElementById("kmTreino")) document.getElementById("kmTreino").value = "";
 
       if (atualizarTelasCallback) atualizarTelasCallback();
 
@@ -851,6 +860,7 @@ function exportarModeloExcelPontuacao() {
     "Atleta": a.nome,
     "Equipe": a.equipe,
     "Pontos a Adicionar": "",
+    "KM Percorridos": "",
     "Descrição / Evento": "",
     "Data (AAAA-MM-DD)": new Date().toISOString().split("T")[0]
   }));
@@ -888,6 +898,7 @@ async function processarImportacaoExcel(linhas) {
       lancamentosValidos.forEach(l => {
         const aId = l["ID_Oculto (NÃO ALTERAR)"];
         const pts = Number(l["Pontos a Adicionar"]) || 0;
+        const kmImportado = Number(String(l["KM Percorridos"] || "0").replace(",", ".")) || 0;
         const desc = l["Descrição / Evento"] || "Lançamento via Planilha";
         const dataStr = l["Data (AAAA-MM-DD)"] || new Date().toISOString().split("T")[0];
 
@@ -902,6 +913,7 @@ async function processarImportacaoExcel(linhas) {
           pontos: pts,
           descTreino: desc,
           dataTreino: dataStr,
+          kmPercorrido: kmImportado,
           loteId,
           tipoLancamento: "importacao",
           tituloLancamento: desc,
@@ -1079,6 +1091,7 @@ function agruparLancamentos(dados) {
       g.qtdRegistros = g.itens.length;
       g.totalPontos = g.itens.reduce((s, i) => s + (Number(i.pontos) || 0), 0);
       g.faltas = g.itens.filter(i => Number(i.pontos) === 0).length;
+      g.totalKm = calcularKmGrupo(g.itens);
       return g;
     })
     .sort((a, b) => {
@@ -1093,6 +1106,7 @@ function criarCardLote(g) {
     const nome = escapeHtml(i.atletaNome || appState.mapAtletas[i.atletaId]?.nome || "Atleta não encontrado");
     const regra = escapeHtml(i.regraDesc || "-");
     const pontos = Number(i.pontos) === 0 ? "Justificada" : `+${Number(i.pontos) || 0}`;
+    const kmInfo = Number(i.kmPercorrido || 0) > 0 ? ` • ${formatarKm(i.kmPercorrido)} km` : "";
     const cor = Number(i.pontos) === 0 ? "var(--accent)" : "var(--secondary)";
 
     return `
@@ -1100,7 +1114,7 @@ function criarCardLote(g) {
         <span>
           <a class="nome-atleta-link" data-atleta-id="${escapeAttr(i.atletaId || "")}">${nome}</a>
           <br>
-          <small style="color:var(--text-light);">${regra}</small>
+          <small style="color:var(--text-light);">${regra}${kmInfo}</small>
         </span>
         <strong style="color:${cor};">${pontos}</strong>
       </div>
@@ -1124,6 +1138,7 @@ function criarCardLote(g) {
         <div class="lote-stats">
           <div class="lote-stat"><strong>${g.qtdAtletas}</strong><span>atletas</span></div>
           <div class="lote-stat"><strong>${g.totalPontos}</strong><span>pontos</span></div>
+          <div class="lote-stat"><strong>${formatarKm(g.totalKm)}</strong><span>km</span></div>
           <div class="lote-stat"><strong>${g.faltas}</strong><span>faltas</span></div>
         </div>
 
@@ -1160,6 +1175,32 @@ function tentarAbrirFichaAtleta(atletaId) {
 // =====================================================
 // HELPERS
 // =====================================================
+
+function calcularKmGrupo(itens = []) {
+  const vistos = new Set();
+  let total = 0;
+
+  itens.forEach(i => {
+    const km = Number(i.kmPercorrido || i.km || 0);
+    if (!km || km <= 0) return;
+
+    const chave = `${i.atletaId || ""}|${i.loteId || i.eventoId || `${i.dataTreino || ""}|${i.descTreino || ""}`}`;
+    if (vistos.has(chave)) return;
+    vistos.add(chave);
+    total += km;
+  });
+
+  return total;
+}
+
+function formatarKm(valor) {
+  const n = Number(valor) || 0;
+  return n.toLocaleString("pt-BR", {
+    minimumFractionDigits: n % 1 === 0 ? 0 : 1,
+    maximumFractionDigits: 1
+  });
+}
+
 function gerarLoteId(tipo) {
   return `${tipo}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }

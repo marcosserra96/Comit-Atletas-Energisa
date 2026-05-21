@@ -694,3 +694,165 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
   font-weight: 900;
   cursor: grab;
 }
+
+/* =======================================================
+   Ajustes UX v2 - Atletas: alinhamento e KM
+======================================================= */
+.athlete-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.athlete-kpi-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 18px;
+  box-shadow: var(--shadow);
+  min-height: 110px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.athlete-kpi-card span {
+  color: var(--text-light);
+  font-size: .78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .02em;
+}
+
+.athlete-kpi-card strong {
+  color: var(--primary);
+  font-size: 1.55rem;
+  line-height: 1.1;
+  margin-top: 8px;
+}
+
+.athlete-kpi-card small {
+  color: var(--text-light);
+  margin-top: 6px;
+  font-size: .78rem;
+}
+
+.athlete-filter-card {
+  margin-bottom: 20px;
+}
+
+.athlete-card-grid {
+  grid-template-columns: repeat(auto-fill, minmax(282px, 1fr));
+  align-items: stretch;
+}
+
+.athlete-card-premium {
+  min-height: 408px;
+  display: flex;
+  flex-direction: column;
+}
+
+.athlete-card-hero {
+  height: 96px;
+  flex: 0 0 auto;
+}
+
+.athlete-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 40px 18px 18px;
+}
+
+.athlete-card-title {
+  min-height: 52px;
+}
+
+.athlete-card-title h3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.athlete-card-meta {
+  min-height: 38px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.athlete-card-stats {
+  grid-template-columns: repeat(4, 1fr);
+  gap: 7px;
+  margin-top: auto;
+}
+
+.athlete-card-stats div {
+  min-height: 54px;
+  padding: 9px 5px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.athlete-card-stats strong {
+  font-size: .88rem;
+  white-space: nowrap;
+}
+
+.athlete-card-stats span {
+  font-size: .62rem;
+}
+
+.athlete-card-button {
+  margin-top: 14px;
+}
+
+.ficha-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.ficha-metric-card {
+  background: var(--bg);
+  padding: 15px;
+  border-radius: 12px;
+  text-align: center;
+  border: 1px solid var(--border);
+}
+
+.ficha-metric-card span {
+  font-size: .72rem;
+  color: var(--text-light);
+  text-transform: uppercase;
+  font-weight: 800;
+}
+
+.ficha-metric-card h3 {
+  margin: 6px 0 0 0;
+  color: var(--primary);
+  font-size: 1.25rem;
+  line-height: 1.15;
+}
+
+@media(max-width: 1050px) {
+  .athlete-kpi-grid {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
+}
+
+@media(max-width: 760px) {
+  .athlete-kpi-grid,
+  .ficha-metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .athlete-card-grid {
+    grid-template-columns: 1fr;
+  }
+}

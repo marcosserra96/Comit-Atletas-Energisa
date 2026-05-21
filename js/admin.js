@@ -459,12 +459,12 @@ function setupAgenda() {
   document.getElementById("abrirModalEvento")?.addEventListener("click", () => modal.style.display = "flex"); 
   document.getElementById("fecharModalEvento")?.addEventListener("click", () => modal.style.display = "none"); 
   document.getElementById("salvarEventoBtn")?.addEventListener("click", async (e) => { 
-    const titulo = document.getElementById("eventoTitulo").value.trim(); const local = document.getElementById("eventoLocal").value.trim(); const mod = document.getElementById("eventoModalidade").value; const data = document.getElementById("eventoData").value; 
+    const titulo = document.getElementById("eventoTitulo").value.trim(); const local = document.getElementById("eventoLocal").value.trim(); const mod = document.getElementById("eventoModalidade").value; const data = document.getElementById("eventoData").value; const km = Number(document.getElementById("eventoKm")?.value || 0); 
     if (!titulo || !data) return showToast("Título e Data são obrigatórios!", "error"); 
     e.target.textContent = "Salvando..."; e.target.classList.add("loading"); e.target.disabled = true; 
     try { 
-      await addDoc(collection(db, "agenda_eventos"), { titulo: titulo, local: local, modalidade: mod, data: data, criadoEm: new Date().toISOString() }); 
-      modal.style.display = "none"; document.getElementById("eventoTitulo").value = ""; document.getElementById("eventoLocal").value = ""; 
+      await addDoc(collection(db, "agenda_eventos"), { titulo: titulo, local: local, modalidade: mod, data: data, km: km, criadoEm: new Date().toISOString() }); 
+      modal.style.display = "none"; document.getElementById("eventoTitulo").value = ""; document.getElementById("eventoLocal").value = ""; if(document.getElementById("eventoKm")) document.getElementById("eventoKm").value = ""; 
       showToast("Evento agendado!", "success"); atualizarTelas(); 
     } catch (err) { showToast("Erro ao agendar: " + err.message, "error"); } 
     finally { e.target.textContent = "Salvar Evento"; e.target.classList.remove("loading"); e.target.disabled = false; }
@@ -487,8 +487,9 @@ async function carregarAgenda() {
     futuros.forEach(e => { 
       const d = new Date(e.data + "T00:00:00"); const mes = d.toLocaleString('pt-BR', {month: 'short'}).replace('.',''); const dia = d.getDate().toString().padStart(2, '0'); 
       let icon = e.modalidade === "Bicicleta" ? "🚴" : e.modalidade === "Corrida" ? "🏃" : "🤝"; 
+      const kmInfo = Number(e.km || 0) > 0 ? ` • ${formatarKm(e.km)} km` : "";
       const btnExcluir = hasGestao ? `<button class="btn-excluir-evento" aria-label="Cancelar evento" data-id="${e.id}" style="background:transparent; border:none; color:var(--danger); cursor:pointer; float:right;"><i data-lucide="x" style="width:16px;"></i></button>` : ''; 
-      html += `<div class="agenda-item"><div class="agenda-data"><span>${mes}</span><strong>${dia}</strong></div><div class="agenda-info" style="flex:1;">${btnExcluir}<h4>${e.titulo}</h4><p>${icon} ${e.local}</p></div></div>`; 
+      html += `<div class="agenda-item"><div class="agenda-data"><span>${mes}</span><strong>${dia}</strong></div><div class="agenda-info" style="flex:1;">${btnExcluir}<h4>${e.titulo}</h4><p>${icon} ${e.local || 'Local não informado'}${kmInfo}</p></div></div>`; 
     }); 
     
     if(document.getElementById("listaEventosAgenda")) document.getElementById("listaEventosAgenda").innerHTML = html || `<div class="empty-state" style="padding:10px;"><p style="font-size:0.85rem;">Nenhum evento agendado.</p></div>`; 
@@ -638,6 +639,8 @@ function renderAtletasConsulta() {
     return String(a.nome || "").localeCompare(String(b.nome || ""));
   });
 
+  atualizarResumoKmAtletas(atletas);
+
   if (atletas.length === 0) {
     grid.innerHTML = `
       <div class="empty-state" style="grid-column:1/-1;">
@@ -668,7 +671,8 @@ function criarCardAtleta(a) {
   const tipoHero = isFila ? "wait" : (equipe === "Corrida" ? "run" : "bike");
   const modalidade = isFila ? "Fila" : (equipe === "Corrida" ? "Corrida" : equipe === "Bicicleta" || equipe === "Bike" ? "Bike" : equipe);
   const hist = (appState.historicoCompleto || []).filter(h => h.atletaId === a.id);
-  const eventos = new Set(hist.map(h => h.eventoId || `${h.dataTreino}|${h.descTreino}`)).size;
+  const eventos = new Set(hist.map(h => h.eventoId || h.loteId || `${h.dataTreino}|${h.descTreino}`)).size;
+  const kmTotal = calcularKmAtleta(a.id);
   const ultimo = hist.length > 0 ? hist[0].dataTreino : "";
   const iniciais = getIniciais(a.nome);
 
@@ -691,6 +695,10 @@ function criarCardAtleta(a) {
           <div>
             <strong>${Number(a.pontuacaoTotal) || 0}</strong>
             <span>pontos</span>
+          </div>
+          <div>
+            <strong>${formatarKm(kmTotal)}</strong>
+            <span>km</span>
           </div>
           <div>
             <strong>${eventos}</strong>
@@ -737,7 +745,7 @@ function renderBuscaGlobalAtletas(valor) {
       <div class="search-result-avatar">${getIniciais(a.nome)}</div>
       <div class="search-result-body">
         <strong>${escapeHtml(a.nome || "Sem nome")}</strong>
-        <small>${escapeHtml(a.equipe || "-")} • ${Number(a.pontuacaoTotal) || 0} pts</small>
+        <small>${escapeHtml(a.equipe || "-")} • ${Number(a.pontuacaoTotal) || 0} pts • ${formatarKm(calcularKmAtleta(a.id))} km</small>
       </div>
     </div>
   `).join("");
@@ -752,6 +760,64 @@ function renderBuscaGlobalAtletas(valor) {
   });
 
   resultados.classList.add("active");
+}
+
+
+function calcularKmAtleta(atletaId) {
+  const vistos = new Set();
+  let total = 0;
+
+  (appState.historicoCompleto || [])
+    .filter(h => h.atletaId === atletaId)
+    .forEach(h => {
+      const km = Number(h.kmPercorrido || h.km || 0);
+      if (!km || km <= 0) return;
+
+      const chave = h.loteId || h.eventoId || `${h.dataTreino || ""}|${h.descTreino || ""}`;
+      if (vistos.has(chave)) return;
+      vistos.add(chave);
+      total += km;
+    });
+
+  return total;
+}
+
+function atualizarResumoKmAtletas(atletas = []) {
+  let totalKm = 0;
+  let kmBike = 0;
+  let kmCorrida = 0;
+  let totalParticipacoes = 0;
+
+  atletas.forEach(a => {
+    const km = calcularKmAtleta(a.id);
+    const hist = (appState.historicoCompleto || []).filter(h => h.atletaId === a.id);
+    const eventos = new Set(hist.map(h => h.eventoId || h.loteId || `${h.dataTreino}|${h.descTreino}`)).size;
+
+    totalKm += km;
+    totalParticipacoes += eventos;
+
+    if (a.equipe === "Bicicleta" || a.equipe === "Bike") kmBike += km;
+    if (a.equipe === "Corrida") kmCorrida += km;
+  });
+
+  const setText = (id, txt) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = txt;
+  };
+
+  setText("totalKmAtletas", `${formatarKm(totalKm)} km`);
+  setText("totalKmBike", `${formatarKm(kmBike)} km`);
+  setText("totalKmCorrida", `${formatarKm(kmCorrida)} km`);
+  setText("totalAtletasConsulta", atletas.length);
+  setText("totalEventosConsulta", `${totalParticipacoes} participações`);
+}
+
+function formatarKm(valor) {
+  const n = Number(valor) || 0;
+  return n.toLocaleString("pt-BR", {
+    minimumFractionDigits: n % 1 === 0 ? 0 : 1,
+    maximumFractionDigits: 1
+  });
 }
 
 function getIniciais(nome = "") {
@@ -800,7 +866,7 @@ function setupFichaAtleta() {
 
 async function abrirFichaAtleta(id) { 
   const a = appState.mapAtletas[id]; if(!a) return; 
-  document.getElementById("fichaNome").textContent = a.nome; document.getElementById("fichaEquipe").textContent = a.equipe; document.getElementById("fichaPontos").textContent = a.pontuacaoTotal || 0; 
+  document.getElementById("fichaNome").textContent = a.nome; document.getElementById("fichaEquipe").textContent = a.equipe; document.getElementById("fichaPontos").textContent = a.pontuacaoTotal || 0; if(document.getElementById("fichaKm")) document.getElementById("fichaKm").textContent = `${formatarKm(calcularKmAtleta(id))} km`; 
   const renderCampo = (idEl, val, fallback) => { if(document.getElementById(idEl)) document.getElementById(idEl).textContent = val || fallback; };
   renderCampo("fichaLocalidade", a.localidade, "Não informada"); renderCampo("fichaNasc", a.dataNascimento ? new Date(a.dataNascimento+"T00:00:00").toLocaleDateString('pt-BR') : "Não informada", ""); renderCampo("fichaSexo", a.sexo, "Não informado"); renderCampo("fichaAnoEntrada", a.anoEntrada, "-");
   const statusEl = document.getElementById("fichaStatus"); 
@@ -811,8 +877,8 @@ async function abrirFichaAtleta(id) {
   let htmlH = ""; 
   if(hist.length === 0) htmlH = "<p style='color:#999; margin-top: 10px;'>Nenhum registo encontrado.</p>"; 
   hist.forEach(h => { 
-    const dataF = new Date(h.dataTreino+"T00:00:00").toLocaleDateString('pt-BR'); const isFalta = Number(h.pontos) === 0; const cor = isFalta ? "var(--accent)" : "var(--secondary)"; const ptsStr = isFalta ? "Falta Justificada" : `+${h.pontos} pts`; 
-    htmlH += `<div style="border-bottom: 1px solid var(--border); padding: 8px 0; display:flex; justify-content:space-between; align-items:center;"><div><strong>${dataF}</strong> - ${h.descTreino}<br><small style="color:#666;">${h.regraDesc}</small></div><div style="color:${cor}; font-weight:bold; text-align:right;">${ptsStr}</div></div>`; 
+    const dataF = new Date(h.dataTreino+"T00:00:00").toLocaleDateString('pt-BR'); const isFalta = Number(h.pontos) === 0; const cor = isFalta ? "var(--accent)" : "var(--secondary)"; const ptsStr = isFalta ? "Falta Justificada" : `+${h.pontos} pts`; const kmInfo = Number(h.kmPercorrido || 0) > 0 ? `<br><small style="color:var(--primary);">${formatarKm(h.kmPercorrido)} km</small>` : "";
+    htmlH += `<div style="border-bottom: 1px solid var(--border); padding: 8px 0; display:flex; justify-content:space-between; align-items:center;"><div><strong>${dataF}</strong> - ${h.descTreino}<br><small style="color:#666;">${h.regraDesc}</small>${kmInfo}</div><div style="color:${cor}; font-weight:bold; text-align:right;">${ptsStr}</div></div>`; 
   }); 
   document.getElementById("fichaHistorico").innerHTML = htmlH; 
   await carregarComentarios(id); 
