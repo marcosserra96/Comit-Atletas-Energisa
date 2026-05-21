@@ -257,7 +257,12 @@
         
         <div id="areaTabelaPontuacao" style="display: none; animation: fadeIn 0.4s ease;">
           <div class="tabela-container"><table class="tabela-simples" id="tabelaPontuacao"></table></div>
-          <button id="btnSalvarPontuacao" class="btn-primario" style="width: 100%; justify-content: center; padding: 15px; background: var(--secondary); margin-top: 15px; font-size: 1.1rem;">Gravar Lançamentos na Base</button>
+        </div>
+        <div class="lancamento-save-bar">
+          <button id="btnSalvarPontuacao" class="btn-primario" disabled>
+            <i data-lucide="save"></i> Salvar lançamento
+          </button>
+          <small>Selecione a equipe e marque os atletas antes de salvar.</small>
         </div>
       </div>
       
