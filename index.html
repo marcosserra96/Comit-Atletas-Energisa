@@ -1,43 +1,88 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Acesso | Comitê Atletas Energisa ⚡️</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css" />
-</head>
-<body>
-  <div id="toastContainer"></div>
+// js/modules/ui.js
+import { auth, signOut } from '../firebase.js';
 
-  <div class="container">
-    <div class="logo">
-      <img src="assets/logo-energisa-branca.svg" alt="Energisa Logo" onerror="this.style.display='none'; this.insertAdjacentHTML('afterend', '<span style=\'font-weight:bold; font-size:1.5rem; color:white;\'></span>')" />
-      <h1>Programa Atletas Energisa</h1>
-    </div>
+export function showToast(message, type = "info") {
+  const container = document.getElementById("toastContainer"); 
+  if (!container) return;
+  const t = document.createElement("div"); 
+  t.className = `toast ${type}`; 
+  t.innerHTML = message;
+  container.appendChild(t); 
+  if(typeof lucide !== 'undefined') lucide.createIcons(); 
+  setTimeout(() => t.remove(), 4000);
+}
 
-    <div class="login-box" id="boxLogin">
-      <h2>Acesso Restrito ao Comitê</h2>
-      <input type="email" id="email" placeholder="E-mail" required />
-      <input type="password" id="password" placeholder="Senha" required />
-      <button id="loginBtn">Entrar no Sistema</button>
-      <div class="register-text">
-        É do comitê e não tem conta? <a href="#" id="linkSolicitar">Solicite aqui</a>
-      </div>
-    </div>
+// O Novo Modal de Confirmação Customizado
+export function mostrarConfirmacao(titulo, mensagem, callbackSim, tipo = "primary") {
+  const modal = document.getElementById("modalConfirmacao");
+  if (!modal) return; // Prevenção de erro caso o HTML ainda não tenha o modal
+  
+  document.getElementById("confirmTitulo").textContent = titulo;
+  document.getElementById("confirmMensagem").textContent = mensagem;
+  
+  const btnOk = document.getElementById("btnConfirmOk");
+  btnOk.style.background = tipo === "danger" ? "var(--danger)" : "var(--primary)";
+  
+  // Clona o botão para remover event listeners de chamadas anteriores
+  const novoBtnOk = btnOk.cloneNode(true);
+  btnOk.parentNode.replaceChild(novoBtnOk, btnOk);
+  
+  const fechar = () => modal.style.display = "none";
+  
+  document.getElementById("btnConfirmCancel").onclick = fechar;
+  novoBtnOk.onclick = () => { fechar(); callbackSim(); };
+  
+  modal.style.display = "flex";
+}
 
-    <div class="login-box" id="boxSolicitar" style="display: none;">
-      <h2>Solicitar Acesso (Comitê)</h2>
-      <input type="text" id="regNome" placeholder="Seu Nome Completo" required />
-      <input type="email" id="regEmail" placeholder="Seu E-mail" required />
-      <input type="password" id="regPassword" placeholder="Crie uma Senha" required />
-      <button id="registerBtn">Enviar Solicitação</button>
-      <div class="register-text">
-        Já tem acesso? <a href="#" id="linkLogin">Faça Login</a>
-      </div>
-    </div>
-  </div>
+export function setupSubTabs() {
+  document.querySelectorAll(".sub-tab").forEach(tab => { 
+    tab.addEventListener("click", () => { 
+      const p = tab.closest('section'); 
+      p.querySelectorAll(".sub-tab").forEach(t => t.classList.remove("active")); 
+      p.querySelectorAll(".sub-content").forEach(c => c.classList.remove("active")); 
+      tab.classList.add("active"); 
+      document.getElementById(tab.dataset.target).classList.add("active"); 
+    }); 
+  });
+  
+  document.querySelectorAll(".t-tab").forEach(tab => { 
+    tab.addEventListener("click", () => { 
+      const p = tab.closest('.sub-content'); 
+      p.querySelectorAll(".t-tab").forEach(t => t.classList.remove("active")); 
+      p.querySelectorAll(".t-content").forEach(c => c.classList.remove("active")); 
+      tab.classList.add("active"); 
+      document.getElementById(tab.dataset.target).classList.add("active"); 
+    }); 
+  });
+}
 
-  <script type="module" src="js/login.js" defer></script>
-</body>
-</html>
+export function setupConfiguracoesGerais() {
+  document.querySelectorAll(".btn-zoom").forEach(btn => { 
+    btn.addEventListener("click", (e) => { 
+      document.documentElement.style.fontSize = e.target.dataset.size; 
+    }); 
+  }); 
+  
+  const aplicarTema = (tema) => { 
+    if(tema === "dark") { 
+      document.body.setAttribute("data-theme", "dark"); 
+      localStorage.setItem("theme", "dark"); 
+    } else { 
+      document.body.removeAttribute("data-theme"); 
+      localStorage.setItem("theme", "light"); 
+    } 
+  }; 
+  
+  if (localStorage.getItem("theme") === "dark") aplicarTema("dark"); 
+  
+  document.getElementById("btnTemaClaro")?.addEventListener("click", () => aplicarTema("light")); 
+  document.getElementById("btnTemaEscuro")?.addEventListener("click", () => aplicarTema("dark")); 
+  
+  document.getElementById("logoutBtn")?.addEventListener("click", () => { 
+    mostrarConfirmacao("Sair do Sistema", "Deseja realmente encerrar a sessão?", async () => {
+      await signOut(auth); 
+      window.location.href = "index.html"; 
+    });
+  });
+}

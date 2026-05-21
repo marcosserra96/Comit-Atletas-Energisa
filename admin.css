@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Acesso | Comitê Atletas Energisa ⚡️</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="toastContainer"></div>
+
+  <div class="container">
+    <div class="logo">
+      <img src="assets/logo-energisa-branca.svg" alt="Energisa Logo" onerror="this.style.display='none'; this.insertAdjacentHTML('afterend', '<span style=\'font-weight:bold; font-size:1.5rem; color:white;\'></span>')" />
+      <h1>Programa Atletas Energisa</h1>
+    </div>
+
+    <div class="login-box" id="boxLogin">
+      <h2>Acesso Restrito ao Comitê</h2>
+      <input type="email" id="email" placeholder="E-mail" required />
+      <input type="password" id="password" placeholder="Senha" required />
+      <button id="loginBtn">Entrar no Sistema</button>
+      <div class="register-text">
+        É do comitê e não tem conta? <a href="#" id="linkSolicitar">Solicite aqui</a>
+      </div>
+    </div>
+
+    <div class="login-box" id="boxSolicitar" style="display: none;">
+      <h2>Solicitar Acesso (Comitê)</h2>
+      <input type="text" id="regNome" placeholder="Seu Nome Completo" required />
+      <input type="email" id="regEmail" placeholder="Seu E-mail" required />
+      <input type="password" id="regPassword" placeholder="Crie uma Senha" required />
+      <button id="registerBtn">Enviar Solicitação</button>
+      <div class="register-text">
+        Já tem acesso? <a href="#" id="linkLogin">Faça Login</a>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/login.js" defer></script>
+</body>
+</html>
