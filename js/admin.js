@@ -105,6 +105,7 @@ function iniciarPainelAdmin() {
   setupModalRegras(); 
   setupModalEditar(); 
   setupFichaAtleta();
+  setupCamposFichaConfig();
   setupAtletasConsulta();
   
   atualizarTelas();
@@ -119,6 +120,7 @@ async function atualizarTelas() {
   snapA.forEach(d => { appState.mapAtletas[d.id] = { id: d.id, ...d.data() }; });
   
   await carregarHistorico(); 
+  await carregarCamposFichaConfig();
   await carregarFinanceiroPlanilha(); 
   await carregarEquipesEDashboard(); 
   await carregarRegras();
@@ -529,6 +531,13 @@ function setupDragDropFilas() {
   let draggedId = null;
   let draggedEquipe = null;
 
+  document.querySelectorAll("#listaFilaBike, #listaFilaCorrida").forEach(tbody => {
+    const container = tbody.closest(".tabela-container");
+    if(container && !container.previousElementSibling?.classList?.contains("fila-helper")) {
+      container.insertAdjacentHTML("beforebegin", `<div class="fila-helper"><i data-lucide="grip-vertical" style="width:14px;"></i> Arraste um atleta para reorganizar a posição na fila.</div>`);
+    }
+  });
+
   document.querySelectorAll(".fila-row").forEach(row => {
     if (row.dataset.dragSetup === "1") return;
     row.dataset.dragSetup = "1";
@@ -587,6 +596,7 @@ function setupDragDropFilas() {
           ordemFilaAtualizadaEm: new Date().toISOString(),
           ordemFilaAtualizadaPor: auth.currentUser?.uid || ""
         });
+        await registrarAuditoria("fila_reorganizada", "atletas", draggedId, { origem: draggedId, destino: targetId, equipe: origem.equipe });
 
         showToast("Fila reorganizada com sucesso!", "success");
         atualizarTelas();
@@ -866,6 +876,22 @@ function escapeAttr(value) {
   return escapeHtml(value).replaceAll("`", "&#096;");
 }
 
+async function registrarAuditoria(acao, entidade, entidadeId, dados = {}) {
+  try {
+    await addDoc(collection(db, "auditoria"), {
+      acao,
+      entidade,
+      entidadeId: entidadeId || "",
+      dados,
+      criadoEm: new Date().toISOString(),
+      criadoPor: auth.currentUser?.uid || "",
+      criadoPorNome: appState.mapAtletas?.[auth.currentUser?.uid]?.nome || "Usuário"
+    });
+  } catch (err) {
+    console.warn("Falha ao registrar auditoria:", err);
+  }
+}
+
 function setupFichaAtleta() { 
   document.getElementById("fecharModalFicha")?.addEventListener("click", () => document.getElementById("modalFichaAtleta").style.display = "none"); 
 
@@ -887,7 +913,7 @@ function setupFichaAtleta() {
   }); 
 
   document.getElementById("btnSalvarStatusFicha")?.addEventListener("click", salvarStatusFichaAtleta);
-  document.getElementById("btnAdicionarCampoExtra")?.addEventListener("click", salvarCampoExtraFicha);
+  document.getElementById("btnSalvarCamposFichaModelo")?.addEventListener("click", salvarCamposModeloFicha);
 }
 
 async function abrirFichaAtleta(id) { 
@@ -918,7 +944,8 @@ async function abrirFichaAtleta(id) {
   if(motivo) motivo.value = a.motivoSaida || a.motivoStatus || "";
   document.getElementById("fichaAtletaId").value = id; 
 
-  renderCamposExtrasFicha(a);
+  renderHistoricoStatusFicha(a);
+  renderCamposModeloFicha(a);
 
   const hist = appState.historicoCompleto.filter(h => h.atletaId === id); 
   let htmlH = ""; 
@@ -936,60 +963,94 @@ async function abrirFichaAtleta(id) {
   document.getElementById("modalFichaAtleta").style.display = "flex"; 
 }
 
-function renderCamposExtrasFicha(atleta) {
-  const lista = document.getElementById("fichaCamposExtrasLista");
+function renderHistoricoStatusFicha(atleta) {
+  const div = document.getElementById("fichaHistoricoStatus");
+  if(!div) return;
+  const hist = Array.isArray(atleta.historicoStatus) ? [...atleta.historicoStatus] : [];
+  hist.sort((a,b) => new Date(b.data || "1970-01-01") - new Date(a.data || "1970-01-01"));
+  const ultimos = hist.slice(0, 4);
+  if(ultimos.length === 0) {
+    div.innerHTML = `<small style="color:var(--text-light);">Nenhuma alteração de status registrada ainda.</small>`;
+    return;
+  }
+  div.innerHTML = `<strong style="font-size:.78rem; color:var(--text);">Histórico de status</strong>` + ultimos.map(h => {
+    const data = h.data ? new Date(h.data).toLocaleDateString('pt-BR') + " " + new Date(h.data).toLocaleTimeString('pt-BR').slice(0,5) : "-";
+    return `<div class="ficha-status-history-item"><strong>${h.ativo ? "Ativado" : "Desativado"}</strong> · ${data}<br>${escapeHtml(h.motivo || "Sem justificativa registrada")}</div>`;
+  }).join("");
+}
+
+function renderCamposModeloFicha(atleta) {
+  const lista = document.getElementById("fichaCamposModeloLista");
   if(!lista) return;
 
-  const campos = atleta.camposExtras || {};
-  const entries = Object.entries(campos).filter(([k]) => k);
+  const campos = Array.isArray(appState.camposFichaConfig) ? appState.camposFichaConfig : [];
+  const valores = atleta.camposFicha || {};
 
-  if(entries.length === 0) {
-    lista.innerHTML = `<small style="color:var(--text-light);">Nenhum campo adicional cadastrado para este atleta.</small>`;
+  if(campos.length === 0) {
+    lista.innerHTML = `<small style="color:var(--text-light); grid-column:1/-1;">Nenhum campo adicional foi configurado. Vá em Ajustes > Modelo da ficha para definir a estrutura da ficha.</small>`;
     return;
   }
 
-  lista.innerHTML = entries.map(([campo, valor]) => `
-    <div class="ficha-extra-item">
-      <strong>${escapeHtml(campo)}</strong>
-      <span>${escapeHtml(valor || "-")}</span>
-      <button class="btn-acao btn-remover-campo-extra" data-campo="${escapeAttr(campo)}" style="color:var(--danger); padding:6px;"><i data-lucide="trash-2" style="width:15px;"></i></button>
-    </div>
-  `).join("");
-
-  lista.querySelectorAll(".btn-remover-campo-extra").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const id = document.getElementById("fichaAtletaId").value;
-      const atual = {...(appState.mapAtletas[id]?.camposExtras || {})};
-      delete atual[btn.dataset.campo];
-      try {
-        await updateDoc(doc(db, "atletas", id), { camposExtras: atual, atualizadoEm: new Date().toISOString() });
-        appState.mapAtletas[id].camposExtras = atual;
-        renderCamposExtrasFicha(appState.mapAtletas[id]);
-        showToast("Campo removido.", "success");
-      } catch(err) { showToast("Erro ao remover campo: " + err.message, "error"); }
-    });
+  let grupoAtual = null;
+  let html = "";
+  campos.forEach(campo => {
+    const grupo = campo.grupo || "Informações adicionais";
+    if(grupo !== grupoAtual) {
+      grupoAtual = grupo;
+      html += `<div class="ficha-modelo-grupo">${escapeHtml(grupo)}</div>`;
+    }
+    html += renderCampoModeloInput(campo, valores[campo.id]);
   });
 
-  if(typeof lucide !== 'undefined') lucide.createIcons();
+  lista.innerHTML = html;
 }
 
-async function salvarCampoExtraFicha() {
-  const id = document.getElementById("fichaAtletaId")?.value;
-  const campo = document.getElementById("novoCampoExtraNome")?.value.trim();
-  const valor = document.getElementById("novoCampoExtraValor")?.value.trim();
-  if(!id || !campo) return showToast("Informe o nome do campo adicional.", "error");
+function renderCampoModeloInput(campo, valorAtual) {
+  const required = campo.obrigatorio ? "required" : "";
+  const base = `data-campo-id="${escapeAttr(campo.id)}" data-campo-label="${escapeAttr(campo.label || '')}"`;
+  const label = `<label>${escapeHtml(campo.label || "Campo")}</label>`;
+  const valor = valorAtual ?? "";
+  let input = "";
 
-  const atual = {...(appState.mapAtletas[id]?.camposExtras || {})};
-  atual[campo] = valor || "-";
+  if(campo.tipo === "numero") {
+    input = `<input type="number" ${base} value="${escapeAttr(valor)}" ${required} />`;
+  } else if(campo.tipo === "data") {
+    input = `<input type="date" ${base} value="${escapeAttr(valor)}" ${required} />`;
+  } else if(campo.tipo === "simnao") {
+    input = `<select ${base} ${required}><option value="">Selecione</option><option value="Sim" ${valor === 'Sim' ? 'selected' : ''}>Sim</option><option value="Não" ${valor === 'Não' ? 'selected' : ''}>Não</option></select>`;
+  } else if(campo.tipo === "selecao") {
+    const opcoes = Array.isArray(campo.opcoes) ? campo.opcoes : [];
+    input = `<select ${base} ${required}><option value="">Selecione</option>${opcoes.map(op => `<option value="${escapeAttr(op)}" ${String(valor) === String(op) ? 'selected' : ''}>${escapeHtml(op)}</option>`).join("")}</select>`;
+  } else {
+    input = `<input type="text" ${base} value="${escapeAttr(valor)}" ${required} />`;
+  }
+
+  return `<div class="ficha-modelo-field ${campo.obrigatorio ? 'required' : ''}">${label}${input}</div>`;
+}
+
+async function salvarCamposModeloFicha() {
+  const id = document.getElementById("fichaAtletaId")?.value;
+  if(!id) return;
+
+  const campos = Array.isArray(appState.camposFichaConfig) ? appState.camposFichaConfig : [];
+  const valores = {};
+
+  for(const campo of campos) {
+    const el = document.querySelector(`#fichaCamposModeloLista [data-campo-id="${CSS.escape(campo.id)}"]`);
+    const valor = el ? String(el.value || "").trim() : "";
+    if(campo.obrigatorio && !valor) return showToast(`Preencha o campo obrigatório: ${campo.label}`, "error");
+    valores[campo.id] = valor;
+  }
 
   try {
-    await updateDoc(doc(db, "atletas", id), { camposExtras: atual, atualizadoEm: new Date().toISOString() });
-    appState.mapAtletas[id].camposExtras = atual;
-    document.getElementById("novoCampoExtraNome").value = "";
-    document.getElementById("novoCampoExtraValor").value = "";
-    renderCamposExtrasFicha(appState.mapAtletas[id]);
-    showToast("Campo adicional salvo.", "success");
-  } catch(err) { showToast("Erro ao salvar campo adicional: " + err.message, "error"); }
+    const anteriores = appState.mapAtletas[id]?.camposFicha || {};
+    await updateDoc(doc(db, "atletas", id), { camposFicha: valores, atualizadoEm: new Date().toISOString() });
+    await registrarAuditoria("campos_ficha_atualizados", "atletas", id, { antes: anteriores, depois: valores });
+    if(appState.mapAtletas[id]) appState.mapAtletas[id].camposFicha = valores;
+    showToast("Campos da ficha salvos.", "success");
+  } catch(err) {
+    showToast("Erro ao salvar campos da ficha: " + err.message, "error");
+  }
 }
 
 async function salvarStatusFichaAtleta() {
@@ -1003,17 +1064,30 @@ async function salvarStatusFichaAtleta() {
   }
 
   try {
+    const antes = appState.mapAtletas[id]?.ativo !== false;
+    const historicoStatus = Array.isArray(appState.mapAtletas[id]?.historicoStatus) ? [...appState.mapAtletas[id].historicoStatus] : [];
+    const registroStatus = {
+      ativo,
+      motivo: motivo || (ativo ? "Reativação" : "Desativação"),
+      data: new Date().toISOString(),
+      responsavel: auth.currentUser?.uid || ""
+    };
+    historicoStatus.push(registroStatus);
+
     await updateDoc(doc(db, "atletas", id), {
       ativo,
       motivoSaida: ativo ? "" : motivo,
       motivoStatus: motivo,
-      statusAtualizadoEm: new Date().toISOString(),
-      statusAtualizadoPor: auth.currentUser?.uid || ""
+      statusAtualizadoEm: registroStatus.data,
+      statusAtualizadoPor: auth.currentUser?.uid || "",
+      historicoStatus
     });
+    await registrarAuditoria("status_atleta_atualizado", "atletas", id, { antes, depois: ativo, motivo });
     if(appState.mapAtletas[id]) {
       appState.mapAtletas[id].ativo = ativo;
       appState.mapAtletas[id].motivoSaida = ativo ? "" : motivo;
       appState.mapAtletas[id].motivoStatus = motivo;
+      appState.mapAtletas[id].historicoStatus = historicoStatus;
     }
     showToast("Status atualizado.", "success");
     await abrirFichaAtleta(id);
@@ -1075,6 +1149,135 @@ function setupModalEditar() {
   }); 
 }
 
+
+// =====================================================
+// 🧩 MODELO CONFIGURÁVEL DA FICHA DO ATLETA
+// =====================================================
+function setupCamposFichaConfig() {
+  const btn = document.getElementById("btnAdicionarCampoFichaConfig");
+  if(btn && !btn.dataset.listenerAplicado) {
+    btn.dataset.listenerAplicado = "1";
+    btn.addEventListener("click", criarCampoFichaConfig);
+  }
+}
+
+async function carregarCamposFichaConfig() {
+  try {
+    const snap = await getDocs(collection(db, "campos_ficha"));
+    appState.camposFichaConfig = [];
+    snap.forEach(d => appState.camposFichaConfig.push({ id: d.id, ...d.data() }));
+    appState.camposFichaConfig.sort((a,b) => (Number(a.ordem) || 999) - (Number(b.ordem) || 999) || String(a.label || "").localeCompare(String(b.label || "")));
+    renderConfigCamposFicha();
+  } catch(err) {
+    console.warn("Erro ao carregar campos da ficha:", err);
+    appState.camposFichaConfig = [];
+  }
+}
+
+async function criarCampoFichaConfig() {
+  const label = document.getElementById("cfgCampoFichaLabel")?.value.trim();
+  const tipo = document.getElementById("cfgCampoFichaTipo")?.value || "texto";
+  const grupo = document.getElementById("cfgCampoFichaGrupo")?.value.trim() || "Informações adicionais";
+  const opcoesTexto = document.getElementById("cfgCampoFichaOpcoes")?.value.trim() || "";
+  const obrigatorio = document.getElementById("cfgCampoFichaObrigatorio")?.checked || false;
+
+  if(!label) return showToast("Informe o nome do campo.", "error");
+  if(tipo === "selecao" && !opcoesTexto) return showToast("Informe as opções para campos do tipo Seleção.", "error");
+
+  const ordem = (appState.camposFichaConfig || []).length + 1;
+  const opcoes = opcoesTexto ? opcoesTexto.split(",").map(x => x.trim()).filter(Boolean) : [];
+
+  try {
+    const refCampo = await addDoc(collection(db, "campos_ficha"), {
+      label,
+      tipo,
+      grupo,
+      opcoes,
+      obrigatorio,
+      ordem,
+      ativo: true,
+      criadoEm: new Date().toISOString(),
+      criadoPor: auth.currentUser?.uid || ""
+    });
+    await registrarAuditoria("campo_ficha_criado", "campos_ficha", refCampo.id, { label, tipo, grupo, obrigatorio });
+    document.getElementById("cfgCampoFichaLabel").value = "";
+    document.getElementById("cfgCampoFichaGrupo").value = "";
+    document.getElementById("cfgCampoFichaOpcoes").value = "";
+    document.getElementById("cfgCampoFichaObrigatorio").checked = false;
+    await carregarCamposFichaConfig();
+    showToast("Campo adicionado ao modelo da ficha.", "success");
+  } catch(err) {
+    showToast("Erro ao adicionar campo: " + err.message, "error");
+  }
+}
+
+function renderConfigCamposFicha() {
+  const lista = document.getElementById("listaCamposFichaConfig");
+  if(!lista) return;
+  const campos = appState.camposFichaConfig || [];
+
+  if(campos.length === 0) {
+    lista.innerHTML = `<div class="empty-state" style="padding:20px;"><i data-lucide="clipboard-list"></i><p>Nenhum campo configurado ainda.</p></div>`;
+    if(typeof lucide !== 'undefined') lucide.createIcons();
+    return;
+  }
+
+  lista.innerHTML = campos.map(campo => {
+    const opcoes = Array.isArray(campo.opcoes) && campo.opcoes.length ? campo.opcoes.join(", ") : "-";
+    return `
+      <div class="config-ficha-item">
+        <div><strong>${escapeHtml(campo.label || "Campo")}</strong><br><small>${campo.obrigatorio ? "Obrigatório" : "Opcional"}</small></div>
+        <span class="campo-tipo-badge">${escapeHtml(rotuloTipoCampo(campo.tipo))}</span>
+        <small>${escapeHtml(campo.grupo || "Informações adicionais")}</small>
+        <small>${escapeHtml(opcoes)}</small>
+        <div style="display:flex; gap:6px; justify-content:flex-end;">
+          <button class="btn-acao btn-campo-up" data-id="${campo.id}" title="Subir" style="padding:6px;"><i data-lucide="arrow-up" style="width:15px;"></i></button>
+          <button class="btn-acao btn-campo-down" data-id="${campo.id}" title="Descer" style="padding:6px;"><i data-lucide="arrow-down" style="width:15px;"></i></button>
+          <button class="btn-acao btn-campo-del" data-id="${campo.id}" title="Excluir" style="padding:6px; color:var(--danger);"><i data-lucide="trash-2" style="width:15px;"></i></button>
+        </div>
+      </div>`;
+  }).join("");
+
+  lista.querySelectorAll(".btn-campo-del").forEach(btn => {
+    btn.addEventListener("click", () => {
+      mostrarConfirmacao("Excluir campo", "Remover este campo do modelo da ficha? Os valores já preenchidos nos atletas não serão apagados, mas deixarão de aparecer.", async () => {
+        try {
+          await deleteDoc(doc(db, "campos_ficha", btn.dataset.id));
+          await registrarAuditoria("campo_ficha_excluido", "campos_ficha", btn.dataset.id, {});
+          await carregarCamposFichaConfig();
+          showToast("Campo removido do modelo.", "success");
+        } catch(err) { showToast("Erro ao remover campo: " + err.message, "error"); }
+      }, "danger");
+    });
+  });
+
+  lista.querySelectorAll(".btn-campo-up").forEach(btn => btn.addEventListener("click", () => moverCampoFicha(btn.dataset.id, -1)));
+  lista.querySelectorAll(".btn-campo-down").forEach(btn => btn.addEventListener("click", () => moverCampoFicha(btn.dataset.id, 1)));
+
+  if(typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+async function moverCampoFicha(id, direcao) {
+  const campos = [...(appState.camposFichaConfig || [])];
+  const idx = campos.findIndex(c => c.id === id);
+  const novoIdx = idx + direcao;
+  if(idx < 0 || novoIdx < 0 || novoIdx >= campos.length) return;
+  const atual = campos[idx];
+  const outro = campos[novoIdx];
+  const ordemAtual = Number(atual.ordem) || idx + 1;
+  const ordemOutro = Number(outro.ordem) || novoIdx + 1;
+  try {
+    await updateDoc(doc(db, "campos_ficha", atual.id), { ordem: ordemOutro });
+    await updateDoc(doc(db, "campos_ficha", outro.id), { ordem: ordemAtual });
+    await registrarAuditoria("campo_ficha_reordenado", "campos_ficha", atual.id, { trocouCom: outro.id, direcao });
+    await carregarCamposFichaConfig();
+  } catch(err) { showToast("Erro ao reordenar campo: " + err.message, "error"); }
+}
+
+function rotuloTipoCampo(tipo) {
+  return { texto: "Texto", numero: "Número", data: "Data", selecao: "Seleção", simnao: "Sim/Não" }[tipo] || "Texto";
+}
+
 // =====================================================
 // ⚙️ GESTÃO DE REGRAS DE PONTUAÇÃO
 // =====================================================
@@ -1125,10 +1328,12 @@ function setupModalRegras() {
 
       if (id) {
         await updateDoc(doc(db, "regras_pontuacao", id), dados);
+        await registrarAuditoria("regra_pontuacao_atualizada", "regras_pontuacao", id, dados);
         showToast("Regra atualizada com sucesso!", "success");
       } else {
         dados.criadoEm = new Date().toISOString();
-        await addDoc(collection(db, "regras_pontuacao"), dados);
+        const refRegra = await addDoc(collection(db, "regras_pontuacao"), dados);
+        await registrarAuditoria("regra_pontuacao_criada", "regras_pontuacao", refRegra.id, dados);
         showToast("Nova regra criada!", "success");
       }
 
@@ -1182,6 +1387,7 @@ async function carregarRegras() {
       btn.addEventListener("click", (e) => {
         mostrarConfirmacao("Apagar Regra", "Deseja realmente excluir esta regra? Isso pode afetar lançamentos futuros.", async () => {
           await deleteDoc(doc(db, "regras_pontuacao", e.currentTarget.dataset.id));
+          await registrarAuditoria("regra_pontuacao_excluida", "regras_pontuacao", e.currentTarget.dataset.id, {});
           await carregarRegras();
           showToast("Regra removida", "info");
         }, "danger");

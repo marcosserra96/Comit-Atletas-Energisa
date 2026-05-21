@@ -484,6 +484,44 @@
           <button id="btnSalvarConta" class="btn-primario" style="width: 100%; justify-content: center;">Salvar Alterações</button>
         </div>
       </div>
+
+      <div class="card config-ficha-card" style="margin-top: 20px;">
+        <div class="config-ficha-header">
+          <div>
+            <h3 style="color: var(--primary); margin:0;"><i data-lucide="clipboard-list"></i> Modelo da ficha do atleta</h3>
+            <p style="margin:6px 0 0; color:var(--text-light); font-size:.88rem;">Configure quais campos adicionais aparecem na ficha de todos os atletas.</p>
+          </div>
+        </div>
+
+        <div class="config-ficha-form">
+          <div>
+            <label>Nome do campo</label>
+            <input id="cfgCampoFichaLabel" type="text" placeholder="Ex: Tamanho da camisa" />
+          </div>
+          <div>
+            <label>Tipo</label>
+            <select id="cfgCampoFichaTipo">
+              <option value="texto">Texto</option>
+              <option value="numero">Número</option>
+              <option value="data">Data</option>
+              <option value="selecao">Seleção</option>
+              <option value="simnao">Sim/Não</option>
+            </select>
+          </div>
+          <div>
+            <label>Grupo</label>
+            <input id="cfgCampoFichaGrupo" type="text" placeholder="Ex: Uniforme, Saúde, Administrativo" />
+          </div>
+          <div>
+            <label>Opções</label>
+            <input id="cfgCampoFichaOpcoes" type="text" placeholder="Para seleção: P, M, G, GG" />
+          </div>
+          <label class="config-ficha-check"><input id="cfgCampoFichaObrigatorio" type="checkbox" /> Obrigatório</label>
+          <button id="btnAdicionarCampoFichaConfig" class="btn-primario" type="button"><i data-lucide="plus"></i> Adicionar campo</button>
+        </div>
+
+        <div id="listaCamposFichaConfig" class="config-ficha-list"></div>
+      </div>
     </section>
   </main>
 
@@ -592,21 +630,18 @@
             </div>
             <textarea id="fichaMotivoStatus" rows="2" placeholder="Justificativa para desativação/reativação..." style="width:100%; resize:none; margin:10px 0 0;"></textarea>
             <button id="btnSalvarStatusFicha" class="btn-acao" style="width:100%; justify-content:center; margin-top:8px;"><i data-lucide="save"></i> Salvar status</button>
+            <div id="fichaHistoricoStatus" class="ficha-status-history"></div>
           </div>
 
           <div class="ficha-extra-panel">
             <div class="ficha-extra-head">
               <div>
-                <h4>Campos adicionais</h4>
-                <small>Informações livres da ficha: tamanho de camisa, restrição, contato, observações administrativas etc.</small>
+                <h4>Campos configurados da ficha</h4>
+                <small>Estes campos são definidos em Ajustes &gt; Modelo da ficha. Aqui você apenas preenche os valores do atleta.</small>
               </div>
             </div>
-            <div id="fichaCamposExtrasLista" class="ficha-extra-list"></div>
-            <div class="ficha-extra-form">
-              <input id="novoCampoExtraNome" type="text" placeholder="Nome do campo" />
-              <input id="novoCampoExtraValor" type="text" placeholder="Valor" />
-              <button id="btnAdicionarCampoExtra" class="btn-primario" type="button"><i data-lucide="plus"></i> Adicionar</button>
-            </div>
+            <div id="fichaCamposModeloLista" class="ficha-modelo-list"></div>
+            <button id="btnSalvarCamposFichaModelo" class="btn-primario" type="button" style="width:100%; justify-content:center; margin-top:12px;"><i data-lucide="save"></i> Salvar campos da ficha</button>
           </div>
           <h4 style="margin: 0 0 10px 0; color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 5px;">Histórico de Lançamentos</h4>
           <div id="fichaHistorico" style="max-height: 200px; overflow-y: auto; font-size: 0.85rem; padding-right: 5px;"></div>
@@ -727,6 +762,11 @@
         <div><span>Custo realizado</span><strong id="pdfInvest">R$ 0,00</strong></div>
         <div><span>Custo / atleta</span><strong id="pdfRoi">R$ 0,00</strong></div>
         <div><span>Participações</span><strong id="pdfParticipacoes">0</strong></div>
+      </div>
+
+      <div class="pdf-section pdf-analysis-section">
+        <h2>Leitura executiva</h2>
+        <ul id="pdfAnalises" class="pdf-clean-list"></ul>
       </div>
 
       <div class="pdf-section pdf-chart-section">

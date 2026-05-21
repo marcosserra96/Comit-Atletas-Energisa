@@ -124,8 +124,8 @@ function exportarPDFExecutivo() {
     if(canvasLinha) {
       widthOriginal = canvasLinha.style.width;
       heightOriginal = canvasLinha.style.height;
-      canvasLinha.style.width = '680px';
-      canvasLinha.style.height = '230px';
+      canvasLinha.style.width = '620px';
+      canvasLinha.style.height = '190px';
       if(appState.graficoLinhaInstancia) appState.graficoLinhaInstancia.resize();
       const pdfImg = document.getElementById('pdfImgTendencia');
       if(pdfImg) pdfImg.src = canvasLinha.toDataURL("image/png", 1.0);
@@ -139,13 +139,17 @@ function exportarPDFExecutivo() {
 
     setTimeout(() => {
       const txtDataHoje = document.getElementById("pdfDataHoje")?.textContent || "report";
+      printArea.style.width = '210mm';
+      printArea.style.maxWidth = '210mm';
+      printArea.style.height = 'auto';
+      printArea.style.minHeight = '297mm';
       const opt = {
-        margin: 0,
+        margin: [4, 4, 4, 4],
         filename: `Report_Atletas_${txtDataHoje.replace(/\//g, '-')}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', windowWidth: 794 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        pagebreak: { mode: ['css', 'legacy'], avoid: ['.pdf-section', '.pdf-header', '.agenda-item'] }
       };
 
       html2pdf().set(opt).from(printArea).save().then(() => {
@@ -188,6 +192,7 @@ function preencherDadosReportA4() {
   setText("pdfMediaCorrida", document.getElementById("mediaCorrida")?.textContent || "0");
 
   const analytics = calcularAnalyticsReport();
+  setHtml("pdfAnalises", montarAnalisesExecutivasReport(analytics));
   setText("pdfKmTotal", `${formatarKm(analytics.kmTotal)} km`);
   setText("pdfKmBike", `${formatarKm(analytics.kmBike)} km`);
   setText("pdfKmCorrida", `${formatarKm(analytics.kmCorrida)} km`);
@@ -209,30 +214,53 @@ function preencherDadosReportA4() {
 
 function calcularAnalyticsReport() {
   const historico = appState.historicoCompleto || [];
-  const atletas = appState.mapAtletas || {};
+  const atletasMap = appState.mapAtletas || {};
+  const atletas = Object.values(atletasMap).filter(a => a.status === "Aprovado" && a.role === "atleta");
+  const ativos = atletas.filter(a => a.ativo !== false);
   const vistos = new Set();
+  const atletasComAtividade = new Set();
   let kmTotal = 0;
   let kmBike = 0;
   let kmCorrida = 0;
   let participacoes = 0;
+  let pontosTotal = 0;
 
   historico.forEach(h => {
+    pontosTotal += Number(h.pontos) || 0;
     if (!h.atletaId) return;
     const chave = `${h.atletaId}|${h.loteId || h.eventoId || `${h.dataTreino || ''}|${h.descTreino || ''}`}`;
     if (vistos.has(chave)) return;
     vistos.add(chave);
     participacoes++;
+    atletasComAtividade.add(h.atletaId);
 
     const km = Number(h.kmPercorrido || h.km || 0);
     if (km > 0) {
       kmTotal += km;
-      const eq = atletas[h.atletaId]?.equipe || h.atletaEquipe || "";
+      const eq = atletasMap[h.atletaId]?.equipe || h.atletaEquipe || "";
       if (eq === "Corrida") kmCorrida += km;
       if (eq === "Bicicleta" || eq === "Bike") kmBike += km;
     }
   });
 
-  return { kmTotal, kmBike, kmCorrida, participacoes };
+  const semAtividade = ativos.filter(a => !atletasComAtividade.has(a.id)).length;
+  const mediaKmPorAtleta = ativos.length ? kmTotal / ativos.length : 0;
+  const mediaPontosPorParticipacao = participacoes ? pontosTotal / participacoes : 0;
+  const modalidadeMaisKm = kmBike > kmCorrida ? "Bike" : (kmCorrida > kmBike ? "Corrida" : "Equilibrado");
+
+  return { kmTotal, kmBike, kmCorrida, participacoes, ativos: ativos.length, semAtividade, mediaKmPorAtleta, mediaPontosPorParticipacao, modalidadeMaisKm };
+}
+
+function montarAnalisesExecutivasReport(analytics) {
+  const eng = document.getElementById("engajamento30d")?.textContent || "0%";
+  const linhas = [
+    `Engajamento recente em ${eng}, considerando atletas com atividade nos últimos 30 dias.`,
+    `Foram registradas ${analytics.participacoes} participações e ${formatarKm(analytics.kmTotal)} km acumulados no histórico analisado.`,
+    `Média de ${formatarKm(analytics.mediaKmPorAtleta)} km por atleta ativo e ${formatarKm(analytics.mediaPontosPorParticipacao)} pontos por participação.`,
+    analytics.semAtividade > 0 ? `${analytics.semAtividade} atleta(s) ativo(s) ainda não possuem participação registrada.` : `Todos os atletas ativos possuem ao menos uma participação registrada.`,
+    `Modalidade com maior volume de KM: ${analytics.modalidadeMaisKm}.`
+  ];
+  return linhas.map(l => `<li>${escapeHtml(l)}</li>`).join("");
 }
 
 function montarUltimosLancamentosReport() {
