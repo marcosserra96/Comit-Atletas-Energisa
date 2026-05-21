@@ -7,7 +7,6 @@ import { appState } from './state.js';
 import { showToast, mostrarConfirmacao } from './ui.js';
 
 let atualizarTelasCallback = null;
-let observerEventos = null;
 let rebuildingEventos = false;
 
 export function setAtualizarTelasCallback(cb) { atualizarTelasCallback = cb; }
@@ -98,7 +97,6 @@ export function setupContabilizacao() {
   });
 
   setTimeout(() => {
-    reconstruirDropdownEventos();
     renderizarExtratoAgrupado();
   }, 600);
 }
@@ -166,7 +164,6 @@ function setupTipoLancamentoUI() {
   });
 
   if(typeof lucide !== 'undefined') lucide.createIcons();
-  observarDropdownEventos();
 }
 
 function aplicarTipoLancamento(tipo) {
@@ -180,7 +177,7 @@ function aplicarTipoLancamento(tipo) {
   if (tipo === "evento") {
     campoEvento.style.display = "block";
     desc.placeholder = "A descrição será preenchida com o evento selecionado";
-    reconstruirDropdownEventos();
+    setTimeout(reconstruirDropdownEventos, 0);
   } else {
     campoEvento.style.display = "none";
     selectEvento.value = "";
@@ -188,16 +185,6 @@ function aplicarTipoLancamento(tipo) {
     desc.placeholder = tipo === "avulso" ? "Ex: Ajuste aprovado pelo comitê / Participação externa" : "Ex: Treino de sábado / Treino especial";
     if (data && tipo !== "avulso") data.valueAsDate = new Date();
   }
-}
-
-function observarDropdownEventos() {
-  const selectEvento = document.getElementById("lancarEventoSelect");
-  if (!selectEvento || observerEventos) return;
-  observerEventos = new MutationObserver(() => {
-    if (rebuildingEventos) return;
-    if (selectEvento.dataset.tipoLancamento === "evento") reconstruirDropdownEventos();
-  });
-  observerEventos.observe(selectEvento, { childList: true });
 }
 
 function reconstruirDropdownEventos() {
