@@ -1258,3 +1258,76 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
   .pdf-a4-report .pdf-two-col,
   .pdf-a4-report .pdf-three-col { grid-template-columns: 1fr; }
 }
+
+/* =======================================================
+   AJUSTE V6 - EXPORTAÇÃO PDF SEM CORTE LATERAL
+   Observação: o preview continua usando mm; a exportação usa clone em px.
+======================================================= */
+#pdfExportClone.pdf-a4-report,
+.pdf-export-clone {
+  width: 794px !important;
+  max-width: 794px !important;
+  min-height: 1123px !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 38px 42px !important;
+  background: #ffffff !important;
+  color: #0f2d35 !important;
+  box-sizing: border-box !important;
+  display: block !important;
+  overflow: visible !important;
+  font-family: 'Poppins', Arial, sans-serif !important;
+}
+
+#pdfExportClone * {
+  box-sizing: border-box !important;
+}
+
+#pdfExportClone .pdf-header,
+#pdfExportClone .pdf-kpi-grid,
+#pdfExportClone .pdf-section,
+#pdfExportClone .pdf-two-col,
+#pdfExportClone .pdf-three-col {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+#pdfExportClone .pdf-header {
+  min-height: 70px !important;
+}
+
+#pdfExportClone .pdf-kpi-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+#pdfExportClone .pdf-two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 10px !important;
+}
+
+#pdfExportClone .pdf-three-col {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+#pdfExportClone .pdf-chart-section img {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  max-height: 245px !important;
+  object-fit: contain !important;
+}
+
+#pdfExportClone .pdf-section {
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+}
+
+#pdfExportClone .pdf-clean-list,
+#pdfExportClone .pdf-compact-list {
+  overflow: hidden !important;
+}

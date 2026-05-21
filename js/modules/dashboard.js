@@ -112,7 +112,7 @@ function exportarPDFExecutivo() {
   if (temaAtual === "dark") {
     document.body.removeAttribute("data-theme");
     Chart.defaults.color = '#666';
-    if(appState.graficoLinhaInstancia) appState.graficoLinhaInstancia.update();
+    if (appState.graficoLinhaInstancia) appState.graficoLinhaInstancia.update();
   }
 
   setTimeout(() => {
@@ -121,14 +121,15 @@ function exportarPDFExecutivo() {
     const canvasLinha = document.getElementById('graficoTendencia');
     let widthOriginal, heightOriginal;
 
-    if(canvasLinha) {
+    if (canvasLinha) {
       widthOriginal = canvasLinha.style.width;
       heightOriginal = canvasLinha.style.height;
       canvasLinha.style.width = '620px';
       canvasLinha.style.height = '190px';
-      if(appState.graficoLinhaInstancia) appState.graficoLinhaInstancia.resize();
+      if (appState.graficoLinhaInstancia) appState.graficoLinhaInstancia.resize();
+
       const pdfImg = document.getElementById('pdfImgTendencia');
-      if(pdfImg) pdfImg.src = canvasLinha.toDataURL("image/png", 1.0);
+      if (pdfImg) pdfImg.src = canvasLinha.toDataURL("image/png", 1.0);
     }
 
     const modalPdf = document.getElementById("pdfOverlay");
@@ -139,38 +140,86 @@ function exportarPDFExecutivo() {
 
     setTimeout(() => {
       const txtDataHoje = document.getElementById("pdfDataHoje")?.textContent || "report";
-      printArea.style.width = '210mm';
-      printArea.style.maxWidth = '210mm';
-      printArea.style.height = 'auto';
-      printArea.style.minHeight = '297mm';
+
+      const clone = prepararCloneA4ParaExportacao(printArea);
+      document.body.appendChild(clone);
+
       const opt = {
-        margin: [4, 4, 4, 4],
+        margin: 0,
         filename: `Report_Atletas_${txtDataHoje.replace(/\//g, '-')}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', windowWidth: 794 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['css', 'legacy'], avoid: ['.pdf-section', '.pdf-header', '.agenda-item'] }
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          width: 794,
+          windowWidth: 794,
+          scrollX: 0,
+          scrollY: 0
+        },
+        jsPDF: { unit: 'pt', format: [794, 1123], orientation: 'portrait' },
+        pagebreak: { mode: ['css', 'legacy'], avoid: ['.pdf-header', '.pdf-kpi-grid', '.pdf-section'] }
       };
 
-      html2pdf().set(opt).from(printArea).save().then(() => {
+      html2pdf().set(opt).from(clone).save().then(() => {
+        clone.remove();
         modalPdf.style.display = "none";
 
-        if(canvasLinha) {
+        if (canvasLinha) {
           canvasLinha.style.width = widthOriginal;
           canvasLinha.style.height = heightOriginal;
-          if(appState.graficoLinhaInstancia) appState.graficoLinhaInstancia.resize();
+          if (appState.graficoLinhaInstancia) appState.graficoLinhaInstancia.resize();
         }
 
         if (temaAtual === "dark") {
           document.body.setAttribute("data-theme", "dark");
           Chart.defaults.color = '#aaa';
-          if(appState.graficoLinhaInstancia) appState.graficoLinhaInstancia.update();
+          if (appState.graficoLinhaInstancia) appState.graficoLinhaInstancia.update();
         }
 
         showToast("Download concluído!", "success");
+      }).catch((err) => {
+        clone.remove();
+        modalPdf.style.display = "none";
+        console.error("Erro ao exportar PDF:", err);
+        showToast("Erro ao exportar o report.", "error");
+
+        if (temaAtual === "dark") {
+          document.body.setAttribute("data-theme", "dark");
+          Chart.defaults.color = '#aaa';
+        }
       });
-    }, 600);
+    }, 500);
   }, 150);
+}
+
+function prepararCloneA4ParaExportacao(printArea) {
+  const clone = printArea.cloneNode(true);
+  clone.id = "pdfExportClone";
+  clone.classList.add("pdf-export-clone");
+
+  clone.style.position = "absolute";
+  clone.style.left = "0";
+  clone.style.top = "0";
+  clone.style.width = "794px";
+  clone.style.maxWidth = "794px";
+  clone.style.minHeight = "1123px";
+  clone.style.height = "auto";
+  clone.style.margin = "0";
+  clone.style.padding = "38px 42px";
+  clone.style.boxSizing = "border-box";
+  clone.style.background = "#ffffff";
+  clone.style.color = "#0f2d35";
+  clone.style.display = "block";
+  clone.style.overflow = "visible";
+  clone.style.zIndex = "-1";
+
+  clone.querySelectorAll("img").forEach(img => {
+    img.crossOrigin = "anonymous";
+  });
+
+  return clone;
 }
 
 function preencherDadosReportA4() {
