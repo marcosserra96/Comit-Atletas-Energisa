@@ -45,13 +45,28 @@
         <button id="btnExportarPDF" class="btn-primario" style="background: #2c3e50;"><i data-lucide="printer"></i> Exportar Report Oficial</button>
       </div>
 
-      <div class="cards strategic-kpi-grid">
-        <div class="card"><i data-lucide="users"></i><h3>Atletas Ativos</h3><p id="totalAtivosGeral">0</p></div>
-        <div class="card"><i data-lucide="activity" style="color: var(--primary);"></i><h3>Engajamento (30d)</h3><p id="engajamento30d" style="color: var(--primary);">0%</p></div>
-        <div class="card"><i data-lucide="route" style="color: #00a693;"></i><h3>KM Total</h3><p id="dashKmTotal" style="color: #00a693;">0 km</p></div>
-        <div class="card"><i data-lucide="ticket-check" style="color: #8e44ad;"></i><h3>Participações</h3><p id="dashParticipacoes" style="color: #8e44ad;">0</p></div>
-        <div class="card"><i data-lucide="dollar-sign" style="color: #e67e22;"></i><h3>Custo Realizado</h3><p id="totalInvestimento" style="color: #e67e22;">R$ 0,00</p></div>
-        <div class="card" style="background: rgba(39, 174, 96, 0.1); border: 1px solid #27ae60;"><i data-lucide="line-chart"></i><h3 style="color:#27ae60;">Custo p/ Atleta Ativo</h3><p id="roiAtleta" style="color:#27ae60;">R$ 0,00</p></div>
+      <div class="executive-topline">
+        <div class="program-health-card">
+          <div class="program-health-header">
+            <div>
+              <span class="eyebrow">Saúde do Programa</span>
+              <h3><span id="totalAtivosGeral">0</span> atletas ativos</h3>
+            </div>
+            <div class="health-score" id="engajamento30d">0%</div>
+          </div>
+          <p id="dashResumoSaude">Aguardando dados de engajamento, participações e KM.</p>
+          <div class="health-mini-grid">
+            <div><span>Ativos 30d</span><strong id="dashAtivos30d">0</strong></div>
+            <div><span>Participações</span><strong id="dashParticipacoes">0</strong></div>
+            <div><span>KM total</span><strong id="dashKmTotal">0 km</strong></div>
+          </div>
+        </div>
+        <div class="executive-kpi-grid">
+          <div class="executive-kpi"><i data-lucide="dollar-sign"></i><span>Custo realizado</span><strong id="totalInvestimento">R$ 0,00</strong></div>
+          <div class="executive-kpi"><i data-lucide="users"></i><span>Custo / atleta</span><strong id="roiAtleta">R$ 0,00</strong></div>
+          <div class="executive-kpi"><i data-lucide="ticket-check"></i><span>Custo / participação</span><strong id="dashCustoParticipacao">R$ 0,00</strong></div>
+          <div class="executive-kpi"><i data-lucide="route"></i><span>Custo / km</span><strong id="dashCustoKm">R$ 0,00</strong></div>
+        </div>
       </div>
 
       <div class="strategic-command-center">
@@ -75,47 +90,78 @@
         </div>
       </div>
 
-      <div class="dashboard-grid">
-        <div style="display: flex; flex-direction: column; gap: 20px;">
-          <div class="card" style="margin: 0;">
-            <h3 style="color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 10px;"><i data-lucide="trending-up"></i> Evolução de Pontos (Ano)</h3>
-            <div style="position: relative; height: 200px; margin-top: 15px;"><canvas id="graficoTendencia"></canvas></div>
-          </div>
-          <div class="card" style="margin: 0; display: flex; gap: 20px; flex-wrap: wrap;">
-            <div style="flex: 1; text-align: center; min-width: 120px;">
-              <h3 style="color: var(--primary); justify-content: center;"><i data-lucide="bike"></i> Base Bike</h3>
-              <div style="position: relative; height: 70px; width: 70px; margin: 10px auto;"><canvas id="graficoEngajBike"></canvas></div>
-              <p id="totalBike" style="font-size: 1.8rem; font-weight: bold; color: var(--primary); margin: 0;">0</p>
-              <small id="txtAtivosBike" style="color: var(--text-light);">0% ativos (30d)</small>
+      <div class="strategic-analysis-grid">
+        <div class="analysis-card analysis-wide">
+          <div class="analysis-card-header">
+            <div>
+              <h3><i data-lucide="activity"></i> Evolução mensal</h3>
+              <p>Participações, pontos e KM por mês no ano atual.</p>
             </div>
-            <div style="flex: 1; text-align: center; border-left: 1px solid var(--border); min-width: 120px;">
-              <h3 style="color: var(--secondary); justify-content: center;"><i data-lucide="footprints"></i> Base Corrida</h3>
-              <div style="position: relative; height: 70px; width: 70px; margin: 10px auto;"><canvas id="graficoEngajCorrida"></canvas></div>
-              <p id="totalCorrida" style="font-size: 1.8rem; font-weight: bold; color: var(--secondary); margin: 0;">0</p>
-              <small id="txtAtivosCorrida" style="color: var(--text-light);">0% ativos (30d)</small>
+            <div class="analysis-summary-pills">
+              <span id="dashMesAtualResumo">Mês atual: 0 part. · 0 pts · 0 km</span>
+              <span id="dashTendencia3m">Tendência: sem dados</span>
+            </div>
+          </div>
+          <div class="chart-shell"><canvas id="graficoTendencia"></canvas></div>
+        </div>
+
+        <div class="analysis-card">
+          <div class="analysis-card-header compact">
+            <h3><i data-lucide="radar"></i> Engajamento por modalidade</h3>
+            <p>Atletas ativos nos últimos 30 dias.</p>
+          </div>
+          <div class="modality-engagement-list">
+            <div class="modality-engagement bike">
+              <div class="modality-title"><span>🚴 Bike</span><strong id="totalBike">0</strong></div>
+              <div class="modality-progress"><span id="dashBikeEngBar"></span></div>
+              <div class="modality-stats"><span><b id="dashBikeAtivos30d">0</b> ativos 30d</span><span id="dashBikeEngajamento">0%</span></div>
+              <small><span id="dashBikeInativos">0</span> sem atividade recente · <span id="dashBikeKm">0 km</span></small>
+            </div>
+            <div class="modality-engagement corrida">
+              <div class="modality-title"><span>🏃 Corrida</span><strong id="totalCorrida">0</strong></div>
+              <div class="modality-progress"><span id="dashCorridaEngBar"></span></div>
+              <div class="modality-stats"><span><b id="dashCorridaAtivos30d">0</b> ativos 30d</span><span id="dashCorridaEngajamento">0%</span></div>
+              <small><span id="dashCorridaInativos">0</span> sem atividade recente · <span id="dashCorridaKm">0 km</span></small>
             </div>
           </div>
         </div>
 
-        <div style="display: flex; flex-direction: column; gap: 20px;">
-          <div class="card" style="margin: 0; text-align: center;">
-            <h3 style="color: #34495e; border-bottom: 1px solid var(--border); padding-bottom: 10px;"><i data-lucide="swords"></i> Força: Média (Pts/Atleta)</h3>
-            <div style="display: flex; justify-content: space-around; align-items: center; margin-top: 15px;">
-              <div><span style="font-size: 1.5rem;">🚴</span><br><strong id="mediaBike" style="color: var(--primary);">0</strong></div>
-              <div><span style="font-size: 1.5rem;">🏃</span><br><strong id="mediaCorrida" style="color: var(--secondary);">0</strong></div>
+        <div class="analysis-card">
+          <div class="analysis-card-header compact">
+            <h3><i data-lucide="gauge"></i> Performance por modalidade</h3>
+            <p>Média, volume e atleta de referência.</p>
+          </div>
+          <div class="performance-compare">
+            <div>
+              <h4>🚴 Bike</h4>
+              <div class="perf-row"><span>Média pts/atleta</span><strong id="mediaBike">0</strong></div>
+              <div class="perf-row"><span>Participações</span><strong id="dashBikeParticipacoes">0</strong></div>
+              <div class="perf-row"><span>Pontos totais</span><strong id="dashBikePontosTotal">0</strong></div>
+              <div class="perf-row"><span>Top atleta</span><strong id="dashBikeTop">-</strong></div>
+            </div>
+            <div>
+              <h4>🏃 Corrida</h4>
+              <div class="perf-row"><span>Média pts/atleta</span><strong id="mediaCorrida">0</strong></div>
+              <div class="perf-row"><span>Participações</span><strong id="dashCorridaParticipacoes">0</strong></div>
+              <div class="perf-row"><span>Pontos totais</span><strong id="dashCorridaPontosTotal">0</strong></div>
+              <div class="perf-row"><span>Top atleta</span><strong id="dashCorridaTop">-</strong></div>
             </div>
           </div>
-          <div class="card" style="margin: 0; flex: 1;">
-            <h3 style="color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 10px;"><i data-lucide="award"></i> Pódio Top 3</h3>
-            <div class="flex-2-col" style="margin-top: 15px;">
-              <div style="flex: 1; min-width: 0;">
-                <h4 style="color: var(--primary); margin: 0 0 10px 0;">🚴 Bike</h4>
-                <ul id="listaPodioBike" style="list-style: none; padding: 0; margin: 0;"></ul>
-              </div>
-              <div style="flex: 1; border-left: 1px solid var(--border); padding-left: 15px; min-width: 0;">
-                <h4 style="color: var(--secondary); margin: 0 0 10px 0;">🏃 Corrida</h4>
-                <ul id="listaPodioCorrida" style="list-style: none; padding: 0; margin: 0;"></ul>
-              </div>
+        </div>
+
+        <div class="analysis-card podium-card">
+          <div class="analysis-card-header compact">
+            <h3><i data-lucide="award"></i> Pódio Top 3</h3>
+            <p>Ranking por pontuação acumulada.</p>
+          </div>
+          <div class="podium-split">
+            <div>
+              <h4>🚴 Bike</h4>
+              <ul id="listaPodioBike" class="podium-list"></ul>
+            </div>
+            <div>
+              <h4>🏃 Corrida</h4>
+              <ul id="listaPodioCorrida" class="podium-list"></ul>
             </div>
           </div>
         </div>

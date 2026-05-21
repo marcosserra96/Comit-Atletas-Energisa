@@ -1667,3 +1667,348 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
     justify-content: flex-start;
   }
 }
+
+/* =======================================================
+   V10 FINAL - Visão Estratégica executiva e PDF paginado
+======================================================= */
+.executive-topline {
+  display: grid;
+  grid-template-columns: minmax(360px, 1.25fr) minmax(420px, .75fr);
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.program-health-card,
+.executive-kpi,
+.analysis-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+}
+.program-health-card {
+  padding: 22px;
+  background: linear-gradient(135deg, rgba(0,155,193,.13), rgba(0,179,126,.09)), var(--bg-card);
+  overflow: hidden;
+  position: relative;
+}
+.program-health-card::after {
+  content: '';
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  right: -80px;
+  top: -80px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.22);
+}
+.program-health-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+  position: relative;
+  z-index: 1;
+}
+.program-health-card .eyebrow {
+  display: block;
+  color: var(--primary);
+  font-weight: 800;
+  font-size: .78rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: 4px;
+}
+.program-health-card h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.45rem;
+}
+.program-health-card p {
+  margin: 12px 0 0;
+  color: var(--text-light);
+  position: relative;
+  z-index: 1;
+}
+.health-score {
+  min-width: 82px;
+  height: 82px;
+  border-radius: 24px;
+  display: grid;
+  place-items: center;
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #fff;
+  background: linear-gradient(135deg, #009bc1, #00a693);
+  box-shadow: 0 14px 30px rgba(0,155,193,.22);
+}
+.health-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 18px;
+  position: relative;
+  z-index: 1;
+}
+.health-mini-grid div,
+.executive-kpi {
+  border: 1px solid rgba(0,155,193,.12);
+  background: rgba(255,255,255,.55);
+  border-radius: 16px;
+  padding: 14px;
+}
+body[data-theme="dark"] .health-mini-grid div,
+body[data-theme="dark"] .executive-kpi { background: rgba(255,255,255,.04); }
+.health-mini-grid span,
+.executive-kpi span {
+  display: block;
+  color: var(--text-light);
+  font-size: .74rem;
+  text-transform: uppercase;
+  letter-spacing: .025em;
+  font-weight: 700;
+}
+.health-mini-grid strong,
+.executive-kpi strong {
+  display: block;
+  color: var(--primary);
+  font-size: 1.25rem;
+  margin-top: 5px;
+}
+.executive-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.executive-kpi {
+  padding: 18px;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.executive-kpi:hover { transform: translateY(-3px); box-shadow: 0 14px 28px rgba(0,0,0,.10); }
+.executive-kpi i { color: var(--primary); margin-bottom: 12px; }
+.strategic-analysis-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(360px, .85fr);
+  gap: 20px;
+  margin-top: 20px;
+}
+.analysis-card {
+  padding: 20px;
+  margin: 0;
+}
+.analysis-wide { grid-row: span 2; }
+.analysis-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 14px;
+  margin-bottom: 16px;
+}
+.analysis-card-header.compact { display: block; }
+.analysis-card-header h3 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--primary);
+}
+.analysis-card-header p {
+  color: var(--text-light);
+  margin: 5px 0 0;
+  font-size: .84rem;
+}
+.analysis-summary-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.analysis-summary-pills span {
+  border: 1px solid rgba(0,155,193,.18);
+  background: rgba(0,155,193,.07);
+  color: var(--primary);
+  padding: 7px 10px;
+  border-radius: 999px;
+  font-size: .76rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.chart-shell { height: 290px; position: relative; }
+.modality-engagement-list { display: grid; gap: 14px; }
+.modality-engagement {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px;
+  background: var(--bg);
+}
+.modality-title,
+.modality-stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.modality-title span { font-weight: 900; color: var(--text); }
+.modality-title strong { font-size: 1.4rem; color: var(--primary); }
+.modality-progress {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(0,0,0,.08);
+  overflow: hidden;
+  margin: 12px 0;
+}
+.modality-progress span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #009bc1, #00a693);
+  width: 0;
+  transition: width .45s ease;
+}
+.modality-engagement.corrida .modality-progress span { background: linear-gradient(135deg, #00a693, #7ac943); }
+.modality-stats { color: var(--text-light); font-size: .82rem; }
+.modality-stats b { color: var(--text); }
+.modality-engagement small { display: block; color: var(--text-light); margin-top: 8px; }
+.performance-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.performance-compare > div {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px;
+  background: var(--bg);
+}
+.performance-compare h4 { margin: 0 0 10px; color: var(--primary); }
+.perf-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--border);
+  font-size: .84rem;
+}
+.perf-row:last-child { border-bottom: none; }
+.perf-row span { color: var(--text-light); }
+.perf-row strong { color: var(--text); text-align: right; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.podium-split { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.podium-split h4 { margin: 0 0 10px; color: var(--primary); }
+.podium-list { list-style: none; padding: 0; margin: 0; }
+.podium-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.podium-list li span { display: flex; gap: 6px; align-items: center; min-width: 0; }
+.podium-list li strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media(max-width: 980px) {
+  .executive-topline, .strategic-analysis-grid { grid-template-columns: 1fr; }
+  .analysis-wide { grid-row: auto; }
+}
+@media(max-width: 680px) {
+  .health-mini-grid, .executive-kpi-grid, .performance-compare, .podium-split { grid-template-columns: 1fr; }
+  .analysis-card-header { display: block; }
+  .analysis-summary-pills { justify-content: flex-start; margin-top: 10px; }
+}
+
+.pdf-export-book-v10 { background:#fff; }
+.pdf-page-v10 {
+  width: 794px;
+  height: 1123px;
+  min-height: 1123px;
+  max-height: 1123px;
+  padding: 42px 48px;
+  box-sizing: border-box;
+  background: #ffffff;
+  color: #17313a;
+  font-family: 'Poppins', Arial, sans-serif;
+  overflow: hidden;
+  position: relative;
+}
+.pdf-v10-header {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:20px;
+  background:linear-gradient(135deg,#007b91,#00a693);
+  color:white;
+  border-radius:18px;
+  padding:18px 22px;
+  margin-bottom:18px;
+}
+.pdf-v10-header h1 { margin:0; font-size:24px; }
+.pdf-v10-header p { margin:3px 0 0; opacity:.92; font-size:12px; }
+.pdf-v10-header span { font-weight:800; font-size:12px; opacity:.95; }
+.pdf-v10-kpis, .pdf-v10-metrics {
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
+  margin-bottom:16px;
+}
+.pdf-v10-kpis div, .pdf-v10-metrics div, .pdf-v10-section.small {
+  border:1px solid #dce9ee;
+  background:#f7fbfc;
+  border-radius:14px;
+  padding:12px;
+}
+.pdf-v10-kpis span, .pdf-v10-metrics span {
+  display:block;
+  color:#607d8b;
+  font-size:10px;
+  text-transform:uppercase;
+  font-weight:700;
+}
+.pdf-v10-kpis strong, .pdf-v10-metrics strong, .pdf-v10-section.small strong {
+  display:block;
+  color:#007b91;
+  font-size:17px;
+  margin-top:5px;
+}
+.pdf-v10-section {
+  border:1px solid #dce9ee;
+  border-radius:16px;
+  background:#fff;
+  padding:14px 16px;
+  margin-bottom:14px;
+}
+.pdf-v10-section h2 {
+  margin:0 0 10px;
+  color:#007b91;
+  font-size:13px;
+  text-transform:uppercase;
+  letter-spacing:.02em;
+}
+.pdf-v10-section ul { list-style:none; padding:0; margin:0; }
+.pdf-v10-section li {
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  padding:7px 0;
+  border-bottom:1px solid #edf3f6;
+  font-size:11px;
+}
+.pdf-v10-section li:last-child { border-bottom:0; }
+.pdf-v10-section p { margin:0; font-size:12px; color:#546e7a; }
+.pdf-v10-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.pdf-v10-grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+.pdf-v10-chart { width:100%; height:330px; object-fit:contain; }
+.pdf-v10-table { width:100%; border-collapse:collapse; font-size:11px; }
+.pdf-v10-table th, .pdf-v10-table td { border-bottom:1px solid #edf3f6; padding:7px; text-align:left; }
+.pdf-v10-table th { color:#007b91; text-transform:uppercase; font-size:10px; }
+.pdf-v10-footer {
+  position:absolute;
+  left:48px;
+  right:48px;
+  bottom:26px;
+  border-top:1px solid #e5edf1;
+  padding-top:8px;
+  color:#78909c;
+  font-size:10px;
+  text-align:right;
+}
