@@ -40,6 +40,7 @@ function construirMenu() {
   
   const itensDisponiveis = [
     { id: "visao-geral", icon: "layout-dashboard", text: "Estratégico" },
+    { id: "atletas", icon: "id-card", text: "Atletas", permCheck: ["visao-geral", "gestao"] },
     { id: "contabilizacao", icon: "calculator", text: "Lançamentos" },
     { id: "financeiro", icon: "dollar-sign", text: "Financeiro", permCheck: ["financeiro_view", "financeiro_edit"] },
     { id: "gestao", icon: "users", text: "Gestão Base" },
@@ -104,6 +105,7 @@ function iniciarPainelAdmin() {
   setupModalRegras(); 
   setupModalEditar(); 
   setupFichaAtleta();
+  setupAtletasConsulta();
   
   atualizarTelas();
 }
@@ -120,6 +122,7 @@ async function atualizarTelas() {
   await carregarFinanceiroPlanilha(); 
   await carregarEquipesEDashboard(); 
   await carregarRegras();
+  renderAtletasConsulta();
 
   const modTreinoSelect = document.getElementById("modTreino");
   if (modTreinoSelect && modTreinoSelect.value) modTreinoSelect.dispatchEvent(new Event('change'));
@@ -153,11 +156,11 @@ async function carregarEquipesEDashboard() {
                    <button class="btn-acao btn-pular-fila" data-id="${u.id}" data-strikes="${strikes}" style="color:#f39c12; padding:4px;"><i data-lucide="skip-forward" style="width:16px;"></i></button>`; 
     } 
     if(u.equipe === "Fila - Bicicleta" || u.equipe === "Fila de Espera") { 
-      htmlFilaBike += `<tr><td data-label="Atleta"><strong>${idxBike}º - ${u.nome}</strong> ${badgeStrike}</td><td data-label="Ações" style="text-align: right; vertical-align:middle;"><div style="display:inline-flex; justify-content:flex-end; gap:5px;">${acoesHTML}</div></td></tr>`; 
+      htmlFilaBike += `<tr class="fila-row" draggable="true" data-id="${u.id}" data-equipe-fila="bike"><td data-label="Atleta"><span class="drag-handle">☰</span><strong>${idxBike}º - ${u.nome}</strong> ${badgeStrike}</td><td data-label="Ações" style="text-align: right; vertical-align:middle;"><div style="display:inline-flex; justify-content:flex-end; gap:5px;">${acoesHTML}</div></td></tr>`; 
       idxBike++; contFila++; 
     } 
     if (u.equipe === "Fila - Corrida") { 
-      htmlFilaCorrida += `<tr><td data-label="Atleta"><strong>${idxCorrida}º - ${u.nome}</strong> ${badgeStrike}</td><td data-label="Ações" style="text-align: right; vertical-align:middle;"><div style="display:inline-flex; justify-content:flex-end; gap:5px;">${acoesHTML}</div></td></tr>`; 
+      htmlFilaCorrida += `<tr class="fila-row" draggable="true" data-id="${u.id}" data-equipe-fila="corrida"><td data-label="Atleta"><span class="drag-handle">☰</span><strong>${idxCorrida}º - ${u.nome}</strong> ${badgeStrike}</td><td data-label="Ações" style="text-align: right; vertical-align:middle;"><div style="display:inline-flex; justify-content:flex-end; gap:5px;">${acoesHTML}</div></td></tr>`; 
       idxCorrida++; contFila++; 
     } 
   });
@@ -205,6 +208,7 @@ async function carregarEquipesEDashboard() {
   
   renderGraficosETop(ptsBike, ptsCorrida, todosAtletas, contBike, contCorrida); 
   if(typeof lucide !== 'undefined') lucide.createIcons();
+  setupDragDropFilas();
   
   document.querySelectorAll(".btn-aprovar-fila").forEach(btn => { 
     btn.addEventListener("click", async (e) => { 
@@ -513,6 +517,270 @@ function setupPermissoesModal() {
     catch(err) { showToast("Erro ao gravar permissões.", "error"); } 
     finally { e.target.textContent = "Salvar Acessos"; e.target.classList.remove("loading"); e.target.disabled = false; }
   }); 
+}
+
+
+
+// =====================================================
+// ↕️ DRAG AND DROP DAS FILAS
+// =====================================================
+function setupDragDropFilas() {
+  let draggedId = null;
+
+  document.querySelectorAll(".fila-row").forEach(row => {
+    row.addEventListener("dragstart", (e) => {
+      draggedId = row.dataset.id;
+      row.classList.add("dragging");
+      e.dataTransfer.effectAllowed = "move";
+    });
+
+    row.addEventListener("dragend", () => {
+      row.classList.remove("dragging");
+      draggedId = null;
+    });
+
+    row.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      row.classList.add("drag-over");
+    });
+
+    row.addEventListener("dragleave", () => {
+      row.classList.remove("drag-over");
+    });
+
+    row.addEventListener("drop", async (e) => {
+      e.preventDefault();
+      row.classList.remove("drag-over");
+
+      const targetId = row.dataset.id;
+      if (!draggedId || !targetId || draggedId === targetId) return;
+
+      const origem = appState.mapAtletas[draggedId];
+      const destino = appState.mapAtletas[targetId];
+
+      if (!origem || !destino || origem.equipe !== destino.equipe) {
+        showToast("Só é possível reorganizar atletas dentro da mesma fila.", "error");
+        return;
+      }
+
+      try {
+        const origemCriadoEm = origem.criadoEm || new Date().toISOString();
+        const destinoCriadoEm = destino.criadoEm || new Date().toISOString();
+
+        await updateDoc(doc(db, "atletas", draggedId), { criadoEm: destinoCriadoEm });
+        await updateDoc(doc(db, "atletas", targetId), { criadoEm: origemCriadoEm });
+
+        showToast("Fila reorganizada com sucesso!", "success");
+        atualizarTelas();
+      } catch (err) {
+        showToast("Erro ao reorganizar fila: " + err.message, "error");
+      }
+    });
+  });
+}
+
+// =====================================================
+// 🧍 CONSULTA DE ATLETAS E BUSCA GLOBAL
+// =====================================================
+function setupAtletasConsulta() {
+  ["filtroAtletaCards", "filtroEquipeAtletaCards", "filtroStatusAtletaCards"].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el || el.dataset.listenerAplicado) return;
+    el.dataset.listenerAplicado = "1";
+    el.addEventListener("input", renderAtletasConsulta);
+    el.addEventListener("change", renderAtletasConsulta);
+  });
+
+  const busca = document.getElementById("buscaGlobalAtleta");
+  const resultados = document.getElementById("resultadoBuscaGlobal");
+
+  if (busca && resultados && !busca.dataset.listenerAplicado) {
+    busca.dataset.listenerAplicado = "1";
+
+    busca.addEventListener("input", () => {
+      renderBuscaGlobalAtletas(busca.value);
+    });
+
+    busca.addEventListener("focus", () => {
+      if (busca.value.trim()) renderBuscaGlobalAtletas(busca.value);
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".global-search")) resultados.classList.remove("active");
+    });
+  }
+}
+
+function renderAtletasConsulta() {
+  const grid = document.getElementById("gridAtletasConsulta");
+  if (!grid) return;
+
+  const termo = (document.getElementById("filtroAtletaCards")?.value || "").toLowerCase();
+  const equipe = document.getElementById("filtroEquipeAtletaCards")?.value || "";
+  const status = document.getElementById("filtroStatusAtletaCards")?.value || "ativos";
+
+  let atletas = Object.values(appState.mapAtletas || {})
+    .filter(a => a.role !== "admin" && a.status === "Aprovado")
+    .filter(a => {
+      const ativo = a.ativo !== false;
+      if (status === "ativos" && !ativo) return false;
+      if (status === "inativos" && ativo) return false;
+      if (equipe && (a.equipe || "Nenhuma") !== equipe) return false;
+
+      const busca = `${a.nome || ""} ${a.equipe || ""} ${a.localidade || ""}`.toLowerCase();
+      return !termo || busca.includes(termo);
+    });
+
+  atletas.sort((a, b) => {
+    const scoreA = Number(a.pontuacaoTotal) || 0;
+    const scoreB = Number(b.pontuacaoTotal) || 0;
+    if (scoreB !== scoreA) return scoreB - scoreA;
+    return String(a.nome || "").localeCompare(String(b.nome || ""));
+  });
+
+  if (atletas.length === 0) {
+    grid.innerHTML = `
+      <div class="empty-state" style="grid-column:1/-1;">
+        <i data-lucide="users"></i>
+        <p>Nenhum atleta encontrado com os filtros selecionados.</p>
+      </div>
+    `;
+    if(typeof lucide !== "undefined") lucide.createIcons();
+    return;
+  }
+
+  grid.innerHTML = atletas.map(a => criarCardAtleta(a)).join("");
+
+  grid.querySelectorAll(".athlete-card-premium").forEach(card => {
+    card.addEventListener("click", (e) => {
+      e.preventDefault();
+      abrirFichaAtleta(card.dataset.id);
+    });
+  });
+
+  if(typeof lucide !== "undefined") lucide.createIcons();
+}
+
+function criarCardAtleta(a) {
+  const ativo = a.ativo !== false;
+  const equipe = a.equipe || "Nenhuma";
+  const isFila = equipe.startsWith("Fila");
+  const tipoHero = isFila ? "wait" : (equipe === "Corrida" ? "run" : "bike");
+  const modalidade = isFila ? "Fila" : (equipe === "Corrida" ? "Corrida" : equipe === "Bicicleta" || equipe === "Bike" ? "Bike" : equipe);
+  const hist = (appState.historicoCompleto || []).filter(h => h.atletaId === a.id);
+  const eventos = new Set(hist.map(h => h.eventoId || `${h.dataTreino}|${h.descTreino}`)).size;
+  const ultimo = hist.length > 0 ? hist[0].dataTreino : "";
+  const iniciais = getIniciais(a.nome);
+
+  return `
+    <article class="athlete-card-premium ${ativo ? "" : "inativo"}" data-id="${escapeAttr(a.id)}">
+      <div class="athlete-card-hero ${tipoHero}">
+        <div class="athlete-card-status">${ativo ? "Ativo" : "Inativo"}</div>
+        <div class="athlete-card-avatar">${iniciais}</div>
+      </div>
+
+      <div class="athlete-card-body">
+        <div class="athlete-card-title">
+          <h3>${escapeHtml(a.nome || "Sem nome")}</h3>
+          <span>${modalidade}</span>
+        </div>
+
+        <p class="athlete-card-meta">${escapeHtml(a.localidade || "Localidade não informada")} • Entrada ${escapeHtml(a.anoEntrada || "-")}</p>
+
+        <div class="athlete-card-stats">
+          <div>
+            <strong>${Number(a.pontuacaoTotal) || 0}</strong>
+            <span>pontos</span>
+          </div>
+          <div>
+            <strong>${eventos}</strong>
+            <span>eventos</span>
+          </div>
+          <div>
+            <strong>${ultimo ? formatarDataCurta(ultimo) : "-"}</strong>
+            <span>último</span>
+          </div>
+        </div>
+
+        <button type="button" class="athlete-card-button">Ver ficha completa</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderBuscaGlobalAtletas(valor) {
+  const resultados = document.getElementById("resultadoBuscaGlobal");
+  if (!resultados) return;
+
+  const termo = (valor || "").trim().toLowerCase();
+
+  if (!termo) {
+    resultados.classList.remove("active");
+    resultados.innerHTML = "";
+    return;
+  }
+
+  const encontrados = Object.values(appState.mapAtletas || {})
+    .filter(a => a.status === "Aprovado")
+    .filter(a => `${a.nome || ""} ${a.equipe || ""} ${a.localidade || ""}`.toLowerCase().includes(termo))
+    .sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || "")))
+    .slice(0, 8);
+
+  if (encontrados.length === 0) {
+    resultados.innerHTML = `<div class="empty-state" style="padding:16px;"><p>Nenhum atleta encontrado.</p></div>`;
+    resultados.classList.add("active");
+    return;
+  }
+
+  resultados.innerHTML = encontrados.map(a => `
+    <div class="search-result-item" data-id="${escapeAttr(a.id)}">
+      <div class="search-result-avatar">${getIniciais(a.nome)}</div>
+      <div class="search-result-body">
+        <strong>${escapeHtml(a.nome || "Sem nome")}</strong>
+        <small>${escapeHtml(a.equipe || "-")} • ${Number(a.pontuacaoTotal) || 0} pts</small>
+      </div>
+    </div>
+  `).join("");
+
+  resultados.querySelectorAll(".search-result-item").forEach(item => {
+    item.addEventListener("click", () => {
+      resultados.classList.remove("active");
+      const busca = document.getElementById("buscaGlobalAtleta");
+      if (busca) busca.value = "";
+      abrirFichaAtleta(item.dataset.id);
+    });
+  });
+
+  resultados.classList.add("active");
+}
+
+function getIniciais(nome = "") {
+  const partes = String(nome).trim().split(/\s+/).filter(Boolean);
+  if (partes.length === 0) return "AT";
+  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
+  return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+}
+
+function formatarDataCurta(dataStr) {
+  if (!dataStr) return "-";
+  try {
+    return new Date(dataStr + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  } catch {
+    return dataStr;
+  }
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function escapeAttr(value) {
+  return escapeHtml(value).replaceAll("`", "&#096;");
 }
 
 function setupFichaAtleta() { 

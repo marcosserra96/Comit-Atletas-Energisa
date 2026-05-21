@@ -399,3 +399,298 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
     max-height: 250px;
   }
 }
+
+
+/* =======================================================
+   🔎 BUSCA GLOBAL E CARDS DE ATLETAS
+======================================================= */
+.global-search {
+  position: relative;
+  width: min(340px, 38vw);
+  margin-right: 10px;
+  display: flex;
+  align-items: center;
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.24);
+  border-radius: 999px;
+  padding: 4px 10px;
+  backdrop-filter: blur(10px);
+}
+
+.global-search i {
+  width: 16px;
+  height: 16px;
+  color: rgba(255,255,255,0.9);
+  flex-shrink: 0;
+}
+
+.global-search input {
+  border: 0;
+  background: transparent;
+  color: white;
+  margin: 0;
+  padding: 7px 8px;
+  font-size: 0.85rem;
+}
+
+.global-search input::placeholder {
+  color: rgba(255,255,255,0.72);
+}
+
+.global-search-results {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: min(420px, 88vw);
+  max-height: 360px;
+  overflow-y: auto;
+  display: none;
+  background: var(--bg-card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: 0 18px 45px rgba(0,0,0,0.24);
+  padding: 8px;
+  z-index: 2000;
+}
+
+.global-search-results.active {
+  display: block;
+}
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: .18s ease;
+}
+
+.search-result-item:hover {
+  background: rgba(0,155,193,0.08);
+}
+
+.search-result-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #009bc1, #00a693);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.search-result-body strong {
+  display: block;
+  font-size: 0.88rem;
+}
+
+.search-result-body small {
+  color: var(--text-light);
+}
+
+.athlete-filter-card {
+  margin-bottom: 20px;
+}
+
+.athlete-filter-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 14px;
+  align-items: end;
+}
+
+.athlete-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(255px, 1fr));
+  gap: 18px;
+}
+
+.athlete-card-premium {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+  position: relative;
+}
+
+.athlete-card-premium:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 18px 42px rgba(0,0,0,.14);
+  border-color: rgba(0,155,193,.35);
+}
+
+.athlete-card-premium.inativo {
+  opacity: .68;
+}
+
+.athlete-card-hero {
+  position: relative;
+  height: 96px;
+  background: linear-gradient(135deg, #007b91, #00a693);
+  display: flex;
+  align-items: flex-end;
+  padding: 0 18px;
+}
+
+.athlete-card-hero.bike {
+  background: linear-gradient(135deg, #007b91, #009bc1);
+}
+
+.athlete-card-hero.run {
+  background: linear-gradient(135deg, #00a693, #7ac943);
+}
+
+.athlete-card-hero.wait {
+  background: linear-gradient(135deg, #f37021, #f1c40f);
+}
+
+.athlete-card-avatar {
+  width: 68px;
+  height: 68px;
+  border-radius: 22px;
+  background: rgba(255,255,255,.96);
+  color: #007b91;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  font-weight: 800;
+  box-shadow: 0 10px 24px rgba(0,0,0,.18);
+  transform: translateY(28px);
+}
+
+.athlete-card-status {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(255,255,255,.22);
+  color: white;
+  border: 1px solid rgba(255,255,255,.35);
+  backdrop-filter: blur(8px);
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: .7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.athlete-card-body {
+  padding: 40px 18px 18px;
+}
+
+.athlete-card-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.athlete-card-title h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text);
+  line-height: 1.25;
+}
+
+.athlete-card-title span {
+  font-size: .72rem;
+  font-weight: 800;
+  color: var(--primary);
+  background: rgba(0,155,193,.1);
+  padding: 5px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.athlete-card-meta {
+  margin: 6px 0 15px;
+  color: var(--text-light);
+  font-size: .82rem;
+}
+
+.athlete-card-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.athlete-card-stats div {
+  background: rgba(0,155,193,.06);
+  border: 1px solid rgba(0,155,193,.12);
+  border-radius: 14px;
+  padding: 10px 7px;
+  text-align: center;
+}
+
+.athlete-card-stats strong {
+  display: block;
+  color: var(--text);
+  font-size: .95rem;
+}
+
+.athlete-card-stats span {
+  color: var(--text-light);
+  font-size: .66rem;
+}
+
+.athlete-card-button {
+  width: 100%;
+  background: linear-gradient(135deg, #009bc1, #00a693);
+  color: white;
+  border-radius: 14px;
+  padding: 11px;
+  font-weight: 800;
+  transition: filter .2s ease, transform .2s ease;
+}
+
+.athlete-card-button:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+@media(max-width: 760px) {
+  .global-search {
+    display: none;
+  }
+
+  .athlete-filter-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* Drag and drop da fila */
+.fila-row {
+  cursor: grab;
+}
+
+.fila-row.dragging {
+  opacity: .45;
+}
+
+.fila-row.drag-over td {
+  background: rgba(0,155,193,.10) !important;
+}
+
+.drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-right: 8px;
+  border-radius: 8px;
+  background: rgba(0,155,193,.08);
+  color: var(--primary);
+  font-weight: 900;
+  cursor: grab;
+}
