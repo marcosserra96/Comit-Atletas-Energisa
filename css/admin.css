@@ -1528,3 +1528,142 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
     grid-template-columns: 1fr;
   }
 }
+
+/* =======================================================
+   V7 - Refinos finais: alinhamento, animações e PDF sem cortar blocos
+======================================================= */
+.config-ficha-card {
+  animation: subtleFadeUp .28s ease both;
+}
+
+.config-ficha-form {
+  grid-template-columns: minmax(180px, 1.2fr) minmax(120px, .7fr) minmax(170px, 1fr) minmax(210px, 1.2fr) auto auto !important;
+  align-items: end !important;
+  gap: 10px 10px !important;
+}
+
+.config-ficha-form > div {
+  min-width: 0;
+}
+
+.config-ficha-form label:not(.config-ficha-check) {
+  height: 18px;
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.config-ficha-form input,
+.config-ficha-form select {
+  height: 50px;
+  min-height: 50px;
+  box-sizing: border-box;
+}
+
+.config-ficha-check {
+  height: 50px;
+  align-items: center !important;
+  justify-content: center;
+  padding: 0 4px;
+  align-self: end;
+}
+
+.config-ficha-check input {
+  width: 18px !important;
+  height: 18px !important;
+  min-height: 18px !important;
+  flex: 0 0 auto;
+}
+
+#btnAdicionarCampoFichaConfig {
+  height: 50px;
+  align-self: end;
+  white-space: nowrap;
+  padding-inline: 20px;
+}
+
+.config-ficha-item,
+.ficha-modelo-field,
+.lote-card,
+.athlete-card,
+.strategic-action-item {
+  animation: subtleFadeUp .22s ease both;
+}
+
+@keyframes subtleFadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.extrato-lotes-grid {
+  grid-auto-rows: 1fr;
+}
+
+.extrato-lotes-grid .lote-card-head {
+  display: grid !important;
+  grid-template-columns: minmax(0,1fr) auto;
+}
+
+.extrato-lotes-grid .lote-date {
+  align-self: start;
+  text-align: right;
+}
+
+.extrato-lotes-grid .lote-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.extrato-lotes-grid .lote-actions .btn-acao {
+  min-width: 118px;
+  justify-content: center;
+}
+
+#pdfExportClone .pdf-page-spacer {
+  display: block !important;
+  break-after: page;
+  page-break-after: always;
+}
+
+#pdfExportClone .pdf-header,
+#pdfExportClone .pdf-kpi-grid,
+#pdfExportClone .pdf-section,
+#pdfExportClone .pdf-two-col,
+#pdfExportClone .pdf-three-col,
+#pdfExportClone .pdf-footer-section {
+  break-inside: avoid !important;
+  page-break-inside: avoid !important;
+}
+
+#pdfExportClone .pdf-section {
+  margin-bottom: 12px !important;
+}
+
+#pdfExportClone .pdf-clean-list li,
+#pdfExportClone .pdf-compact-list > div,
+#pdfExportClone .agenda-item {
+  break-inside: avoid !important;
+  page-break-inside: avoid !important;
+}
+
+@media(max-width: 1120px) {
+  .config-ficha-form {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .config-ficha-check,
+  #btnAdicionarCampoFichaConfig {
+    justify-self: stretch;
+    width: 100%;
+  }
+}
+
+@media(max-width: 720px) {
+  .config-ficha-form {
+    grid-template-columns: 1fr !important;
+  }
+  .config-ficha-check {
+    justify-content: flex-start;
+  }
+}

@@ -108,14 +108,10 @@ export function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike,
 }
 
 async function exportarPDFExecutivo() {
-  showToast("Montando report oficial A4...", "info");
-
   const temaAtual = document.body.getAttribute("data-theme");
-  if (temaAtual === "dark") {
-    document.body.removeAttribute("data-theme");
-    Chart.defaults.color = '#666';
-    if (appState.graficoLinhaInstancia) appState.graficoLinhaInstancia.update();
-  }
+  if (temaAtual === "dark") document.body.removeAttribute("data-theme");
+
+  showToast("Montando report oficial A4...", "info");
 
   const canvasLinha = document.getElementById('graficoTendencia');
   let widthOriginal, heightOriginal;
@@ -139,53 +135,47 @@ async function exportarPDFExecutivo() {
     if (!modalPdf || !printArea) return showToast("Área do report não encontrada.", "error");
 
     modalPdf.style.display = "flex";
-    await aguardar(350);
+    await aguardar(300);
 
-    const txtDataHoje = document.getElementById("pdfDataHoje")?.textContent || "report";
-    const clone = prepararCloneA4ParaExportacao(printArea);
-    document.body.appendChild(clone);
-
-    await aguardar(250);
+    await garantirBibliotecasPDF();
 
     if (typeof html2canvas === "undefined" || !window.jspdf?.jsPDF) {
-      clone.remove();
       modalPdf.style.display = "none";
-      return showToast("Bibliotecas de PDF não carregadas.", "error");
+      return showToast("Bibliotecas de PDF não carregadas. Verifique a conexão com a internet ou bloqueio dos CDNs.", "error");
     }
+
+    const txtDataHoje = document.getElementById("pdfDataHoje")?.textContent || "report";
+    const exportRoot = prepararPaginasA4ParaExportacao(printArea);
+    document.body.appendChild(exportRoot);
+    await aguardar(250);
 
     const pageWidth = 794;
     const pageHeight = 1123;
-    const canvas = await html2canvas(clone, {
-      scale: 2,
-      backgroundColor: "#ffffff",
-      useCORS: true,
-      allowTaint: true,
-      width: pageWidth,
-      height: clone.scrollHeight,
-      windowWidth: pageWidth,
-      scrollX: 0,
-      scrollY: 0
-    });
-
-    const imgData = canvas.toDataURL("image/jpeg", 0.98);
+    const paginas = Array.from(exportRoot.querySelectorAll(".pdf-export-page"));
     const pdf = new window.jspdf.jsPDF("p", "pt", [pageWidth, pageHeight]);
-    const imgHeight = canvas.height * pageWidth / canvas.width;
 
-    let heightLeft = imgHeight;
-    let position = 0;
+    for (let i = 0; i < paginas.length; i++) {
+      const page = paginas[i];
+      const canvas = await html2canvas(page, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+        allowTaint: true,
+        width: pageWidth,
+        height: pageHeight,
+        windowWidth: pageWidth,
+        windowHeight: pageHeight,
+        scrollX: 0,
+        scrollY: 0
+      });
 
-    pdf.addImage(imgData, "JPEG", 0, position, pageWidth, imgHeight, undefined, "FAST");
-    heightLeft -= pageHeight;
-
-    while (heightLeft > 0) {
-      position -= pageHeight;
-      pdf.addPage([pageWidth, pageHeight], "p");
-      pdf.addImage(imgData, "JPEG", 0, position, pageWidth, imgHeight, undefined, "FAST");
-      heightLeft -= pageHeight;
+      const imgData = canvas.toDataURL("image/jpeg", 0.98);
+      if (i > 0) pdf.addPage([pageWidth, pageHeight], "p");
+      pdf.addImage(imgData, "JPEG", 0, 0, pageWidth, pageHeight, undefined, "FAST");
     }
 
     pdf.save(`Report_Atletas_${txtDataHoje.replace(/\//g, '-')}.pdf`);
-    clone.remove();
+    exportRoot.remove();
     modalPdf.style.display = "none";
     showToast("Download concluído!", "success");
   } catch (err) {
@@ -207,6 +197,135 @@ async function exportarPDFExecutivo() {
       if (appState.graficoLinhaInstancia) appState.graficoLinhaInstancia.update();
     }
   }
+}
+
+async function garantirBibliotecasPDF() {
+  const carregarScript = (src) => new Promise((resolve, reject) => {
+    const existente = document.querySelector(`script[src="${src}"]`);
+    if (existente) {
+      existente.addEventListener("load", resolve, { once: true });
+      existente.addEventListener("error", reject, { once: true });
+      if (existente.dataset.loaded === "true") resolve();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.onload = () => { script.dataset.loaded = "true"; resolve(); };
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+
+  const promessas = [];
+
+  if (typeof html2canvas === "undefined") {
+    promessas.push(carregarScript("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"));
+  }
+
+  if (!window.jspdf?.jsPDF) {
+    promessas.push(carregarScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"));
+  }
+
+  if (promessas.length > 0) {
+    await Promise.all(promessas);
+    await aguardar(150);
+  }
+}
+
+
+function aplicarQuebrasInteligentesNoReport(clone, pageHeight = 1123) {
+  const safeBottom = 64;
+  const candidatos = Array.from(clone.children).filter(el => {
+    return !el.classList.contains("pdf-page-spacer") && el.offsetHeight > 0;
+  });
+
+  candidatos.forEach(el => {
+    const top = el.offsetTop;
+    const height = el.offsetHeight;
+    const posNaPagina = top % pageHeight;
+    const limite = pageHeight - safeBottom;
+
+    if (posNaPagina > 0 && posNaPagina + height > limite && height < (pageHeight - 120)) {
+      const spacer = document.createElement("div");
+      spacer.className = "pdf-page-spacer";
+      spacer.style.height = `${pageHeight - posNaPagina}px`;
+      spacer.style.width = "100%";
+      spacer.style.background = "#ffffff";
+      spacer.style.border = "0";
+      spacer.style.margin = "0";
+      spacer.style.padding = "0";
+      el.parentNode.insertBefore(spacer, el);
+    }
+  });
+}
+
+
+function prepararPaginasA4ParaExportacao(printArea) {
+  const pageWidth = 794;
+  const pageHeight = 1123;
+  const paddingX = 42;
+  const paddingY = 38;
+
+  const root = document.createElement("div");
+  root.id = "pdfExportClone";
+  root.style.position = "absolute";
+  root.style.left = "-9999px";
+  root.style.top = "0";
+  root.style.width = `${pageWidth}px`;
+  root.style.background = "#ffffff";
+  root.style.zIndex = "0";
+
+  const criarPagina = () => {
+    const page = document.createElement("div");
+    page.className = "pdf-a4-report pdf-export-page";
+    page.style.width = `${pageWidth}px`;
+    page.style.height = `${pageHeight}px`;
+    page.style.minHeight = `${pageHeight}px`;
+    page.style.maxHeight = `${pageHeight}px`;
+    page.style.padding = `${paddingY}px ${paddingX}px`;
+    page.style.margin = "0 0 0 0";
+    page.style.boxSizing = "border-box";
+    page.style.background = "#ffffff";
+    page.style.color = "#0f2d35";
+    page.style.overflow = "hidden";
+    page.style.display = "block";
+    page.style.fontFamily = "'Poppins', Arial, sans-serif";
+    root.appendChild(page);
+    return page;
+  };
+
+  let paginaAtual = criarPagina();
+
+  const filhos = Array.from(printArea.children).filter(el => {
+    return el.offsetParent !== null || el.id || el.className;
+  });
+
+  filhos.forEach((original, index) => {
+    const bloco = original.cloneNode(true);
+    bloco.querySelectorAll("img").forEach(img => { img.crossOrigin = "anonymous"; });
+    bloco.style.breakInside = "avoid";
+    bloco.style.pageBreakInside = "avoid";
+
+    paginaAtual.appendChild(bloco);
+
+    const estourou = paginaAtual.scrollHeight > pageHeight;
+    const temMaisDeUmBloco = paginaAtual.children.length > 1;
+
+    if (estourou && temMaisDeUmBloco) {
+      paginaAtual.removeChild(bloco);
+      paginaAtual = criarPagina();
+      paginaAtual.appendChild(bloco);
+    }
+
+    if (paginaAtual.scrollHeight > pageHeight && paginaAtual.children.length === 1) {
+      bloco.style.transformOrigin = "top left";
+      bloco.style.maxHeight = `${pageHeight - (paddingY * 2)}px`;
+      bloco.style.overflow = "hidden";
+    }
+  });
+
+  return root;
 }
 
 function prepararCloneA4ParaExportacao(printArea) {
@@ -294,15 +413,26 @@ function atualizarPainelEstrategicoFinal(arrayAtletas, totalAtivosGerais) {
   setTextDashboard("dashEventosPendentes", eventosPendentes);
   setTextDashboard("dashFilaAguardando", filaAguardando);
 
-  const acoes = [];
-  acoes.push({ tipo: eventosPendentes > 0 ? "warning" : "success", icon: "📅", titulo: "Eventos sem lançamento", desc: eventosPendentes > 0 ? "Eventos realizados nos últimos 7 dias ainda não foram lançados." : "Agenda recente sem pendências de lançamento.", valor: eventosPendentes });
-  acoes.push({ tipo: atletasInativos30d > 0 ? "danger" : "success", icon: "⚠️", titulo: "Atletas sem atividade 30d", desc: atletasInativos30d > 0 ? "Priorize contato, justificativa ou reengajamento." : "Base recente sem alertas críticos de inatividade.", valor: atletasInativos30d });
-  acoes.push({ tipo: filaAguardando > 0 ? "warning" : "success", icon: "↕️", titulo: "Fila aguardando decisão", desc: filaAguardando > 0 ? "Revise a ordem, recusas e movimentações pendentes." : "Nenhum atleta aguardando na fila.", valor: filaAguardando });
-  acoes.push({ tipo: regrasSemUso > 0 ? "warning" : "success", icon: "✅", titulo: "Regras sem uso", desc: regrasSemUso > 0 ? "Regras cadastradas que ainda não apareceram no histórico." : "Todas as regras cadastradas já foram utilizadas.", valor: regrasSemUso });
-  acoes.push({ tipo: analytics.semAtividade > 0 ? "warning" : "success", icon: "👤", titulo: "Atletas sem histórico", desc: analytics.semAtividade > 0 ? "Atletas ativos que nunca tiveram participação registrada." : "Todos os atletas ativos têm histórico de participação.", valor: analytics.semAtividade });
+  const acoes = [
+    { tipo: "warning", icon: "📅", titulo: "Eventos sem lançamento", desc: "Eventos realizados nos últimos 7 dias ainda não foram lançados.", valor: eventosPendentes },
+    { tipo: "danger", icon: "⚠️", titulo: "Atletas sem atividade 30d", desc: "Priorize contato, justificativa ou reengajamento.", valor: atletasInativos30d },
+    { tipo: "warning", icon: "↕️", titulo: "Fila aguardando decisão", desc: "Revise a ordem, recusas e movimentações pendentes.", valor: filaAguardando },
+    { tipo: "warning", icon: "🧩", titulo: "Regras sem uso", desc: "Regras cadastradas que ainda não apareceram no histórico.", valor: regrasSemUso },
+    { tipo: "warning", icon: "👤", titulo: "Atletas sem histórico", desc: "Atletas ativos que nunca tiveram participação registrada.", valor: analytics.semAtividade }
+  ].filter(a => Number(a.valor) > 0);
 
   const container = document.getElementById("listaAcoesRecomendadas");
   if (container) {
+    const cardAcoes = container.closest(".strategic-action-card");
+
+    if (acoes.length === 0) {
+      container.innerHTML = "";
+      if (cardAcoes) cardAcoes.style.display = "none";
+      return;
+    }
+
+    if (cardAcoes) cardAcoes.style.display = "block";
+
     container.innerHTML = acoes.map(a => `
       <div class="strategic-action-item ${a.tipo}">
         <div class="strategic-action-icon">${a.icon}</div>

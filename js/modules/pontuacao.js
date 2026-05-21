@@ -8,6 +8,7 @@ import { showToast, mostrarConfirmacao } from './ui.js';
 
 let atualizarTelasCallback = null;
 let uxPontuacaoInicializada = false;
+let lotesRenderizados = new Map();
 
 export function setAtualizarTelasCallback(cb) {
   atualizarTelasCallback = cb;
@@ -20,6 +21,7 @@ export function setupContabilizacao() {
   aplicarEstilosUXPontuacao();
   setupTipoLancamentoUI();
   setupExtratoAgrupadoUI();
+  setupModalEditarLote();
 
   const selectEvento = document.getElementById("lancarEventoSelect");
   if (selectEvento && !selectEvento.dataset.listenerAplicado) {
@@ -52,6 +54,8 @@ export function setupContabilizacao() {
       const areaTabela = document.getElementById("areaTabelaPontuacao");
       if (areaTabela) areaTabela.style.display = "none";
 
+      const btnSalvar = document.getElementById("btnSalvarPontuacao");
+      if (btnSalvar) btnSalvar.disabled = true;
       if (!mod) return;
 
       try {
@@ -88,6 +92,7 @@ export function setupContabilizacao() {
 
         await gerarTabelaContabilizacao(mod, regrasArray);
         if (areaTabela) areaTabela.style.display = "block";
+        if (btnSalvar) btnSalvar.disabled = false;
       } catch (err) {
         showToast("Erro ao carregar tabela: " + err.message, "error");
       }
@@ -312,6 +317,101 @@ function aplicarEstilosUXPontuacao() {
       gap: 8px;
       align-items: center;
       justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .lote-action-buttons {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .lancamento-save-bar {
+      margin-top: 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      box-shadow: var(--shadow);
+      position: sticky;
+      bottom: 92px;
+      z-index: 30;
+    }
+
+    .lancamento-save-bar .btn-primario {
+      min-width: 220px;
+      justify-content: center;
+      padding: 13px 18px;
+      background: var(--secondary);
+    }
+
+    .lancamento-save-bar .btn-primario:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+      filter: grayscale(.25);
+    }
+
+    .lancamento-save-bar small {
+      color: var(--text-light);
+      font-weight: 600;
+    }
+
+    .modal-editar-lote-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.78);
+      z-index: 10050;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+    }
+
+    .modal-editar-lote-card {
+      width: min(560px, 100%);
+      background: var(--bg-card);
+      border-radius: 22px;
+      border: 1px solid var(--border);
+      box-shadow: 0 24px 80px rgba(0,0,0,.28);
+      padding: 22px;
+      animation: slideUp .22s ease;
+    }
+
+    .modal-editar-lote-card h3 {
+      margin: 0 0 6px;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-editar-lote-card p {
+      margin: 0 0 18px;
+      color: var(--text-light);
+      font-size: .9rem;
+    }
+
+    .modal-editar-lote-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .modal-editar-lote-grid .full {
+      grid-column: 1 / -1;
+    }
+
+    .modal-editar-lote-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 18px;
     }
 
     .lote-details {
@@ -372,6 +472,9 @@ function aplicarEstilosUXPontuacao() {
       .tipo-lancamento-segmented { grid-template-columns: 1fr; }
       .lote-stats { grid-template-columns: 1fr 1fr; }
       .extrato-lotes-grid { grid-template-columns: 1fr; }
+      .lancamento-save-bar { position: static; flex-direction: column; align-items: stretch; }
+      .lancamento-save-bar .btn-primario { width: 100%; min-width: 0; }
+      .modal-editar-lote-grid { grid-template-columns: 1fr; }
     }
   `;
 
@@ -843,6 +946,8 @@ async function salvarPontuacoesEmLote() {
       document.getElementById("descTreino").value = "";
       document.getElementById("lancarEventoSelect").value = "";
       document.getElementById("modTreino").value = "";
+      document.getElementById("kmTreino").value = "";
+      document.getElementById("btnSalvarPontuacao").disabled = true;
       if (document.getElementById("kmTreino")) document.getElementById("kmTreino").value = "";
 
       if (atualizarTelasCallback) atualizarTelasCallback();
@@ -1043,12 +1148,17 @@ function renderizarExtratoAgrupado() {
   }
 
   const grupos = agruparLancamentos(dados);
+  lotesRenderizados = new Map(grupos.map(g => [g.id, g]));
   container.innerHTML = grupos.map(g => criarCardLote(g)).join("");
 
   container.querySelectorAll(".btn-toggle-lote").forEach(btn => {
     btn.addEventListener("click", () => {
       btn.closest(".lote-card")?.classList.toggle("open");
     });
+  });
+
+  container.querySelectorAll(".btn-editar-lote").forEach(btn => {
+    btn.addEventListener("click", () => abrirModalEditarLote(btn.dataset.loteKey));
   });
 
   container.querySelectorAll(".nome-atleta-link").forEach(el => {
@@ -1167,15 +1277,147 @@ function criarCardLote(g) {
 
         <div class="lote-actions">
           <small style="color:var(--text-light);">${g.qtdRegistros} registros no lote</small>
-          <button type="button" class="btn-acao btn-toggle-lote">
-            <i data-lucide="chevron-down"></i> Detalhes
-          </button>
+          <div class="lote-action-buttons">
+            <button type="button" class="btn-acao btn-editar-lote" data-lote-key="${escapeAttr(g.id)}">
+              <i data-lucide="edit-3"></i> Editar
+            </button>
+            <button type="button" class="btn-acao btn-toggle-lote">
+              <i data-lucide="chevron-down"></i> Detalhes
+            </button>
+          </div>
         </div>
       </div>
 
       <div class="lote-details">${detalhes}</div>
     </div>
   `;
+}
+
+
+function setupModalEditarLote() {
+  if (document.getElementById("modalEditarLote")) return;
+
+  const modal = document.createElement("div");
+  modal.id = "modalEditarLote";
+  modal.className = "modal-editar-lote-backdrop";
+  modal.innerHTML = `
+    <div class="modal-editar-lote-card">
+      <h3><i data-lucide="edit-3"></i> Editar lançamento</h3>
+      <p>Altere dados gerais do lote. Pontos individuais não são recalculados aqui.</p>
+      <input type="hidden" id="editLoteKey" />
+      <div class="modal-editar-lote-grid">
+        <div class="full">
+          <label>Descrição</label>
+          <input type="text" id="editLoteDescricao" placeholder="Descrição do lançamento" />
+        </div>
+        <div>
+          <label>Data</label>
+          <input type="date" id="editLoteData" />
+        </div>
+        <div>
+          <label>KM por atleta</label>
+          <input type="number" id="editLoteKm" min="0" step="0.01" placeholder="Ex: 5 ou 21.1" />
+        </div>
+      </div>
+      <div class="modal-editar-lote-actions">
+        <button type="button" id="btnCancelarEditLote" class="btn-acao">Cancelar</button>
+        <button type="button" id="btnSalvarEditLote" class="btn-primario"><i data-lucide="save"></i> Salvar alterações</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  document.getElementById("btnCancelarEditLote")?.addEventListener("click", fecharModalEditarLote);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) fecharModalEditarLote();
+  });
+  document.getElementById("btnSalvarEditLote")?.addEventListener("click", salvarEdicaoLote);
+
+  if (typeof lucide !== "undefined") lucide.createIcons();
+}
+
+function abrirModalEditarLote(loteKey) {
+  const lote = lotesRenderizados.get(loteKey);
+  if (!lote) {
+    showToast("Não foi possível localizar este lote.", "error");
+    return;
+  }
+
+  const modal = document.getElementById("modalEditarLote");
+  if (!modal) return;
+
+  const kmReferencia = lote.itens.find(i => Number(i.kmPercorrido || 0) > 0)?.kmPercorrido || 0;
+
+  document.getElementById("editLoteKey").value = loteKey;
+  document.getElementById("editLoteDescricao").value = lote.titulo || "";
+  document.getElementById("editLoteData").value = lote.dataTreino || "";
+  document.getElementById("editLoteKm").value = kmReferencia ? String(kmReferencia).replace(".", ",") : "";
+
+  modal.style.display = "flex";
+}
+
+function fecharModalEditarLote() {
+  const modal = document.getElementById("modalEditarLote");
+  if (modal) modal.style.display = "none";
+}
+
+async function salvarEdicaoLote() {
+  const loteKey = document.getElementById("editLoteKey")?.value;
+  const lote = lotesRenderizados.get(loteKey);
+  if (!lote) return showToast("Lote não localizado.", "error");
+
+  const novaDescricao = document.getElementById("editLoteDescricao")?.value.trim();
+  const novaData = document.getElementById("editLoteData")?.value;
+  const novoKm = Number(String(document.getElementById("editLoteKm")?.value || "0").replace(",", ".")) || 0;
+
+  if (!novaDescricao || !novaData) {
+    return showToast("Preencha descrição e data.", "error");
+  }
+
+  const btn = document.getElementById("btnSalvarEditLote");
+  btn.disabled = true;
+  btn.innerHTML = "Salvando...";
+
+  try {
+    const batch = writeBatch(db);
+
+    lote.itens.forEach(item => {
+      if (!item.id) return;
+      const pontos = Number(item.pontos) || 0;
+      batch.update(doc(db, "historico_pontos", item.id), {
+        descTreino: novaDescricao,
+        tituloLancamento: novaDescricao,
+        dataTreino: novaData,
+        kmPercorrido: pontos > 0 ? novoKm : 0,
+        atualizadoEm: new Date().toISOString()
+      });
+    });
+
+    await batch.commit();
+
+    appState.historicoCompleto = (appState.historicoCompleto || []).map(h => {
+      if (!lote.itens.some(i => i.id === h.id)) return h;
+      const pontos = Number(h.pontos) || 0;
+      return {
+        ...h,
+        descTreino: novaDescricao,
+        tituloLancamento: novaDescricao,
+        dataTreino: novaData,
+        kmPercorrido: pontos > 0 ? novoKm : 0,
+        atualizadoEm: new Date().toISOString()
+      };
+    });
+
+    fecharModalEditarLote();
+    renderizarExtratoAgrupado();
+    showToast("Lançamento atualizado com sucesso.", "success");
+  } catch (err) {
+    showToast("Erro ao editar lançamento: " + err.message, "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<i data-lucide="save"></i> Salvar alterações`;
+    if (typeof lucide !== "undefined") lucide.createIcons();
+  }
 }
 
 function tentarAbrirFichaAtleta(atletaId) {
