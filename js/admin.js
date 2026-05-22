@@ -1009,8 +1009,27 @@ function setTexto(id, valor) {
   if (el) el.textContent = valor;
 }
 
+function setupTabsFichaAtleta() {
+  document.querySelectorAll(".ficha-tab").forEach(btn => {
+    if (btn.dataset.listenerAplicado) return;
+    btn.dataset.listenerAplicado = "1";
+    btn.addEventListener("click", () => ativarAbaFicha(btn.dataset.fichaTab));
+  });
+}
+
+function ativarAbaFicha(tab) {
+  document.querySelectorAll(".ficha-tab").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.fichaTab === tab);
+  });
+  document.querySelectorAll(".ficha-tab-content").forEach(panel => {
+    panel.classList.toggle("active", panel.id === `ficha-tab-${tab}`);
+  });
+  if(typeof lucide !== 'undefined') lucide.createIcons();
+}
+
 function setupFichaAtleta() { 
   document.getElementById("fecharModalFicha")?.addEventListener("click", () => document.getElementById("modalFichaAtleta").style.display = "none"); 
+  setupTabsFichaAtleta();
 
   document.getElementById("btnSalvarComentario")?.addEventListener("click", async () => { 
     const aId = document.getElementById("fichaAtletaId").value; 
@@ -1036,6 +1055,10 @@ function setupFichaAtleta() {
 async function abrirFichaAtleta(id) { 
   const a = appState.mapAtletas[id]; 
   if(!a) return; 
+
+  ativarAbaFicha("resumo");
+  const avatarMini = document.getElementById("fichaAvatarMini");
+  if(avatarMini) avatarMini.textContent = getIniciais(a.nome);
 
   document.getElementById("fichaNome").textContent = a.nome; 
   document.getElementById("fichaEquipe").textContent = a.equipe; 
@@ -1077,7 +1100,9 @@ async function abrirFichaAtleta(id) {
   }); 
   document.getElementById("fichaHistorico").innerHTML = htmlH; 
   await carregarComentarios(id); 
+  await carregarAuditoriaFicha(id);
   document.getElementById("modalFichaAtleta").style.display = "flex"; 
+  if(typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function renderHistoricoStatusFicha(atleta) {
@@ -1210,6 +1235,48 @@ async function salvarStatusFichaAtleta() {
     await abrirFichaAtleta(id);
     atualizarTelas();
   } catch(err) { showToast("Erro ao atualizar status: " + err.message, "error"); }
+}
+
+
+async function carregarAuditoriaFicha(id) {
+  const lista = document.getElementById("fichaAuditoriaLista");
+  if(!lista) return;
+
+  try {
+    const snap = await getDocs(collection(db, "auditoria"));
+    const itens = [];
+    snap.forEach(d => {
+      const item = { id: d.id, ...d.data() };
+      const dados = item.dados || {};
+      const relacionado =
+        item.entidadeId === id ||
+        dados.atletaId === id ||
+        dados.atleta === id ||
+        dados.atletaIdRemovido === id ||
+        dados.atletaIdAdicionado === id ||
+        (dados.antes && dados.antes.atletaId === id) ||
+        (dados.depois && dados.depois.atletaId === id);
+      if(relacionado) itens.push(item);
+    });
+
+    itens.sort((a,b) => new Date(b.criadoEm || "1970-01-01") - new Date(a.criadoEm || "1970-01-01"));
+
+    if(itens.length === 0) {
+      lista.innerHTML = `<div class="empty-state" style="padding:18px;"><p>Nenhuma auditoria relacionada a este atleta.</p></div>`;
+      return;
+    }
+
+    lista.innerHTML = itens.slice(0, 25).map(item => {
+      const data = item.criadoEm ? new Date(item.criadoEm).toLocaleString('pt-BR') : "-";
+      return `<div class="ficha-audit-item">
+        <small>${escapeHtml(data)}</small>
+        <div><strong>${escapeHtml(item.acao || "ação")}</strong><br><small>${escapeHtml(item.entidade || "-")} ${item.entidadeId ? "• " + escapeHtml(item.entidadeId) : ""}</small></div>
+        <small>${escapeHtml(item.criadoPorNome || "Usuário")}</small>
+      </div>`;
+    }).join("");
+  } catch(err) {
+    lista.innerHTML = `<div class="empty-state" style="padding:18px;"><p>Sem permissão ou erro ao carregar auditoria.</p></div>`;
+  }
 }
 
 

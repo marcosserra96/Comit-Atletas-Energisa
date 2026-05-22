@@ -468,6 +468,127 @@ function aplicarEstilosUXPontuacao() {
       display: none !important;
     }
 
+
+    .modal-editar-lote-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 14px 0 18px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+    }
+
+    .modal-editar-lote-tab {
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-light);
+      border-radius: 999px;
+      padding: 9px 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .modal-editar-lote-tab.active {
+      background: linear-gradient(135deg,#009bc1,#00a693);
+      color: #fff;
+      border-color: transparent;
+      box-shadow: 0 8px 18px rgba(0,155,193,.18);
+    }
+
+    .modal-lote-section { display: none; }
+    .modal-lote-section.active { display: block; }
+
+    .lote-edit-summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .lote-edit-summary div {
+      background: rgba(0,155,193,.06);
+      border: 1px solid rgba(0,155,193,.12);
+      border-radius: 14px;
+      padding: 10px;
+    }
+
+    .lote-edit-summary strong {
+      display: block;
+      color: var(--primary);
+      font-size: 1.05rem;
+    }
+
+    .lote-edit-summary span {
+      font-size: .72rem;
+      color: var(--text-light);
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .lote-atleta-edit-row {
+      display: grid;
+      grid-template-columns: minmax(180px,1fr) 1.2fr 70px 70px auto;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 10px;
+      margin-bottom: 8px;
+      background: var(--bg);
+    }
+
+    .lote-atleta-edit-row strong { color: var(--text); }
+    .lote-atleta-edit-row small { color: var(--text-light); }
+
+    .btn-remover-atleta-lote {
+      color: var(--danger) !important;
+      border-color: rgba(230,57,70,.35) !important;
+      background: rgba(230,57,70,.06) !important;
+    }
+
+    .modal-lote-add-card {
+      border: 1px dashed rgba(0,155,193,.35);
+      border-radius: 16px;
+      padding: 14px;
+      background: rgba(0,155,193,.045);
+    }
+
+    .modal-lote-add-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      align-items: end;
+    }
+
+    .modal-lote-add-grid .full { grid-column: 1 / -1; }
+
+    .lote-impact-box {
+      margin-top: 12px;
+      border: 1px solid rgba(243,112,33,.25);
+      background: rgba(243,112,33,.06);
+      color: var(--text);
+      border-radius: 14px;
+      padding: 12px;
+      font-size: .86rem;
+      line-height: 1.45;
+    }
+
+    .lote-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(243,112,33,.12);
+      color: var(--accent);
+      font-size: .68rem;
+      font-weight: 800;
+      margin-left: 6px;
+    }
+
     @media(max-width:720px) {
       .tipo-lancamento-segmented { grid-template-columns: 1fr; }
       .lote-stats { grid-template-columns: 1fr 1fr; }
@@ -1175,6 +1296,7 @@ function filtrarHistoricoParaUX() {
   const statusFiltro = document.getElementById("filtroStatusHistorico")?.value;
 
   return (appState.historicoCompleto || []).filter(h => {
+    if (h.estornado === true) return false;
     const atleta = appState.mapAtletas[h.atletaId];
     const isAtivo = atleta ? atleta.ativo !== false : false;
 
@@ -1303,25 +1425,78 @@ function setupModalEditarLote() {
   modal.innerHTML = `
     <div class="modal-editar-lote-card">
       <h3><i data-lucide="edit-3"></i> Editar lançamento</h3>
-      <p>Altere dados gerais do lote. Pontos individuais não são recalculados aqui.</p>
+      <p>Corrija dados gerais, remova atletas lançados por engano ou adicione atletas esquecidos. As alterações ficam registradas na auditoria.</p>
       <input type="hidden" id="editLoteKey" />
-      <div class="modal-editar-lote-grid">
-        <div class="full">
-          <label>Descrição</label>
-          <input type="text" id="editLoteDescricao" placeholder="Descrição do lançamento" />
+
+      <div id="editLoteResumo" class="lote-edit-summary"></div>
+
+      <div class="modal-editar-lote-tabs">
+        <button type="button" class="modal-editar-lote-tab active" data-lote-tab="dados"><i data-lucide="file-pen-line"></i> Dados gerais</button>
+        <button type="button" class="modal-editar-lote-tab" data-lote-tab="atletas"><i data-lucide="users"></i> Atletas do lote</button>
+        <button type="button" class="modal-editar-lote-tab" data-lote-tab="adicionar"><i data-lucide="user-plus"></i> Adicionar atleta</button>
+      </div>
+
+      <div id="loteTabDados" class="modal-lote-section active">
+        <div class="modal-editar-lote-grid">
+          <div class="full">
+            <label>Descrição</label>
+            <input type="text" id="editLoteDescricao" placeholder="Descrição do lançamento" />
+          </div>
+          <div>
+            <label>Data</label>
+            <input type="date" id="editLoteData" />
+          </div>
+          <div>
+            <label>KM por atleta</label>
+            <input type="number" id="editLoteKm" min="0" step="0.01" placeholder="Ex: 5 ou 21.1" />
+          </div>
         </div>
-        <div>
-          <label>Data</label>
-          <input type="date" id="editLoteData" />
-        </div>
-        <div>
-          <label>KM por atleta</label>
-          <input type="number" id="editLoteKm" min="0" step="0.01" placeholder="Ex: 5 ou 21.1" />
+        <div class="lote-impact-box">
+          Alterar o KM por atleta atualiza apenas registros com pontuação positiva. Faltas justificadas continuam com 0 km.
         </div>
       </div>
+
+      <div id="loteTabAtletas" class="modal-lote-section">
+        <label>Atletas incluídos neste lançamento</label>
+        <div id="editLoteAtletasLista"></div>
+        <div class="lote-impact-box">
+          Ao remover um atleta, os pontos são subtraídos do total dele e os registros são marcados como estornados, sem apagar o histórico.
+        </div>
+      </div>
+
+      <div id="loteTabAdicionar" class="modal-lote-section">
+        <div class="modal-lote-add-card">
+          <div class="modal-lote-add-grid">
+            <div>
+              <label>Atleta</label>
+              <select id="editAddAtleta"></select>
+            </div>
+            <div>
+              <label>Regra aplicada</label>
+              <select id="editAddRegra"></select>
+            </div>
+            <div>
+              <label>Pontos</label>
+              <input type="number" id="editAddPontos" min="0" step="1" />
+            </div>
+            <div>
+              <label>KM</label>
+              <input type="number" id="editAddKm" min="0" step="0.01" />
+            </div>
+            <div class="full">
+              <label>Observação</label>
+              <input type="text" id="editAddObs" placeholder="Ex: Atleta esquecido no lançamento original" />
+            </div>
+          </div>
+          <div style="display:flex; justify-content:flex-end; margin-top:12px;">
+            <button type="button" id="btnAdicionarAtletaLote" class="btn-primario"><i data-lucide="user-plus"></i> Adicionar ao lote</button>
+          </div>
+        </div>
+      </div>
+
       <div class="modal-editar-lote-actions">
-        <button type="button" id="btnCancelarEditLote" class="btn-acao">Cancelar</button>
-        <button type="button" id="btnSalvarEditLote" class="btn-primario"><i data-lucide="save"></i> Salvar alterações</button>
+        <button type="button" id="btnCancelarEditLote" class="btn-acao">Fechar</button>
+        <button type="button" id="btnSalvarEditLote" class="btn-primario"><i data-lucide="save"></i> Salvar dados gerais</button>
       </div>
     </div>
   `;
@@ -1332,11 +1507,27 @@ function setupModalEditarLote() {
     if (e.target === modal) fecharModalEditarLote();
   });
   document.getElementById("btnSalvarEditLote")?.addEventListener("click", salvarEdicaoLote);
+  document.getElementById("btnAdicionarAtletaLote")?.addEventListener("click", adicionarAtletaAoLote);
+
+  document.querySelectorAll(".modal-editar-lote-tab").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".modal-editar-lote-tab").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".modal-lote-section").forEach(sec => sec.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById(`loteTab${capitalizar(btn.dataset.loteTab)}`)?.classList.add("active");
+    });
+  });
+
+  document.getElementById("editAddRegra")?.addEventListener("change", () => {
+    const opt = document.getElementById("editAddRegra")?.selectedOptions?.[0];
+    const pontos = Number(opt?.dataset?.pontos || 0);
+    document.getElementById("editAddPontos").value = pontos;
+  });
 
   if (typeof lucide !== "undefined") lucide.createIcons();
 }
 
-function abrirModalEditarLote(loteKey) {
+async function abrirModalEditarLote(loteKey) {
   const lote = lotesRenderizados.get(loteKey);
   if (!lote) {
     showToast("Não foi possível localizar este lote.", "error");
@@ -1353,12 +1544,127 @@ function abrirModalEditarLote(loteKey) {
   document.getElementById("editLoteData").value = lote.dataTreino || "";
   document.getElementById("editLoteKm").value = kmReferencia ? String(kmReferencia).replace(".", ",") : "";
 
+  preencherResumoEdicaoLote(lote);
+  preencherListaAtletasDoLote(lote);
+  preencherSelectAtletasParaAdicionar(lote);
+  await preencherSelectRegrasParaAdicionar(lote);
+
   modal.style.display = "flex";
+  if (typeof lucide !== "undefined") lucide.createIcons();
 }
 
 function fecharModalEditarLote() {
   const modal = document.getElementById("modalEditarLote");
   if (modal) modal.style.display = "none";
+}
+
+function preencherResumoEdicaoLote(lote) {
+  const resumo = document.getElementById("editLoteResumo");
+  if (!resumo) return;
+
+  resumo.innerHTML = `
+    <div><span>Atletas</span><strong>${lote.qtdAtletas}</strong></div>
+    <div><span>Pontos</span><strong>${lote.totalPontos}</strong></div>
+    <div><span>KM</span><strong>${formatarKm(lote.totalKm)}</strong></div>
+    <div><span>Tipo</span><strong>${rotuloTipo(lote.tipo)}</strong></div>
+  `;
+}
+
+function preencherListaAtletasDoLote(lote) {
+  const lista = document.getElementById("editLoteAtletasLista");
+  if (!lista) return;
+
+  const porAtleta = new Map();
+  lote.itens.filter(i => i.estornado !== true).forEach(item => {
+    const atual = porAtleta.get(item.atletaId) || {
+      atletaId: item.atletaId,
+      nome: item.atletaNome || appState.mapAtletas[item.atletaId]?.nome || "Atleta não encontrado",
+      equipe: item.atletaEquipe || appState.mapAtletas[item.atletaId]?.equipe || "-",
+      regras: [],
+      pontos: 0,
+      km: 0,
+      ids: []
+    };
+
+    atual.regras.push(item.regraDesc || "-");
+    atual.pontos += Number(item.pontos) || 0;
+    atual.km = Math.max(atual.km, Number(item.kmPercorrido || 0));
+    if (item.id) atual.ids.push(item.id);
+    porAtleta.set(item.atletaId, atual);
+  });
+
+  const atletas = Array.from(porAtleta.values()).sort((a,b) => a.nome.localeCompare(b.nome));
+  if (!atletas.length) {
+    lista.innerHTML = `<div class="empty-state" style="padding:14px;"><p>Nenhum atleta ativo neste lote.</p></div>`;
+    return;
+  }
+
+  lista.innerHTML = atletas.map(a => `
+    <div class="lote-atleta-edit-row">
+      <div><strong>${escapeHtml(a.nome)}</strong><br><small>${escapeHtml(a.equipe)}</small></div>
+      <div><small>${escapeHtml(a.regras.join(" + "))}</small></div>
+      <div><strong>${a.pontos}</strong><br><small>pts</small></div>
+      <div><strong>${formatarKm(a.km)}</strong><br><small>km</small></div>
+      <button type="button" class="btn-acao btn-remover-atleta-lote" data-atleta-id="${escapeAttr(a.atletaId)}">
+        <i data-lucide="undo-2"></i> Remover
+      </button>
+    </div>
+  `).join("");
+
+  lista.querySelectorAll(".btn-remover-atleta-lote").forEach(btn => {
+    btn.addEventListener("click", () => removerAtletaDoLote(btn.dataset.atletaId));
+  });
+}
+
+function preencherSelectAtletasParaAdicionar(lote) {
+  const select = document.getElementById("editAddAtleta");
+  if (!select) return;
+
+  const idsJaNoLote = new Set(lote.itens.filter(i => i.estornado !== true).map(i => i.atletaId));
+  const equipe = normalizarEquipeLote(lote.equipe);
+
+  let atletas = Object.values(appState.mapAtletas || {}).filter(a => {
+    if (!a || a.role !== "atleta" || a.ativo === false || a.status !== "Aprovado") return false;
+    if (idsJaNoLote.has(a.id)) return false;
+    if (!equipe || equipe === "Ambas" || equipe === "Comitê") return a.equipe === "Bicicleta" || a.equipe === "Corrida";
+    return a.equipe === equipe;
+  });
+
+  atletas.sort((a,b) => String(a.nome || "").localeCompare(String(b.nome || "")));
+
+  select.innerHTML = atletas.length
+    ? `<option value="">Selecione um atleta</option>` + atletas.map(a => `<option value="${escapeAttr(a.id)}">${escapeHtml(a.nome)} · ${escapeHtml(a.equipe || "-")}</option>`).join("")
+    : `<option value="">Nenhum atleta disponível para adicionar</option>`;
+}
+
+async function preencherSelectRegrasParaAdicionar(lote) {
+  const select = document.getElementById("editAddRegra");
+  if (!select) return;
+
+  const equipe = normalizarEquipeLote(lote.equipe);
+  const tipo = lote.tipo || "treino";
+
+  try {
+    const snap = await getDocs(query(collection(db, "regras_pontuacao")));
+    const regras = [];
+    snap.forEach(d => {
+      const r = { id: d.id, ...d.data() };
+      const modalidadeOk = !r.modalidade || r.modalidade === "Ambas" || !equipe || equipe === "Comitê" || r.modalidade === equipe;
+      const tipos = r.tiposLancamento || r.tipos || [];
+      const tipoOk = tipos.length === 0 || tipos.includes(tipo) || tipos.includes("todos") || tipos.includes("Todos");
+      if (modalidadeOk && tipoOk) regras.push(r);
+    });
+
+    regras.sort((a,b) => String(a.descricao || "").localeCompare(String(b.descricao || "")));
+
+    select.innerHTML = regras.length
+      ? `<option value="">Selecione uma regra</option>` + regras.map(r => `<option value="${escapeAttr(r.id)}" data-pontos="${Number(r.pontos) || 0}" data-desc="${escapeAttr(r.descricao || "")}">${escapeHtml(r.descricao || "Regra")} · ${Number(r.pontos) || 0} pts</option>`).join("")
+      : `<option value="">Nenhuma regra disponível</option>`;
+
+    document.getElementById("editAddPontos").value = "";
+  } catch (err) {
+    select.innerHTML = `<option value="">Erro ao carregar regras</option>`;
+  }
 }
 
 async function salvarEdicaoLote() {
@@ -1380,8 +1686,10 @@ async function salvarEdicaoLote() {
 
   try {
     const batch = writeBatch(db);
+    const agora = new Date().toISOString();
+    const usuario = getUsuarioAuditoria();
 
-    lote.itens.forEach(item => {
+    lote.itens.filter(i => i.estornado !== true).forEach(item => {
       if (!item.id) return;
       const pontos = Number(item.pontos) || 0;
       batch.update(doc(db, "historico_pontos", item.id), {
@@ -1389,14 +1697,25 @@ async function salvarEdicaoLote() {
         tituloLancamento: novaDescricao,
         dataTreino: novaData,
         kmPercorrido: pontos > 0 ? novoKm : 0,
-        atualizadoEm: new Date().toISOString()
+        atualizadoEm: agora,
+        atualizadoPor: usuario.uid,
+        atualizadoPorNome: usuario.nome,
+        loteEditado: true
       });
+    });
+
+    registrarAuditoriaNoBatch(batch, "lote_dados_atualizados", "historico_pontos", lote.id, {
+      descricaoAnterior: lote.titulo,
+      descricaoNova: novaDescricao,
+      dataAnterior: lote.dataTreino,
+      dataNova: novaData,
+      kmNovo: novoKm
     });
 
     await batch.commit();
 
     appState.historicoCompleto = (appState.historicoCompleto || []).map(h => {
-      if (!lote.itens.some(i => i.id === h.id)) return h;
+      if (!lote.itens.some(i => i.id === h.id) || h.estornado === true) return h;
       const pontos = Number(h.pontos) || 0;
       return {
         ...h,
@@ -1404,20 +1723,238 @@ async function salvarEdicaoLote() {
         tituloLancamento: novaDescricao,
         dataTreino: novaData,
         kmPercorrido: pontos > 0 ? novoKm : 0,
-        atualizadoEm: new Date().toISOString()
+        atualizadoEm: agora,
+        atualizadoPor: usuario.uid,
+        atualizadoPorNome: usuario.nome,
+        loteEditado: true
       };
     });
 
-    fecharModalEditarLote();
     renderizarExtratoAgrupado();
-    showToast("Lançamento atualizado com sucesso.", "success");
+    const loteAtualizado = lotesRenderizados.get(loteKey) || lote;
+    preencherResumoEdicaoLote(loteAtualizado);
+    preencherListaAtletasDoLote(loteAtualizado);
+    showToast("Dados gerais do lançamento atualizados.", "success");
   } catch (err) {
     showToast("Erro ao editar lançamento: " + err.message, "error");
   } finally {
     btn.disabled = false;
-    btn.innerHTML = `<i data-lucide="save"></i> Salvar alterações`;
+    btn.innerHTML = `<i data-lucide="save"></i> Salvar dados gerais`;
     if (typeof lucide !== "undefined") lucide.createIcons();
   }
+}
+
+async function removerAtletaDoLote(atletaId) {
+  const loteKey = document.getElementById("editLoteKey")?.value;
+  const lote = lotesRenderizados.get(loteKey);
+  if (!lote || !atletaId) return;
+
+  const itensAtleta = lote.itens.filter(i => i.atletaId === atletaId && i.estornado !== true);
+  if (!itensAtleta.length) return showToast("Este atleta não possui registros ativos no lote.", "error");
+
+  const nome = itensAtleta[0].atletaNome || appState.mapAtletas[atletaId]?.nome || "Atleta";
+  const pontos = itensAtleta.reduce((s,i) => s + (Number(i.pontos) || 0), 0);
+  const motivo = prompt(`Informe o motivo para remover ${nome} deste lançamento:`);
+
+  if (!motivo || !motivo.trim()) {
+    return showToast("Motivo obrigatório para remover atleta do lançamento.", "error");
+  }
+
+  mostrarConfirmacao("Remover atleta do lançamento", `Remover ${nome} deste lote?\n\nImpacto: -${pontos} ponto(s) no total do atleta.\nA ação ficará registrada na auditoria.`, async () => {
+    try {
+      const batch = writeBatch(db);
+      const agora = new Date().toISOString();
+      const usuario = getUsuarioAuditoria();
+
+      itensAtleta.forEach(item => {
+        if (!item.id) return;
+        batch.update(doc(db, "historico_pontos", item.id), {
+          estornado: true,
+          estornadoEm: agora,
+          estornadoPor: usuario.uid,
+          estornadoPorNome: usuario.nome,
+          motivoEstorno: motivo.trim(),
+          tipoAjuste: "remocao_lote"
+        });
+      });
+
+      if (pontos !== 0) {
+        batch.update(doc(db, "atletas", atletaId), { pontuacaoTotal: increment(-pontos) });
+      }
+
+      registrarAuditoriaNoBatch(batch, "lote_atleta_removido", "historico_pontos", lote.id, {
+        atletaId,
+        atletaNome: nome,
+        pontosRemovidos: pontos,
+        motivo: motivo.trim()
+      });
+
+      await batch.commit();
+
+      appState.historicoCompleto = (appState.historicoCompleto || []).map(h => {
+        if (!itensAtleta.some(i => i.id === h.id)) return h;
+        return {
+          ...h,
+          estornado: true,
+          estornadoEm: agora,
+          estornadoPor: usuario.uid,
+          estornadoPorNome: usuario.nome,
+          motivoEstorno: motivo.trim(),
+          tipoAjuste: "remocao_lote"
+        };
+      });
+
+      if (appState.mapAtletas[atletaId] && pontos !== 0) {
+        appState.mapAtletas[atletaId].pontuacaoTotal = Number(appState.mapAtletas[atletaId].pontuacaoTotal || 0) - pontos;
+      }
+
+      renderizarExtratoAgrupado();
+      const loteAtualizado = lotesRenderizados.get(loteKey);
+      if (loteAtualizado) {
+        preencherResumoEdicaoLote(loteAtualizado);
+        preencherListaAtletasDoLote(loteAtualizado);
+        preencherSelectAtletasParaAdicionar(loteAtualizado);
+      }
+
+      showToast("Atleta removido do lançamento.", "success");
+    } catch (err) {
+      showToast("Erro ao remover atleta: " + err.message, "error");
+    }
+  }, "danger");
+}
+
+async function adicionarAtletaAoLote() {
+  const loteKey = document.getElementById("editLoteKey")?.value;
+  const lote = lotesRenderizados.get(loteKey);
+  if (!lote) return showToast("Lote não localizado.", "error");
+
+  const atletaId = document.getElementById("editAddAtleta")?.value;
+  const regraSelect = document.getElementById("editAddRegra");
+  const regraId = regraSelect?.value;
+  const regraOpt = regraSelect?.selectedOptions?.[0];
+  const regraDesc = regraOpt?.dataset?.desc || regraOpt?.textContent?.split(" · ")[0] || "Ajuste manual";
+  const pontos = Number(document.getElementById("editAddPontos")?.value || 0) || 0;
+  const km = Number(String(document.getElementById("editAddKm")?.value || "0").replace(",", ".")) || 0;
+  const obs = document.getElementById("editAddObs")?.value.trim() || "Inclusão posterior no lançamento";
+
+  if (!atletaId) return showToast("Selecione um atleta para adicionar.", "error");
+  if (!regraId) return showToast("Selecione uma regra para o atleta.", "error");
+
+  const atleta = appState.mapAtletas[atletaId];
+  if (!atleta) return showToast("Atleta não localizado.", "error");
+
+  const jaExiste = lote.itens.some(i => i.atletaId === atletaId && i.estornado !== true);
+  if (jaExiste) return showToast("Este atleta já está ativo neste lançamento.", "error");
+
+  mostrarConfirmacao("Adicionar atleta ao lançamento", `Adicionar ${atleta.nome} ao lote?\n\nImpacto: +${pontos} ponto(s).\nA ação ficará registrada na auditoria.`, async () => {
+    try {
+      const batch = writeBatch(db);
+      const agora = new Date().toISOString();
+      const usuario = getUsuarioAuditoria();
+      const loteId = lote.itens[0]?.loteId || lote.id;
+      const novoRef = doc(collection(db, "historico_pontos"));
+
+      const novoRegistro = {
+        atletaId,
+        atletaNome: atleta.nome,
+        atletaEquipe: atleta.equipe,
+        regraId,
+        regraDesc,
+        pontos,
+        descTreino: lote.titulo,
+        tituloLancamento: lote.titulo,
+        dataTreino: lote.dataTreino,
+        eventoId: lote.itens[0]?.eventoId || "",
+        loteId,
+        tipoLancamento: lote.tipo || "treino",
+        modalidade: lote.equipe || atleta.equipe,
+        kmPercorrido: pontos > 0 ? km : 0,
+        criadoEm: agora,
+        criadoPor: usuario.uid,
+        criadoPorNome: usuario.nome,
+        tipoAjuste: "inclusao_posterior",
+        observacaoAjuste: obs
+      };
+
+      batch.set(novoRef, novoRegistro);
+
+      if (pontos !== 0) {
+        batch.update(doc(db, "atletas", atletaId), { pontuacaoTotal: increment(pontos) });
+      }
+
+      registrarAuditoriaNoBatch(batch, "lote_atleta_adicionado", "historico_pontos", lote.id, {
+        atletaId,
+        atletaNome: atleta.nome,
+        regraId,
+        regraDesc,
+        pontosAdicionados: pontos,
+        km,
+        observacao: obs
+      });
+
+      await batch.commit();
+
+      appState.historicoCompleto = [
+        ...(appState.historicoCompleto || []),
+        { id: novoRef.id, ...novoRegistro }
+      ];
+
+      if (appState.mapAtletas[atletaId] && pontos !== 0) {
+        appState.mapAtletas[atletaId].pontuacaoTotal = Number(appState.mapAtletas[atletaId].pontuacaoTotal || 0) + pontos;
+      }
+
+      document.getElementById("editAddAtleta").value = "";
+      document.getElementById("editAddRegra").value = "";
+      document.getElementById("editAddPontos").value = "";
+      document.getElementById("editAddKm").value = "";
+      document.getElementById("editAddObs").value = "";
+
+      renderizarExtratoAgrupado();
+      const loteAtualizado = lotesRenderizados.get(loteKey) || lotesRenderizados.get(loteId);
+      if (loteAtualizado) {
+        document.getElementById("editLoteKey").value = loteAtualizado.id;
+        preencherResumoEdicaoLote(loteAtualizado);
+        preencherListaAtletasDoLote(loteAtualizado);
+        preencherSelectAtletasParaAdicionar(loteAtualizado);
+        await preencherSelectRegrasParaAdicionar(loteAtualizado);
+      }
+
+      showToast("Atleta adicionado ao lançamento.", "success");
+    } catch (err) {
+      showToast("Erro ao adicionar atleta: " + err.message, "error");
+    }
+  });
+}
+
+function normalizarEquipeLote(equipe) {
+  if (!equipe) return "";
+  if (equipe === "Bike") return "Bicicleta";
+  if (String(equipe).includes("Bicicleta")) return "Bicicleta";
+  if (String(equipe).includes("Corrida")) return "Corrida";
+  return equipe;
+}
+
+function getUsuarioAuditoria() {
+  const uid = appState.currentUser?.uid || "";
+  const usuario = appState.mapAtletas?.[uid];
+  return { uid, nome: usuario?.nome || "Comitê Gestor" };
+}
+
+function registrarAuditoriaNoBatch(batch, acao, entidade, entidadeId, dados = {}) {
+  const usuario = getUsuarioAuditoria();
+  batch.set(doc(collection(db, "auditoria")), {
+    acao,
+    entidade,
+    entidadeId,
+    dados,
+    usuarioId: usuario.uid,
+    usuarioNome: usuario.nome,
+    criadoEm: new Date().toISOString()
+  });
+}
+
+function capitalizar(txt = "") {
+  return txt.charAt(0).toUpperCase() + txt.slice(1);
 }
 
 function tentarAbrirFichaAtleta(atletaId) {

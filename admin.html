@@ -696,27 +696,45 @@
     </div>
   </div>
 
-  <div id="modalFichaAtleta" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:2000; justify-content:center; align-items:center;">
-    <div style="background: var(--bg-card); padding: 30px; border-radius: 12px; width: 95%; max-width: 800px; max-height: 90vh; overflow-y: auto;">
-      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 20px;">
-        <div><h2 id="fichaNome" style="margin: 0; color: var(--primary);">Nome do Atleta</h2><span id="fichaEquipe" style="font-size: 0.85rem; color: #666; font-weight: bold;">Equipe</span></div>
-        <button id="fecharModalFicha" class="btn-acao"><i data-lucide="x"></i></button>
-      </div>
-      <div class="ficha-grid">
-        <div>
-          <div class="ficha-metric-grid">
-            <div class="ficha-metric-card"><span>Total de Pontos</span><h3 id="fichaPontos">0</h3></div>
-            <div class="ficha-metric-card"><span>KM percorridos</span><h3 id="fichaKm">0 km</h3></div>
-            <div class="ficha-metric-card"><span>Status no Sistema</span><h3 id="fichaStatus">Ativo</h3></div>
+  <div id="modalFichaAtleta" class="ficha-modal-overlay" style="display:none;">
+    <div class="ficha-modal-shell">
+      <div class="ficha-modal-header">
+        <div class="ficha-header-main">
+          <div class="ficha-avatar-mini" id="fichaAvatarMini">AT</div>
+          <div>
+            <h2 id="fichaNome">Nome do Atleta</h2>
+            <span id="fichaEquipe">Equipe</span>
           </div>
-          <div style="background: rgba(0,155,193,0.05); border: 1px solid var(--border); padding: 15px; border-radius: 8px; margin-bottom: 16px;">
-             <h4 style="margin: 0 0 10px 0; color: var(--primary); font-size: 0.95rem;">Dados Cadastrais</h4>
-             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.85rem; color: var(--text);">
-                <div><strong>Localidade:</strong> <span id="fichaLocalidade">-</span></div>
-                <div><strong>Nascimento:</strong> <span id="fichaNasc">-</span></div>
-                <div><strong>Sexo:</strong> <span id="fichaSexo">-</span></div>
-                <div><strong>Entrou em:</strong> <span id="fichaAnoEntrada">-</span></div>
-             </div>
+        </div>
+        <button id="fecharModalFicha" class="btn-acao ficha-close"><i data-lucide="x"></i></button>
+      </div>
+
+      <input type="hidden" id="fichaAtletaId" />
+
+      <div class="ficha-tabs" role="tablist" aria-label="Abas da ficha do atleta">
+        <button type="button" class="ficha-tab active" data-ficha-tab="resumo"><i data-lucide="layout-dashboard"></i> Resumo</button>
+        <button type="button" class="ficha-tab" data-ficha-tab="lancamentos"><i data-lucide="history"></i> Lançamentos</button>
+        <button type="button" class="ficha-tab" data-ficha-tab="dados"><i data-lucide="id-card"></i> Dados e campos</button>
+        <button type="button" class="ficha-tab" data-ficha-tab="comentarios"><i data-lucide="message-square"></i> Comentários</button>
+        <button type="button" class="ficha-tab" data-ficha-tab="auditoria"><i data-lucide="shield-check"></i> Auditoria</button>
+      </div>
+
+      <div class="ficha-tab-content active" id="ficha-tab-resumo">
+        <div class="ficha-metric-grid ficha-metric-grid-tabs">
+          <div class="ficha-metric-card"><span>Total de Pontos</span><h3 id="fichaPontos">0</h3></div>
+          <div class="ficha-metric-card"><span>KM percorridos</span><h3 id="fichaKm">0 km</h3></div>
+          <div class="ficha-metric-card"><span>Status no Sistema</span><h3 id="fichaStatus">Ativo</h3></div>
+        </div>
+
+        <div class="ficha-resumo-grid">
+          <div class="ficha-info-panel">
+            <h4><i data-lucide="user-round"></i> Dados rápidos</h4>
+            <div class="ficha-info-list">
+              <div><strong>Localidade</strong><span id="fichaLocalidade">-</span></div>
+              <div><strong>Nascimento</strong><span id="fichaNasc">-</span></div>
+              <div><strong>Sexo</strong><span id="fichaSexo">-</span></div>
+              <div><strong>Entrada</strong><span id="fichaAnoEntrada">-</span></div>
+            </div>
           </div>
 
           <div class="ficha-status-panel">
@@ -731,29 +749,48 @@
             <button id="btnSalvarStatusFicha" class="btn-acao" style="width:100%; justify-content:center; margin-top:8px;"><i data-lucide="save"></i> Salvar status</button>
             <div id="fichaHistoricoStatus" class="ficha-status-history"></div>
           </div>
+        </div>
+      </div>
 
-          <div class="ficha-extra-panel">
-            <div class="ficha-extra-head">
-              <div>
-                <h4>Campos configurados da ficha</h4>
-                <small>Estes campos são definidos em Ajustes &gt; Modelo da ficha. Aqui você apenas preenche os valores do atleta.</small>
-              </div>
+      <div class="ficha-tab-content" id="ficha-tab-lancamentos">
+        <div class="ficha-section-title">
+          <h4><i data-lucide="history"></i> Histórico de lançamentos</h4>
+          <small>Pontuação, faltas justificadas e KM registrados para este atleta.</small>
+        </div>
+        <div id="fichaHistorico" class="ficha-scroll-list"></div>
+      </div>
+
+      <div class="ficha-tab-content" id="ficha-tab-dados">
+        <div class="ficha-extra-panel ficha-extra-panel-tabs">
+          <div class="ficha-extra-head">
+            <div>
+              <h4>Campos configurados da ficha</h4>
+              <small>Estes campos são definidos em Ajustes &gt; Modelo da ficha. Aqui você apenas preenche os valores do atleta.</small>
             </div>
-            <div id="fichaCamposModeloLista" class="ficha-modelo-list"></div>
-            <button id="btnSalvarCamposFichaModelo" class="btn-primario" type="button" style="width:100%; justify-content:center; margin-top:12px;"><i data-lucide="save"></i> Salvar campos da ficha</button>
           </div>
-          <h4 style="margin: 0 0 10px 0; color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 5px;">Histórico de Lançamentos</h4>
-          <div id="fichaHistorico" style="max-height: 200px; overflow-y: auto; font-size: 0.85rem; padding-right: 5px;"></div>
+          <div id="fichaCamposModeloLista" class="ficha-modelo-list"></div>
+          <button id="btnSalvarCamposFichaModelo" class="btn-primario" type="button" style="width:100%; justify-content:center; margin-top:12px;"><i data-lucide="save"></i> Salvar campos da ficha</button>
         </div>
-        <div style="display: flex; flex-direction: column;">
-          <h4 style="margin: 0 0 10px 0; color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 5px;">Comentários e Observações</h4>
-          <div id="fichaComentariosLista" style="flex: 1; max-height: 350px; overflow-y: auto; margin-bottom: 10px; padding-right: 5px;"></div>
-          <div style="background: var(--bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border);">
-            <input type="hidden" id="fichaAtletaId" />
-            <textarea id="novoComentarioFicha" placeholder="Registe uma observação (lesão, aviso, atestado)..." rows="3" style="width: 100%; resize: none; margin-bottom: 10px;"></textarea>
-            <button id="btnSalvarComentario" class="btn-primario" style="width: 100%; justify-content: center;">Adicionar Comentário</button>
-          </div>
+      </div>
+
+      <div class="ficha-tab-content" id="ficha-tab-comentarios">
+        <div class="ficha-section-title">
+          <h4><i data-lucide="message-square"></i> Comentários e observações</h4>
+          <small>Registre informações de acompanhamento, avisos, lesões, atestados ou observações internas.</small>
         </div>
+        <div id="fichaComentariosLista" class="ficha-scroll-list ficha-comments-list"></div>
+        <div class="ficha-comment-form">
+          <textarea id="novoComentarioFicha" placeholder="Registre uma observação (lesão, aviso, atestado)..." rows="3"></textarea>
+          <button id="btnSalvarComentario" class="btn-primario">Adicionar Comentário</button>
+        </div>
+      </div>
+
+      <div class="ficha-tab-content" id="ficha-tab-auditoria">
+        <div class="ficha-section-title">
+          <h4><i data-lucide="shield-check"></i> Auditoria da ficha</h4>
+          <small>Últimas alterações relacionadas ao atleta, status, campos da ficha e lançamentos.</small>
+        </div>
+        <div id="fichaAuditoriaLista" class="ficha-scroll-list"></div>
       </div>
     </div>
   </div>
