@@ -374,7 +374,9 @@ function aplicarEstilosUXPontuacao() {
     }
 
     .modal-editar-lote-card {
-      width: min(560px, 100%);
+      width: min(980px, 100%);
+      max-height: 92vh;
+      overflow-y: auto;
       background: var(--bg-card);
       border-radius: 22px;
       border: 1px solid var(--border);
@@ -408,10 +410,17 @@ function aplicarEstilosUXPontuacao() {
     }
 
     .modal-editar-lote-actions {
+      position: sticky;
+      bottom: -22px;
+      z-index: 5;
       display: flex;
-      justify-content: flex-end;
+      justify-content: space-between;
       gap: 10px;
-      margin-top: 18px;
+      margin: 18px -22px -22px;
+      padding: 14px 22px;
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+      box-shadow: 0 -10px 24px rgba(0,0,0,.08);
     }
 
     .lote-details {
@@ -530,7 +539,7 @@ function aplicarEstilosUXPontuacao() {
 
     .lote-atleta-edit-row {
       display: grid;
-      grid-template-columns: minmax(180px,1fr) 1.2fr 70px 70px auto;
+      grid-template-columns: minmax(180px,1.2fr) minmax(170px,1fr) 80px 80px auto;
       align-items: center;
       gap: 10px;
       border: 1px solid var(--border);
@@ -543,10 +552,28 @@ function aplicarEstilosUXPontuacao() {
     .lote-atleta-edit-row strong { color: var(--text); }
     .lote-atleta-edit-row small { color: var(--text-light); }
 
-    .btn-remover-atleta-lote {
+    .btn-remover-atleta-lote, .btn-estornar-lote-inteiro {
       color: var(--danger) !important;
       border-color: rgba(230,57,70,.35) !important;
       background: rgba(230,57,70,.06) !important;
+    }
+
+    .lote-edit-section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin: 0 0 10px;
+    }
+
+    .lote-edit-section-title strong {
+      color: var(--text);
+      font-size: .95rem;
+    }
+
+    .lote-edit-section-title small {
+      color: var(--text-light);
+      font-size: .78rem;
     }
 
     .modal-lote-add-card {
@@ -596,6 +623,111 @@ function aplicarEstilosUXPontuacao() {
       .lancamento-save-bar { position: static; flex-direction: column; align-items: stretch; }
       .lancamento-save-bar .btn-primario { width: 100%; min-width: 0; }
       .modal-editar-lote-grid { grid-template-columns: 1fr; }
+      .lote-atleta-edit-row { grid-template-columns: 1fr; align-items: stretch; }
+      .modal-editar-lote-actions { position: static; margin: 18px 0 0; flex-direction: column; }
+    }
+
+
+    /* UX POLISH V17 - modal de edição com tamanho estável e controles padronizados */
+    .modal-editar-lote-card {
+      width: min(1040px, 96vw) !important;
+      height: min(90vh, 820px) !important;
+      max-height: min(90vh, 820px) !important;
+      display: flex !important;
+      flex-direction: column !important;
+      overflow: hidden !important;
+      padding: 22px !important;
+    }
+
+    .modal-editar-lote-card > h3,
+    .modal-editar-lote-card > p,
+    .modal-editar-lote-card > input,
+    .modal-editar-lote-card > .lote-edit-summary,
+    .modal-editar-lote-card > .modal-editar-lote-tabs {
+      flex: 0 0 auto;
+    }
+
+    .modal-lote-section.active {
+      flex: 1 1 auto !important;
+      min-height: 360px !important;
+      overflow-y: auto !important;
+      padding-right: 4px;
+      animation: loteTabFade .16s ease;
+    }
+
+    @keyframes loteTabFade {
+      from { opacity: .35; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .modal-editar-lote-actions {
+      flex: 0 0 auto !important;
+      position: relative !important;
+      bottom: auto !important;
+      margin: 16px -22px -22px !important;
+      padding: 14px 22px !important;
+    }
+
+    .modal-editar-lote-grid,
+    .modal-lote-add-grid {
+      align-items: end !important;
+    }
+
+    .modal-editar-lote-card label {
+      min-height: 18px;
+      display: block;
+      margin-bottom: 6px;
+      font-size: .78rem;
+      font-weight: 800;
+      color: var(--text-light);
+    }
+
+    .modal-editar-lote-card input:not([type="checkbox"]):not([type="radio"]),
+    .modal-editar-lote-card select,
+    .modal-editar-lote-card textarea {
+      width: 100%;
+      min-height: 44px !important;
+      height: 44px;
+      margin: 0 !important;
+      border-radius: 12px !important;
+      box-sizing: border-box !important;
+    }
+
+    .modal-editar-lote-tab {
+      min-height: 38px;
+      transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
+    }
+
+    .modal-editar-lote-tab:hover {
+      transform: translateY(-1px);
+    }
+
+    .lote-atleta-edit-row {
+      min-height: 62px;
+      grid-template-columns: minmax(190px,1.25fr) minmax(170px,1fr) 86px 86px auto !important;
+    }
+
+    .lote-impact-box {
+      margin-bottom: 2px;
+    }
+
+    .lote-edit-summary div {
+      min-height: 58px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    @media(max-width:720px) {
+      .modal-editar-lote-card {
+        height: 94vh !important;
+        max-height: 94vh !important;
+        width: 98vw !important;
+        padding: 16px !important;
+      }
+      .modal-lote-section.active { min-height: 240px !important; }
+      .modal-editar-lote-actions { margin: 14px -16px -16px !important; padding: 12px 16px !important; }
+      .lote-atleta-edit-row { grid-template-columns: 1fr !important; }
     }
   `;
 
@@ -1424,16 +1556,16 @@ function setupModalEditarLote() {
   modal.className = "modal-editar-lote-backdrop";
   modal.innerHTML = `
     <div class="modal-editar-lote-card">
-      <h3><i data-lucide="edit-3"></i> Editar lançamento</h3>
-      <p>Corrija dados gerais, remova atletas lançados por engano ou adicione atletas esquecidos. As alterações ficam registradas na auditoria.</p>
+      <h3><i data-lucide="edit-3"></i> Editar lançamento completo</h3>
+      <p>Use esta tela para corrigir o lote: alterar dados gerais, remover atletas lançados por engano, adicionar atletas esquecidos e registrar tudo em auditoria.</p>
       <input type="hidden" id="editLoteKey" />
 
       <div id="editLoteResumo" class="lote-edit-summary"></div>
 
       <div class="modal-editar-lote-tabs">
         <button type="button" class="modal-editar-lote-tab active" data-lote-tab="dados"><i data-lucide="file-pen-line"></i> Dados gerais</button>
-        <button type="button" class="modal-editar-lote-tab" data-lote-tab="atletas"><i data-lucide="users"></i> Atletas do lote</button>
-        <button type="button" class="modal-editar-lote-tab" data-lote-tab="adicionar"><i data-lucide="user-plus"></i> Adicionar atleta</button>
+        <button type="button" class="modal-editar-lote-tab" data-lote-tab="atletas"><i data-lucide="users"></i> Remover/validar atletas</button>
+        <button type="button" class="modal-editar-lote-tab" data-lote-tab="adicionar"><i data-lucide="user-plus"></i> Adicionar atleta esquecido</button>
       </div>
 
       <div id="loteTabDados" class="modal-lote-section active">
@@ -1457,7 +1589,12 @@ function setupModalEditarLote() {
       </div>
 
       <div id="loteTabAtletas" class="modal-lote-section">
-        <label>Atletas incluídos neste lançamento</label>
+        <div class="lote-edit-section-title">
+          <div>
+            <strong>Atletas incluídos neste lançamento</strong><br>
+            <small>Remova quem foi lançado por engano. O histórico não é apagado; ele é estornado.</small>
+          </div>
+        </div>
         <div id="editLoteAtletasLista"></div>
         <div class="lote-impact-box">
           Ao remover um atleta, os pontos são subtraídos do total dele e os registros são marcados como estornados, sem apagar o histórico.
@@ -1495,8 +1632,11 @@ function setupModalEditarLote() {
       </div>
 
       <div class="modal-editar-lote-actions">
-        <button type="button" id="btnCancelarEditLote" class="btn-acao">Fechar</button>
-        <button type="button" id="btnSalvarEditLote" class="btn-primario"><i data-lucide="save"></i> Salvar dados gerais</button>
+        <button type="button" id="btnEstornarLoteInteiro" class="btn-acao btn-estornar-lote-inteiro"><i data-lucide="rotate-ccw"></i> Estornar lote inteiro</button>
+        <div style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">
+          <button type="button" id="btnCancelarEditLote" class="btn-acao">Fechar</button>
+          <button type="button" id="btnSalvarEditLote" class="btn-primario"><i data-lucide="save"></i> Salvar dados gerais</button>
+        </div>
       </div>
     </div>
   `;
@@ -1508,6 +1648,7 @@ function setupModalEditarLote() {
   });
   document.getElementById("btnSalvarEditLote")?.addEventListener("click", salvarEdicaoLote);
   document.getElementById("btnAdicionarAtletaLote")?.addEventListener("click", adicionarAtletaAoLote);
+  document.getElementById("btnEstornarLoteInteiro")?.addEventListener("click", estornarLoteInteiro);
 
   document.querySelectorAll(".modal-editar-lote-tab").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -1924,6 +2065,92 @@ async function adicionarAtletaAoLote() {
       showToast("Erro ao adicionar atleta: " + err.message, "error");
     }
   });
+}
+
+
+async function estornarLoteInteiro() {
+  const loteKey = document.getElementById("editLoteKey")?.value;
+  const lote = lotesRenderizados.get(loteKey);
+  if (!lote) return showToast("Lote não localizado.", "error");
+
+  const itensAtivos = lote.itens.filter(i => i.estornado !== true);
+  if (!itensAtivos.length) return showToast("Este lote não possui registros ativos.", "info");
+
+  const pontosPorAtleta = {};
+  itensAtivos.forEach(i => {
+    const pts = Number(i.pontos) || 0;
+    if (!pontosPorAtleta[i.atletaId]) pontosPorAtleta[i.atletaId] = 0;
+    pontosPorAtleta[i.atletaId] += pts;
+  });
+
+  const totalPontos = itensAtivos.reduce((s, i) => s + (Number(i.pontos) || 0), 0);
+  const motivo = prompt("Informe o motivo para estornar o lote inteiro:");
+  if (!motivo || !motivo.trim()) {
+    return showToast("Motivo obrigatório para estornar o lote.", "error");
+  }
+
+  mostrarConfirmacao(
+    "Estornar lote inteiro",
+    `Estornar todo o lote ${lote.titulo}?\n\nRegistros afetados: ${itensAtivos.length}\nPontos removidos: ${totalPontos}\n\nA ação ficará registrada na auditoria.`,
+    async () => {
+      try {
+        const batch = writeBatch(db);
+        const agora = new Date().toISOString();
+        const usuario = getUsuarioAuditoria();
+
+        itensAtivos.forEach(item => {
+          if (!item.id) return;
+          batch.update(doc(db, "historico_pontos", item.id), {
+            estornado: true,
+            estornadoEm: agora,
+            estornadoPor: usuario.uid,
+            estornadoPorNome: usuario.nome,
+            motivoEstorno: motivo.trim(),
+            tipoAjuste: "estorno_lote_inteiro"
+          });
+        });
+
+        Object.entries(pontosPorAtleta).forEach(([atletaId, pontos]) => {
+          if (pontos !== 0) batch.update(doc(db, "atletas", atletaId), { pontuacaoTotal: increment(-pontos) });
+        });
+
+        registrarAuditoriaNoBatch(batch, "lote_estornado_inteiro", "historico_pontos", lote.id, {
+          titulo: lote.titulo,
+          registrosAfetados: itensAtivos.length,
+          pontosRemovidos: totalPontos,
+          motivo: motivo.trim()
+        });
+
+        await batch.commit();
+
+        appState.historicoCompleto = (appState.historicoCompleto || []).map(h => {
+          if (!itensAtivos.some(i => i.id === h.id)) return h;
+          return {
+            ...h,
+            estornado: true,
+            estornadoEm: agora,
+            estornadoPor: usuario.uid,
+            estornadoPorNome: usuario.nome,
+            motivoEstorno: motivo.trim(),
+            tipoAjuste: "estorno_lote_inteiro"
+          };
+        });
+
+        Object.entries(pontosPorAtleta).forEach(([atletaId, pontos]) => {
+          if (appState.mapAtletas[atletaId] && pontos !== 0) {
+            appState.mapAtletas[atletaId].pontuacaoTotal = Number(appState.mapAtletas[atletaId].pontuacaoTotal || 0) - pontos;
+          }
+        });
+
+        renderizarExtratoAgrupado();
+        fecharModalEditarLote();
+        showToast("Lote estornado com sucesso.", "success");
+      } catch (err) {
+        showToast("Erro ao estornar lote: " + err.message, "error");
+      }
+    },
+    "danger"
+  );
 }
 
 function normalizarEquipeLote(equipe) {
