@@ -616,6 +616,79 @@ function aplicarEstilosUXPontuacao() {
       margin-left: 6px;
     }
 
+
+    /* V19 - modal estável sem esticar a tela inteira */
+    .modal-editar-lote-card {
+      width: 980px !important;
+      max-width: calc(100vw - 36px) !important;
+      height: min(86vh, 760px) !important;
+      max-height: min(86vh, 760px) !important;
+      overflow: hidden !important;
+      display: flex !important;
+      flex-direction: column !important;
+      box-sizing: border-box !important;
+    }
+
+    .modal-editar-lote-card > h3,
+    .modal-editar-lote-card > p,
+    .modal-editar-lote-tabs,
+    .lote-edit-summary,
+    .modal-editar-lote-actions {
+      flex: 0 0 auto;
+    }
+
+    .modal-editar-lote-tabs {
+      overflow-x: auto;
+      scrollbar-width: thin;
+      flex-wrap: nowrap !important;
+      padding-bottom: 10px;
+    }
+
+    .modal-editar-lote-tab {
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+
+    .modal-lote-section {
+      min-height: 0;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .modal-lote-section.active {
+      flex: 1 1 auto;
+      display: block !important;
+    }
+
+    .modal-editar-lote-grid input,
+    .modal-editar-lote-grid select,
+    .modal-lote-add-grid input,
+    .modal-lote-add-grid select {
+      height: 46px;
+      min-height: 46px;
+      box-sizing: border-box;
+      margin-bottom: 0 !important;
+    }
+
+    .modal-editar-lote-grid label,
+    .modal-lote-add-grid label {
+      min-height: 18px;
+      display: flex;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .modal-lote-add-grid textarea {
+      min-height: 84px;
+      box-sizing: border-box;
+      margin-bottom: 0 !important;
+    }
+
+    .modal-editar-lote-actions {
+      bottom: -22px;
+      flex-wrap: wrap;
+    }
+
     @media(max-width:720px) {
       .tipo-lancamento-segmented { grid-template-columns: 1fr; }
       .lote-stats { grid-template-columns: 1fr 1fr; }
@@ -625,109 +698,6 @@ function aplicarEstilosUXPontuacao() {
       .modal-editar-lote-grid { grid-template-columns: 1fr; }
       .lote-atleta-edit-row { grid-template-columns: 1fr; align-items: stretch; }
       .modal-editar-lote-actions { position: static; margin: 18px 0 0; flex-direction: column; }
-    }
-
-
-    /* UX POLISH V17 - modal de edição com tamanho estável e controles padronizados */
-    .modal-editar-lote-card {
-      width: min(1040px, 96vw) !important;
-      height: min(90vh, 820px) !important;
-      max-height: min(90vh, 820px) !important;
-      display: flex !important;
-      flex-direction: column !important;
-      overflow: hidden !important;
-      padding: 22px !important;
-    }
-
-    .modal-editar-lote-card > h3,
-    .modal-editar-lote-card > p,
-    .modal-editar-lote-card > input,
-    .modal-editar-lote-card > .lote-edit-summary,
-    .modal-editar-lote-card > .modal-editar-lote-tabs {
-      flex: 0 0 auto;
-    }
-
-    .modal-lote-section.active {
-      flex: 1 1 auto !important;
-      min-height: 360px !important;
-      overflow-y: auto !important;
-      padding-right: 4px;
-      animation: loteTabFade .16s ease;
-    }
-
-    @keyframes loteTabFade {
-      from { opacity: .35; transform: translateY(4px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .modal-editar-lote-actions {
-      flex: 0 0 auto !important;
-      position: relative !important;
-      bottom: auto !important;
-      margin: 16px -22px -22px !important;
-      padding: 14px 22px !important;
-    }
-
-    .modal-editar-lote-grid,
-    .modal-lote-add-grid {
-      align-items: end !important;
-    }
-
-    .modal-editar-lote-card label {
-      min-height: 18px;
-      display: block;
-      margin-bottom: 6px;
-      font-size: .78rem;
-      font-weight: 800;
-      color: var(--text-light);
-    }
-
-    .modal-editar-lote-card input:not([type="checkbox"]):not([type="radio"]),
-    .modal-editar-lote-card select,
-    .modal-editar-lote-card textarea {
-      width: 100%;
-      min-height: 44px !important;
-      height: 44px;
-      margin: 0 !important;
-      border-radius: 12px !important;
-      box-sizing: border-box !important;
-    }
-
-    .modal-editar-lote-tab {
-      min-height: 38px;
-      transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
-    }
-
-    .modal-editar-lote-tab:hover {
-      transform: translateY(-1px);
-    }
-
-    .lote-atleta-edit-row {
-      min-height: 62px;
-      grid-template-columns: minmax(190px,1.25fr) minmax(170px,1fr) 86px 86px auto !important;
-    }
-
-    .lote-impact-box {
-      margin-bottom: 2px;
-    }
-
-    .lote-edit-summary div {
-      min-height: 58px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
-
-    @media(max-width:720px) {
-      .modal-editar-lote-card {
-        height: 94vh !important;
-        max-height: 94vh !important;
-        width: 98vw !important;
-        padding: 16px !important;
-      }
-      .modal-lote-section.active { min-height: 240px !important; }
-      .modal-editar-lote-actions { margin: 14px -16px -16px !important; padding: 12px 16px !important; }
-      .lote-atleta-edit-row { grid-template-columns: 1fr !important; }
     }
   `;
 
