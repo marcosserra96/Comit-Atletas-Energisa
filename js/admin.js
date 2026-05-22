@@ -1027,29 +1027,67 @@ function ativarAbaFicha(tab) {
   if(typeof lucide !== 'undefined') lucide.createIcons();
 }
 
-function setupFichaAtleta() { 
-  document.getElementById("fecharModalFicha")?.addEventListener("click", () => document.getElementById("modalFichaAtleta").style.display = "none"); 
+function setupFichaAtleta() {
+  const modal = document.getElementById("modalFichaAtleta");
+  const btnFechar = document.getElementById("fecharModalFicha");
+  if(btnFechar && !btnFechar.dataset.listenerAplicado) {
+    btnFechar.dataset.listenerAplicado = "1";
+    btnFechar.addEventListener("click", () => { if(modal) modal.style.display = "none"; });
+  }
+
+  if(modal && !modal.dataset.backdropListenerAplicado) {
+    modal.dataset.backdropListenerAplicado = "1";
+    modal.addEventListener("click", (e) => {
+      if(e.target === modal) modal.style.display = "none";
+    });
+  }
+
   setupTabsFichaAtleta();
 
-  document.getElementById("btnSalvarComentario")?.addEventListener("click", async () => { 
-    const aId = document.getElementById("fichaAtletaId").value; 
-    const txt = document.getElementById("novoComentarioFicha").value.trim(); 
-    if(!txt) return; 
-    const meuNome = appState.mapAtletas[auth.currentUser?.uid] ? appState.mapAtletas[auth.currentUser.uid].nome : "Comitê Gestor"; 
-    const btn = document.getElementById("btnSalvarComentario"); 
-    btn.disabled = true; 
-    btn.textContent = "Salvando..."; 
-    try { 
-      await addDoc(collection(db, "comentarios_atletas"), { atletaId: aId, texto: txt, autorNome: meuNome, criadoEm: new Date().toISOString() }); 
-      document.getElementById("novoComentarioFicha").value = ""; 
-      carregarComentarios(aId); 
-      showToast("Comentário salvo!", "success"); 
-    } catch(e) { showToast("Erro ao guardar comentário.", "error"); } 
-    finally { btn.disabled = false; btn.textContent = "Adicionar Comentário"; }
-  }); 
+  const btnComentario = document.getElementById("btnSalvarComentario");
+  if(btnComentario && !btnComentario.dataset.listenerAplicado) {
+    btnComentario.dataset.listenerAplicado = "1";
+    btnComentario.addEventListener("click", async () => {
+      const aId = document.getElementById("fichaAtletaId")?.value;
+      const txt = document.getElementById("novoComentarioFicha")?.value.trim();
+      if(!aId || !txt) return;
 
-  document.getElementById("btnSalvarStatusFicha")?.addEventListener("click", salvarStatusFichaAtleta);
-  document.getElementById("btnSalvarCamposFichaModelo")?.addEventListener("click", salvarCamposModeloFicha);
+      const meuNome = appState.mapAtletas[auth.currentUser?.uid]
+        ? appState.mapAtletas[auth.currentUser.uid].nome
+        : "Comitê Gestor";
+
+      btnComentario.disabled = true;
+      btnComentario.textContent = "Salvando...";
+      try {
+        await addDoc(collection(db, "comentarios_atletas"), {
+          atletaId: aId,
+          texto: txt,
+          autorNome: meuNome,
+          criadoEm: new Date().toISOString()
+        });
+        document.getElementById("novoComentarioFicha").value = "";
+        await carregarComentarios(aId);
+        showToast("Comentário salvo!", "success");
+      } catch(e) {
+        showToast("Erro ao salvar comentário.", "error");
+      } finally {
+        btnComentario.disabled = false;
+        btnComentario.textContent = "Adicionar Comentário";
+      }
+    });
+  }
+
+  const btnStatus = document.getElementById("btnSalvarStatusFicha");
+  if(btnStatus && !btnStatus.dataset.listenerAplicado) {
+    btnStatus.dataset.listenerAplicado = "1";
+    btnStatus.addEventListener("click", salvarStatusFichaAtleta);
+  }
+
+  const btnCampos = document.getElementById("btnSalvarCamposFichaModelo");
+  if(btnCampos && !btnCampos.dataset.listenerAplicado) {
+    btnCampos.dataset.listenerAplicado = "1";
+    btnCampos.addEventListener("click", salvarCamposModeloFicha);
+  }
 }
 
 async function abrirFichaAtleta(id) { 
