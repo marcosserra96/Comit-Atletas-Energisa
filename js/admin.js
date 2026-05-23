@@ -529,7 +529,7 @@ function setupPermissoesModal() {
     try { 
       const antes = appState.mapAtletas[id]?.permissoes || [];
       await updateDoc(doc(db, "atletas", id), { permissoes: selecionadas }); 
-      await registrarHistórico("alterar_permissoes", "atletas", id, { antes, depois: selecionadas });
+      await registrarAuditoria("alterar_permissoes", "atletas", id, { antes, depois: selecionadas });
       showToast("Permissões atualizadas!", "success"); modal.style.display = "none"; atualizarTelas(); 
     } 
     catch(err) { showToast("Erro ao gravar permissões.", "error"); } 
@@ -624,7 +624,7 @@ function setupDragDropFilas() {
           ordemFilaAtualizadaEm: new Date().toISOString(),
           ordemFilaAtualizadaPor: auth.currentUser?.uid || ""
         });
-        await registrarHistórico("fila_reorganizada", "atletas", draggedId, { origem: draggedId, destino: targetId, equipe: origem.equipe });
+        await registrarAuditoria("fila_reorganizada", "atletas", draggedId, { origem: draggedId, destino: targetId, equipe: origem.equipe });
 
         showToast("Fila reorganizada com sucesso!", "success");
         atualizarTelas();
@@ -904,9 +904,9 @@ function escapeAttr(value) {
   return escapeHtml(value).replaceAll("`", "&#096;");
 }
 
-async function registrarHistórico(acao, entidade, entidadeId, dados = {}) {
+async function registrarAuditoria(acao, entidade, entidadeId, dados = {}) {
   try {
-    await addDoc(collection(db, "histórico"), {
+    await addDoc(collection(db, "auditoria"), {
       acao,
       entidade,
       entidadeId: entidadeId || "",
@@ -916,7 +916,7 @@ async function registrarHistórico(acao, entidade, entidadeId, dados = {}) {
       criadoPorNome: appState.mapAtletas?.[auth.currentUser?.uid]?.nome || "Usuário"
     });
   } catch (err) {
-    console.warn("Falha ao registrar histórico:", err);
+    console.warn("Falha ao registrar auditoria:", err);
   }
 }
 
@@ -931,10 +931,10 @@ function setupAdminCenter() {
     btnBackup.addEventListener("click", exportarBackupJson);
   }
 
-  const btnHistórico = document.getElementById("btnCarregarHistórico");
-  if (btnHistórico && !btnHistórico.dataset.listenerAplicado) {
-    btnHistórico.dataset.listenerAplicado = "1";
-    btnHistórico.addEventListener("click", carregarHistóricoAdmin);
+  const btnAuditoria = document.getElementById("btnCarregarAuditoria");
+  if (btnAuditoria && !btnAuditoria.dataset.listenerAplicado) {
+    btnAuditoria.dataset.listenerAplicado = "1";
+    btnAuditoria.addEventListener("click", carregarAuditoriaAdmin);
   }
 
   const exportButtons = [
@@ -953,7 +953,7 @@ function setupAdminCenter() {
   });
 
   atualizarAdminCenterResumo();
-  carregarHistóricoAdmin();
+  carregarAuditoriaAdmin();
 }
 
 function atualizarAdminCenterResumo() {
@@ -962,19 +962,19 @@ function atualizarAdminCenterResumo() {
   setTexto("adminQtdEventos", (appState.cacheEventos || []).length);
 }
 
-async function carregarHistóricoAdmin() {
-  const lista = document.getElementById("listaHistóricoAdmin");
+async function carregarAuditoriaAdmin() {
+  const lista = document.getElementById("listaAuditoriaAdmin");
   if (!lista || appState.userRole !== "admin") return;
 
   try {
-    const snap = await getDocs(collection(db, "histórico"));
+    const snap = await getDocs(collection(db, "auditoria"));
     const itens = [];
     snap.forEach(d => itens.push({ id: d.id, ...d.data() }));
     itens.sort((a,b) => new Date(b.criadoEm || "1970-01-01") - new Date(a.criadoEm || "1970-01-01"));
-    setTexto("adminQtdHistórico", itens.length);
+    setTexto("adminQtdAuditoria", itens.length);
 
     if (itens.length === 0) {
-      lista.innerHTML = `<div class="empty-state" style="padding:18px;"><p>Nenhum registro de histórico encontrado.</p></div>`;
+      lista.innerHTML = `<div class="empty-state" style="padding:18px;"><p>Nenhum registro de auditoria encontrado.</p></div>`;
       return;
     }
 
@@ -987,7 +987,7 @@ async function carregarHistóricoAdmin() {
       </div>`;
     }).join("");
   } catch (err) {
-    lista.innerHTML = `<div class="empty-state" style="padding:18px;"><p>Sem permissão ou erro ao carregar histórico.</p></div>`;
+    lista.innerHTML = `<div class="empty-state" style="padding:18px;"><p>Sem permissão ou erro ao carregar auditoria.</p></div>`;
   }
 }
 
@@ -995,7 +995,7 @@ async function exportarBackupJson() {
   if (appState.userRole !== "admin") return showToast("Apenas admin pode exportar backup.", "error");
   showToast("Montando backup JSON...", "info");
 
-  const colecoes = ["atletas", "historico_pontos", "agenda_eventos", "regras_pontuacao", "financeiro", "campos_ficha", "histórico"];
+  const colecoes = ["atletas", "historico_pontos", "agenda_eventos", "regras_pontuacao", "financeiro", "campos_ficha", "auditoria"];
   const backup = { geradoEm: new Date().toISOString(), geradoPor: auth.currentUser?.uid || "", colecoes: {} };
 
   for (const nome of colecoes) {
@@ -1015,7 +1015,7 @@ async function exportarBackupJson() {
   a.download = `backup_atletas_energisa_${new Date().toISOString().slice(0,10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
-  await registrarHistórico("exportar_backup", "sistema", "backup", { colecoes });
+  await registrarAuditoria("exportar_backup", "sistema", "backup", { colecoes });
   showToast("Backup exportado.", "success");
 }
 
@@ -1042,7 +1042,7 @@ function exportarAtletasCsv() {
   }));
 
   baixarCsv(`lista_atletas_${dataArquivo()}.csv`, rows);
-  registrarHistórico("exportar_lista_atletas", "sistema", "exportacao", { total: rows.length });
+  registrarAuditoria("exportar_lista_atletas", "sistema", "exportacao", { total: rows.length });
   showToast("Lista de atletas exportada.", "success");
 }
 
@@ -1061,7 +1061,7 @@ function exportarEventosCsv() {
   }));
 
   baixarCsv(`lista_eventos_${dataArquivo()}.csv`, rows);
-  registrarHistórico("exportar_lista_eventos", "sistema", "exportacao", { total: rows.length });
+  registrarAuditoria("exportar_lista_eventos", "sistema", "exportacao", { total: rows.length });
   showToast("Lista de eventos exportada.", "success");
 }
 
@@ -1089,7 +1089,7 @@ function exportarParticipacaoAtletasCsv() {
     .sort((a, b) => (b.Pontos - a.Pontos) || String(a.Nome).localeCompare(String(b.Nome)));
 
   baixarCsv(`participacao_atletas_${dataArquivo()}.csv`, rows);
-  registrarHistórico("exportar_participacao_atletas", "sistema", "exportacao", { total: rows.length });
+  registrarAuditoria("exportar_participacao_atletas", "sistema", "exportacao", { total: rows.length });
   showToast("Participação dos atletas exportada.", "success");
 }
 
@@ -1159,13 +1159,13 @@ function gerarInformativoRankingHtml() {
   <div class="page">
     <div class="header">
       <div class="logo">ATLETAS<br>ENERGISA</div>
-      <div><h1>Ranking mensal do<br>Time de Atletas Energisa</h1><div class="sub">Mês: ${escapeHtml(mesNome)} · ${ranking.length} atletas no ranking</div></div>
-      <div class="legend"><div><span class="green"></span> Atletas no ranking</div><div><span class="orange"></span> Atletas em atenção</div></div>
+      <div><h1>Ranking de Pontos do<br>Time de Atletas Energisa</h1><div class="sub">Mês: ${escapeHtml(mesNome)} · ${ranking.length} atletas no ranking</div></div>
+      <div class="legend"><div><span class="green"></span> Atletas no Ranking</div><div><span class="orange"></span> Atletas em Alerta</div></div>
     </div>
     <div class="kpis"><div class="kpi"><small>Pontos totais do mês</small><strong>${totalPontos} pts</strong></div><div class="kpi"><small>KM acumulados</small><strong>${formatarNumero(totalKm)} km</strong></div><div class="kpi"><small>Quantidade de treinos</small><strong>${totalTreinos}</strong></div></div>
     <div class="tag">RANKING</div>
     <table><thead><tr><th>ID</th><th>Atleta</th><th>Equipe</th><th>Pontos</th><th>Treinos válidos</th><th>KM</th></tr></thead><tbody>${linhas}</tbody></table>
-    <div class="footer">Gerado em ${new Date().toLocaleString("pt-BR")} · Atletas em atenção: até ${limiteAlerta} pontos no mês.</div>
+    <div class="footer">Gerado em ${new Date().toLocaleString("pt-BR")} · Atletas em alerta: até ${limiteAlerta} pontos no mês.</div>
   </div>
 </body>
 </html>`;
@@ -1177,7 +1177,7 @@ function gerarInformativoRankingHtml() {
   a.download = `informativo_ranking_${chaveMes}.html`;
   a.click();
   URL.revokeObjectURL(url);
-  registrarHistórico("gerar_informativo_ranking", "sistema", "exportacao", { mes: chaveMes, totalAtletas: ranking.length });
+  registrarAuditoria("gerar_informativo_ranking", "sistema", "exportacao", { mes: chaveMes, totalAtletas: ranking.length });
   showToast("Informativo do ranking gerado em HTML.", "success");
 }
 
@@ -1393,7 +1393,7 @@ async function abrirFichaAtleta(id) {
   }); 
   document.getElementById("fichaHistorico").innerHTML = htmlH; 
   await carregarComentarios(id); 
-  await carregarHistóricoFicha(id);
+  await carregarAuditoriaFicha(id);
   abrirModalFichaAtletaSeguro(); 
   if(typeof lucide !== 'undefined') lucide.createIcons();
 }
@@ -1480,7 +1480,7 @@ async function salvarCamposModeloFicha() {
   try {
     const anteriores = appState.mapAtletas[id]?.camposFicha || {};
     await updateDoc(doc(db, "atletas", id), { camposFicha: valores, atualizadoEm: new Date().toISOString() });
-    await registrarHistórico("campos_ficha_atualizados", "atletas", id, { antes: anteriores, depois: valores });
+    await registrarAuditoria("campos_ficha_atualizados", "atletas", id, { antes: anteriores, depois: valores });
     if(appState.mapAtletas[id]) appState.mapAtletas[id].camposFicha = valores;
     showToast("Campos da ficha salvos.", "success");
   } catch(err) {
@@ -1517,7 +1517,7 @@ async function salvarStatusFichaAtleta() {
       statusAtualizadoPor: auth.currentUser?.uid || "",
       historicoStatus
     });
-    await registrarHistórico("status_atleta_atualizado", "atletas", id, { antes, depois: ativo, motivo });
+    await registrarAuditoria("status_atleta_atualizado", "atletas", id, { antes, depois: ativo, motivo });
     if(appState.mapAtletas[id]) {
       appState.mapAtletas[id].ativo = ativo;
       appState.mapAtletas[id].motivoSaida = ativo ? "" : motivo;
@@ -1531,12 +1531,12 @@ async function salvarStatusFichaAtleta() {
 }
 
 
-async function carregarHistóricoFicha(id) {
-  const lista = document.getElementById("fichaHistóricoLista");
+async function carregarAuditoriaFicha(id) {
+  const lista = document.getElementById("fichaAuditoriaLista");
   if(!lista) return;
 
   try {
-    const snap = await getDocs(collection(db, "histórico"));
+    const snap = await getDocs(collection(db, "auditoria"));
     const itens = [];
     snap.forEach(d => {
       const item = { id: d.id, ...d.data() };
@@ -1555,7 +1555,7 @@ async function carregarHistóricoFicha(id) {
     itens.sort((a,b) => new Date(b.criadoEm || "1970-01-01") - new Date(a.criadoEm || "1970-01-01"));
 
     if(itens.length === 0) {
-      lista.innerHTML = `<div class="empty-state" style="padding:18px;"><p>Nenhuma histórico relacionada a este atleta.</p></div>`;
+      lista.innerHTML = `<div class="empty-state" style="padding:18px;"><p>Nenhuma auditoria relacionada a este atleta.</p></div>`;
       return;
     }
 
@@ -1568,7 +1568,7 @@ async function carregarHistóricoFicha(id) {
       </div>`;
     }).join("");
   } catch(err) {
-    lista.innerHTML = `<div class="empty-state" style="padding:18px;"><p>Sem permissão ou erro ao carregar histórico.</p></div>`;
+    lista.innerHTML = `<div class="empty-state" style="padding:18px;"><p>Sem permissão ou erro ao carregar auditoria.</p></div>`;
   }
 }
 
@@ -1676,7 +1676,7 @@ async function criarCampoFichaConfig() {
       criadoEm: new Date().toISOString(),
       criadoPor: auth.currentUser?.uid || ""
     });
-    await registrarHistórico("campo_ficha_criado", "campos_ficha", refCampo.id, { label, tipo, grupo, obrigatorio });
+    await registrarAuditoria("campo_ficha_criado", "campos_ficha", refCampo.id, { label, tipo, grupo, obrigatorio });
     document.getElementById("cfgCampoFichaLabel").value = "";
     document.getElementById("cfgCampoFichaGrupo").value = "";
     document.getElementById("cfgCampoFichaOpcoes").value = "";
@@ -1720,7 +1720,7 @@ function renderConfigCamposFicha() {
       mostrarConfirmacao("Excluir campo", "Remover este campo do modelo da ficha? Os valores já preenchidos nos atletas não serão apagados, mas deixarão de aparecer.", async () => {
         try {
           await deleteDoc(doc(db, "campos_ficha", btn.dataset.id));
-          await registrarHistórico("campo_ficha_excluido", "campos_ficha", btn.dataset.id, {});
+          await registrarAuditoria("campo_ficha_excluido", "campos_ficha", btn.dataset.id, {});
           await carregarCamposFichaConfig();
           showToast("Campo removido do modelo.", "success");
         } catch(err) { showToast("Erro ao remover campo: " + err.message, "error"); }
@@ -1746,7 +1746,7 @@ async function moverCampoFicha(id, direcao) {
   try {
     await updateDoc(doc(db, "campos_ficha", atual.id), { ordem: ordemOutro });
     await updateDoc(doc(db, "campos_ficha", outro.id), { ordem: ordemAtual });
-    await registrarHistórico("campo_ficha_reordenado", "campos_ficha", atual.id, { trocouCom: outro.id, direcao });
+    await registrarAuditoria("campo_ficha_reordenado", "campos_ficha", atual.id, { trocouCom: outro.id, direcao });
     await carregarCamposFichaConfig();
   } catch(err) { showToast("Erro ao reordenar campo: " + err.message, "error"); }
 }
@@ -1805,12 +1805,12 @@ function setupModalRegras() {
 
       if (id) {
         await updateDoc(doc(db, "regras_pontuacao", id), dados);
-        await registrarHistórico("regra_pontuacao_atualizada", "regras_pontuacao", id, dados);
+        await registrarAuditoria("regra_pontuacao_atualizada", "regras_pontuacao", id, dados);
         showToast("Regra atualizada com sucesso!", "success");
       } else {
         dados.criadoEm = new Date().toISOString();
         const refRegra = await addDoc(collection(db, "regras_pontuacao"), dados);
-        await registrarHistórico("regra_pontuacao_criada", "regras_pontuacao", refRegra.id, dados);
+        await registrarAuditoria("regra_pontuacao_criada", "regras_pontuacao", refRegra.id, dados);
         showToast("Nova regra criada!", "success");
       }
 
@@ -1864,7 +1864,7 @@ async function carregarRegras() {
       btn.addEventListener("click", (e) => {
         mostrarConfirmacao("Apagar Regra", "Deseja realmente excluir esta regra? Isso pode afetar lançamentos futuros.", async () => {
           await deleteDoc(doc(db, "regras_pontuacao", e.currentTarget.dataset.id));
-          await registrarHistórico("regra_pontuacao_excluida", "regras_pontuacao", e.currentTarget.dataset.id, {});
+          await registrarAuditoria("regra_pontuacao_excluida", "regras_pontuacao", e.currentTarget.dataset.id, {});
           await carregarRegras();
           showToast("Regra removida", "info");
         }, "danger");

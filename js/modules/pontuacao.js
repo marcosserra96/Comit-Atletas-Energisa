@@ -1180,7 +1180,7 @@ async function salvarPontuacoesEmLote() {
         renderizarExtratoAgrupado();
       }, 800);
     } catch (error) {
-      showToast("Erro ao processar lançamento: " + error.message, "error");
+      showToast("Erro ao processar lote: " + error.message, "error");
     } finally {
       btn.innerHTML = "Gravar Lançamentos na Base";
       btn.disabled = false;
@@ -1398,7 +1398,7 @@ function filtrarHistoricoParaUX() {
   const statusFiltro = document.getElementById("filtroStatusHistorico")?.value;
 
   return (appState.historicoCompleto || []).filter(h => {
-    if (h.cancelado === true) return false;
+    if (h.estornado === true) return false;
     const atleta = appState.mapAtletas[h.atletaId];
     const isAtivo = atleta ? atleta.ativo !== false : false;
 
@@ -1500,7 +1500,7 @@ function criarCardLote(g) {
         </div>
 
         <div class="lote-actions">
-          <small style="color:var(--text-light);">${g.qtdRegistros} registros neste lançamento</small>
+          <small style="color:var(--text-light);">${g.qtdRegistros} registros no lote</small>
           <div class="lote-action-buttons">
             <button type="button" class="btn-acao btn-editar-lote" data-lote-key="${escapeAttr(g.id)}">
               <i data-lucide="edit-3"></i> Editar
@@ -1526,16 +1526,16 @@ function setupModalEditarLote() {
   modal.className = "modal-editar-lote-backdrop";
   modal.innerHTML = `
     <div class="modal-editar-lote-card">
-      <h3><i data-lucide="edit-3"></i> Ajustar lançamento</h3>
-      <p>Use esta tela para ajustar o lançamento: alterar dados gerais, retirar atletas incluídos por engano, adicionar atletas que faltaram e registrar tudo no histórico de alterações.</p>
+      <h3><i data-lucide="edit-3"></i> Editar lançamento completo</h3>
+      <p>Use esta tela para corrigir o lote: alterar dados gerais, remover atletas lançados por engano, adicionar atletas esquecidos e registrar tudo em auditoria.</p>
       <input type="hidden" id="editLoteKey" />
 
       <div id="editLoteResumo" class="lote-edit-summary"></div>
 
       <div class="modal-editar-lote-tabs">
         <button type="button" class="modal-editar-lote-tab active" data-lote-tab="dados"><i data-lucide="file-pen-line"></i> Dados gerais</button>
-        <button type="button" class="modal-editar-lote-tab" data-lote-tab="atletas"><i data-lucide="users"></i> Atletas do lançamento</button>
-        <button type="button" class="modal-editar-lote-tab" data-lote-tab="adicionar"><i data-lucide="user-plus"></i> Adicionar atleta</button>
+        <button type="button" class="modal-editar-lote-tab" data-lote-tab="atletas"><i data-lucide="users"></i> Remover/validar atletas</button>
+        <button type="button" class="modal-editar-lote-tab" data-lote-tab="adicionar"><i data-lucide="user-plus"></i> Adicionar atleta esquecido</button>
       </div>
 
       <div id="loteTabDados" class="modal-lote-section active">
@@ -1561,13 +1561,13 @@ function setupModalEditarLote() {
       <div id="loteTabAtletas" class="modal-lote-section">
         <div class="lote-edit-section-title">
           <div>
-            <strong>Atletas deste lançamento</strong><br>
-            <small>Retire quem foi incluído por engano. O histórico não é apagado; o registro fica marcado como cancelado.</small>
+            <strong>Atletas incluídos neste lançamento</strong><br>
+            <small>Remova quem foi lançado por engano. O histórico não é apagado; ele é estornado.</small>
           </div>
         </div>
         <div id="editLoteAtletasLista"></div>
         <div class="lote-impact-box">
-          Ao retirar um atleta, os pontos são subtraídos do total dele e os registros ficam marcados como cancelados, sem apagar o histórico.
+          Ao remover um atleta, os pontos são subtraídos do total dele e os registros são marcados como estornados, sem apagar o histórico.
         </div>
       </div>
 
@@ -1596,7 +1596,7 @@ function setupModalEditarLote() {
             </div>
           </div>
           <div style="display:flex; justify-content:flex-end; margin-top:12px;">
-            <button type="button" id="btnAdicionarAtletaLote" class="btn-primario"><i data-lucide="user-plus"></i> Adicionar ao lançamento</button>
+            <button type="button" id="btnAdicionarAtletaLote" class="btn-primario"><i data-lucide="user-plus"></i> Adicionar ao lote</button>
           </div>
         </div>
       </div>
@@ -1605,7 +1605,7 @@ function setupModalEditarLote() {
         <button type="button" id="btnCancelarLancamentoInteiro" class="btn-acao btn-cancelar-lancamento-inteiro"><i data-lucide="rotate-ccw"></i> Cancelar lançamento inteiro</button>
         <div style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">
           <button type="button" id="btnCancelarEditLote" class="btn-acao">Fechar</button>
-          <button type="button" id="btnSalvarEditLote" class="btn-primario"><i data-lucide="save"></i> Salvar alterações</button>
+          <button type="button" id="btnSalvarEditLote" class="btn-primario"><i data-lucide="save"></i> Salvar dados gerais</button>
         </div>
       </div>
     </div>
@@ -1686,7 +1686,7 @@ function preencherListaAtletasDoLote(lote) {
   if (!lista) return;
 
   const porAtleta = new Map();
-  lote.itens.filter(i => i.cancelado !== true).forEach(item => {
+  lote.itens.filter(i => i.estornado !== true).forEach(item => {
     const atual = porAtleta.get(item.atletaId) || {
       atletaId: item.atletaId,
       nome: item.atletaNome || appState.mapAtletas[item.atletaId]?.nome || "Atleta não encontrado",
@@ -1731,7 +1731,7 @@ function preencherSelectAtletasParaAdicionar(lote) {
   const select = document.getElementById("editAddAtleta");
   if (!select) return;
 
-  const idsJaNoLote = new Set(lote.itens.filter(i => i.cancelado !== true).map(i => i.atletaId));
+  const idsJaNoLote = new Set(lote.itens.filter(i => i.estornado !== true).map(i => i.atletaId));
   const equipe = normalizarEquipeLote(lote.equipe);
 
   let atletas = Object.values(appState.mapAtletas || {}).filter(a => {
@@ -1800,7 +1800,7 @@ async function salvarEdicaoLote() {
     const agora = new Date().toISOString();
     const usuario = getUsuarioAuditoria();
 
-    lote.itens.filter(i => i.cancelado !== true).forEach(item => {
+    lote.itens.filter(i => i.estornado !== true).forEach(item => {
       if (!item.id) return;
       const pontos = Number(item.pontos) || 0;
       batch.update(doc(db, "historico_pontos", item.id), {
@@ -1826,7 +1826,7 @@ async function salvarEdicaoLote() {
     await batch.commit();
 
     appState.historicoCompleto = (appState.historicoCompleto || []).map(h => {
-      if (!lote.itens.some(i => i.id === h.id) || h.cancelado === true) return h;
+      if (!lote.itens.some(i => i.id === h.id) || h.estornado === true) return h;
       const pontos = Number(h.pontos) || 0;
       return {
         ...h,
@@ -1850,7 +1850,7 @@ async function salvarEdicaoLote() {
     showToast("Erro ao editar lançamento: " + err.message, "error");
   } finally {
     btn.disabled = false;
-    btn.innerHTML = `<i data-lucide="save"></i> Salvar alterações`;
+    btn.innerHTML = `<i data-lucide="save"></i> Salvar dados gerais`;
     if (typeof lucide !== "undefined") lucide.createIcons();
   }
 }
@@ -1860,7 +1860,7 @@ async function removerAtletaDoLote(atletaId) {
   const lote = lotesRenderizados.get(loteKey);
   if (!lote || !atletaId) return;
 
-  const itensAtleta = lote.itens.filter(i => i.atletaId === atletaId && i.cancelado !== true);
+  const itensAtleta = lote.itens.filter(i => i.atletaId === atletaId && i.estornado !== true);
   if (!itensAtleta.length) return showToast("Este atleta não possui registros ativos no lote.", "error");
 
   const nome = itensAtleta[0].atletaNome || appState.mapAtletas[atletaId]?.nome || "Atleta";
@@ -1880,10 +1880,10 @@ async function removerAtletaDoLote(atletaId) {
       itensAtleta.forEach(item => {
         if (!item.id) return;
         batch.update(doc(db, "historico_pontos", item.id), {
-          cancelado: true,
-          canceladoEm: agora,
-          canceladoPor: usuario.uid,
-          canceladoPorNome: usuario.nome,
+          estornado: true,
+          estornadoEm: agora,
+          estornadoPor: usuario.uid,
+          estornadoPorNome: usuario.nome,
           motivoEstorno: motivo.trim(),
           tipoAjuste: "remocao_lote"
         });
@@ -1906,10 +1906,10 @@ async function removerAtletaDoLote(atletaId) {
         if (!itensAtleta.some(i => i.id === h.id)) return h;
         return {
           ...h,
-          cancelado: true,
-          canceladoEm: agora,
-          canceladoPor: usuario.uid,
-          canceladoPorNome: usuario.nome,
+          estornado: true,
+          estornadoEm: agora,
+          estornadoPor: usuario.uid,
+          estornadoPorNome: usuario.nome,
           motivoEstorno: motivo.trim(),
           tipoAjuste: "remocao_lote"
         };
@@ -1954,7 +1954,7 @@ async function adicionarAtletaAoLote() {
   const atleta = appState.mapAtletas[atletaId];
   if (!atleta) return showToast("Atleta não localizado.", "error");
 
-  const jaExiste = lote.itens.some(i => i.atletaId === atletaId && i.cancelado !== true);
+  const jaExiste = lote.itens.some(i => i.atletaId === atletaId && i.estornado !== true);
   if (jaExiste) return showToast("Este atleta já está ativo neste lançamento.", "error");
 
   mostrarConfirmacao("Adicionar atleta ao lançamento", `Adicionar ${atleta.nome} ao lote?\n\nImpacto: +${pontos} ponto(s).\nA ação ficará registrada na auditoria.`, async () => {
@@ -2043,7 +2043,7 @@ async function cancelarLancamentoInteiro() {
   const lote = lotesRenderizados.get(loteKey);
   if (!lote) return showToast("Lote não localizado.", "error");
 
-  const itensAtivos = lote.itens.filter(i => i.cancelado !== true);
+  const itensAtivos = lote.itens.filter(i => i.estornado !== true);
   if (!itensAtivos.length) return showToast("Este lote não possui registros ativos.", "info");
 
   const pontosPorAtleta = {};
@@ -2071,10 +2071,10 @@ async function cancelarLancamentoInteiro() {
         itensAtivos.forEach(item => {
           if (!item.id) return;
           batch.update(doc(db, "historico_pontos", item.id), {
-            cancelado: true,
-            canceladoEm: agora,
-            canceladoPor: usuario.uid,
-            canceladoPorNome: usuario.nome,
+            estornado: true,
+            estornadoEm: agora,
+            estornadoPor: usuario.uid,
+            estornadoPorNome: usuario.nome,
             motivoEstorno: motivo.trim(),
             tipoAjuste: "estorno_lote_inteiro"
           });
@@ -2084,7 +2084,7 @@ async function cancelarLancamentoInteiro() {
           if (pontos !== 0) batch.update(doc(db, "atletas", atletaId), { pontuacaoTotal: increment(-pontos) });
         });
 
-        registrarAuditoriaNoBatch(batch, "lote_cancelado_inteiro", "historico_pontos", lote.id, {
+        registrarAuditoriaNoBatch(batch, "lote_estornado_inteiro", "historico_pontos", lote.id, {
           titulo: lote.titulo,
           registrosAfetados: itensAtivos.length,
           pontosRemovidos: totalPontos,
@@ -2097,10 +2097,10 @@ async function cancelarLancamentoInteiro() {
           if (!itensAtivos.some(i => i.id === h.id)) return h;
           return {
             ...h,
-            cancelado: true,
-            canceladoEm: agora,
-            canceladoPor: usuario.uid,
-            canceladoPorNome: usuario.nome,
+            estornado: true,
+            estornadoEm: agora,
+            estornadoPor: usuario.uid,
+            estornadoPorNome: usuario.nome,
             motivoEstorno: motivo.trim(),
             tipoAjuste: "estorno_lote_inteiro"
           };
@@ -2114,7 +2114,7 @@ async function cancelarLancamentoInteiro() {
 
         renderizarExtratoAgrupado();
         fecharModalEditarLote();
-        showToast("Lote cancelado com sucesso.", "success");
+        showToast("Lote estornado com sucesso.", "success");
       } catch (err) {
         showToast("Erro ao cancelar lançamento: " + err.message, "error");
       }
