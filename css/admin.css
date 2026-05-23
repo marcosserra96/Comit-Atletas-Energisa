@@ -2960,3 +2960,122 @@ body.modal-open {
 .ficha-scroll-list {
   overscroll-behavior: contain !important;
 }
+
+
+/* =====================================================
+   V23 - Polimento visual e linguagem amigável
+   Ajustes leves, sem alterar estrutura das telas
+===================================================== */
+:root {
+  --ux-ease: cubic-bezier(.2,.8,.2,1);
+}
+
+.card,
+.athlete-card,
+.lote-card,
+.admin-center-card,
+.ficha-panel,
+.modal-editar-lote-card,
+.pdf-section,
+.recommendation-card {
+  transition: transform .18s var(--ux-ease), box-shadow .18s var(--ux-ease), border-color .18s var(--ux-ease);
+}
+
+.card:hover,
+.athlete-card:hover,
+.lote-card:hover,
+.admin-center-card:hover {
+  transform: translateY(-2px);
+}
+
+button,
+.btn-primario,
+.btn-acao,
+.btn-topo,
+.sub-tab,
+.t-tab,
+.ficha-tab,
+.modal-editar-lote-tab {
+  transition: transform .16s var(--ux-ease), box-shadow .16s var(--ux-ease), background .16s var(--ux-ease), border-color .16s var(--ux-ease), color .16s var(--ux-ease), filter .16s var(--ux-ease);
+}
+
+button:active,
+.btn-primario:active,
+.btn-acao:active,
+.sub-tab:active,
+.t-tab:active,
+.ficha-tab:active,
+.modal-editar-lote-tab:active {
+  transform: scale(.985);
+}
+
+.empty-state {
+  border: 1px dashed rgba(0,155,193,.24);
+  background: linear-gradient(135deg, rgba(0,155,193,.05), rgba(0,179,126,.04));
+  border-radius: 18px;
+  color: var(--text-light);
+}
+
+.empty-state i,
+.empty-state svg {
+  color: var(--primary);
+  opacity: .85;
+}
+
+.tabela-simples tbody tr,
+.ficha-scroll-list > div,
+.admin-audit-list > div,
+.lote-row {
+  transition: background .14s ease, transform .14s ease;
+}
+
+.tabela-simples tbody tr:hover,
+.ficha-scroll-list > div:hover,
+.admin-audit-list > div:hover,
+.lote-row:hover {
+  background: rgba(0,155,193,.045);
+}
+
+.lote-action-buttons .btn-acao,
+.modal-editar-lote-actions .btn-acao,
+.modal-editar-lote-actions .btn-primario {
+  min-height: 40px;
+}
+
+.modal-editar-lote-card h3,
+.ficha-header-info h2,
+.header-acao h2 {
+  letter-spacing: -.02em;
+}
+
+.lote-badge,
+.status-badge,
+.athlete-card__title span {
+  letter-spacing: .01em;
+}
+
+/* Informativo/exportações com aparência mais consistente */
+.admin-export-card,
+.admin-center-card {
+  overflow: hidden;
+}
+
+.admin-export-card .btn-acao,
+.admin-export-card .btn-primario {
+  white-space: normal;
+  text-align: center;
+}
+
+/* Ranking e listas: evita nomes estourando e mantém pontuação alinhada */
+#listaPodioBike li,
+#listaPodioCorrida li,
+.ficha-scroll-list li {
+  min-width: 0;
+}
+
+#listaPodioBike li span,
+#listaPodioCorrida li span,
+.nome-atleta-link {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
