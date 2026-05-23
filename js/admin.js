@@ -968,15 +968,185 @@ function setupAdminCenter() {
   }
 
   setupExportacoesOperacionais();
+  setupAdminInformativoPadrao();
+  setupAdminChecklist();
 
   atualizarAdminCenterResumo();
+  atualizarChecklistAdmin();
   carregarAuditoriaAdmin();
 }
 
 function atualizarAdminCenterResumo() {
-  setTexto("adminQtdAtletas", Object.keys(appState.mapAtletas || {}).length);
-  setTexto("adminQtdLancamentos", (appState.historicoCompleto || []).length);
-  setTexto("adminQtdEventos", (appState.cacheEventos || []).length);
+  const atletas = Object.values(appState.mapAtletas || {});
+  const historico = appState.historicoCompleto || [];
+  const eventos = appState.cacheEventos || [];
+  const hoje = new Date();
+  const mesAtual = String(hoje.getMonth() + 1).padStart(2, "0");
+  const anoAtual = String(hoje.getFullYear());
+  const lancMes = historico.filter(h => String(h.dataTreino || "").startsWith(`${anoAtual}-${mesAtual}`) && h.estornado !== true).length;
+  const ativos = atletas.filter(a => a.ativo !== false && a.role !== "admin" && a.status === "Aprovado").length;
+  const inativos = atletas.filter(a => a.ativo === false).length;
+  const comite = atletas.filter(a => a.role === "admin" || a.role === "comite" || a.equipe === "Comitê").length;
+
+  setTexto("adminQtdAtletas", atletas.length);
+  setTexto("adminQtdAtivos", ativos);
+  setTexto("adminQtdInativos", inativos);
+  setTexto("adminQtdComite", comite);
+  setTexto("adminQtdLancMes", lancMes);
+  setTexto("adminQtdLancamentos", historico.length);
+  setTexto("adminQtdEventos", eventos.length);
+  renderResumoAcessosAdmin(atletas);
+  atualizarChecklistAdmin();
+}
+
+function setupAdminChecklist() {
+  const btn = document.getElementById("btnAtualizarChecklistAdmin");
+  if (btn && !btn.dataset.listenerAplicado) {
+    btn.dataset.listenerAplicado = "1";
+    btn.addEventListener("click", () => {
+      atualizarChecklistAdmin();
+      showToast("Checklist recalculado.", "success");
+    });
+  }
+}
+
+function atualizarChecklistAdmin() {
+  const alvo = document.getElementById("adminChecklistBase");
+  if (!alvo || appState.userRole !== "admin") return;
+
+  const atletas = Object.values(appState.mapAtletas || {});
+  const historico = appState.historicoCompleto || [];
+  const eventos = appState.cacheEventos || [];
+  const hoje = new Date();
+  const mesAtual = String(hoje.getMonth() + 1).padStart(2, "0");
+  const anoAtual = String(hoje.getFullYear());
+  const prefixoMes = `${anoAtual}-${mesAtual}`;
+  const equipesValidas = ["Bicicleta", "Corrida", "Comitê", "Fila - Bicicleta", "Fila - Corrida"];
+
+  const atletasAtivos = atletas.filter(a => a.role !== "admin" && a.status === "Aprovado" && a.ativo !== false && !String(a.equipe || "").startsWith("Fila"));
+  const atletasSemEquipe = atletas.filter(a => a.role !== "admin" && (!a.equipe || !equipesValidas.includes(a.equipe)));
+  const atletasSemAtividadeMes = atletasAtivos.filter(a => !historico.some(h => h.atletaId === a.id && String(h.dataTreino || "").startsWith(prefixoMes) && h.estornado !== true));
+  const eventosSemData = eventos.filter(e => !e.data || !e.titulo);
+  const lancSemAtleta = historico.filter(h => h.atletaId && !appState.mapAtletas?.[h.atletaId]);
+  const lancSemData = historico.filter(h => !h.dataTreino);
+  const lancCancelados = historico.filter(h => h.estornado === true || h.cancelado === true);
+
+  const checks = [
+    { label: "Atletas ativos sem treino no mês", valor: atletasSemAtividadeMes.length, tipo: atletasSemAtividadeMes.length ? "warn" : "ok", detalhe: atletasSemAtividadeMes.slice(0, 4).map(a => a.nome).filter(Boolean).join(", ") },
+    { label: "Atletas sem equipe/modalidade válida", valor: atletasSemEquipe.length, tipo: atletasSemEquipe.length ? "warn" : "ok", detalhe: atletasSemEquipe.slice(0, 4).map(a => a.nome).filter(Boolean).join(", ") },
+    { label: "Eventos sem título ou data", valor: eventosSemData.length, tipo: eventosSemData.length ? "warn" : "ok" },
+    { label: "Lançamentos sem atleta localizado", valor: lancSemAtleta.length, tipo: lancSemAtleta.length ? "danger" : "ok" },
+    { label: "Lançamentos sem data", valor: lancSemData.length, tipo: lancSemData.length ? "danger" : "ok" },
+    { label: "Lançamentos cancelados/ajustados", valor: lancCancelados.length, tipo: "info" }
+  ];
+
+  alvo.innerHTML = checks.map(c => {
+    const icon = c.tipo === "ok" ? "check-circle-2" : c.tipo === "danger" ? "x-octagon" : c.tipo === "warn" ? "triangle-alert" : "info";
+    return `<div class="admin-check-item ${c.tipo}">
+      <i data-lucide="${icon}"></i>
+      <div><strong>${escapeHtml(c.label)}</strong>${c.detalhe ? `<small>${escapeHtml(c.detalhe)}${c.valor > 4 ? "..." : ""}</small>` : ""}</div>
+      <span>${c.valor}</span>
+    </div>`;
+  }).join("");
+
+  if (typeof lucide !== "undefined") lucide.createIcons();
+}
+
+function renderResumoAcessosAdmin(atletas = Object.values(appState.mapAtletas || {})) {
+  const alvo = document.getElementById("adminResumoAcessos");
+  if (!alvo) return;
+  const totalAdmin = atletas.filter(a => a.role === "admin").length;
+  const totalComite = atletas.filter(a => a.role === "comite" || a.equipe === "Comitê").length;
+  const totalAtleta = atletas.filter(a => (a.role || "atleta") === "atleta" && a.equipe !== "Comitê").length;
+  const comPermPersonalizada = atletas.filter(a => a.role === "comite" && Array.isArray(a.permissoes) && a.permissoes.length > 0).length;
+
+  alvo.innerHTML = `
+    <div><span>Administradores</span><strong>${totalAdmin}</strong></div>
+    <div><span>Comitê</span><strong>${totalComite}</strong></div>
+    <div><span>Atletas/consulta</span><strong>${totalAtleta}</strong></div>
+    <div><span>Com permissão definida</span><strong>${comPermPersonalizada}</strong></div>`;
+}
+
+const CHAVE_PADRAO_INFORMATIVO = "atletasInformativoPadraoV1";
+
+function obterPadraoInformativo() {
+  const padrao = {
+    modalidade: "todos",
+    limite: "28",
+    mostrarKpis: true,
+    mostrarLegenda: true,
+    mostrarTop3: true,
+    mostrarAlertas: true,
+    mostrarDemais: true,
+    abrirEmNovaAba: true
+  };
+  try {
+    return { ...padrao, ...JSON.parse(localStorage.getItem(CHAVE_PADRAO_INFORMATIVO) || "{}") };
+  } catch (_) {
+    return padrao;
+  }
+}
+
+function setupAdminInformativoPadrao() {
+  aplicarPadraoInformativoNoAdmin();
+
+  const btnSalvar = document.getElementById("btnSalvarPadraoInformativo");
+  if (btnSalvar && !btnSalvar.dataset.listenerAplicado) {
+    btnSalvar.dataset.listenerAplicado = "1";
+    btnSalvar.addEventListener("click", salvarPadraoInformativoAdmin);
+  }
+
+  const btnAbrir = document.getElementById("btnAbrirInformativoPadrao");
+  if (btnAbrir && !btnAbrir.dataset.listenerAplicado) {
+    btnAbrir.dataset.listenerAplicado = "1";
+    btnAbrir.addEventListener("click", abrirModalInformativoRanking);
+  }
+}
+
+function aplicarPadraoInformativoNoAdmin() {
+  const cfg = obterPadraoInformativo();
+  const setValue = (id, valor) => { const el = document.getElementById(id); if (el) el.value = valor; };
+  const setCheck = (id, valor) => { const el = document.getElementById(id); if (el) el.checked = valor !== false; };
+  setValue("cfgInfoModalidadePadrao", cfg.modalidade);
+  setValue("cfgInfoLimitePadrao", cfg.limite);
+  setCheck("cfgInfoKpisPadrao", cfg.mostrarKpis);
+  setCheck("cfgInfoLegendaPadrao", cfg.mostrarLegenda);
+  setCheck("cfgInfoTop3Padrao", cfg.mostrarTop3);
+  setCheck("cfgInfoAlertasPadrao", cfg.mostrarAlertas);
+  setCheck("cfgInfoDemaisPadrao", cfg.mostrarDemais);
+  setCheck("cfgInfoAbrirPadrao", cfg.abrirEmNovaAba);
+}
+
+function salvarPadraoInformativoAdmin() {
+  const valor = id => document.getElementById(id)?.value;
+  const marcado = id => document.getElementById(id)?.checked !== false;
+  const cfg = {
+    modalidade: valor("cfgInfoModalidadePadrao") || "todos",
+    limite: valor("cfgInfoLimitePadrao") || "28",
+    mostrarKpis: marcado("cfgInfoKpisPadrao"),
+    mostrarLegenda: marcado("cfgInfoLegendaPadrao"),
+    mostrarTop3: marcado("cfgInfoTop3Padrao"),
+    mostrarAlertas: marcado("cfgInfoAlertasPadrao"),
+    mostrarDemais: marcado("cfgInfoDemaisPadrao"),
+    abrirEmNovaAba: marcado("cfgInfoAbrirPadrao")
+  };
+  localStorage.setItem(CHAVE_PADRAO_INFORMATIVO, JSON.stringify(cfg));
+  aplicarPadraoInformativoNoModal();
+  showToast("Padrão do informativo salvo neste navegador.", "success");
+}
+
+function aplicarPadraoInformativoNoModal() {
+  const cfg = obterPadraoInformativo();
+  const setValue = (id, valor) => { const el = document.getElementById(id); if (el) el.value = valor; };
+  const setCheck = (id, valor) => { const el = document.getElementById(id); if (el) el.checked = valor !== false; };
+  setValue("filtroInformativoModalidade", cfg.modalidade);
+  setValue("filtroInformativoLimite", cfg.limite);
+  setCheck("chkInformativoKpis", cfg.mostrarKpis);
+  setCheck("chkInformativoLegenda", cfg.mostrarLegenda);
+  setCheck("chkInformativoTop3", cfg.mostrarTop3);
+  setCheck("chkInformativoAlertas", cfg.mostrarAlertas);
+  setCheck("chkInformativoDemais", cfg.mostrarDemais);
+  setCheck("chkInformativoAbrir", cfg.abrirEmNovaAba);
 }
 
 async function carregarAuditoriaAdmin() {
@@ -1201,7 +1371,8 @@ function exportarParticipacaoAtletasCsv() {
 // =====================================================
 function abrirModalInformativoRanking() {
   const modal = document.getElementById("modalInformativoRanking");
-  if (!modal) return gerarInformativoRankingHtml();
+  if (!modal) return gerarInformativoRankingHtml(obterPadraoInformativo());
+  aplicarPadraoInformativoNoModal();
   modal.style.display = "flex";
   document.body.classList.add("modal-open");
   document.documentElement.classList.add("modal-open");

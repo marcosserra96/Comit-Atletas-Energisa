@@ -544,33 +544,104 @@
       </div>
 
       <div id="sub-dados" class="sub-content admin-only-element">
-        <div class="admin-data-grid">
-          <div class="card admin-control-card">
-            <h3 style="color: var(--primary); font-size: 1.2rem;"><i data-lucide="shield-check"></i> Centro do Admin</h3>
-            <p style="color: var(--text-light); font-size: 0.92rem; margin-bottom: 18px;">
-              Controle operacional, backup e rastreabilidade. Use esta área antes de mudanças sensíveis.
-            </p>
-            <div class="admin-health-grid">
-              <div><span>Atletas</span><strong id="adminQtdAtletas">0</strong></div>
-              <div><span>Lançamentos</span><strong id="adminQtdLancamentos">0</strong></div>
-              <div><span>Eventos</span><strong id="adminQtdEventos">0</strong></div>
-              <div><span>Auditoria</span><strong id="adminQtdAuditoria">0</strong></div>
-            </div>
-            <div class="admin-actions-row">
-              <button id="btnExportarBackupJson" class="btn-primario" type="button"><i data-lucide="download-cloud"></i> Exportar backup JSON</button>
-              <button id="btnCarregarAuditoria" class="btn-acao" type="button"><i data-lucide="list-filter"></i> Atualizar auditoria</button>
-            </div>
+        <div class="admin-control-hero card">
+          <div>
+            <span class="eyebrow">Centro de Controle</span>
+            <h3><i data-lucide="shield-check"></i> Administração do Portal</h3>
+            <p>Monitore a saúde da base, revise inconsistências, acompanhe acessos e ajuste os padrões do informativo mensal.</p>
           </div>
-
-          <div class="card admin-control-card danger-zone">
-            <h3 style="color: var(--danger); font-size: 1.2rem;"><i data-lucide="alert-octagon"></i> Zona de Perigo</h3>
-            <p style="font-size: 0.88rem; color: var(--text-light); margin-bottom: 15px;">
-              Apaga a base operacional. Antes disso, exporte o backup JSON.
-            </p>
-            <button id="btnLimparBase" class="btn-acao" style="color: var(--danger); border-color: var(--danger); width: 100%; justify-content: center; padding: 12px;"><i data-lucide="trash-2"></i> Zerar Todo o Banco de Dados</button>
+          <div class="admin-control-hero-actions">
+            <button id="btnExportarBackupJson" class="btn-primario" type="button"><i data-lucide="download-cloud"></i> Backup JSON</button>
+            <button id="btnCarregarAuditoria" class="btn-acao" type="button"><i data-lucide="refresh-cw"></i> Atualizar auditoria</button>
           </div>
         </div>
 
+        <div class="admin-kpi-grid">
+          <div class="admin-kpi-card"><span>Total de atletas</span><strong id="adminQtdAtletas">0</strong><small>Cadastros aprovados</small></div>
+          <div class="admin-kpi-card"><span>Ativos</span><strong id="adminQtdAtivos">0</strong><small>Participando do programa</small></div>
+          <div class="admin-kpi-card"><span>Inativos</span><strong id="adminQtdInativos">0</strong><small>Fora da equipe ativa</small></div>
+          <div class="admin-kpi-card"><span>Comitê</span><strong id="adminQtdComite">0</strong><small>Usuários de gestão</small></div>
+          <div class="admin-kpi-card"><span>Lançamentos do mês</span><strong id="adminQtdLancMes">0</strong><small>Registros operacionais</small></div>
+          <div class="admin-kpi-card"><span>Eventos</span><strong id="adminQtdEventos">0</strong><small>Agenda cadastrada</small></div>
+          <div class="admin-kpi-card"><span>Auditoria</span><strong id="adminQtdAuditoria">0</strong><small>Registros rastreáveis</small></div>
+          <div class="admin-kpi-card"><span>Lançamentos totais</span><strong id="adminQtdLancamentos">0</strong><small>Histórico completo</small></div>
+        </div>
+
+        <div class="admin-control-layout">
+          <div class="card admin-panel-card admin-check-card">
+            <div class="admin-panel-header">
+              <div>
+                <h3><i data-lucide="activity"></i> Saúde da base</h3>
+                <p>Checklist automático para encontrar pontos que podem precisar de revisão.</p>
+              </div>
+              <button id="btnAtualizarChecklistAdmin" class="btn-acao btn-compact" type="button"><i data-lucide="rotate-cw"></i> Recalcular</button>
+            </div>
+            <div id="adminChecklistBase" class="admin-check-list"></div>
+          </div>
+
+          <div class="card admin-panel-card">
+            <div class="admin-panel-header">
+              <div>
+                <h3><i data-lucide="megaphone"></i> Padrão do informativo</h3>
+                <p>Defina a configuração padrão usada ao gerar o comunicado mensal dos atletas.</p>
+              </div>
+            </div>
+            <div class="admin-config-grid">
+              <label><span>Equipe padrão</span>
+                <select id="cfgInfoModalidadePadrao">
+                  <option value="todos">Bike e Corrida</option>
+                  <option value="bicicleta">Somente Bike</option>
+                  <option value="corrida">Somente Corrida</option>
+                </select>
+              </label>
+              <label><span>Quantidade na tabela</span>
+                <select id="cfgInfoLimitePadrao">
+                  <option value="10">Top 10</option>
+                  <option value="15">Top 15</option>
+                  <option value="20">Top 20</option>
+                  <option value="28">Até 28 linhas</option>
+                  <option value="todos">Todos</option>
+                </select>
+              </label>
+            </div>
+            <div class="admin-config-checks">
+              <label><input id="cfgInfoKpisPadrao" type="checkbox" checked> KPIs do mês</label>
+              <label><input id="cfgInfoLegendaPadrao" type="checkbox" checked> Legenda</label>
+              <label><input id="cfgInfoTop3Padrao" type="checkbox" checked> Top 3 em verde</label>
+              <label><input id="cfgInfoAlertasPadrao" type="checkbox" checked> Atletas em alerta</label>
+              <label><input id="cfgInfoDemaisPadrao" type="checkbox" checked> Demais atletas</label>
+              <label><input id="cfgInfoAbrirPadrao" type="checkbox" checked> Abrir em nova aba</label>
+            </div>
+            <div class="admin-actions-row compact-actions">
+              <button id="btnSalvarPadraoInformativo" class="btn-primario" type="button"><i data-lucide="save"></i> Salvar padrão</button>
+              <button id="btnAbrirInformativoPadrao" class="btn-acao" type="button"><i data-lucide="file-text"></i> Gerar informativo</button>
+            </div>
+          </div>
+
+          <div class="card admin-panel-card">
+            <div class="admin-panel-header">
+              <div>
+                <h3><i data-lucide="users-round"></i> Acessos e governança</h3>
+                <p>Resumo dos perfis carregados no portal e lembretes de segurança.</p>
+              </div>
+            </div>
+            <div id="adminResumoAcessos" class="admin-access-list"></div>
+            <div class="admin-note-box">
+              <i data-lucide="lock-keyhole"></i>
+              <span>A interface ajuda a organizar permissões, mas a segurança final precisa ser garantida nas regras do Firestore.</span>
+            </div>
+          </div>
+
+          <div class="card admin-panel-card danger-zone admin-danger-compact">
+            <div class="admin-panel-header">
+              <div>
+                <h3><i data-lucide="alert-octagon"></i> Manutenção sensível</h3>
+                <p>Use somente após exportar backup. Esta ação não deve fazer parte da rotina normal.</p>
+              </div>
+            </div>
+            <button id="btnLimparBase" class="btn-acao" style="color: var(--danger); border-color: var(--danger); width: 100%; justify-content: center; padding: 12px;"><i data-lucide="trash-2"></i> Zerar Todo o Banco de Dados</button>
+          </div>
+        </div>
 
         <div class="card admin-audit-card">
           <div class="admin-audit-header">
