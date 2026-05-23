@@ -108,8 +108,31 @@ function iniciarPainelAdmin() {
   setupCamposFichaConfig();
   setupAtletasConsulta();
   setupAdminCenter();
+  setupTemaTopo();
   
   atualizarTelas();
+}
+
+
+function setupTemaTopo() {
+  const btn = document.getElementById("btnToggleTema");
+  if (!btn) return;
+
+  const aplicarTema = (tema) => {
+    document.body.setAttribute("data-theme", tema);
+    localStorage.setItem("atletasTema", tema);
+    btn.title = tema === "dark" ? "Usar tema claro" : "Usar tema escuro";
+    btn.innerHTML = tema === "dark" ? '<i data-lucide="sun"></i>' : '<i data-lucide="moon"></i>';
+    if (typeof lucide !== "undefined") lucide.createIcons();
+  };
+
+  const temaSalvo = localStorage.getItem("atletasTema") || document.body.getAttribute("data-theme") || "light";
+  aplicarTema(temaSalvo === "dark" ? "dark" : "light");
+
+  btn.addEventListener("click", () => {
+    const atual = document.body.getAttribute("data-theme") === "dark" ? "dark" : "light";
+    aplicarTema(atual === "dark" ? "light" : "dark");
+  });
 }
 
 async function atualizarTelas() {

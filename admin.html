@@ -20,19 +20,27 @@
 <body>
   <div id="toastContainer"></div>
 
-  <header class="topbar">
-    <div style="display: flex; align-items: center;">
-      <img src="assets/logo-energisa-branca.svg" alt="Energisa" class="logo" onerror="this.style.display='none'; this.insertAdjacentHTML('afterend', '<span style=\'font-weight:bold; font-size:1.2rem;\'>⚡️</span>')" />
-      <span class="portal-nome">Gestão do Comitê</span>
+  <header class="topbar topbar-slim">
+    <div class="topbar-brand">
+      <div class="brand-logo-text" aria-label="Atletas Energisa">
+        <span>ATLETAS</span>
+        <strong>ENERGISA</strong>
+      </div>
+      <div class="brand-divider"></div>
+      <div class="brand-context">
+        <strong>Gestão do Comitê</strong>
+        <small>Atletas Energisa</small>
+      </div>
     </div>
-    <div style="display: flex; align-items: center;">
+    <div class="topbar-actions">
       <div class="global-search">
         <i data-lucide="search"></i>
         <input type="text" id="buscaGlobalAtleta" placeholder="Buscar atleta..." autocomplete="off" />
         <div id="resultadoBuscaGlobal" class="global-search-results"></div>
       </div>
+      <button id="btnToggleTema" class="btn-topo theme-toggle-top" title="Alternar tema" type="button"><i data-lucide="moon"></i></button>
       <span id="userGroupBadge" style="display:none;"></span>
-      <button id="logoutBtn" class="btn-topo" title="Sair"><i data-lucide="log-out"></i></button>
+      <button id="logoutBtn" class="btn-topo" title="Sair" type="button"><i data-lucide="log-out"></i></button>
     </div>
   </header>
 

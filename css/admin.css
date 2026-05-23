@@ -3521,3 +3521,246 @@ button[style*="danger"],
     min-height: 52px;
   }
 }
+
+/* =======================================================
+   V31 SAFE — HEADER SLIM + CAMPOS PADRONIZADOS
+   Ajustes somente visuais. Mantém IDs e regras de negócio.
+======================================================= */
+:root {
+  --control-height: 44px;
+  --control-radius: 12px;
+  --control-max: 420px;
+}
+
+.topbar.topbar-slim {
+  min-height: 58px;
+  padding: 8px 22px;
+  background: linear-gradient(90deg, #006f82 0%, #008b87 54%, #00a693 100%);
+  box-shadow: 0 8px 26px rgba(0, 57, 73, 0.14);
+}
+
+.topbar-brand,
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.brand-logo-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: .88;
+  min-width: 112px;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 12px;
+  color: #fff;
+  background: rgba(255,255,255,.14);
+  border: 1px solid rgba(255,255,255,.22);
+  letter-spacing: .03em;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12);
+}
+
+.brand-logo-text span,
+.brand-logo-text strong {
+  display: block;
+  font-weight: 800;
+  font-size: .73rem;
+}
+
+.brand-logo-text strong {
+  font-size: .85rem;
+}
+
+.brand-divider {
+  width: 1px;
+  height: 30px;
+  background: rgba(255,255,255,.28);
+}
+
+.brand-context {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+  min-width: 0;
+}
+
+.brand-context strong {
+  font-size: .94rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.brand-context small {
+  margin-top: 3px;
+  color: rgba(255,255,255,.72);
+  font-size: .72rem;
+  font-weight: 500;
+}
+
+.topbar-slim .global-search {
+  width: clamp(260px, 28vw, 390px);
+  height: 38px;
+  padding: 0 12px;
+  margin-right: 0;
+}
+
+.topbar-slim .global-search input {
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 0 8px !important;
+}
+
+.topbar-slim .btn-topo,
+.theme-toggle-top {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 12px;
+  margin-left: 0;
+}
+
+.topbar-slim .btn-topo svg {
+  width: 18px;
+  height: 18px;
+}
+
+main {
+  padding-top: 82px;
+}
+
+/* Campos com aparência e altura consistentes */
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+select,
+textarea {
+  min-height: var(--control-height);
+  border-radius: var(--control-radius);
+  padding: 10px 12px;
+  font-size: .92rem;
+  line-height: 1.2;
+}
+
+select,
+input[type="date"],
+input[type="number"],
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+  height: var(--control-height);
+}
+
+textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+/* Evita campos gigantes em formulários operacionais */
+#sub-lancar .card > div:not(.grid-2-col) > input,
+#sub-lancar .card > div:not(.grid-2-col) > select,
+#kmTreino {
+  max-width: var(--control-max);
+}
+
+#sub-lancar .grid-2-col {
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  align-items: start;
+}
+
+#sub-lancar .grid-2-col > div {
+  min-width: 0;
+}
+
+body .tipo-lancamento-segmented {
+  min-height: 54px !important;
+  gap: 8px !important;
+  padding: 6px !important;
+  border-radius: 16px !important;
+}
+
+body .tipo-lancamento-btn {
+  min-height: 42px !important;
+  padding: 9px 12px !important;
+  border-radius: 12px !important;
+}
+
+body .tipo-lancamento-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Filtros e grids com controles na mesma régua */
+.athlete-filter-grid input,
+.athlete-filter-grid select,
+.config-ficha-form input,
+.config-ficha-form select,
+.modal-editar-lote-grid input,
+.modal-editar-lote-grid select,
+.modal-lote-add-grid input,
+.modal-lote-add-grid select,
+.ficha-modal-shell input,
+.ficha-modal-shell select,
+.modal-editar-lote-card input,
+.modal-editar-lote-card select,
+.perm-profile-box select {
+  min-height: var(--control-height) !important;
+  height: var(--control-height);
+}
+
+@media (max-width: 860px) {
+  .topbar.topbar-slim {
+    padding: 8px 12px;
+    min-height: 56px;
+  }
+
+  .brand-context,
+  .brand-divider {
+    display: none;
+  }
+
+  .brand-logo-text {
+    min-width: 92px;
+    height: 36px;
+    padding: 0 10px;
+  }
+
+  .topbar-slim .global-search {
+    width: min(44vw, 280px);
+  }
+
+  #userGroupBadge {
+    display: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .topbar-actions {
+    gap: 8px;
+  }
+
+  .topbar-slim .global-search {
+    width: 42px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .topbar-slim .global-search input {
+    display: none;
+  }
+
+  .brand-logo-text {
+    min-width: 88px;
+  }
+
+  #sub-lancar .grid-2-col {
+    grid-template-columns: 1fr;
+  }
+
+  #sub-lancar .card > div:not(.grid-2-col) > input,
+  #sub-lancar .card > div:not(.grid-2-col) > select,
+  #kmTreino {
+    max-width: 100%;
+  }
+}
