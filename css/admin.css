@@ -1470,22 +1470,6 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
   gap: 10px;
   flex-wrap: wrap;
 }
-
-.admin-export-card {
-  grid-column: 1 / -1;
-}
-.admin-export-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 10px;
-}
-.admin-export-grid .btn-acao,
-.admin-export-grid .btn-primario {
-  width: 100%;
-  justify-content: center;
-  min-height: 42px;
-}
-
 .admin-audit-card {
   margin-top: 20px;
 }
@@ -2959,77 +2943,4 @@ body.modal-open {
 .ficha-tab-content,
 .ficha-scroll-list {
   overscroll-behavior: contain !important;
-}
-
-
-/* =====================================================
-   V24 - Polimento seguro de linguagem/UX
-   Base: V22 estável. Sem alterar IDs, coleções ou regras de negócio.
-===================================================== */
-:root {
-  --ux-ease: cubic-bezier(.2,.8,.2,1);
-}
-
-.card,
-.athlete-card,
-.lote-card,
-.admin-center-card,
-.ficha-panel,
-.modal-editar-lote-card {
-  transition: transform .16s var(--ux-ease), box-shadow .16s var(--ux-ease), border-color .16s var(--ux-ease);
-}
-
-.card:hover,
-.athlete-card:hover,
-.lote-card:hover,
-.admin-center-card:hover {
-  transform: translateY(-1px);
-}
-
-button,
-.btn-primario,
-.btn-acao,
-.btn-topo,
-.sub-tab,
-.t-tab,
-.ficha-tab,
-.modal-editar-lote-tab {
-  transition: transform .14s var(--ux-ease), box-shadow .14s var(--ux-ease), background .14s var(--ux-ease), border-color .14s var(--ux-ease), color .14s var(--ux-ease), filter .14s var(--ux-ease);
-}
-
-button:active,
-.btn-primario:active,
-.btn-acao:active,
-.sub-tab:active,
-.t-tab:active,
-.ficha-tab:active,
-.modal-editar-lote-tab:active {
-  transform: scale(.99);
-}
-
-.empty-state {
-  border: 1px dashed rgba(0,155,193,.22);
-  background: linear-gradient(135deg, rgba(0,155,193,.045), rgba(0,179,126,.035));
-  border-radius: 18px;
-}
-
-.tabela-simples tbody tr,
-.ficha-scroll-list > div,
-.admin-audit-list > div,
-.lote-row {
-  transition: background .14s ease;
-}
-
-.tabela-simples tbody tr:hover,
-.ficha-scroll-list > div:hover,
-.admin-audit-list > div:hover,
-.lote-row:hover {
-  background: rgba(0,155,193,.04);
-}
-
-#listaPodioBike li span,
-#listaPodioCorrida li span,
-.nome-atleta-link {
-  min-width: 0;
-  overflow-wrap: anywhere;
 }

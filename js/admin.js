@@ -327,7 +327,7 @@ function filtrarHistorico() {
   tbody.innerHTML = "";
   
   if (dados.length === 0) { tbody.innerHTML = `<tr><td colspan='6' style='text-align:center;'>Nenhum registo encontrado.</td></tr>`; return; }
-  const podeCancelarRegistro = appState.userRole === "admin" || appState.userPermissoes.includes("contabilizacao");
+  const podeEstornar = appState.userRole === "admin" || appState.userPermissoes.includes("contabilizacao");
   
   dados.forEach(h => {
     const atleta = appState.mapAtletas[h.atletaId]; 
@@ -338,7 +338,7 @@ function filtrarHistorico() {
     else if (!atleta) nomeDisplay += " <small style='color:#999; font-weight:bold;'>(Excluído)</small>"; 
     
     let ptsV = Number(h.pontos) === 0 ? `<span style="color:var(--accent);">Justificada</span>` : `+${h.pontos}`;
-    const btnCancelarRegistro = podeCancelarRegistro ? `<button class="btn-acao btn-cancelar-registro" aria-label="Cancelar registro" data-id="${h.id}" data-atleta="${h.atletaId}" data-pontos="${h.pontos}" style="color:var(--danger); border-color:var(--danger);"><i data-lucide="undo-2" style="width:16px;"></i></button>` : '';
+    const btnEstorno = podeEstornar ? `<button class="btn-acao btn-estornar" aria-label="Estornar lançamento" data-id="${h.id}" data-atleta="${h.atletaId}" data-pontos="${h.pontos}" style="color:var(--danger); border-color:var(--danger);"><i data-lucide="undo-2" style="width:16px;"></i></button>` : '';
     
     tbody.innerHTML += `
       <tr>
@@ -347,23 +347,23 @@ function filtrarHistorico() {
         <td data-label="Eq.">${eqDisplay}</td>
         <td data-label="Motivo">${h.descTreino}<br><small style="color:var(--primary);">${h.regraDesc}</small></td>
         <td data-label="Pts" style="text-align:center; color:var(--secondary); font-weight:bold;">${ptsV}</td>
-        <td data-label="Ação" style="text-align:right;">${btnCancelarRegistro}</td>
+        <td data-label="Ação" style="text-align:right;">${btnEstorno}</td>
       </tr>`;
   });
   
   if(typeof lucide !== 'undefined') lucide.createIcons();
   
-  document.querySelectorAll(".btn-cancelar-registro").forEach(btn => { 
+  document.querySelectorAll(".btn-estornar").forEach(btn => { 
     btn.addEventListener("click", (e) => { 
       const histId = e.currentTarget.dataset.id; 
       const atlId = e.currentTarget.dataset.atleta; 
       const pts = parseInt(e.currentTarget.dataset.pontos); 
-      mostrarConfirmacao("Cancelar registro", "Tem certeza? A pontuação será ajustada no total do atleta e a ação ficará registrada.", async () => {
+      mostrarConfirmacao("Estornar Lançamento", "Tem certeza? A pontuação será deduzida do atleta.", async () => {
         try { 
           if (appState.mapAtletas[atlId] && pts > 0) { await updateDoc(doc(db, "atletas", atlId), { pontuacaoTotal: increment(-pts) }); } 
           await deleteDoc(doc(db, "historico_pontos", histId)); 
           showToast("Lançamento estornado!", "success"); atualizarTelas(); 
-        } catch (err) { showToast("Erro ao cancelar registro.", "error"); } 
+        } catch (err) { showToast("Erro ao estornar.", "error"); } 
       }, "danger");
     }); 
   });
@@ -937,21 +937,6 @@ function setupAdminCenter() {
     btnAuditoria.addEventListener("click", carregarAuditoriaAdmin);
   }
 
-  const exportButtons = [
-    ["btnExportarAtletasCsv", exportarAtletasCsv],
-    ["btnExportarEventosCsv", exportarEventosCsv],
-    ["btnExportarParticipacaoCsv", exportarParticipacaoAtletasCsv],
-    ["btnGerarInformativoRanking", gerarInformativoRankingHtml]
-  ];
-
-  exportButtons.forEach(([id, handler]) => {
-    const btn = document.getElementById(id);
-    if (btn && !btn.dataset.listenerAplicado) {
-      btn.dataset.listenerAplicado = "1";
-      btn.addEventListener("click", handler);
-    }
-  });
-
   atualizarAdminCenterResumo();
   carregarAuditoriaAdmin();
 }
@@ -1017,222 +1002,6 @@ async function exportarBackupJson() {
   URL.revokeObjectURL(url);
   await registrarAuditoria("exportar_backup", "sistema", "backup", { colecoes });
   showToast("Backup exportado.", "success");
-}
-
-
-function exportarAtletasCsv() {
-  const atletas = Object.values(appState.mapAtletas || {})
-    .filter(a => a.role === "atleta" || a.equipe)
-    .sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || "")));
-
-  const rows = atletas.map(a => ({
-    Nome: a.nome || "",
-    Email: a.email || "",
-    Equipe: a.equipe || "",
-    Status: a.ativo === false ? "Inativo" : "Ativo",
-    Situacao: a.status || "",
-    Pontos: Number(a.pontuacaoTotal) || 0,
-    KM: calcularKmAtleta(a.id),
-    Participacoes: calcularParticipacoesAtleta(a.id),
-    Localidade: a.localidade || "",
-    Sexo: a.sexo || "",
-    Nascimento: a.dataNascimento || a.nascimento || "",
-    Entrada: a.anoEntrada || "",
-    Recusas: Number(a.recusas) || 0
-  }));
-
-  baixarCsv(`lista_atletas_${dataArquivo()}.csv`, rows);
-  registrarAuditoria("exportar_lista_atletas", "sistema", "exportacao", { total: rows.length });
-  showToast("Lista de atletas exportada.", "success");
-}
-
-function exportarEventosCsv() {
-  const eventos = [...(appState.cacheEventos || [])]
-    .sort((a, b) => String(a.data || "").localeCompare(String(b.data || "")));
-
-  const rows = eventos.map(e => ({
-    Titulo: e.titulo || "",
-    Data: e.data || "",
-    Modalidade: e.modalidade || "",
-    Local: e.local || e.localEvento || "",
-    KM: e.km || e.kmPrevisto || "",
-    Status: e.status || e.statusLancamento || "",
-    Link: e.link || ""
-  }));
-
-  baixarCsv(`lista_eventos_${dataArquivo()}.csv`, rows);
-  registrarAuditoria("exportar_lista_eventos", "sistema", "exportacao", { total: rows.length });
-  showToast("Lista de eventos exportada.", "success");
-}
-
-function exportarParticipacaoAtletasCsv() {
-  const rows = Object.values(appState.mapAtletas || {})
-    .filter(a => a.role === "atleta" || ["Bicicleta", "Bike", "Corrida"].includes(a.equipe))
-    .map(a => {
-      const historico = historicoValidoAtleta(a.id);
-      const pontos = historico.reduce((s, h) => s + (Number(h.pontos) || 0), 0);
-      const participacoes = calcularParticipacoesAtleta(a.id);
-      const km = calcularKmAtleta(a.id);
-      const ultima = historico.map(h => h.dataTreino).filter(Boolean).sort().pop() || "Nunca";
-      return {
-        Nome: a.nome || "",
-        Equipe: a.equipe || "",
-        Status: a.ativo === false ? "Inativo" : "Ativo",
-        Participacoes: participacoes,
-        Pontos: pontos,
-        KM: km,
-        UltimaParticipacao: ultima,
-        MediaPontosPorParticipacao: participacoes ? arredondar(pontos / participacoes) : 0,
-        MediaKmPorParticipacao: participacoes ? arredondar(km / participacoes) : 0
-      };
-    })
-    .sort((a, b) => (b.Pontos - a.Pontos) || String(a.Nome).localeCompare(String(b.Nome)));
-
-  baixarCsv(`participacao_atletas_${dataArquivo()}.csv`, rows);
-  registrarAuditoria("exportar_participacao_atletas", "sistema", "exportacao", { total: rows.length });
-  showToast("Participação dos atletas exportada.", "success");
-}
-
-function gerarInformativoRankingHtml() {
-  const hoje = new Date();
-  const mes = String(hoje.getMonth() + 1).padStart(2, "0");
-  const ano = hoje.getFullYear();
-  const chaveMes = `${ano}-${mes}`;
-  const mesNome = hoje.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-
-  const historicoMes = (appState.historicoCompleto || []).filter(h =>
-    !h.estornado && String(h.dataTreino || "").startsWith(chaveMes)
-  );
-
-  const ranking = Object.values(appState.mapAtletas || {})
-    .filter(a => ["Bicicleta", "Bike", "Corrida"].includes(a.equipe))
-    .map(a => {
-      const hist = historicoMes.filter(h => h.atletaId === a.id);
-      const pontos = hist.reduce((s, h) => s + (Number(h.pontos) || 0), 0);
-      const treinos = new Set(hist.map(h => h.loteId || `${h.dataTreino}|${h.descTreino || ""}`)).size;
-      const km = calcularKmUnicoPorLote(hist);
-      return { id: a.id, nome: a.nome || "", equipe: a.equipe || "", pontos, treinos, km };
-    })
-    .sort((a, b) => (b.pontos - a.pontos) || (b.km - a.km) || String(a.nome).localeCompare(String(b.nome)));
-
-  const totalPontos = ranking.reduce((s, r) => s + r.pontos, 0);
-  const totalKm = ranking.reduce((s, r) => s + r.km, 0);
-  const totalTreinos = ranking.reduce((s, r) => s + r.treinos, 0);
-  const limiteAlerta = 5;
-
-  const linhas = ranking.map((r, idx) => {
-    const alerta = r.pontos <= limiteAlerta;
-    return `<tr class="${alerta ? "alerta" : "ok"}">
-      <td>${idx + 1}</td>
-      <td>${escapeHtml(r.nome)}</td>
-      <td>${escapeHtml(r.equipe)}</td>
-      <td>${r.pontos}</td>
-      <td>${r.treinos}</td>
-      <td>${formatarNumero(r.km)}</td>
-    </tr>`;
-  }).join("");
-
-  const html = `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>Informativo Ranking - Atletas Energisa</title>
-  <style>
-    body{margin:0;background:#071728;color:#f7fbff;font-family:Arial,Helvetica,sans-serif;padding:22px;}
-    .page{max-width:1400px;margin:auto;border-top:8px solid #f47a20;background:#071728;}
-    .header{display:grid;grid-template-columns:220px 1fr 320px;gap:18px;align-items:center;padding:16px 8px 10px;}
-    .logo{background:#00a6c7;color:#fff;font-weight:900;font-size:28px;line-height:1.0;padding:18px;border-radius:4px;text-align:center;}
-    h1{font-size:34px;line-height:1.15;margin:0 0 6px;letter-spacing:.5px;}
-    .sub{color:#b9c6d4;font-size:16px;}
-    .legend{display:grid;gap:10px;font-size:16px;}
-    .legend span{display:inline-block;width:130px;height:12px;margin-right:10px;vertical-align:middle;}
-    .green{background:#6caf3f}.orange{background:#ed7d2c}
-    .kpis{display:flex;gap:14px;margin:10px 0 16px;padding-left:28px;}
-    .kpi{border:2px solid #1597b4;min-width:210px;text-align:center;padding:8px 16px;background:#09213a;}
-    .kpi:first-child{border-color:#a8a33a}.kpi small{display:block;color:#b9c6d4;text-transform:uppercase;font-weight:700;letter-spacing:.5px}.kpi strong{font-size:30px;}
-    .tag{background:#18b8d8;color:#fff;font-size:28px;font-weight:900;width:620px;margin:10px 0 16px 80px;padding:8px 14px;}
-    table{border-collapse:collapse;width:100%;font-size:16px;} th{background:#06a9bd;color:#fff;padding:10px;border:2px solid #b4dce8;font-size:16px;} td{padding:7px 10px;border:2px solid rgba(255,255,255,.65);} tr.ok{background:#0b233d;} tr.ok:nth-child(-n+3){background:#68a83d;} tr.alerta{background:#ec7b2c;} td:first-child,td:nth-child(4),td:nth-child(5),td:nth-child(6){text-align:center;} .footer{color:#b9c6d4;font-size:13px;margin-top:14px;text-align:right;}
-    @media print{body{padding:0}.page{max-width:none}.no-print{display:none}}
-  </style>
-</head>
-<body>
-  <div class="page">
-    <div class="header">
-      <div class="logo">ATLETAS<br>ENERGISA</div>
-      <div><h1>Ranking de Pontos do<br>Time de Atletas Energisa</h1><div class="sub">Mês: ${escapeHtml(mesNome)} · ${ranking.length} atletas no ranking</div></div>
-      <div class="legend"><div><span class="green"></span> Atletas no Ranking</div><div><span class="orange"></span> Atletas em Alerta</div></div>
-    </div>
-    <div class="kpis"><div class="kpi"><small>Pontos totais do mês</small><strong>${totalPontos} pts</strong></div><div class="kpi"><small>KM acumulados</small><strong>${formatarNumero(totalKm)} km</strong></div><div class="kpi"><small>Quantidade de treinos</small><strong>${totalTreinos}</strong></div></div>
-    <div class="tag">RANKING</div>
-    <table><thead><tr><th>ID</th><th>Atleta</th><th>Equipe</th><th>Pontos</th><th>Treinos válidos</th><th>KM</th></tr></thead><tbody>${linhas}</tbody></table>
-    <div class="footer">Gerado em ${new Date().toLocaleString("pt-BR")} · Atletas em alerta: até ${limiteAlerta} pontos no mês.</div>
-  </div>
-</body>
-</html>`;
-
-  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `informativo_ranking_${chaveMes}.html`;
-  a.click();
-  URL.revokeObjectURL(url);
-  registrarAuditoria("gerar_informativo_ranking", "sistema", "exportacao", { mes: chaveMes, totalAtletas: ranking.length });
-  showToast("Informativo do ranking gerado em HTML.", "success");
-}
-
-function historicoValidoAtleta(atletaId) {
-  return (appState.historicoCompleto || []).filter(h => h.atletaId === atletaId && !h.estornado);
-}
-
-function calcularParticipacoesAtleta(atletaId) {
-  const hist = historicoValidoAtleta(atletaId).filter(h => Number(h.pontos) > 0 || Number(h.kmPercorrido) > 0);
-  return new Set(hist.map(h => h.loteId || `${h.dataTreino}|${h.descTreino || ""}`)).size;
-}
-
-function calcularKmAtleta(atletaId) {
-  return calcularKmUnicoPorLote(historicoValidoAtleta(atletaId));
-}
-
-function calcularKmUnicoPorLote(hist) {
-  const mapa = new Map();
-  hist.forEach(h => {
-    const km = Number(h.kmPercorrido || h.km || 0);
-    if (!km) return;
-    const chave = h.loteId || `${h.dataTreino}|${h.descTreino || ""}|${h.atletaId || ""}`;
-    if (!mapa.has(chave)) mapa.set(chave, km);
-  });
-  return arredondar(Array.from(mapa.values()).reduce((s, v) => s + v, 0));
-}
-
-function baixarCsv(nomeArquivo, rows) {
-  const headers = rows.length ? Object.keys(rows[0]) : ["Sem dados"];
-  const linhas = [headers.join(";")];
-  rows.forEach(row => linhas.push(headers.map(h => csvValor(row[h])).join(";")));
-  const blob = new Blob(["\ufeff" + linhas.join("\n")], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = nomeArquivo;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function csvValor(value) {
-  const txt = String(value ?? "").replaceAll('"', '""');
-  return `"${txt}"`;
-}
-
-function dataArquivo() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function arredondar(valor) {
-  return Math.round((Number(valor) || 0) * 100) / 100;
-}
-
-function formatarNumero(valor) {
-  return arredondar(valor).toLocaleString("pt-BR");
 }
 
 function setTexto(id, valor) {

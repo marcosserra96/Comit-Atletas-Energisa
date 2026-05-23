@@ -552,7 +552,7 @@ function aplicarEstilosUXPontuacao() {
     .lote-atleta-edit-row strong { color: var(--text); }
     .lote-atleta-edit-row small { color: var(--text-light); }
 
-    .btn-remover-atleta-lote, .btn-cancelar-lancamento-inteiro {
+    .btn-remover-atleta-lote, .btn-estornar-lote-inteiro {
       color: var(--danger) !important;
       border-color: rgba(230,57,70,.35) !important;
       background: rgba(230,57,70,.06) !important;
@@ -1314,7 +1314,7 @@ function setupExtratoAgrupadoUI() {
         <i data-lucide="layers-3"></i> Por lançamento
       </button>
       <button type="button" class="extrato-tab" data-view="auditoria">
-        <i data-lucide="list"></i> Histórico de alterações
+        <i data-lucide="list"></i> Auditoria detalhada
       </button>
     </div>
     <div id="extratoLotes" class="extrato-lotes-grid"></div>
@@ -1602,7 +1602,7 @@ function setupModalEditarLote() {
       </div>
 
       <div class="modal-editar-lote-actions">
-        <button type="button" id="btnCancelarLancamentoInteiro" class="btn-acao btn-cancelar-lancamento-inteiro"><i data-lucide="rotate-ccw"></i> Cancelar lançamento inteiro</button>
+        <button type="button" id="btnEstornarLoteInteiro" class="btn-acao btn-estornar-lote-inteiro"><i data-lucide="rotate-ccw"></i> Estornar lote inteiro</button>
         <div style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">
           <button type="button" id="btnCancelarEditLote" class="btn-acao">Fechar</button>
           <button type="button" id="btnSalvarEditLote" class="btn-primario"><i data-lucide="save"></i> Salvar dados gerais</button>
@@ -1618,7 +1618,7 @@ function setupModalEditarLote() {
   });
   document.getElementById("btnSalvarEditLote")?.addEventListener("click", salvarEdicaoLote);
   document.getElementById("btnAdicionarAtletaLote")?.addEventListener("click", adicionarAtletaAoLote);
-  document.getElementById("btnCancelarLancamentoInteiro")?.addEventListener("click", cancelarLancamentoInteiro);
+  document.getElementById("btnEstornarLoteInteiro")?.addEventListener("click", estornarLoteInteiro);
 
   document.querySelectorAll(".modal-editar-lote-tab").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -2038,7 +2038,7 @@ async function adicionarAtletaAoLote() {
 }
 
 
-async function cancelarLancamentoInteiro() {
+async function estornarLoteInteiro() {
   const loteKey = document.getElementById("editLoteKey")?.value;
   const lote = lotesRenderizados.get(loteKey);
   if (!lote) return showToast("Lote não localizado.", "error");
@@ -2054,14 +2054,14 @@ async function cancelarLancamentoInteiro() {
   });
 
   const totalPontos = itensAtivos.reduce((s, i) => s + (Number(i.pontos) || 0), 0);
-  const motivo = prompt("Informe o motivo para cancelar o lançamento inteiro:");
+  const motivo = prompt("Informe o motivo para estornar o lote inteiro:");
   if (!motivo || !motivo.trim()) {
-    return showToast("Motivo obrigatório para cancelar o lançamento.", "error");
+    return showToast("Motivo obrigatório para estornar o lote.", "error");
   }
 
   mostrarConfirmacao(
-    "Cancelar lançamento inteiro",
-    `Cancelar todo o lançamento ${lote.titulo}?\n\nRegistros afetados: ${itensAtivos.length}\nPontos removidos: ${totalPontos}\n\nA ação ficará registrada na auditoria.`,
+    "Estornar lote inteiro",
+    `Estornar todo o lote ${lote.titulo}?\n\nRegistros afetados: ${itensAtivos.length}\nPontos removidos: ${totalPontos}\n\nA ação ficará registrada na auditoria.`,
     async () => {
       try {
         const batch = writeBatch(db);
@@ -2116,7 +2116,7 @@ async function cancelarLancamentoInteiro() {
         fecharModalEditarLote();
         showToast("Lote estornado com sucesso.", "success");
       } catch (err) {
-        showToast("Erro ao cancelar lançamento: " + err.message, "error");
+        showToast("Erro ao estornar lote: " + err.message, "error");
       }
     },
     "danger"
