@@ -539,6 +539,20 @@
             </div>
           </div>
 
+
+          <div class="card admin-control-card admin-export-card">
+            <h3 style="color: var(--primary); font-size: 1.2rem;"><i data-lucide="file-down"></i> Exportações e informativos</h3>
+            <p style="font-size: 0.88rem; color: var(--text-light); margin-bottom: 15px;">
+              Gere bases simples para prestação de contas, acompanhamento e comunicação com os atletas.
+            </p>
+            <div class="admin-export-grid">
+              <button id="btnExportarAtletasCsv" class="btn-acao" type="button"><i data-lucide="users"></i> Lista de atletas</button>
+              <button id="btnExportarEventosCsv" class="btn-acao" type="button"><i data-lucide="calendar-days"></i> Lista de eventos</button>
+              <button id="btnExportarParticipacaoCsv" class="btn-acao" type="button"><i data-lucide="activity"></i> Participação dos atletas</button>
+              <button id="btnGerarInformativoRanking" class="btn-primario" type="button"><i data-lucide="trophy"></i> Informativo do ranking</button>
+            </div>
+          </div>
+
           <div class="card admin-control-card danger-zone">
             <h3 style="color: var(--danger); font-size: 1.2rem;"><i data-lucide="alert-octagon"></i> Zona de Perigo</h3>
             <p style="font-size: 0.88rem; color: var(--text-light); margin-bottom: 15px;">
@@ -714,7 +728,7 @@
       <div class="ficha-tabs" role="tablist" aria-label="Abas da ficha do atleta">
         <button type="button" class="ficha-tab active" data-ficha-tab="resumo"><i data-lucide="layout-dashboard"></i> Resumo</button>
         <button type="button" class="ficha-tab" data-ficha-tab="lancamentos"><i data-lucide="history"></i> Lançamentos</button>
-        <button type="button" class="ficha-tab" data-ficha-tab="dados"><i data-lucide="id-card"></i> Dados e campos</button>
+        <button type="button" class="ficha-tab" data-ficha-tab="dados"><i data-lucide="id-card"></i> Cadastro</button>
         <button type="button" class="ficha-tab" data-ficha-tab="comentarios"><i data-lucide="message-square"></i> Comentários</button>
         <button type="button" class="ficha-tab" data-ficha-tab="auditoria"><i data-lucide="shield-check"></i> Auditoria</button>
       </div>
@@ -764,12 +778,12 @@
         <div class="ficha-extra-panel ficha-extra-panel-tabs">
           <div class="ficha-extra-head">
             <div>
-              <h4>Campos configurados da ficha</h4>
-              <small>Estes campos são definidos em Ajustes &gt; Modelo da ficha. Aqui você apenas preenche os valores do atleta.</small>
+              <h4>Dados complementares</h4>
+              <small>Campos definidos em Ajustes &gt; Modelo da ficha. Aqui você preenche as informações do atleta.</small>
             </div>
           </div>
           <div id="fichaCamposModeloLista" class="ficha-modelo-list"></div>
-          <button id="btnSalvarCamposFichaModelo" class="btn-primario" type="button" style="width:100%; justify-content:center; margin-top:12px;"><i data-lucide="save"></i> Salvar campos da ficha</button>
+          <button id="btnSalvarCamposFichaModelo" class="btn-primario" type="button" style="width:100%; justify-content:center; margin-top:12px;"><i data-lucide="save"></i> Salvar dados complementares</button>
         </div>
       </div>
 

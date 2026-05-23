@@ -1470,6 +1470,22 @@ h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
   gap: 10px;
   flex-wrap: wrap;
 }
+
+.admin-export-card {
+  grid-column: 1 / -1;
+}
+.admin-export-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+.admin-export-grid .btn-acao,
+.admin-export-grid .btn-primario {
+  width: 100%;
+  justify-content: center;
+  min-height: 42px;
+}
+
 .admin-audit-card {
   margin-top: 20px;
 }
