@@ -4406,3 +4406,92 @@ body[data-theme="dark"] .quick-export-actions .btn-acao {
     justify-content: center;
   }
 }
+
+
+/* =====================================================
+   V36 - Header com logo oficial do programa
+   Seguro: ajuste somente visual no topo
+   ===================================================== */
+.topbar.topbar-slim {
+  min-height: 58px;
+  padding: 6px 22px;
+  border-top: 3px solid #f27928;
+  background: linear-gradient(90deg, #006f82 0%, #008b87 52%, #00a693 100%);
+}
+
+.topbar-brand {
+  gap: 12px;
+}
+
+.topbar-program-logo {
+  width: 112px;
+  height: 42px;
+  object-fit: contain;
+  display: block;
+  border-radius: 4px;
+  box-shadow: 0 8px 18px rgba(0, 55, 70, .18);
+  background: linear-gradient(135deg, #00a8c5 0%, #00916b 100%);
+}
+
+.brand-divider {
+  height: 30px;
+  opacity: .75;
+}
+
+.brand-context strong {
+  font-size: .88rem;
+  letter-spacing: .01em;
+}
+
+.brand-context small {
+  font-size: .68rem;
+  opacity: .88;
+}
+
+.topbar-slim .global-search {
+  width: clamp(260px, 24vw, 360px);
+  height: 36px;
+}
+
+.topbar-slim .global-search input {
+  height: 34px !important;
+  min-height: 34px !important;
+}
+
+.topbar-slim .btn-topo,
+.theme-toggle-top {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+}
+
+#userGroupBadge {
+  min-height: 32px;
+  padding: 0 11px;
+  border-radius: 10px;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  background: rgba(0,155,193,.22);
+  color: #fff;
+}
+
+@media (max-width: 760px) {
+  .topbar-program-logo {
+    width: 92px;
+    height: 34px;
+  }
+
+  .brand-divider,
+  .brand-context {
+    display: none;
+  }
+
+  .topbar.topbar-slim {
+    padding: 7px 12px;
+  }
+}
