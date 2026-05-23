@@ -5346,3 +5346,145 @@ body[data-theme="dark"] .tabela-simples td[colspan] {
   .admin-check-item { grid-template-columns: 22px 1fr auto; }
   .admin-check-item small { max-width: 210px; }
 }
+
+/* =====================================================
+   V42 - Identidade visual GitHub + logo branca
+   Escopo seguro: assets/logos, header e card informativo no Admin
+   ===================================================== */
+.topbar.topbar-slim {
+  background: linear-gradient(90deg, #006b80 0%, #008c8a 52%, #00a693 100%) !important;
+}
+
+.topbar-program-logo {
+  width: 128px !important;
+  height: 40px !important;
+  object-fit: contain !important;
+  object-position: left center !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.brand-context strong {
+  letter-spacing: .01em !important;
+}
+
+.admin-brand-card {
+  background:
+    linear-gradient(145deg, rgba(0,155,193,.08), rgba(0,179,126,.05)),
+    var(--bg-card) !important;
+}
+
+.brand-admin-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.brand-preview {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  min-height: 132px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  justify-content: center;
+}
+
+.brand-preview span {
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-light);
+  font-weight: 800;
+}
+
+.brand-preview img {
+  max-width: 210px;
+  max-height: 70px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.brand-preview small {
+  color: var(--text-light);
+  font-size: .78rem;
+  line-height: 1.35;
+}
+
+.brand-preview-dark {
+  background: linear-gradient(135deg, #07192d, #005f72);
+  border-color: rgba(0,169,200,.28);
+}
+
+.brand-preview-dark span,
+.brand-preview-dark small {
+  color: rgba(255,255,255,.76);
+}
+
+.brand-preview-light {
+  background: rgba(0,155,193,.04);
+}
+
+.brand-token-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.brand-token-grid > div {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 10px;
+  background: rgba(255,255,255,.03);
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  grid-template-areas: "swatch label" "swatch code";
+  gap: 2px 9px;
+  align-items: center;
+}
+
+.brand-token-grid strong {
+  grid-area: swatch;
+  width: 22px;
+  height: 36px;
+  border-radius: 9px;
+  background: var(--swatch);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.25);
+}
+
+.brand-token-grid span {
+  grid-area: label;
+  font-size: .72rem;
+  color: var(--text-light);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.brand-token-grid code {
+  grid-area: code;
+  color: var(--text);
+  font-size: .76rem;
+  font-weight: 800;
+  background: transparent;
+}
+
+.brand-note-box {
+  margin-top: 14px;
+}
+
+@media (max-width: 780px) {
+  .brand-admin-grid,
+  .brand-token-grid {
+    grid-template-columns: 1fr;
+  }
+  .topbar-program-logo {
+    width: 108px !important;
+    height: 34px !important;
+  }
+}

@@ -22,7 +22,7 @@
 
   <header class="topbar topbar-slim">
     <div class="topbar-brand">
-      <img class="topbar-program-logo" src="assets/logo-atletas-energisa-report.png" alt="Atletas Energisa" />
+      <img class="topbar-program-logo" src="assets/logos/logo-comite-branca.png" alt="Atletas Energisa" />
       <div class="brand-divider"></div>
       <div class="brand-context">
         <strong>Portal do Comitê</strong>
@@ -632,6 +632,39 @@
             </div>
           </div>
 
+
+
+          <div class="card admin-panel-card admin-brand-card">
+            <div class="admin-panel-header">
+              <div>
+                <h3><i data-lucide="palette"></i> Identidade visual do portal</h3>
+                <p>Logos versionadas no GitHub e cores padrão usadas no portal, login e informativo.</p>
+              </div>
+            </div>
+            <div class="brand-admin-grid">
+              <div class="brand-preview brand-preview-dark">
+                <span>Logo branca</span>
+                <img src="assets/logos/logo-comite-branca.png" alt="Logo branca do comitê" />
+                <small>Indicada para header, login e fundos escuros.</small>
+              </div>
+              <div class="brand-preview brand-preview-light">
+                <span>Logo colorida</span>
+                <img src="assets/logos/logo-comite-colorida.png" alt="Logo colorida do comitê" />
+                <small>Indicada para report/informativo.</small>
+              </div>
+            </div>
+            <div class="brand-token-grid">
+              <div><span>Principal</span><strong style="--swatch:#009bc1"></strong><code>#009BC1</code></div>
+              <div><span>Secundária</span><strong style="--swatch:#00b37e"></strong><code>#00B37E</code></div>
+              <div><span>Destaque</span><strong style="--swatch:#f37021"></strong><code>#F37021</code></div>
+              <div><span>Fundo escuro</span><strong style="--swatch:#07192d"></strong><code>#07192D</code></div>
+            </div>
+            <div class="admin-note-box brand-note-box">
+              <i data-lucide="github"></i>
+              <span>Para alterar definitivamente as logos, substitua os arquivos em <strong>assets/logos</strong> no GitHub e publique novamente.</span>
+            </div>
+          </div>
+
           <div class="card admin-panel-card danger-zone admin-danger-compact">
             <div class="admin-panel-header">
               <div>
@@ -1008,9 +1041,17 @@
             <option value="todos">Todos</option>
           </select>
         </label>
+        <label>
+          <span>Formato</span>
+          <select id="filtroInformativoFormato">
+            <option value="html">HTML para enviar/baixar</option>
+            <option value="pdf">PDF / imprimir</option>
+          </select>
+        </label>
       </div>
 
       <div class="modal-informativo-options">
+        <label><input id="chkInformativoPaginasSeparadas" type="checkbox" checked> Separar Bike e Corrida em páginas</label>
         <label><input id="chkInformativoKpis" type="checkbox" checked> KPIs do mês</label>
         <label><input id="chkInformativoLegenda" type="checkbox" checked> Legenda</label>
         <label><input id="chkInformativoTop3" type="checkbox" checked> Top 3 em verde</label>

@@ -295,3 +295,61 @@ button.loading::after {
 @keyframes toastIn {
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* =====================================================
+   V42 - Login institucional com logo branca do comitê
+   ===================================================== */
+body {
+  background:
+    radial-gradient(circle at 18% 18%, rgba(255,255,255,.16), transparent 26%),
+    radial-gradient(circle at 82% 10%, rgba(0,179,126,.28), transparent 28%),
+    linear-gradient(135deg, #07192d 0%, #006f82 48%, #00a693 100%) !important;
+}
+
+.container {
+  max-width: 430px !important;
+}
+
+.logo {
+  margin-bottom: 22px;
+}
+
+.logo img {
+  height: auto !important;
+  width: min(280px, 78vw) !important;
+  max-height: 92px !important;
+  margin-bottom: 14px !important;
+  object-fit: contain;
+  filter: drop-shadow(0 14px 26px rgba(0,0,0,.22)) !important;
+}
+
+.logo h1 {
+  font-size: 1.55rem !important;
+  margin: 0 !important;
+  letter-spacing: .01em;
+}
+
+.login-subtitle {
+  margin: 6px 0 26px;
+  color: rgba(255,255,255,.78);
+  font-size: .9rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.login-box {
+  border-radius: 24px !important;
+  box-shadow: 0 24px 70px rgba(0, 25, 45, .30) !important;
+  border: 1px solid rgba(255,255,255,.55);
+}
+
+.login-box h2 {
+  color: #007f9d !important;
+}
+
+@media (max-width: 520px) {
+  .container { padding: 22px !important; }
+  .logo img { width: min(245px, 82vw) !important; }
+  .login-box { padding: 24px 22px !important; }
+}

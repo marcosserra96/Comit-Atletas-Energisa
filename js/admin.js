@@ -1391,6 +1391,8 @@ function coletarOpcoesInformativoRanking() {
   return {
     modalidade: valor("filtroInformativoModalidade") || "todos",
     limite: valor("filtroInformativoLimite") || "28",
+    formato: valor("filtroInformativoFormato") || "html",
+    paginasSeparadas: marcado("chkInformativoPaginasSeparadas"),
     mostrarKpis: marcado("chkInformativoKpis"),
     mostrarLegenda: marcado("chkInformativoLegenda"),
     mostrarTop3: marcado("chkInformativoTop3"),
@@ -1415,6 +1417,8 @@ function gerarInformativoRankingHtml(opcoes = {}) {
   const filtros = {
     modalidade: opcoes.modalidade || "todos",
     limite: opcoes.limite || "28",
+    formato: opcoes.formato || "html",
+    paginasSeparadas: opcoes.paginasSeparadas !== false,
     mostrarKpis: opcoes.mostrarKpis !== false,
     mostrarLegenda: opcoes.mostrarLegenda !== false,
     mostrarTop3: opcoes.mostrarTop3 !== false,
@@ -1435,7 +1439,7 @@ function gerarInformativoRankingHtml(opcoes = {}) {
   const totalKm = baseSelecionada.reduce((s, a) => s + a.kmMes, 0);
   const totalTreinos = baseSelecionada.reduce((s, a) => s + a.treinosMes, 0);
 
-  const html = montarHtmlInformativoRanking({
+  let html = montarHtmlInformativoRanking({
     mesLabel,
     diasUteis,
     totalPontos,
@@ -1447,8 +1451,17 @@ function gerarInformativoRankingHtml(opcoes = {}) {
   });
 
   const sufixoModalidade = filtros.modalidade === "todos" ? "geral" : filtros.modalidade === "bicicleta" ? "bike" : "corrida";
-  if (filtros.abrirEmNovaAba) abrirHtmlNovaAba(html);
-  baixarHtml(`informativo_ranking_atletas_${sufixoModalidade}`, html);
+  const nomeArquivo = `informativo_ranking_atletas_${sufixoModalidade}`;
+
+  if (filtros.formato === "pdf") {
+    abrirHtmlNovaAba(html, true);
+    fecharModalInformativoRanking();
+    showToast("Informativo aberto para salvar como PDF.", "success");
+    return;
+  }
+
+  if (filtros.abrirEmNovaAba) abrirHtmlNovaAba(html, false);
+  baixarHtml(nomeArquivo, html);
   fecharModalInformativoRanking();
   showToast("Informativo do ranking gerado em HTML.", "success");
 }
@@ -1509,16 +1522,62 @@ const LOGO_ATLETAS_REPORT_DATA_URL = "data:image/png;base64,iVBORw0KGgoAAAANSUhE
 function montarHtmlInformativoRanking({ mesLabel, diasUteis, totalPontos, totalKm, totalTreinos, bike, corrida, opcoes = {} }) {
   const limite = opcoes.limite === "todos" ? 999 : Number(opcoes.limite || 28);
   const listas = [];
-  if (bike.length) listas.push({ titulo: "Bike", dados: bike });
-  if (corrida.length) listas.push({ titulo: "Corrida", dados: corrida });
+  if (bike.length) listas.push({ titulo: "Bike", dados: bike, icone: "🚴‍♂️" });
+  if (corrida.length) listas.push({ titulo: "Corrida", dados: corrida, icone: "🏃‍♂️" });
 
   const todos = [...bike, ...corrida];
-  const totalRanking = todos.length;
-  const totalAlertas = todos.filter(a => a.pontosMes <= 0 && a.treinosMes <= 0).length;
   const modalidadeLabel = listas.length === 2 ? "Bike e Corrida" : (listas[0]?.titulo || "Bike e Corrida");
-  const classeTabela = listas.length === 1 ? "tables single" : "tables";
   const tituloSecao = listas.length === 1 ? `RANKING DO MÊS - ${listas[0].titulo.toUpperCase()}` : "RANKING DO MÊS";
-  const tabelas = listas.map(item => montarTabelaRankingInformativo(item.titulo, item.dados, { ...opcoes, limite })).join("");
+  const usarPaginasSeparadas = opcoes.paginasSeparadas !== false && listas.length === 2;
+
+  const estilos = montarCssInformativoRanking();
+
+  const montarPagina = (listaPagina, idx = 0) => {
+    const dadosPagina = listaPagina.flatMap(item => item.dados || []);
+    const pontosPagina = dadosPagina.reduce((s, a) => s + a.pontosMes, 0);
+    const kmPagina = dadosPagina.reduce((s, a) => s + a.kmMes, 0);
+    const treinosPagina = dadosPagina.reduce((s, a) => s + a.treinosMes, 0);
+    const totalRankingPagina = dadosPagina.length;
+    const totalAlertasPagina = dadosPagina.filter(a => a.pontosMes <= 0 && a.treinosMes <= 0).length;
+    const labelPagina = listaPagina.length === 2 ? modalidadeLabel : listaPagina[0]?.titulo || modalidadeLabel;
+    const secaoPagina = listaPagina.length === 1 ? `RANKING DO MÊS - ${String(listaPagina[0].titulo || "").toUpperCase()}` : tituloSecao;
+    const classeTabela = listaPagina.length === 1 ? "tables single" : "tables";
+    const iconeSecao = listaPagina.length === 1 ? (listaPagina[0].icone || "🏆") : "🏆";
+    const tabelas = listaPagina.map(item => montarTabelaRankingInformativo(item.titulo, item.dados, { ...opcoes, limite })).join("");
+    const classePagina = usarPaginasSeparadas ? "sheet page-break" : "sheet";
+
+    return `<section class="${classePagina}">
+      <div class="top">
+        <div class="brand"><img src="${LOGO_ATLETAS_REPORT_DATA_URL}" alt="Atletas Energisa"></div>
+        <div class="title">
+          <h1>Ranking de Pontos do<br>Time de Atletas Energisa</h1>
+          <p>${escapeHtml(labelPagina)} | Mês: ${escapeHtml(capitalizar(mesLabel))} | ${diasUteis} dias úteis</p>
+        </div>
+        ${opcoes.mostrarLegenda === false ? "" : `<div class="legend">
+          <div><span style="background:var(--green)"></span> Top 3 do Ranking</div>
+          <div><span style="background:var(--orange)"></span> Atletas em Alerta</div>
+        </div>`}
+      </div>
+
+      ${opcoes.mostrarKpis === false ? "" : `<div class="kpis">
+        <div class="kpi"><small>Pontos totais do mês</small><strong>${formatarNumero(pontosPagina, 0)} pts</strong></div>
+        <div class="kpi"><small>KM acumulados</small><strong>${formatarNumero(kmPagina, 1)} km</strong></div>
+        <div class="kpi"><small>Quantidade de treinos</small><strong>${formatarNumero(treinosPagina, 0)}</strong></div>
+        <div class="kpi"><small>Atletas no ranking</small><strong>${formatarNumero(totalRankingPagina, 0)}</strong></div>
+        <div class="kpi"><small>Atletas em alerta</small><strong>${formatarNumero(totalAlertasPagina, 0)}</strong></div>
+      </div>`}
+
+      <div class="section-title"><span>${escapeHtml(secaoPagina)}</span><span class="section-icon">${iconeSecao}</span></div>
+      <div class="${classeTabela}">
+        ${tabelas || `<table><tbody><tr class="normal"><td style="height:80px;text-align:center;">Nenhum atleta encontrado.</td></tr></tbody></table>`}
+      </div>
+      <div class="footer"><span>Informativo gerado pelo Portal Atletas Energisa</span><span>${new Date().toLocaleString("pt-BR")}</span></div>
+    </section>`;
+  };
+
+  const conteudo = usarPaginasSeparadas
+    ? listas.map((item, idx) => montarPagina([item], idx)).join("\n")
+    : montarPagina(listas);
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -1526,7 +1585,14 @@ function montarHtmlInformativoRanking({ mesLabel, diasUteis, totalPontos, totalK
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Informativo do Ranking - Atletas Energisa</title>
-<style>
+<style>${estilos}</style>
+</head>
+<body>${conteudo}</body>
+</html>`;
+}
+
+function montarCssInformativoRanking() {
+  return `
   :root {
     --navy:#07192d;
     --navy-2:#0a2642;
@@ -1534,47 +1600,48 @@ function montarHtmlInformativoRanking({ mesLabel, diasUteis, totalPontos, totalK
     --cyan-2:#18afd4;
     --green:#6faf42;
     --orange:#f27928;
-    --line:rgba(255,255,255,.55);
+    --line:rgba(255,255,255,.48);
     --muted:#c5d1de;
   }
   * { box-sizing: border-box; }
   body { margin:0; font-family: Arial, Helvetica, sans-serif; background:#111; color:#fff; }
   .sheet {
     width:1500px;
+    height:860px;
     min-height:860px;
-    margin:0 auto;
+    margin:0 auto 18px;
     background:radial-gradient(circle at 18% 0%, rgba(0,169,200,.18), transparent 30%), var(--navy);
     position:relative;
     overflow:hidden;
     border-top:6px solid var(--orange);
-    padding:14px 34px 26px;
+    padding:14px 34px 34px;
   }
   .top {
     display:grid;
-    grid-template-columns:188px 1fr 276px;
-    gap:18px;
+    grid-template-columns:174px minmax(0, 1fr) 252px;
+    gap:16px;
     align-items:start;
   }
   .brand {
-    height:88px;
+    height:78px;
     background:linear-gradient(135deg,#00a8c5,#00916b);
     display:flex;
     align-items:center;
     justify-content:center;
     overflow:hidden;
+    border-radius:2px;
   }
-  .brand img { width:100%; height:100%; object-fit:contain; display:block; padding:0; background:linear-gradient(135deg,#00a8c5,#00916b); }
-  .title h1 { margin:0; font-size:28px; line-height:1.12; letter-spacing:.25px; }
-  .title p { margin:7px 0 0; color:var(--muted); font-size:15px; }
-  .legend { justify-self:end; padding-top:10px; font-size:14px; }
-  .legend div { display:flex; align-items:center; gap:14px; margin-bottom:12px; white-space:nowrap; font-weight:700; }
-  .legend span { display:block; width:96px; height:10px; border-radius:2px; }
-  .kpis { display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:10px; margin:10px 0 10px 0; }
+  .brand img { width:100%; height:100%; object-fit:contain; display:block; background:linear-gradient(135deg,#00a8c5,#00916b); }
+  .title h1 { margin:0; font-size:26px; line-height:1.1; letter-spacing:.25px; }
+  .title p { margin:6px 0 0; color:var(--muted); font-size:14px; }
+  .legend { justify-self:end; padding-top:8px; font-size:13px; }
+  .legend div { display:flex; align-items:center; gap:10px; margin-bottom:9px; white-space:nowrap; font-weight:700; }
+  .legend span { display:block; width:82px; height:9px; border-radius:2px; }
+  .kpis { display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:9px; margin:9px 0 9px; }
   .kpi {
-    width:auto;
-    height:58px;
-    border:2px solid rgba(0,169,200,.68);
-    padding:7px 12px;
+    height:54px;
+    border:2px solid rgba(0,169,200,.62);
+    padding:6px 10px;
     text-align:center;
     background:rgba(0,0,0,.12);
     display:flex;
@@ -1582,91 +1649,61 @@ function montarHtmlInformativoRanking({ mesLabel, diasUteis, totalPontos, totalK
     justify-content:center;
   }
   .kpi:first-child { border-color:rgba(255,209,72,.75); }
-  .kpi small { display:block; color:var(--muted); font-weight:700; letter-spacing:.4px; font-size:13px; }
-  .kpi strong { display:block; color:#fff; font-size:27px; margin-top:2px; line-height:1; }
+  .kpi small { display:block; color:var(--muted); font-weight:700; letter-spacing:.35px; font-size:12px; }
+  .kpi strong { display:block; color:#fff; font-size:24px; margin-top:2px; line-height:1; }
   .section-title {
     width:100%;
-    height:38px;
+    height:34px;
     background:var(--cyan-2);
     display:flex;
     align-items:center;
-    padding-left:22px;
-    padding-right:74px;
+    gap:12px;
+    padding:0 18px;
     font-weight:900;
-    font-size:22px;
-    letter-spacing:1px;
-    margin:10px 0 12px 0;
-    position:relative;
+    font-size:20px;
+    letter-spacing:.9px;
+    margin:8px 0 10px;
     overflow:hidden;
   }
-  .bike-icon { position:static; margin-left:auto; font-size:24px; line-height:1; opacity:.82; }
-  .tables { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-left:0; align-items:start; align-content:start; }
-  .tables.single { grid-template-columns:minmax(0, 1fr); max-width:1040px; margin:0 auto; }
-  table { width:100%; border-collapse:collapse; table-layout:fixed; font-size:16px; align-self:start; height:auto !important; }
-  tbody tr { height:28px !important; max-height:28px !important; }
+  .section-title span:first-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .section-icon { margin-left:auto; font-size:20px; line-height:1; opacity:.9; flex:0 0 auto; }
+  .tables { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-left:0; align-items:start; align-content:start; }
+  .tables.single { grid-template-columns:minmax(0, 1fr); max-width:1080px; margin:0 auto; }
+  table { width:100%; border-collapse:collapse; table-layout:fixed; font-size:15px; align-self:start; height:auto !important; }
+  tbody tr { height:27px !important; max-height:27px !important; }
   th {
-    height:36px;
+    height:34px;
     background:#00a7bd;
     color:white;
-    padding:6px;
+    padding:5px 6px;
     border:2px solid var(--line);
     font-weight:900;
   }
   td {
-    height:28px !important;
-    max-height:28px !important;
+    height:27px !important;
+    max-height:27px !important;
     padding:3px 7px;
     border:2px solid var(--line);
     color:#e8eef5;
     overflow:hidden;
     text-overflow:ellipsis;
     white-space:nowrap;
-    line-height:1.05;
+    line-height:1;
     vertical-align:middle;
   }
   th:nth-child(1), td:nth-child(1){ width:38px; text-align:center; }
-  th:nth-child(3), td:nth-child(3), th:nth-child(4), td:nth-child(4), th:nth-child(5), td:nth-child(5){ width:104px; text-align:center; }
+  th:nth-child(3), td:nth-child(3), th:nth-child(4), td:nth-child(4), th:nth-child(5), td:nth-child(5){ width:96px; text-align:center; }
   .top3 td { background:rgba(111,175,66,.95); color:#fff; font-weight:700; }
   .alert td { background:rgba(242,121,40,.95); color:#fff; }
   .normal td { background:rgba(7,25,45,.92); }
-  .trophy { display:none; }
-  .footer { position:absolute; bottom:12px; left:42px; right:42px; display:flex; justify-content:space-between; color:#8fa6ba; font-size:13px; }
+  .footer { position:absolute; bottom:12px; left:34px; right:34px; display:flex; justify-content:space-between; color:#8fa6ba; font-size:12px; }
+  @page { size: landscape; margin: 0; }
   @media print {
     body { background:white; }
-    .sheet { margin:0; width:100%; min-height:100vh; }
+    .sheet { margin:0; width:100vw; height:100vh; min-height:100vh; page-break-after:always; break-after:page; }
+    .sheet:last-child { page-break-after:auto; break-after:auto; }
   }
-</style>
-</head>
-<body>
-<div class="sheet">
-  <div class="top">
-    <div class="brand"><img src="${LOGO_ATLETAS_REPORT_DATA_URL}" alt="Atletas Energisa"></div>
-    <div class="title">
-      <h1>Ranking de Pontos do<br>Time de Atletas Energisa</h1>
-      <p>${escapeHtml(modalidadeLabel)} | Mês: ${escapeHtml(capitalizar(mesLabel))} | ${diasUteis} dias úteis</p>
-    </div>
-    ${opcoes.mostrarLegenda === false ? "" : `<div class="legend">
-      <div><span style="background:var(--green)"></span> Top 3 do Ranking</div>
-      <div><span style="background:var(--orange)"></span> Atletas em Alerta</div>
-    </div>`}
-  </div>
-
-  ${opcoes.mostrarKpis === false ? "" : `<div class="kpis">
-    <div class="kpi"><small>Pontos totais do mês</small><strong>${formatarNumero(totalPontos, 0)} pts</strong></div>
-    <div class="kpi"><small>KM acumulados</small><strong>${formatarNumero(totalKm, 1)} km</strong></div>
-    <div class="kpi"><small>Quantidade de treinos</small><strong>${formatarNumero(totalTreinos, 0)}</strong></div>
-    <div class="kpi"><small>Atletas no ranking</small><strong>${formatarNumero(totalRanking, 0)}</strong></div>
-    <div class="kpi"><small>Atletas em alerta</small><strong>${formatarNumero(totalAlertas, 0)}</strong></div>
-  </div>`}
-
-  <div class="section-title">${escapeHtml(tituloSecao)} <span class="bike-icon">🚴‍♂️</span></div>
-  <div class="${classeTabela}">
-    ${tabelas || `<table><tbody><tr class="normal"><td style="height:80px;text-align:center;">Nenhum atleta encontrado.</td></tr></tbody></table>`}
-  </div>
-  <div class="footer"><span>Informativo gerado pelo Portal Atletas Energisa</span><span>${new Date().toLocaleString("pt-BR")}</span></div>
-</div>
-</body>
-</html>`;
+  `;
 }
 
 function montarTabelaRankingInformativo(titulo, lista, opcoes = {}) {
@@ -1699,12 +1736,15 @@ function montarTabelaRankingInformativo(titulo, lista, opcoes = {}) {
   </table>`;
 }
 
-function abrirHtmlNovaAba(html) {
-  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+function abrirHtmlNovaAba(html, imprimir = false) {
+  const htmlFinal = imprimir
+    ? html.replace("</body>", "<script>window.addEventListener('load',function(){setTimeout(function(){window.print();},700);});<\/script></body>")
+    : html;
+  const blob = new Blob([htmlFinal], { type: "text/html;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const janela = window.open(url, "_blank", "noopener,noreferrer");
-  if (!janela) showToast("O navegador bloqueou a abertura em nova aba. O arquivo será baixado normalmente.", "error");
-  setTimeout(() => URL.revokeObjectURL(url), 30000);
+  if (!janela) showToast("O navegador bloqueou a abertura em nova aba.", "error");
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 function baixarHtml(nomeArquivo, html) {
