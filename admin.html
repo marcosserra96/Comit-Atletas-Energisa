@@ -22,9 +22,10 @@
 
   <header class="topbar topbar-slim">
     <div class="topbar-brand">
-      <div class="brand-logo-text" aria-label="Atletas Energisa">
+      <div class="brand-logo-text brand-logo-report" aria-label="Atletas Energisa">
         <span>ATLETAS</span>
         <strong>ENERGISA</strong>
+        <em aria-hidden="true">🚴‍♂️</em>
       </div>
       <div class="brand-divider"></div>
       <div class="brand-context">
@@ -48,9 +49,26 @@
 
   <main>
     <section id="visao-geral" class="active-section">
-      <div class="header-acao">
-        <h2>Visão Estratégica</h2>
-        <button id="btnExportarPDF" class="btn-primario" style="background: #2c3e50;"><i data-lucide="printer"></i> Exportar Report Oficial</button>
+      <div class="header-acao home-hero-header">
+        <div>
+          <h2>Visão Estratégica</h2>
+          <p class="page-subtitle">Resumo do programa, alertas e acessos rápidos para acompanhamento do comitê.</p>
+        </div>
+        <button id="btnExportarPDF" class="btn-primario btn-report-oficial" type="button"><i data-lucide="printer"></i> Exportar Report Oficial</button>
+      </div>
+
+      <div class="quick-export-panel">
+        <div class="quick-export-copy">
+          <span class="eyebrow">Central do Comitê</span>
+          <h3>Exportações e informativos</h3>
+          <p>Baixe listas, acompanhe participação dos atletas ou gere o ranking mensal para compartilhar com o time.</p>
+        </div>
+        <div class="quick-export-actions">
+          <button id="btnExportarListaAtletas" class="btn-acao" type="button"><i data-lucide="users"></i><span>Lista de atletas</span></button>
+          <button id="btnExportarListaEventos" class="btn-acao" type="button"><i data-lucide="calendar-days"></i><span>Lista de eventos</span></button>
+          <button id="btnExportarParticipacaoAtletas" class="btn-acao" type="button"><i data-lucide="activity"></i><span>Participação</span></button>
+          <button id="btnGerarInformativoRanking" class="btn-primario" type="button"><i data-lucide="trophy"></i><span>Informativo do ranking</span></button>
+        </div>
       </div>
 
       <div class="executive-topline">
@@ -556,21 +574,6 @@
           </div>
         </div>
 
-
-        <div class="card admin-export-card">
-          <div class="admin-audit-header">
-            <div>
-              <h3 style="margin:0; color: var(--primary);"><i data-lucide="download"></i> Exportações operacionais</h3>
-              <p style="margin:6px 0 0; color:var(--text-light); font-size:.86rem;">Baixe bases simples para conferência, prestação de contas e acompanhamento do comitê.</p>
-            </div>
-          </div>
-          <div class="admin-export-grid">
-            <button id="btnExportarListaAtletas" class="btn-acao" type="button"><i data-lucide="users"></i><span>Lista de atletas</span></button>
-            <button id="btnExportarListaEventos" class="btn-acao" type="button"><i data-lucide="calendar-days"></i><span>Lista de eventos</span></button>
-            <button id="btnExportarParticipacaoAtletas" class="btn-acao" type="button"><i data-lucide="activity"></i><span>Participação dos atletas</span></button>
-            <button id="btnGerarInformativoRanking" class="btn-primario" type="button"><i data-lucide="trophy"></i><span>Informativo do ranking</span></button>
-          </div>
-        </div>
 
         <div class="card admin-audit-card">
           <div class="admin-audit-header">
