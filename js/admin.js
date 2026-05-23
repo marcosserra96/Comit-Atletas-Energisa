@@ -1027,18 +1027,42 @@ function ativarAbaFicha(tab) {
   if(typeof lucide !== 'undefined') lucide.createIcons();
 }
 
+function fecharFichaAtleta() {
+  const modal = document.getElementById("modalFichaAtleta");
+  if (modal) modal.style.display = "none";
+  document.body.classList.remove("modal-open");
+  document.documentElement.classList.remove("modal-open");
+}
+
+function abrirModalFichaAtletaSeguro() {
+  const modal = document.getElementById("modalFichaAtleta");
+  if (!modal) return;
+  document.body.classList.add("modal-open");
+  document.documentElement.classList.add("modal-open");
+  modal.style.display = "flex";
+}
+
 function setupFichaAtleta() {
   const modal = document.getElementById("modalFichaAtleta");
   const btnFechar = document.getElementById("fecharModalFicha");
   if(btnFechar && !btnFechar.dataset.listenerAplicado) {
     btnFechar.dataset.listenerAplicado = "1";
-    btnFechar.addEventListener("click", () => { if(modal) modal.style.display = "none"; });
+    btnFechar.addEventListener("click", fecharFichaAtleta);
   }
 
   if(modal && !modal.dataset.backdropListenerAplicado) {
     modal.dataset.backdropListenerAplicado = "1";
     modal.addEventListener("click", (e) => {
-      if(e.target === modal) modal.style.display = "none";
+      if(e.target === modal) fecharFichaAtleta();
+    });
+  }
+
+  if(!document.body.dataset.fichaEscListenerAplicado) {
+    document.body.dataset.fichaEscListenerAplicado = "1";
+    document.addEventListener("keydown", (e) => {
+      if(e.key === "Escape" && document.getElementById("modalFichaAtleta")?.style.display === "flex") {
+        fecharFichaAtleta();
+      }
     });
   }
 
@@ -1139,7 +1163,7 @@ async function abrirFichaAtleta(id) {
   document.getElementById("fichaHistorico").innerHTML = htmlH; 
   await carregarComentarios(id); 
   await carregarAuditoriaFicha(id);
-  document.getElementById("modalFichaAtleta").style.display = "flex"; 
+  abrirModalFichaAtletaSeguro(); 
   if(typeof lucide !== 'undefined') lucide.createIcons();
 }
 
@@ -1365,7 +1389,7 @@ function setupModalEditar() {
     
     try { 
       await updateDoc(doc(db, "atletas", id), { nome, email, role, equipe, sexo, dataNascimento: nasc, localidade, anoEntrada }); 
-      showToast("Ficha atualizada com sucesso!", "success"); modal.style.display = "none"; atualizarTelas(); document.getElementById("modalFichaAtleta").style.display = "none";
+      showToast("Ficha atualizada com sucesso!", "success"); modal.style.display = "none"; atualizarTelas(); fecharFichaAtleta();
     } catch (err) { showToast("Erro ao editar dados.", "error"); } 
     finally { e.target.textContent = "Salvar Alterações"; e.target.classList.remove("loading"); e.target.disabled = false; }
   }); 

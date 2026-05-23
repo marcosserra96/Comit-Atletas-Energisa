@@ -2767,3 +2767,180 @@ body[data-theme="dark"] .executive-kpi { background: rgba(255,255,255,.04); }
     grid-template-columns: 1fr !important;
   }
 }
+
+/* =====================================================
+   V20 - Padronização fina da Ficha do Atleta
+   Mantém a base da V16/V19 e corrige apenas tamanhos internos do modal
+   ===================================================== */
+.ficha-modal-shell {
+  height: min(760px, 92vh);
+  max-height: 92vh;
+}
+
+.ficha-tab-content {
+  flex: 1 1 auto;
+  min-height: 0 !important;
+  height: auto;
+  overflow-y: auto;
+}
+
+.ficha-metric-grid-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  align-items: stretch;
+}
+
+.ficha-metric-grid-tabs .ficha-metric-card {
+  min-height: 82px;
+  height: 82px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.ficha-resumo-grid {
+  align-items: stretch !important;
+}
+
+.ficha-info-panel,
+.ficha-status-panel {
+  height: 100%;
+  min-height: 268px;
+  box-sizing: border-box;
+}
+
+.ficha-info-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.ficha-info-list {
+  flex: 1;
+  align-content: start;
+}
+
+.ficha-info-list div {
+  min-height: 64px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.ficha-status-panel {
+  display: grid;
+  grid-template-rows: auto auto auto 1fr;
+  gap: 10px;
+}
+
+.ficha-status-panel textarea,
+.ficha-status-panel input,
+.ficha-status-panel select,
+.ficha-status-panel button,
+.ficha-comment-form textarea,
+.ficha-comment-form button,
+.ficha-modelo-field input,
+.ficha-modelo-field select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ficha-status-panel textarea {
+  min-height: 76px;
+  max-height: 96px;
+  resize: vertical;
+  margin: 0;
+}
+
+.ficha-status-panel button,
+.ficha-comment-form button,
+#btnSalvarCamposFichaModelo {
+  min-height: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ficha-modelo-list {
+  align-items: start;
+}
+
+.ficha-modelo-field {
+  min-height: 84px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  box-sizing: border-box;
+}
+
+.ficha-modelo-field input,
+.ficha-modelo-field select {
+  height: 44px;
+  min-height: 44px;
+}
+
+.ficha-extra-panel-tabs,
+.ficha-comment-form,
+.ficha-info-panel,
+.ficha-status-panel {
+  overflow: hidden;
+}
+
+.ficha-comments-list,
+.ficha-scroll-list,
+#fichaHistoricoStatus,
+#fichaAuditoriaLista {
+  min-height: 0;
+}
+
+#ficha-tab-campos .ficha-extra-panel-tabs,
+#ficha-tab-comentarios .ficha-comment-form,
+#ficha-tab-auditoria .ficha-section-title,
+#ficha-tab-lancamentos .ficha-section-title {
+  max-width: 100%;
+}
+
+@media(max-width: 820px) {
+  .ficha-modal-shell {
+    height: 94vh;
+  }
+
+  .ficha-metric-grid-tabs {
+    grid-template-columns: 1fr;
+  }
+
+  .ficha-metric-grid-tabs .ficha-metric-card {
+    height: auto;
+    min-height: 72px;
+  }
+
+  .ficha-info-panel,
+  .ficha-status-panel {
+    min-height: auto;
+    height: auto;
+  }
+}
+
+
+/* =====================================================
+   HOTFIX V21 - Bloqueio de rolagem do fundo com modal aberto
+   ===================================================== */
+html.modal-open,
+body.modal-open {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+
+.ficha-modal-overlay {
+  overscroll-behavior: contain !important;
+}
+
+.ficha-modal-shell,
+.ficha-tab-content,
+.ficha-scroll-list {
+  overscroll-behavior: contain !important;
+}
