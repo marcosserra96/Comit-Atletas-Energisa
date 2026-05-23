@@ -120,12 +120,23 @@ function atualizarCardsModalidade(stats) {
 
 function renderizarPodios(arrayAtletas) {
   const htmlPodio = (arr) => {
-    if (arr.length === 0) return "<li style='color:#999; font-size:0.85rem;'>Sem pontos</li>";
-    return arr.map((a, i) => `
-      <li>
-        <span><span>${i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</span><strong title="${escapeHtml(a.nome)}">${escapeHtml(a.nome)}</strong></span>
-        <strong>${Number(a.pts) || 0}</strong>
-      </li>`).join('');
+    if (arr.length === 0) {
+      return `<li class="podium-empty">Sem pontos registrados</li>`;
+    }
+
+    return arr.map((a, i) => {
+      const medalha = i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉';
+      const posicao = i + 1;
+      return `
+        <li class="podium-rank podium-rank-${posicao}">
+          <span class="podium-medal">${medalha}</span>
+          <span class="podium-athlete">
+            <strong title="${escapeHtml(a.nome)}">${escapeHtml(a.nome)}</strong>
+            ${i === 0 ? '<em>Destaque do ranking</em>' : '<em>Top ' + posicao + '</em>'}
+          </span>
+          <strong class="podium-score">${Number(a.pts) || 0}</strong>
+        </li>`;
+    }).join('');
   };
 
   const bikeAtletas = arrayAtletas.filter(a => a.eq === 'Bicicleta' || a.eq === 'Bike').sort((a, b) => b.pts - a.pts).slice(0, 3);
@@ -140,8 +151,14 @@ function renderizarRadarInatividade(arrayAtletas) {
   const radarCorrida = arrayAtletas.filter(a => a.diasAusente > 30 && a.eq === 'Corrida').sort((a, b) => b.diasAusente - a.diasAusente).slice(0, 5);
 
   const htmlEvasao = (arr) => {
-    if (arr.length === 0) return "<li style='color:var(--secondary); font-size:0.8rem;'>Nenhum alerta.</li>";
-    return arr.map(a => `<li style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; border-bottom:1px dashed var(--danger);"><span style="display:flex; align-items:center; gap:5px; flex: 1; min-width: 0; margin-right: 10px;"><span style="color:var(--danger); font-size:0.8rem; flex-shrink:0;">⚠️</span><strong style="color:var(--danger); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:0.8rem;" title="${escapeHtml(a.nome)}">${escapeHtml(a.nome)}</strong></span><small style="color:#999; font-weight:600; font-size:0.75rem; flex-shrink:0;">${a.diasAusente === 999 ? 'Nunca foi' : a.diasAusente + 'd'}</small></li>`).join('');
+    if (arr.length === 0) return `<li class="inactivity-empty">Nenhum alerta no momento</li>`;
+    return arr.map(a => {
+      const periodo = a.diasAusente === 999 ? 'Sem registro' : `${a.diasAusente} dias`;
+      return `<li class="inactivity-item">
+        <span class="inactivity-name"><span>⚠️</span><strong title="${escapeHtml(a.nome)}">${escapeHtml(a.nome)}</strong></span>
+        <small>${periodo}</small>
+      </li>`;
+    }).join('');
   };
 
   setHtmlDashboard("listaEvasaoBike", htmlEvasao(radarBike));

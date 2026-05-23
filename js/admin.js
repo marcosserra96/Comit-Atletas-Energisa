@@ -516,8 +516,15 @@ async function carregarAgenda() {
       const d = new Date(e.data + "T00:00:00"); const mes = d.toLocaleString('pt-BR', {month: 'short'}).replace('.',''); const dia = d.getDate().toString().padStart(2, '0'); 
       let icon = e.modalidade === "Bicicleta" ? "🚴" : e.modalidade === "Corrida" ? "🏃" : "🤝"; 
       const kmInfo = Number(e.km || 0) > 0 ? ` • ${formatarKm(e.km)} km` : "";
-      const btnExcluir = hasGestao ? `<button class="btn-excluir-evento" aria-label="Cancelar evento" data-id="${e.id}" style="background:transparent; border:none; color:var(--danger); cursor:pointer; float:right;"><i data-lucide="x" style="width:16px;"></i></button>` : ''; 
-      html += `<div class="agenda-item"><div class="agenda-data"><span>${mes}</span><strong>${dia}</strong></div><div class="agenda-info" style="flex:1;">${btnExcluir}<h4>${e.titulo}</h4><p>${icon} ${e.local || 'Local não informado'}${kmInfo}</p></div></div>`; 
+      const btnExcluir = hasGestao ? `<button class="btn-excluir-evento agenda-action" aria-label="Cancelar evento" data-id="${e.id}"><i data-lucide="x"></i></button>` : ''; 
+      const localEvento = e.local || 'Local não informado';
+      html += `<div class="agenda-item agenda-card-event">
+        <div class="agenda-data"><span>${mes}</span><strong>${dia}</strong></div>
+        <div class="agenda-info">
+          <div class="agenda-title-row"><h4 title="${e.titulo}">${e.titulo}</h4>${btnExcluir}</div>
+          <p><span>${icon}</span> <span>${localEvento}</span>${kmInfo ? `<strong>${kmInfo.replace(' • ', '')}</strong>` : ''}</p>
+        </div>
+      </div>`; 
     }); 
     
     if(document.getElementById("listaEventosAgenda")) document.getElementById("listaEventosAgenda").innerHTML = html || `<div class="empty-state" style="padding:10px;"><p style="font-size:0.85rem;">Nenhum evento agendado.</p></div>`; 
