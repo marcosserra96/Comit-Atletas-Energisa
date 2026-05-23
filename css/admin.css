@@ -4495,3 +4495,251 @@ body[data-theme="dark"] .quick-export-actions .btn-acao {
     padding: 7px 12px;
   }
 }
+
+/* =====================================================
+   V37 - Refinamento visual final controlado
+   Escopo: header, menu, títulos, ficha, report e acabamento
+   ===================================================== */
+:root {
+  --ui-ease: cubic-bezier(.2,.8,.2,1);
+}
+
+/* Header mais institucional e menos pesado */
+.topbar.topbar-slim {
+  min-height: 56px !important;
+  padding: 5px 22px !important;
+  border-top-width: 2px !important;
+  box-shadow: 0 10px 26px rgba(1, 35, 54, .12) !important;
+}
+
+.topbar-brand {
+  min-width: 0;
+  gap: 10px !important;
+}
+
+.topbar-program-logo {
+  width: 106px !important;
+  height: 38px !important;
+  border-radius: 5px !important;
+  box-shadow: none !important;
+}
+
+.brand-divider {
+  width: 1px;
+  height: 26px !important;
+  background: rgba(255,255,255,.32);
+}
+
+.brand-context strong {
+  font-size: .84rem !important;
+  line-height: 1.05;
+  font-weight: 800;
+}
+
+.brand-context small {
+  font-size: .64rem !important;
+  line-height: 1.05;
+  opacity: .76 !important;
+}
+
+.topbar-slim .global-search {
+  width: clamp(250px, 22vw, 340px) !important;
+  height: 34px !important;
+  border: 1px solid rgba(255,255,255,.22);
+  background: rgba(255,255,255,.15) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10);
+}
+
+.topbar-slim .global-search input {
+  height: 32px !important;
+  min-height: 32px !important;
+  font-size: .82rem;
+}
+
+.topbar-slim .btn-topo,
+.theme-toggle-top {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 10px !important;
+  background: rgba(255,255,255,.16) !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+}
+
+#userGroupBadge {
+  min-height: 30px !important;
+  height: 30px;
+  padding: 0 10px !important;
+  border-radius: 999px !important;
+  background: rgba(0,155,193,.20) !important;
+  border: 1px solid rgba(255,255,255,.14);
+  font-size: .63rem !important;
+}
+
+/* Menu inferior mais leve */
+.menu-flutuante {
+  bottom: 18px !important;
+  padding: 7px 9px !important;
+  gap: 4px !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(0, 155, 193, .10);
+  box-shadow: 0 18px 45px rgba(2, 28, 43, .14) !important;
+  backdrop-filter: blur(16px);
+}
+
+.menu-item {
+  padding: 9px 13px !important;
+  gap: 7px !important;
+  font-size: .83rem !important;
+  font-weight: 700 !important;
+  border-radius: 999px !important;
+}
+
+.menu-item svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2;
+}
+
+.menu-item.active {
+  box-shadow: 0 10px 20px rgba(0, 155, 193, .22) !important;
+}
+
+/* Cabeçalhos e títulos mais consistentes */
+.header-acao h2,
+.home-hero-header h2 {
+  letter-spacing: -.02em;
+}
+
+.page-subtitle,
+.header-acao p,
+.card > p:first-of-type,
+.dashboard-section > p:first-of-type {
+  color: var(--text-light);
+}
+
+.card h3,
+.dashboard-section h3,
+.section-title h3,
+.ficha-section-title h4 {
+  letter-spacing: -.01em;
+}
+
+/* Cards com acabamento mais uniforme, sem exagero */
+.card,
+.dashboard-section,
+.program-health-card,
+.executive-kpi,
+.quick-export-panel,
+.performance-card,
+.podium-card,
+.inactivity-card,
+.event-card {
+  border-color: rgba(0, 159, 194, .10) !important;
+  box-shadow: 0 14px 32px rgba(4, 25, 39, .07) !important;
+}
+
+/* Ficha do atleta com cara de perfil */
+.ficha-modal-shell {
+  border: 1px solid rgba(0, 159, 194, .16) !important;
+}
+
+.ficha-modal-header {
+  background: linear-gradient(135deg, rgba(0,159,194,.12), rgba(0,166,147,.08));
+  border-bottom: 1px solid rgba(0,159,194,.12) !important;
+}
+
+.ficha-avatar-mini {
+  width: 52px !important;
+  height: 52px !important;
+  border-radius: 18px !important;
+  box-shadow: 0 12px 25px rgba(0, 155, 193, .18);
+}
+
+.ficha-modal-header h2 {
+  font-size: 1.28rem !important;
+  letter-spacing: -.02em;
+}
+
+.ficha-modal-header span {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  min-height: 22px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(0,155,193,.10);
+  color: var(--primary) !important;
+  font-weight: 800;
+}
+
+.ficha-tabs {
+  padding: 10px 12px !important;
+  gap: 7px !important;
+}
+
+.ficha-tab {
+  min-height: 38px !important;
+  padding: 8px 12px !important;
+  border-radius: 12px !important;
+}
+
+.ficha-tab.active {
+  box-shadow: 0 10px 20px rgba(0, 155, 193, .16) !important;
+}
+
+.ficha-metric-card {
+  border-radius: 16px !important;
+}
+
+/* Empty states e botões */
+.btn-primario,
+.btn-acao,
+.btn-secundario,
+button {
+  transition: transform .18s var(--ui-ease), box-shadow .18s var(--ui-ease), background .18s var(--ui-ease), border-color .18s var(--ui-ease);
+}
+
+.btn-primario:hover,
+.btn-acao:hover,
+.btn-secundario:hover {
+  transform: translateY(-1px);
+}
+
+/* Report gerado: acabamento visual da central e modal */
+.modal-informativo-card {
+  border-radius: 22px !important;
+  box-shadow: 0 24px 70px rgba(0,0,0,.24) !important;
+}
+
+.modal-informativo-options {
+  background: color-mix(in srgb, var(--primary) 4%, transparent) !important;
+}
+
+/* Responsividade */
+@media (max-width: 980px) {
+  .topbar.topbar-slim {
+    gap: 10px;
+  }
+  .topbar-slim .global-search {
+    width: clamp(190px, 38vw, 320px) !important;
+  }
+  .brand-context small {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .topbar-program-logo {
+    width: 88px !important;
+    height: 32px !important;
+  }
+  .topbar-slim .global-search {
+    width: min(48vw, 230px) !important;
+  }
+  #userGroupBadge {
+    display: none !important;
+  }
+  .menu-item {
+    padding: 10px 12px !important;
+  }
+}

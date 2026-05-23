@@ -1372,33 +1372,33 @@ function montarHtmlInformativoRanking({ mesLabel, diasUteis, totalPontos, totalK
     background:radial-gradient(circle at 18% 0%, rgba(0,169,200,.18), transparent 30%), var(--navy);
     position:relative;
     overflow:hidden;
-    border-top:12px solid var(--orange);
-    padding:18px 40px 32px;
+    border-top:8px solid var(--orange);
+    padding:16px 38px 28px;
   }
   .top {
     display:grid;
-    grid-template-columns:244px 1fr 320px;
+    grid-template-columns:220px 1fr 300px;
     gap:18px;
     align-items:start;
   }
   .brand {
-    height:124px;
+    height:104px;
     background:linear-gradient(135deg,#00a8c5,#00916b);
     display:flex;
     align-items:center;
     justify-content:center;
     overflow:hidden;
   }
-  .brand img { width:100%; height:100%; object-fit:cover; display:block; }
-  .title h1 { margin:2px 0 0; font-size:34px; line-height:1.16; letter-spacing:.4px; }
+  .brand img { width:100%; height:100%; object-fit:contain; display:block; padding:0; background:linear-gradient(135deg,#00a8c5,#00916b); }
+  .title h1 { margin:2px 0 0; font-size:31px; line-height:1.14; letter-spacing:.35px; }
   .title p { margin:8px 0 0; color:var(--muted); font-size:16px; }
-  .legend { justify-self:end; padding-top:20px; font-size:18px; }
+  .legend { justify-self:end; padding-top:16px; font-size:16px; }
   .legend div { display:flex; align-items:center; gap:14px; margin-bottom:12px; white-space:nowrap; font-weight:700; }
-  .legend span { display:block; width:142px; height:14px; border-radius:2px; }
-  .kpis { display:flex; gap:14px; margin:14px 0 14px 28px; }
+  .legend span { display:block; width:126px; height:12px; border-radius:2px; }
+  .kpis { display:flex; gap:14px; margin:12px 0 12px 28px; }
   .kpi {
-    width:240px;
-    height:70px;
+    width:218px;
+    height:62px;
     border:2px solid rgba(0,169,200,.68);
     padding:7px 12px;
     text-align:center;
@@ -1408,30 +1408,30 @@ function montarHtmlInformativoRanking({ mesLabel, diasUteis, totalPontos, totalK
     justify-content:center;
   }
   .kpi:first-child { border-color:rgba(255,209,72,.75); }
-  .kpi small { display:block; color:var(--muted); font-weight:700; letter-spacing:.4px; font-size:14px; }
-  .kpi strong { display:block; color:#fff; font-size:30px; margin-top:2px; line-height:1; }
+  .kpi small { display:block; color:var(--muted); font-weight:700; letter-spacing:.4px; font-size:13px; }
+  .kpi strong { display:block; color:#fff; font-size:27px; margin-top:2px; line-height:1; }
   .section-title {
-    width:720px;
-    height:44px;
+    width:700px;
+    height:40px;
     background:var(--cyan-2);
     display:flex;
     align-items:center;
     padding-left:22px;
     padding-right:74px;
     font-weight:900;
-    font-size:24px;
+    font-size:22px;
     letter-spacing:1px;
     margin:12px 0 14px 54px;
     position:relative;
     overflow:hidden;
   }
-  .bike-icon { position:absolute; right:22px; top:0px; font-size:36px; line-height:44px; opacity:.92; }
-  .tables { display:grid; grid-template-columns:1fr 1fr; gap:26px; margin-left:54px; align-items:start; }
+  .bike-icon { position:static; margin-left:auto; font-size:30px; line-height:1; opacity:.88; }
+  .tables { display:grid; grid-template-columns:1fr 1fr; gap:26px; margin-left:54px; align-items:start; align-content:start; }
   .tables.single { grid-template-columns:minmax(760px, 980px); }
-  table { width:100%; border-collapse:collapse; table-layout:fixed; font-size:18px; align-self:start; height:auto; }
-  tr { height:34px; max-height:34px; }
+  table { width:100%; border-collapse:collapse; table-layout:fixed; font-size:17px; align-self:start; height:max-content !important; }
+  tbody tr { height:31px !important; max-height:31px !important; }
   th {
-    height:46px;
+    height:40px;
     background:#00a7bd;
     color:white;
     padding:6px;
@@ -1439,9 +1439,9 @@ function montarHtmlInformativoRanking({ mesLabel, diasUteis, totalPontos, totalK
     font-weight:900;
   }
   td {
-    height:34px;
-    max-height:34px;
-    padding:4px 7px;
+    height:31px !important;
+    max-height:31px !important;
+    padding:3px 7px;
     border:2px solid var(--line);
     color:#e8eef5;
     overflow:hidden;
@@ -1455,7 +1455,7 @@ function montarHtmlInformativoRanking({ mesLabel, diasUteis, totalPontos, totalK
   .top3 td { background:rgba(111,175,66,.95); color:#fff; font-weight:700; }
   .alert td { background:rgba(242,121,40,.95); color:#fff; }
   .normal td { background:rgba(7,25,45,.92); }
-  .trophy { position:absolute; left:10px; top:360px; width:70px; text-align:center; font-size:48px; filter:drop-shadow(0 6px 10px rgba(0,0,0,.35)); }
+  .trophy { position:absolute; left:14px; top:328px; width:62px; text-align:center; font-size:42px; filter:drop-shadow(0 6px 10px rgba(0,0,0,.35)); }
   .trophy small { display:block; font-size:12px; margin-top:2px; color:#fff; }
   .footer { position:absolute; bottom:12px; left:42px; right:42px; display:flex; justify-content:space-between; color:#8fa6ba; font-size:13px; }
   @media print {
