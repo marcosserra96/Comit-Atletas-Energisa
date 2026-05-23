@@ -2970,3 +2970,180 @@ body.modal-open {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* =====================================================
+   V29 - Polimento visual seguro (somente CSS)
+   Objetivo: microinterações, estados vazios e consistência sem alterar regra de negócio
+   ===================================================== */
+:root {
+  --ux-motion-fast: 140ms;
+  --ux-motion-base: 220ms;
+  --ux-ease: cubic-bezier(.2,.8,.2,1);
+}
+
+.card,
+.lote-card,
+.athlete-card,
+.ficha-info-panel,
+.ficha-status-panel,
+.ficha-metric-card,
+.admin-export-card,
+.agenda-item,
+.podio-item,
+.empty-state {
+  transition:
+    transform var(--ux-motion-base) var(--ux-ease),
+    box-shadow var(--ux-motion-base) var(--ux-ease),
+    border-color var(--ux-motion-base) var(--ux-ease),
+    background-color var(--ux-motion-base) var(--ux-ease);
+}
+
+.card:hover,
+.lote-card:hover,
+.athlete-card:hover,
+.agenda-item:hover,
+.admin-export-card:hover {
+  transform: translateY(-2px);
+}
+
+button,
+.btn-acao,
+.btn-primario,
+.btn-topo,
+.sub-tab,
+.t-tab,
+.extrato-tab,
+.tipo-lancamento-btn,
+.ficha-tab-btn {
+  transition:
+    transform var(--ux-motion-fast) var(--ux-ease),
+    box-shadow var(--ux-motion-fast) var(--ux-ease),
+    background-color var(--ux-motion-fast) var(--ux-ease),
+    color var(--ux-motion-fast) var(--ux-ease),
+    border-color var(--ux-motion-fast) var(--ux-ease),
+    filter var(--ux-motion-fast) var(--ux-ease);
+}
+
+button:active,
+.btn-acao:active,
+.btn-primario:active,
+.btn-topo:active,
+.sub-tab:active,
+.t-tab:active,
+.extrato-tab:active,
+.tipo-lancamento-btn:active,
+.ficha-tab-btn:active {
+  transform: translateY(1px) scale(.99);
+}
+
+button:focus-visible,
+.btn-acao:focus-visible,
+.btn-primario:focus-visible,
+.btn-topo:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(0,155,193,.24);
+  outline-offset: 2px;
+}
+
+input,
+select,
+textarea {
+  transition:
+    border-color var(--ux-motion-fast) var(--ux-ease),
+    box-shadow var(--ux-motion-fast) var(--ux-ease),
+    background-color var(--ux-motion-fast) var(--ux-ease);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 4px rgba(0,155,193,.10);
+}
+
+.empty-state {
+  border: 1px dashed rgba(0,155,193,.28);
+  background: linear-gradient(135deg, rgba(0,155,193,.055), rgba(0,179,126,.045));
+  border-radius: 18px;
+  padding: 22px;
+}
+
+.empty-state i,
+.empty-state svg {
+  color: var(--primary);
+  opacity: .9;
+}
+
+.tabela-simples tbody tr {
+  transition: background-color var(--ux-motion-fast) var(--ux-ease);
+}
+
+.tabela-simples tbody tr:hover {
+  background: rgba(0,155,193,.045);
+}
+
+.sub-tab.active,
+.t-tab.active,
+.extrato-tab.active,
+.ficha-tab-btn.active {
+  box-shadow: 0 10px 22px rgba(0,155,193,.14);
+}
+
+.ficha-tab-btn {
+  white-space: nowrap;
+}
+
+.ficha-tab-content {
+  animation: uxFadeUp .18s var(--ux-ease);
+}
+
+.sub-content.active,
+.t-content.active,
+section.active-section {
+  animation: uxFadeUp .20s var(--ux-ease);
+}
+
+@keyframes uxFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Mantém rankings e listas mais consistentes sem alterar estrutura */
+.podio-item,
+#listaPodioBike li,
+#listaPodioCorrida li,
+#listaEvasaoBike li,
+#listaEvasaoCorrida li {
+  border-radius: 12px;
+}
+
+#listaPodioBike li:hover,
+#listaPodioCorrida li:hover,
+#listaEvasaoBike li:hover,
+#listaEvasaoCorrida li:hover {
+  background: rgba(0,155,193,.055);
+}
+
+/* Exportações com leitura mais clara */
+.admin-export-grid .btn-acao:hover {
+  background: rgba(0,155,193,.07);
+  border-color: rgba(0,155,193,.35);
+}
+
+/* Reduz flicker visual em usuários que preferem menos movimento */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+}
