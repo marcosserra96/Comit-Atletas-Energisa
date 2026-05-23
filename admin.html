@@ -53,17 +53,18 @@
         <button id="btnExportarPDF" class="btn-primario btn-report-oficial" type="button"><i data-lucide="printer"></i> Exportar Report Oficial</button>
       </div>
 
-      <div class="quick-export-panel">
+      <div class="quick-export-panel quick-export-panel-v38">
         <div class="quick-export-copy">
           <span class="eyebrow">Central do Comitê</span>
-          <h3>Exportações e informativos</h3>
-          <p>Baixe listas, acompanhe participação dos atletas ou gere o ranking mensal para compartilhar com o time.</p>
+          <h3>Comunicação e exportações</h3>
+          <p>Gere o informativo mensal do ranking ou baixe as principais bases para acompanhamento da equipe.</p>
+          <div class="quick-export-note"><i data-lucide="megaphone"></i><span>Use o informativo para comunicar Top 3, atletas em alerta e evolução do mês.</span></div>
         </div>
         <div class="quick-export-actions">
+          <button id="btnGerarInformativoRanking" class="btn-primario btn-informativo-destaque" type="button"><i data-lucide="trophy"></i><span>Informativo do ranking</span></button>
           <button id="btnExportarListaAtletas" class="btn-acao" type="button"><i data-lucide="users"></i><span>Lista de atletas</span></button>
           <button id="btnExportarListaEventos" class="btn-acao" type="button"><i data-lucide="calendar-days"></i><span>Lista de eventos</span></button>
           <button id="btnExportarParticipacaoAtletas" class="btn-acao" type="button"><i data-lucide="activity"></i><span>Participação</span></button>
-          <button id="btnGerarInformativoRanking" class="btn-primario" type="button"><i data-lucide="trophy"></i><span>Informativo do ranking</span></button>
         </div>
       </div>
 
@@ -912,7 +913,7 @@
         <div>
           <span class="eyebrow">Informativo dos atletas</span>
           <h3>Gerar ranking mensal</h3>
-          <p>Escolha quais informações entram no HTML antes de baixar o arquivo.</p>
+          <p>Escolha a equipe e os blocos que entram no comunicado antes de gerar o arquivo.</p>
         </div>
         <button id="btnFecharModalInformativo" class="btn-icon-soft" type="button" title="Fechar"><i data-lucide="x"></i></button>
       </div>
@@ -944,10 +945,11 @@
         <label><input id="chkInformativoTop3" type="checkbox" checked> Top 3 em verde</label>
         <label><input id="chkInformativoAlertas" type="checkbox" checked> Atletas em alerta</label>
         <label><input id="chkInformativoDemais" type="checkbox" checked> Demais atletas</label>
+        <label><input id="chkInformativoAbrir" type="checkbox" checked> Abrir em nova aba</label>
       </div>
 
       <div class="modal-informativo-note">
-        Verde destaca os 3 melhores do ranking. Laranja mostra quem está em alerta por baixa participação.
+        Verde destaca os 3 melhores do ranking. Laranja mostra quem está em alerta por baixa participação. Você pode gerar Bike, Corrida ou o consolidado.
       </div>
 
       <div class="modal-informativo-actions">

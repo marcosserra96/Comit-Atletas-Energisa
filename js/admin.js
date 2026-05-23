@@ -1224,7 +1224,8 @@ function coletarOpcoesInformativoRanking() {
     mostrarLegenda: marcado("chkInformativoLegenda"),
     mostrarTop3: marcado("chkInformativoTop3"),
     mostrarAlertas: marcado("chkInformativoAlertas"),
-    mostrarDemais: marcado("chkInformativoDemais")
+    mostrarDemais: marcado("chkInformativoDemais"),
+    abrirEmNovaAba: marcado("chkInformativoAbrir")
   };
 }
 
@@ -1247,7 +1248,8 @@ function gerarInformativoRankingHtml(opcoes = {}) {
     mostrarLegenda: opcoes.mostrarLegenda !== false,
     mostrarTop3: opcoes.mostrarTop3 !== false,
     mostrarAlertas: opcoes.mostrarAlertas !== false,
-    mostrarDemais: opcoes.mostrarDemais !== false
+    mostrarDemais: opcoes.mostrarDemais !== false,
+    abrirEmNovaAba: opcoes.abrirEmNovaAba !== false
   };
 
   const resumo = calcularResumoRanking(atletas, historico, ano, mes);
@@ -1274,6 +1276,7 @@ function gerarInformativoRankingHtml(opcoes = {}) {
   });
 
   const sufixoModalidade = filtros.modalidade === "todos" ? "geral" : filtros.modalidade === "bicicleta" ? "bike" : "corrida";
+  if (filtros.abrirEmNovaAba) abrirHtmlNovaAba(html);
   baixarHtml(`informativo_ranking_atletas_${sufixoModalidade}`, html);
   fecharModalInformativoRanking();
   showToast("Informativo do ranking gerado em HTML.", "success");
@@ -1366,23 +1369,23 @@ function montarHtmlInformativoRanking({ mesLabel, diasUteis, totalPontos, totalK
   * { box-sizing: border-box; }
   body { margin:0; font-family: Arial, Helvetica, sans-serif; background:#111; color:#fff; }
   .sheet {
-    width:1600px;
-    min-height:900px;
+    width:1500px;
+    min-height:860px;
     margin:0 auto;
     background:radial-gradient(circle at 18% 0%, rgba(0,169,200,.18), transparent 30%), var(--navy);
     position:relative;
     overflow:hidden;
-    border-top:8px solid var(--orange);
-    padding:16px 38px 28px;
+    border-top:6px solid var(--orange);
+    padding:14px 34px 26px;
   }
   .top {
     display:grid;
-    grid-template-columns:220px 1fr 300px;
+    grid-template-columns:188px 1fr 276px;
     gap:18px;
     align-items:start;
   }
   .brand {
-    height:104px;
+    height:88px;
     background:linear-gradient(135deg,#00a8c5,#00916b);
     display:flex;
     align-items:center;
@@ -1390,15 +1393,15 @@ function montarHtmlInformativoRanking({ mesLabel, diasUteis, totalPontos, totalK
     overflow:hidden;
   }
   .brand img { width:100%; height:100%; object-fit:contain; display:block; padding:0; background:linear-gradient(135deg,#00a8c5,#00916b); }
-  .title h1 { margin:2px 0 0; font-size:31px; line-height:1.14; letter-spacing:.35px; }
-  .title p { margin:8px 0 0; color:var(--muted); font-size:16px; }
-  .legend { justify-self:end; padding-top:16px; font-size:16px; }
+  .title h1 { margin:0; font-size:28px; line-height:1.12; letter-spacing:.25px; }
+  .title p { margin:7px 0 0; color:var(--muted); font-size:15px; }
+  .legend { justify-self:end; padding-top:10px; font-size:14px; }
   .legend div { display:flex; align-items:center; gap:14px; margin-bottom:12px; white-space:nowrap; font-weight:700; }
-  .legend span { display:block; width:126px; height:12px; border-radius:2px; }
-  .kpis { display:flex; gap:14px; margin:12px 0 12px 28px; }
+  .legend span { display:block; width:96px; height:10px; border-radius:2px; }
+  .kpis { display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:10px; margin:10px 0 10px 0; }
   .kpi {
-    width:218px;
-    height:62px;
+    width:auto;
+    height:58px;
     border:2px solid rgba(0,169,200,.68);
     padding:7px 12px;
     text-align:center;
@@ -1411,8 +1414,8 @@ function montarHtmlInformativoRanking({ mesLabel, diasUteis, totalPontos, totalK
   .kpi small { display:block; color:var(--muted); font-weight:700; letter-spacing:.4px; font-size:13px; }
   .kpi strong { display:block; color:#fff; font-size:27px; margin-top:2px; line-height:1; }
   .section-title {
-    width:700px;
-    height:40px;
+    width:100%;
+    height:38px;
     background:var(--cyan-2);
     display:flex;
     align-items:center;
@@ -1421,17 +1424,17 @@ function montarHtmlInformativoRanking({ mesLabel, diasUteis, totalPontos, totalK
     font-weight:900;
     font-size:22px;
     letter-spacing:1px;
-    margin:12px 0 14px 54px;
+    margin:10px 0 12px 0;
     position:relative;
     overflow:hidden;
   }
-  .bike-icon { position:static; margin-left:auto; font-size:30px; line-height:1; opacity:.88; }
-  .tables { display:grid; grid-template-columns:1fr 1fr; gap:26px; margin-left:54px; align-items:start; align-content:start; }
-  .tables.single { grid-template-columns:minmax(760px, 980px); }
-  table { width:100%; border-collapse:collapse; table-layout:fixed; font-size:17px; align-self:start; height:max-content !important; }
-  tbody tr { height:31px !important; max-height:31px !important; }
+  .bike-icon { position:static; margin-left:auto; font-size:24px; line-height:1; opacity:.82; }
+  .tables { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-left:0; align-items:start; align-content:start; }
+  .tables.single { grid-template-columns:minmax(0, 1fr); max-width:1040px; margin:0 auto; }
+  table { width:100%; border-collapse:collapse; table-layout:fixed; font-size:16px; align-self:start; height:auto !important; }
+  tbody tr { height:28px !important; max-height:28px !important; }
   th {
-    height:40px;
+    height:36px;
     background:#00a7bd;
     color:white;
     padding:6px;
@@ -1439,8 +1442,8 @@ function montarHtmlInformativoRanking({ mesLabel, diasUteis, totalPontos, totalK
     font-weight:900;
   }
   td {
-    height:31px !important;
-    max-height:31px !important;
+    height:28px !important;
+    max-height:28px !important;
     padding:3px 7px;
     border:2px solid var(--line);
     color:#e8eef5;
@@ -1455,8 +1458,7 @@ function montarHtmlInformativoRanking({ mesLabel, diasUteis, totalPontos, totalK
   .top3 td { background:rgba(111,175,66,.95); color:#fff; font-weight:700; }
   .alert td { background:rgba(242,121,40,.95); color:#fff; }
   .normal td { background:rgba(7,25,45,.92); }
-  .trophy { position:absolute; left:14px; top:328px; width:62px; text-align:center; font-size:42px; filter:drop-shadow(0 6px 10px rgba(0,0,0,.35)); }
-  .trophy small { display:block; font-size:12px; margin-top:2px; color:#fff; }
+  .trophy { display:none; }
   .footer { position:absolute; bottom:12px; left:42px; right:42px; display:flex; justify-content:space-between; color:#8fa6ba; font-size:13px; }
   @media print {
     body { background:white; }
@@ -1487,7 +1489,6 @@ function montarHtmlInformativoRanking({ mesLabel, diasUteis, totalPontos, totalK
   </div>`}
 
   <div class="section-title">${escapeHtml(tituloSecao)} <span class="bike-icon">🚴‍♂️</span></div>
-  <div class="trophy">🏆<small>1</small></div>
   <div class="${classeTabela}">
     ${tabelas || `<table><tbody><tr class="normal"><td style="height:80px;text-align:center;">Nenhum atleta encontrado.</td></tr></tbody></table>`}
   </div>
@@ -1525,6 +1526,14 @@ function montarTabelaRankingInformativo(titulo, lista, opcoes = {}) {
     <thead><tr><th>ID</th><th>Atletas Energisa - ${escapeHtml(titulo)}</th><th>Pontos</th><th>Treinos</th><th>KM</th></tr></thead>
     <tbody>${linhas || vazio}</tbody>
   </table>`;
+}
+
+function abrirHtmlNovaAba(html) {
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const janela = window.open(url, "_blank", "noopener,noreferrer");
+  if (!janela) showToast("O navegador bloqueou a abertura em nova aba. O arquivo será baixado normalmente.", "error");
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 
 function baixarHtml(nomeArquivo, html) {

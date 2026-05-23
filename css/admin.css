@@ -4743,3 +4743,104 @@ button {
     padding: 10px 12px !important;
   }
 }
+
+
+/* =====================================================
+   V38 - Home/report com acabamento de comunicação
+   Seguro: CSS e pequenos ajustes de informativo/exportações
+   ===================================================== */
+.quick-export-panel-v38 {
+  position: relative;
+  overflow: hidden;
+  grid-template-columns: minmax(280px, .9fr) minmax(420px, 1.1fr) !important;
+  padding: 18px !important;
+  background:
+    radial-gradient(circle at 3% 0%, rgba(0,159,194,.14), transparent 34%),
+    linear-gradient(135deg, rgba(255,255,255,.98), rgba(247,252,254,.94)) !important;
+}
+
+.quick-export-panel-v38::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: linear-gradient(180deg, #f27928, #00a9c8, #6faf42);
+}
+
+.quick-export-panel-v38 .quick-export-copy h3 {
+  font-size: 1.14rem !important;
+  margin-bottom: 4px !important;
+}
+
+.quick-export-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 10px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(0,159,194,.09);
+  color: var(--primary);
+  font-size: .76rem;
+  font-weight: 700;
+}
+
+.quick-export-note svg {
+  width: 15px;
+  height: 15px;
+}
+
+.quick-export-panel-v38 .quick-export-actions {
+  grid-template-columns: 1.2fr repeat(3, minmax(130px, .8fr)) !important;
+  align-items: stretch;
+}
+
+.quick-export-panel-v38 .quick-export-actions .btn-informativo-destaque {
+  min-height: 54px !important;
+  justify-content: center;
+  background: linear-gradient(135deg, #007c91, #00a9c8) !important;
+  box-shadow: 0 16px 30px rgba(0, 159, 194, .22) !important;
+}
+
+.quick-export-panel-v38 .quick-export-actions .btn-acao {
+  min-height: 54px !important;
+}
+
+body[data-theme="dark"] .quick-export-panel-v38 {
+  background:
+    radial-gradient(circle at 3% 0%, rgba(0,159,194,.18), transparent 34%),
+    linear-gradient(135deg, rgba(11,31,47,.98), rgba(8,24,37,.94)) !important;
+}
+
+body[data-theme="dark"] .quick-export-note {
+  background: rgba(0,159,194,.14);
+  color: #8be8ff;
+}
+
+.modal-informativo-card {
+  max-width: 720px !important;
+}
+
+.modal-informativo-options {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.modal-informativo-note {
+  border-left: 4px solid #f27928;
+}
+
+@media (max-width: 980px) {
+  .quick-export-panel-v38 {
+    grid-template-columns: 1fr !important;
+  }
+  .quick-export-panel-v38 .quick-export-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 620px) {
+  .quick-export-panel-v38 .quick-export-actions,
+  .modal-informativo-options {
+    grid-template-columns: 1fr !important;
+  }
+}
