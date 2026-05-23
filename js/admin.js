@@ -177,7 +177,7 @@ async function carregarEquipesEDashboard() {
     const tooltipInfo = `📍 ${u.localidade || 'Local não informado'}\n🎂 Nasc: ${n}\n🗓️ Entrou em: ${u.anoEntrada || 'N/D'}`;
 
     const switchAtivo = (hasGestao && u.role !== 'admin') ? `<label class="switch" title="Ativar/Desativar"><input type="checkbox" class="toggle-ativo" data-id="${u.id}" ${ativo ? 'checked' : ''}><span class="slider"></span></label>` : ''; 
-    const btnFicha = `<button class="btn-acao btn-ficha" data-id="${u.id}" style="color: var(--primary); border-color: var(--primary); padding: 4px; margin-left: 5px;" title="Ver Ficha Completa"><i data-lucide="clipboard-list" style="width: 16px;"></i></button>`; 
+    const btnFicha = `<button class="btn-acao btn-ficha" data-id="${u.id}" style="color: var(--primary); border-color: var(--primary); padding: 4px; margin-left: 5px;" title="Ver ficha do atleta"><i data-lucide="clipboard-list" style="width: 16px;"></i></button>`; 
     const btnPerm = (u.role === 'comite' && appState.userRole === 'admin') ? `<button class="btn-primario btn-permissoes" data-id="${u.id}" data-nome="${u.nome}" style="background: #f39c12; padding: 6px 10px; font-size: 0.8rem; margin-left: 5px;"><i data-lucide="key" style="width: 14px;"></i></button>` : ''; 
     const btnEditar = hasGestao ? `<button class="btn-acao btn-editar-membro" data-id="${u.id}" style="color: var(--warning); border-color: var(--warning); padding: 4px; margin-left: 5px;"><i data-lucide="edit-2" style="width: 16px;"></i></button>` : ''; 
     const btnExcluir = (auth.currentUser?.uid !== u.id && hasGestao) ? `<button class="btn-acao btn-excluir-membro" data-id="${u.id}" style="color: red; border: 0; padding: 4px; margin-left: 5px;"><i data-lucide="x-circle" style="width: 18px;"></i></button>` : ''; 
@@ -338,7 +338,7 @@ function filtrarHistorico() {
     else if (!atleta) nomeDisplay += " <small style='color:#999; font-weight:bold;'>(Excluído)</small>"; 
     
     let ptsV = Number(h.pontos) === 0 ? `<span style="color:var(--accent);">Justificada</span>` : `+${h.pontos}`;
-    const btnEstorno = podeEstornar ? `<button class="btn-acao btn-estornar" aria-label="Estornar lançamento" data-id="${h.id}" data-atleta="${h.atletaId}" data-pontos="${h.pontos}" style="color:var(--danger); border-color:var(--danger);"><i data-lucide="undo-2" style="width:16px;"></i></button>` : '';
+    const btnEstorno = podeEstornar ? `<button class="btn-acao btn-estornar" aria-label="Cancelar lançamento" data-id="${h.id}" data-atleta="${h.atletaId}" data-pontos="${h.pontos}" style="color:var(--danger); border-color:var(--danger);"><i data-lucide="undo-2" style="width:16px;"></i></button>` : '';
     
     tbody.innerHTML += `
       <tr>
@@ -358,12 +358,12 @@ function filtrarHistorico() {
       const histId = e.currentTarget.dataset.id; 
       const atlId = e.currentTarget.dataset.atleta; 
       const pts = parseInt(e.currentTarget.dataset.pontos); 
-      mostrarConfirmacao("Estornar Lançamento", "Tem certeza? A pontuação será deduzida do atleta.", async () => {
+      mostrarConfirmacao("Cancelar lançamento", "Confirma o cancelamento deste lançamento? Os pontos serão descontados do atleta.", async () => {
         try { 
           if (appState.mapAtletas[atlId] && pts > 0) { await updateDoc(doc(db, "atletas", atlId), { pontuacaoTotal: increment(-pts) }); } 
           await deleteDoc(doc(db, "historico_pontos", histId)); 
           showToast("Lançamento estornado!", "success"); atualizarTelas(); 
-        } catch (err) { showToast("Erro ao estornar.", "error"); } 
+        } catch (err) { showToast("Erro ao cancelar lançamento.", "error"); } 
       }, "danger");
     }); 
   });
@@ -937,6 +937,8 @@ function setupAdminCenter() {
     btnAuditoria.addEventListener("click", carregarAuditoriaAdmin);
   }
 
+  setupExportacoesOperacionais();
+
   atualizarAdminCenterResumo();
   carregarAuditoriaAdmin();
 }
@@ -1002,6 +1004,388 @@ async function exportarBackupJson() {
   URL.revokeObjectURL(url);
   await registrarAuditoria("exportar_backup", "sistema", "backup", { colecoes });
   showToast("Backup exportado.", "success");
+}
+
+
+// =====================================================
+// 📤 EXPORTAÇÕES OPERACIONAIS SEGURAS
+// =====================================================
+function setupExportacoesOperacionais() {
+  const acoes = [
+    ["btnExportarListaAtletas", exportarListaAtletasCsv],
+    ["btnExportarListaEventos", exportarListaEventosCsv],
+    ["btnExportarParticipacaoAtletas", exportarParticipacaoAtletasCsv],
+    ["btnGerarInformativoRanking", gerarInformativoRankingHtml]
+  ];
+
+  acoes.forEach(([id, fn]) => {
+    const btn = document.getElementById(id);
+    if (!btn || btn.dataset.listenerAplicado) return;
+    btn.dataset.listenerAplicado = "1";
+    btn.addEventListener("click", fn);
+  });
+}
+
+function exportarListaAtletasCsv() {
+  const atletas = Object.values(appState.mapAtletas || {})
+    .sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || "")));
+
+  if (atletas.length === 0) return showToast("Nenhum atleta carregado para exportar.", "error");
+
+  const linhas = atletas.map(a => ({
+    Nome: a.nome || "",
+    Email: a.email || "",
+    Equipe: a.equipe || "",
+    Status: a.status || "",
+    Ativo: a.ativo === false ? "Não" : "Sim",
+    Role: a.role || "atleta",
+    Pontos: Number(a.pontuacaoTotal) || 0,
+    Localidade: a.localidade || a.cidade || "",
+    Sexo: a.sexo || "",
+    Nascimento: a.dataNascimento || a.nascimento || "",
+    Entrada: a.anoEntrada || a.entrada || "",
+    CamposComplementares: a.camposFicha ? JSON.stringify(a.camposFicha) : ""
+  }));
+
+  baixarCsv("lista_atletas", linhas);
+  showToast("Lista de atletas exportada.", "success");
+}
+
+function exportarListaEventosCsv() {
+  const eventos = (appState.cacheEventos || [])
+    .slice()
+    .sort((a, b) => String(a.data || "").localeCompare(String(b.data || "")));
+
+  if (eventos.length === 0) return showToast("Nenhum evento carregado para exportar.", "error");
+
+  const linhas = eventos.map(e => ({
+    Data: e.data || "",
+    Titulo: e.titulo || "",
+    Modalidade: e.modalidade || e.equipe || "",
+    Tipo: e.tipo || "",
+    Local: e.local || e.localidade || "",
+    KM: Number(e.km || e.kmPrevisto || 0),
+    Link: e.link || "",
+    Status: e.status || e.statusLancamento || ""
+  }));
+
+  baixarCsv("lista_eventos", linhas);
+  showToast("Lista de eventos exportada.", "success");
+}
+
+function exportarParticipacaoAtletasCsv() {
+  const atletas = Object.values(appState.mapAtletas || {});
+  const historico = (appState.historicoCompleto || []).filter(h => h.estornado !== true);
+
+  if (atletas.length === 0) return showToast("Nenhum atleta carregado para exportar.", "error");
+
+  const resumo = new Map();
+
+  atletas.forEach(a => {
+    resumo.set(a.id, {
+      Nome: a.nome || "",
+      Equipe: a.equipe || "",
+      Ativo: a.ativo === false ? "Não" : "Sim",
+      Pontos: 0,
+      Participacoes: 0,
+      KM: 0,
+      UltimaParticipacao: "",
+      LancamentosJustificados: 0
+    });
+  });
+
+  const participacoesPorAtleta = new Map();
+  const kmPorAtletaELancamento = new Map();
+
+  historico.forEach(h => {
+    const aId = h.atletaId;
+    if (!resumo.has(aId)) return;
+
+    const item = resumo.get(aId);
+    const pontos = Number(h.pontos) || 0;
+    const km = Number(h.kmPercorrido || h.km || 0) || 0;
+    const data = h.dataTreino || "";
+    const chaveLancamento = h.loteId || [h.eventoId || "sem-evento", h.dataTreino || "", h.descTreino || ""].join("|");
+
+    item.Pontos += pontos;
+    if (pontos === 0 && String(h.regraId || "").includes("falta")) item.LancamentosJustificados += 1;
+    if (data && (!item.UltimaParticipacao || data > item.UltimaParticipacao)) item.UltimaParticipacao = data;
+
+    const chavePart = `${aId}|${chaveLancamento}`;
+    participacoesPorAtleta.set(chavePart, true);
+
+    const chaveKm = `${aId}|${chaveLancamento}`;
+    if (!kmPorAtletaELancamento.has(chaveKm) || km > kmPorAtletaELancamento.get(chaveKm)) {
+      kmPorAtletaELancamento.set(chaveKm, km);
+    }
+  });
+
+  participacoesPorAtleta.forEach((_, chave) => {
+    const aId = chave.split("|")[0];
+    if (resumo.has(aId)) resumo.get(aId).Participacoes += 1;
+  });
+
+  kmPorAtletaELancamento.forEach((km, chave) => {
+    const aId = chave.split("|")[0];
+    if (resumo.has(aId)) resumo.get(aId).KM += km;
+  });
+
+  const linhas = Array.from(resumo.values())
+    .sort((a, b) => (b.Pontos - a.Pontos) || String(a.Nome).localeCompare(String(b.Nome)))
+    .map(item => ({
+      ...item,
+      KM: Number(item.KM || 0).toFixed(2).replace(".", ",")
+    }));
+
+  baixarCsv("participacao_atletas", linhas);
+  showToast("Participação dos atletas exportada.", "success");
+}
+
+
+
+// =====================================================
+// 🏆 INFORMATIVO DO RANKING - HTML SEGURO
+// =====================================================
+function gerarInformativoRankingHtml() {
+  const atletas = Object.values(appState.mapAtletas || {});
+  const historico = (appState.historicoCompleto || []).filter(h => h.estornado !== true);
+
+  if (atletas.length === 0) return showToast("Nenhum atleta carregado para gerar o informativo.", "error");
+
+  const hoje = new Date();
+  const ano = hoje.getFullYear();
+  const mes = hoje.getMonth() + 1;
+  const mesLabel = hoje.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  const diasUteis = calcularDiasUteisMes(ano, mes);
+
+  const resumo = calcularResumoRanking(atletas, historico, ano, mes);
+  const bike = resumo.filter(a => normalizarEquipe(a.equipe) === "bicicleta").sort(ordenarRanking);
+  const corrida = resumo.filter(a => normalizarEquipe(a.equipe) === "corrida").sort(ordenarRanking);
+  const totalPontos = resumo.reduce((s, a) => s + a.pontosMes, 0);
+  const totalKm = resumo.reduce((s, a) => s + a.kmMes, 0);
+  const totalTreinos = resumo.reduce((s, a) => s + a.treinosMes, 0);
+
+  const html = montarHtmlInformativoRanking({
+    mesLabel,
+    diasUteis,
+    totalPontos,
+    totalKm,
+    totalTreinos,
+    bike,
+    corrida
+  });
+
+  baixarHtml("informativo_ranking_atletas", html);
+  showToast("Informativo do ranking gerado em HTML.", "success");
+}
+
+function calcularResumoRanking(atletas, historico, ano, mes) {
+  const porAtleta = new Map();
+
+  atletas.forEach(a => {
+    porAtleta.set(a.id, {
+      id: a.id,
+      nome: a.nome || "Sem nome",
+      equipe: a.equipe || "",
+      pontosMes: 0,
+      kmMes: 0,
+      treinosMes: 0,
+      ativo: a.ativo !== false
+    });
+  });
+
+  const participacoes = new Set();
+  const kmPorAtletaLancamento = new Map();
+
+  historico.forEach(h => {
+    if (!h.atletaId || !porAtleta.has(h.atletaId)) return;
+    const data = h.dataTreino || "";
+    if (!data.startsWith(`${ano}-${String(mes).padStart(2, "0")}`)) return;
+
+    const item = porAtleta.get(h.atletaId);
+    const pontos = Number(h.pontos) || 0;
+    item.pontosMes += pontos;
+
+    const chaveLancamento = h.loteId || [h.eventoId || "sem-evento", h.dataTreino || "", h.descTreino || ""].join("|");
+    const chavePart = `${h.atletaId}|${chaveLancamento}`;
+    participacoes.add(chavePart);
+
+    const km = Number(h.kmPercorrido || h.km || 0) || 0;
+    if (!kmPorAtletaLancamento.has(chavePart) || km > kmPorAtletaLancamento.get(chavePart)) {
+      kmPorAtletaLancamento.set(chavePart, km);
+    }
+  });
+
+  participacoes.forEach(chave => {
+    const atletaId = chave.split("|")[0];
+    if (porAtleta.has(atletaId)) porAtleta.get(atletaId).treinosMes += 1;
+  });
+
+  kmPorAtletaLancamento.forEach((km, chave) => {
+    const atletaId = chave.split("|")[0];
+    if (porAtleta.has(atletaId)) porAtleta.get(atletaId).kmMes += km;
+  });
+
+  return Array.from(porAtleta.values()).filter(a => a.ativo);
+}
+
+function montarHtmlInformativoRanking({ mesLabel, diasUteis, totalPontos, totalKm, totalTreinos, bike, corrida }) {
+  const totalRanking = bike.length + corrida.length;
+  const totalAlertas = [...bike, ...corrida].filter(a => a.pontosMes <= 0 && a.treinosMes <= 0).length;
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Informativo do Ranking - Atletas Energisa</title>
+<style>
+  :root { --navy:#07192d; --cyan:#00a9c8; --green:#6faf42; --orange:#f27928; --line:rgba(255,255,255,.65); }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: Arial, Helvetica, sans-serif; background:#111; color:#fff; }
+  .sheet { width:1600px; min-height:900px; margin:0 auto; background:var(--navy); position:relative; overflow:hidden; border-top:14px solid var(--orange); padding:16px 42px 46px; }
+  .top { display:grid; grid-template-columns:240px 1fr 360px; gap:16px; align-items:start; }
+  .brand { height:124px; background:linear-gradient(135deg,#00a8c5,#00916b); display:flex; align-items:center; justify-content:center; font-weight:900; font-size:24px; line-height:1.05; text-transform:uppercase; letter-spacing:.5px; }
+  .title h1 { margin:0; font-size:34px; line-height:1.18; }
+  .title p { margin:8px 0 0; color:#c5d1de; font-size:16px; }
+  .legend { justify-self:end; padding-top:18px; font-size:18px; }
+  .legend div { display:flex; align-items:center; gap:14px; margin-bottom:12px; }
+  .legend span { display:block; width:140px; height:14px; }
+  .kpis { display:flex; gap:14px; margin:14px 0 14px 0; }
+  .kpi { min-width:240px; border:2px solid rgba(0,169,200,.7); padding:8px 14px; text-align:center; background:rgba(0,0,0,.12); }
+  .kpi:first-child { border-color:rgba(255,209,72,.75); }
+  .kpi small { display:block; color:#c5d1de; font-weight:700; letter-spacing:.4px; }
+  .kpi strong { display:block; color:#fff; font-size:32px; margin-top:4px; }
+  .section-title { width:720px; background:#18afd4; padding:8px 0; text-align:left; padding-left:22px; font-weight:900; font-size:24px; letter-spacing:1px; margin:12px 0 14px 54px; position:relative; }
+  .bike-icon { position:absolute; left:90px; top:-6px; font-size:44px; }
+  .tables { display:grid; grid-template-columns:1fr 1fr; gap:26px; margin-left:54px; }
+  table { width:100%; border-collapse:collapse; table-layout:fixed; font-size:19px; }
+  th { background:#00a7bd; color:white; padding:9px 6px; border:2px solid var(--line); font-weight:900; }
+  td { padding:7px 6px; border:2px solid var(--line); color:#e8eef5; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  th:nth-child(1), td:nth-child(1){ width:38px; text-align:center; }
+  th:nth-child(3), td:nth-child(3), th:nth-child(4), td:nth-child(4), th:nth-child(5), td:nth-child(5){ width:110px; text-align:center; }
+  .ok td { background:rgba(111,175,66,.95); color:#fff; }
+  .alert td { background:rgba(242,121,40,.95); color:#fff; }
+  .normal td { background:rgba(7,25,45,.92); }
+  .trophy { position:absolute; left:0; top:340px; width:86px; text-align:center; font-size:56px; }
+  .footer { position:absolute; bottom:14px; left:42px; right:42px; display:flex; justify-content:space-between; color:#8fa6ba; font-size:13px; }
+  @media print { body { background:white; } .sheet { margin:0; width:100%; min-height:100vh; } }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <div class="top">
+    <div class="brand">Atletas<br>Energisa</div>
+    <div class="title">
+      <h1>Ranking de Pontos do<br>Time de Atletas Energisa</h1>
+      <p>Bike e Corrida | Mês: ${escapeHtml(capitalizar(mesLabel))} | ${diasUteis} dias úteis</p>
+    </div>
+    <div class="legend">
+      <div><span style="background:var(--green)"></span> Atletas no Ranking</div>
+      <div><span style="background:var(--orange)"></span> Atletas em Alerta</div>
+    </div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><small>Pontos totais do mês</small><strong>${formatarNumero(totalPontos, 0)} pts</strong></div>
+    <div class="kpi"><small>KM acumulados</small><strong>${formatarNumero(totalKm, 1)} km</strong></div>
+    <div class="kpi"><small>Quantidade de treinos</small><strong>${formatarNumero(totalTreinos, 0)}</strong></div>
+    <div class="kpi"><small>Atletas no ranking</small><strong>${formatarNumero(totalRanking, 0)}</strong></div>
+    <div class="kpi"><small>Atletas em alerta</small><strong>${formatarNumero(totalAlertas, 0)}</strong></div>
+  </div>
+
+  <div class="section-title">RANKING DO MÊS <span class="bike-icon">🚴‍♂️</span></div>
+  <div class="trophy">🏆<br><small style="font-size:12px;color:#fff;">1</small></div>
+  <div class="tables">
+    ${montarTabelaRankingInformativo("Bike", bike)}
+    ${montarTabelaRankingInformativo("Corrida", corrida)}
+  </div>
+  <div class="footer"><span>Informativo gerado pelo Portal Atletas Energisa</span><span>${new Date().toLocaleString("pt-BR")}</span></div>
+</div>
+</body>
+</html>`;
+}
+
+function montarTabelaRankingInformativo(titulo, lista) {
+  const linhas = lista.slice(0, 28).map((a, idx) => {
+    const classe = idx < 10 ? "ok" : (a.pontosMes <= 0 && a.treinosMes <= 0 ? "alert" : "normal");
+    return `<tr class="${classe}">
+      <td>${idx + 1}</td>
+      <td title="${escapeAttr(a.nome)}">${escapeHtml(a.nome)}</td>
+      <td>${formatarNumero(a.pontosMes, 0)}</td>
+      <td>${formatarNumero(a.treinosMes, 0)}</td>
+      <td>${formatarNumero(a.kmMes, 1)}</td>
+    </tr>`;
+  }).join("");
+
+  const vazio = `<tr class="normal"><td colspan="5" style="text-align:center; padding:22px;">Nenhum atleta encontrado.</td></tr>`;
+
+  return `<table>
+    <thead><tr><th>ID</th><th>Atletas Energisa - ${escapeHtml(titulo)}</th><th>Pontos</th><th>Treinos<br>Válidos</th><th>KM</th></tr></thead>
+    <tbody>${linhas || vazio}</tbody>
+  </table>`;
+}
+
+function baixarHtml(nomeArquivo, html) {
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${nomeArquivo}_${new Date().toISOString().slice(0,10)}.html`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function ordenarRanking(a, b) {
+  return (b.pontosMes - a.pontosMes) || (b.treinosMes - a.treinosMes) || (b.kmMes - a.kmMes) || String(a.nome).localeCompare(String(b.nome));
+}
+
+function normalizarEquipe(equipe) {
+  return String(equipe || "").trim().toLowerCase();
+}
+
+function calcularDiasUteisMes(ano, mes) {
+  let count = 0;
+  const ultimo = new Date(ano, mes, 0).getDate();
+  for (let dia = 1; dia <= ultimo; dia++) {
+    const d = new Date(ano, mes - 1, dia).getDay();
+    if (d !== 0 && d !== 6) count++;
+  }
+  return count;
+}
+
+function formatarNumero(valor, casas = 0) {
+  return Number(valor || 0).toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas });
+}
+
+function capitalizar(txt) {
+  return String(txt || "").replace(/^./, c => c.toUpperCase());
+}
+
+function baixarCsv(nomeArquivo, linhas) {
+  if (!Array.isArray(linhas) || linhas.length === 0) return;
+
+  const colunas = Object.keys(linhas[0]);
+  const csv = [
+    colunas.map(valorCsv).join(";"),
+    ...linhas.map(linha => colunas.map(c => valorCsv(linha[c])).join(";"))
+  ].join("\n");
+
+  const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${nomeArquivo}_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function valorCsv(valor) {
+  const texto = String(valor ?? "").replaceAll('"', '""');
+  return `"${texto}"`;
 }
 
 function setTexto(id, valor) {
@@ -1389,7 +1773,7 @@ function setupModalEditar() {
     
     try { 
       await updateDoc(doc(db, "atletas", id), { nome, email, role, equipe, sexo, dataNascimento: nasc, localidade, anoEntrada }); 
-      showToast("Ficha atualizada com sucesso!", "success"); modal.style.display = "none"; atualizarTelas(); fecharFichaAtleta();
+      showToast("Cadastro do atleta atualizado com sucesso!", "success"); modal.style.display = "none"; atualizarTelas(); fecharFichaAtleta();
     } catch (err) { showToast("Erro ao editar dados.", "error"); } 
     finally { e.target.textContent = "Salvar Alterações"; e.target.classList.remove("loading"); e.target.disabled = false; }
   }); 

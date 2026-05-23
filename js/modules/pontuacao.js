@@ -1314,7 +1314,7 @@ function setupExtratoAgrupadoUI() {
         <i data-lucide="layers-3"></i> Por lançamento
       </button>
       <button type="button" class="extrato-tab" data-view="auditoria">
-        <i data-lucide="list"></i> Auditoria detalhada
+        <i data-lucide="list"></i> Histórico de alterações
       </button>
     </div>
     <div id="extratoLotes" class="extrato-lotes-grid"></div>
@@ -1500,7 +1500,7 @@ function criarCardLote(g) {
         </div>
 
         <div class="lote-actions">
-          <small style="color:var(--text-light);">${g.qtdRegistros} registros no lote</small>
+          <small style="color:var(--text-light);">${g.qtdRegistros} registros no lançamento</small>
           <div class="lote-action-buttons">
             <button type="button" class="btn-acao btn-editar-lote" data-lote-key="${escapeAttr(g.id)}">
               <i data-lucide="edit-3"></i> Editar
@@ -1527,7 +1527,7 @@ function setupModalEditarLote() {
   modal.innerHTML = `
     <div class="modal-editar-lote-card">
       <h3><i data-lucide="edit-3"></i> Editar lançamento completo</h3>
-      <p>Use esta tela para corrigir o lote: alterar dados gerais, remover atletas lançados por engano, adicionar atletas esquecidos e registrar tudo em auditoria.</p>
+      <p>Use esta tela para ajustar o lançamento: alterar dados gerais, remover atletas lançados por engano, adicionar atletas esquecidos e registrar tudo no histórico de alterações.</p>
       <input type="hidden" id="editLoteKey" />
 
       <div id="editLoteResumo" class="lote-edit-summary"></div>
@@ -1596,13 +1596,13 @@ function setupModalEditarLote() {
             </div>
           </div>
           <div style="display:flex; justify-content:flex-end; margin-top:12px;">
-            <button type="button" id="btnAdicionarAtletaLote" class="btn-primario"><i data-lucide="user-plus"></i> Adicionar ao lote</button>
+            <button type="button" id="btnAdicionarAtletaLote" class="btn-primario"><i data-lucide="user-plus"></i> Adicionar ao lançamento</button>
           </div>
         </div>
       </div>
 
       <div class="modal-editar-lote-actions">
-        <button type="button" id="btnEstornarLoteInteiro" class="btn-acao btn-estornar-lote-inteiro"><i data-lucide="rotate-ccw"></i> Estornar lote inteiro</button>
+        <button type="button" id="btnEstornarLoteInteiro" class="btn-acao btn-estornar-lote-inteiro"><i data-lucide="rotate-ccw"></i> Cancelar lançamento inteiro</button>
         <div style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">
           <button type="button" id="btnCancelarEditLote" class="btn-acao">Fechar</button>
           <button type="button" id="btnSalvarEditLote" class="btn-primario"><i data-lucide="save"></i> Salvar dados gerais</button>
@@ -1641,7 +1641,7 @@ function setupModalEditarLote() {
 async function abrirModalEditarLote(loteKey) {
   const lote = lotesRenderizados.get(loteKey);
   if (!lote) {
-    showToast("Não foi possível localizar este lote.", "error");
+    showToast("Não foi possível localizar este lançamento.", "error");
     return;
   }
 
@@ -1706,7 +1706,7 @@ function preencherListaAtletasDoLote(lote) {
 
   const atletas = Array.from(porAtleta.values()).sort((a,b) => a.nome.localeCompare(b.nome));
   if (!atletas.length) {
-    lista.innerHTML = `<div class="empty-state" style="padding:14px;"><p>Nenhum atleta ativo neste lote.</p></div>`;
+    lista.innerHTML = `<div class="empty-state" style="padding:14px;"><p>Nenhum atleta ativo neste lançamento.</p></div>`;
     return;
   }
 
@@ -1781,7 +1781,7 @@ async function preencherSelectRegrasParaAdicionar(lote) {
 async function salvarEdicaoLote() {
   const loteKey = document.getElementById("editLoteKey")?.value;
   const lote = lotesRenderizados.get(loteKey);
-  if (!lote) return showToast("Lote não localizado.", "error");
+  if (!lote) return showToast("Lançamento não localizado.", "error");
 
   const novaDescricao = document.getElementById("editLoteDescricao")?.value.trim();
   const novaData = document.getElementById("editLoteData")?.value;
@@ -1861,7 +1861,7 @@ async function removerAtletaDoLote(atletaId) {
   if (!lote || !atletaId) return;
 
   const itensAtleta = lote.itens.filter(i => i.atletaId === atletaId && i.estornado !== true);
-  if (!itensAtleta.length) return showToast("Este atleta não possui registros ativos no lote.", "error");
+  if (!itensAtleta.length) return showToast("Este atleta não possui registros ativos neste lançamento.", "error");
 
   const nome = itensAtleta[0].atletaNome || appState.mapAtletas[atletaId]?.nome || "Atleta";
   const pontos = itensAtleta.reduce((s,i) => s + (Number(i.pontos) || 0), 0);
@@ -1871,7 +1871,7 @@ async function removerAtletaDoLote(atletaId) {
     return showToast("Motivo obrigatório para remover atleta do lançamento.", "error");
   }
 
-  mostrarConfirmacao("Remover atleta do lançamento", `Remover ${nome} deste lote?\n\nImpacto: -${pontos} ponto(s) no total do atleta.\nA ação ficará registrada na auditoria.`, async () => {
+  mostrarConfirmacao("Remover atleta do lançamento", `Remover ${nome} deste lançamento?\n\nImpacto: -${pontos} ponto(s) no total do atleta.\nA ação ficará registrada na auditoria.`, async () => {
     try {
       const batch = writeBatch(db);
       const agora = new Date().toISOString();
@@ -1937,7 +1937,7 @@ async function removerAtletaDoLote(atletaId) {
 async function adicionarAtletaAoLote() {
   const loteKey = document.getElementById("editLoteKey")?.value;
   const lote = lotesRenderizados.get(loteKey);
-  if (!lote) return showToast("Lote não localizado.", "error");
+  if (!lote) return showToast("Lançamento não localizado.", "error");
 
   const atletaId = document.getElementById("editAddAtleta")?.value;
   const regraSelect = document.getElementById("editAddRegra");
@@ -1957,7 +1957,7 @@ async function adicionarAtletaAoLote() {
   const jaExiste = lote.itens.some(i => i.atletaId === atletaId && i.estornado !== true);
   if (jaExiste) return showToast("Este atleta já está ativo neste lançamento.", "error");
 
-  mostrarConfirmacao("Adicionar atleta ao lançamento", `Adicionar ${atleta.nome} ao lote?\n\nImpacto: +${pontos} ponto(s).\nA ação ficará registrada na auditoria.`, async () => {
+  mostrarConfirmacao("Adicionar atleta ao lançamento", `Adicionar ${atleta.nome} ao lançamento?\n\nImpacto: +${pontos} ponto(s).\nA ação ficará registrada na auditoria.`, async () => {
     try {
       const batch = writeBatch(db);
       const agora = new Date().toISOString();
@@ -2041,10 +2041,10 @@ async function adicionarAtletaAoLote() {
 async function estornarLoteInteiro() {
   const loteKey = document.getElementById("editLoteKey")?.value;
   const lote = lotesRenderizados.get(loteKey);
-  if (!lote) return showToast("Lote não localizado.", "error");
+  if (!lote) return showToast("Lançamento não localizado.", "error");
 
   const itensAtivos = lote.itens.filter(i => i.estornado !== true);
-  if (!itensAtivos.length) return showToast("Este lote não possui registros ativos.", "info");
+  if (!itensAtivos.length) return showToast("Este lançamento não possui registros ativos.", "info");
 
   const pontosPorAtleta = {};
   itensAtivos.forEach(i => {
@@ -2054,14 +2054,14 @@ async function estornarLoteInteiro() {
   });
 
   const totalPontos = itensAtivos.reduce((s, i) => s + (Number(i.pontos) || 0), 0);
-  const motivo = prompt("Informe o motivo para estornar o lote inteiro:");
+  const motivo = prompt("Informe o motivo para cancelar o lançamento inteiro:");
   if (!motivo || !motivo.trim()) {
-    return showToast("Motivo obrigatório para estornar o lote.", "error");
+    return showToast("Motivo obrigatório para cancelar o lançamento.", "error");
   }
 
   mostrarConfirmacao(
-    "Estornar lote inteiro",
-    `Estornar todo o lote ${lote.titulo}?\n\nRegistros afetados: ${itensAtivos.length}\nPontos removidos: ${totalPontos}\n\nA ação ficará registrada na auditoria.`,
+    "Cancelar lançamento inteiro",
+    `Cancelar todo o lançamento ${lote.titulo}?\n\nRegistros afetados: ${itensAtivos.length}\nPontos removidos: ${totalPontos}\n\nA ação ficará registrada na auditoria.`,
     async () => {
       try {
         const batch = writeBatch(db);
@@ -2116,7 +2116,7 @@ async function estornarLoteInteiro() {
         fecharModalEditarLote();
         showToast("Lote estornado com sucesso.", "success");
       } catch (err) {
-        showToast("Erro ao estornar lote: " + err.message, "error");
+        showToast("Erro ao cancelar lançamento: " + err.message, "error");
       }
     },
     "danger"

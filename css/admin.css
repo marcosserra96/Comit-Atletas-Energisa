@@ -2944,3 +2944,29 @@ body.modal-open {
 .ficha-scroll-list {
   overscroll-behavior: contain !important;
 }
+
+
+/* V27 - Exportações operacionais seguras */
+.admin-export-card {
+  margin-top: 20px;
+}
+
+.admin-export-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.admin-export-grid .btn-acao {
+  min-height: 48px;
+  justify-content: center;
+  gap: 8px;
+  white-space: normal;
+  text-align: center;
+}
+
+.admin-export-grid .btn-acao span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
