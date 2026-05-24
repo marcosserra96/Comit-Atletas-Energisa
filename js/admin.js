@@ -672,9 +672,15 @@ function aplicarPerfilPermissao(perfil) {
 // ↕️ DRAG AND DROP DAS FILAS - V50 COM REORDENAÇÃO DINÂMICA
 // =====================================================
 function setupDragDropFilas() {
-  let draggedRow = null;
-  let draggedId = null;
-  let draggedEquipe = null;
+  // Estado compartilhado entre renderizações.
+  // Os listeners do tbody são instalados uma única vez; por isso o estado
+  // não pode ficar preso à execução anterior da função.
+  const dragState = window.__filaDragState || (window.__filaDragState = {
+    row: null,
+    id: null,
+    equipe: null,
+    salvando: false
+  });
 
   const getTbodyEquipe = (tbody) => {
     if (!tbody) return "";
@@ -732,7 +738,7 @@ function setupDragDropFilas() {
       .map(a => a.criadoEm || new Date().toISOString())
       .sort((a, b) => new Date(a) - new Date(b));
 
-    const idArrastado = draggedId || idsOrdenados[0];
+    const idArrastado = dragState.id || idsOrdenados[0];
 
     try {
       await Promise.all(idsOrdenados.map((id, index) => updateDoc(doc(db, "atletas", id), {
@@ -765,18 +771,18 @@ function setupDragDropFilas() {
       tbody.dataset.dragContainerSetup = "1";
       tbody.addEventListener("dragover", (e) => {
         e.preventDefault();
-        if (!draggedRow || !draggedId) return;
-        if (draggedEquipe !== getTbodyEquipe(tbody)) return;
+        if (!dragState.row || !dragState.id) return;
+        if (dragState.equipe !== getTbodyEquipe(tbody)) return;
 
         const afterElement = getAfterElement(tbody, e.clientY);
-        const atualAntes = draggedRow.nextElementSibling;
+        const atualAntes = dragState.row.nextElementSibling;
         const deveInserirAntes = afterElement;
-        const jaEstaNoLugar = deveInserirAntes === draggedRow || atualAntes === deveInserirAntes;
+        const jaEstaNoLugar = deveInserirAntes === dragState.row || atualAntes === deveInserirAntes;
         if (jaEstaNoLugar) return;
 
         animarReordenacao(tbody, () => {
-          if (afterElement == null) tbody.appendChild(draggedRow);
-          else tbody.insertBefore(draggedRow, afterElement);
+          if (afterElement == null) tbody.appendChild(dragState.row);
+          else tbody.insertBefore(dragState.row, afterElement);
         });
       });
 
@@ -784,8 +790,13 @@ function setupDragDropFilas() {
         e.preventDefault();
         tbody.classList.remove("fila-dropzone-active");
         document.querySelectorAll(".fila-row.drag-over").forEach(r => r.classList.remove("drag-over"));
-        if (!draggedRow || draggedEquipe !== getTbodyEquipe(tbody)) return;
-        await salvarOrdemFila(tbody);
+        if (!dragState.row || dragState.equipe !== getTbodyEquipe(tbody) || dragState.salvando) return;
+        dragState.salvando = true;
+        try {
+          await salvarOrdemFila(tbody);
+        } finally {
+          dragState.salvando = false;
+        }
       });
     }
   });
@@ -795,22 +806,22 @@ function setupDragDropFilas() {
     row.dataset.dragSetup = "1";
 
     row.addEventListener("dragstart", (e) => {
-      draggedRow = row;
-      draggedId = row.dataset.id;
-      draggedEquipe = row.dataset.equipeFila;
+      dragState.row = row;
+      dragState.id = row.dataset.id;
+      dragState.equipe = row.dataset.equipeFila;
       row.classList.add("dragging");
       row.closest("tbody")?.classList.add("fila-dropzone-active");
       e.dataTransfer.effectAllowed = "move";
-      e.dataTransfer.setData("text/plain", draggedId || "");
+      e.dataTransfer.setData("text/plain", dragState.id || "");
     });
 
     row.addEventListener("dragend", () => {
       row.classList.remove("dragging");
       document.querySelectorAll(".fila-dropzone-active").forEach(el => el.classList.remove("fila-dropzone-active"));
       document.querySelectorAll(".fila-row.drag-over").forEach(r => r.classList.remove("drag-over"));
-      draggedRow = null;
-      draggedId = null;
-      draggedEquipe = null;
+      dragState.row = null;
+      dragState.id = null;
+      dragState.equipe = null;
     });
   });
 }

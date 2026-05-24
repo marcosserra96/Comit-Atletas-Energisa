@@ -6733,3 +6733,63 @@ body[data-theme="dark"] .fila-row .drag-handle {
     border-radius: 20px !important;
   }
 }
+
+/* =====================================================
+   V51 - Correção Drag & Drop + ajuste fino do header slim
+   Escopo: corrigir DnD após re-render, remover linha azul no item
+   arrastado e aproximar logo/texto sem aumentar altura do topo.
+   ===================================================== */
+.topbar.topbar-slim {
+  height: 64px !important;
+  min-height: 64px !important;
+  padding-top: 7px !important;
+  padding-bottom: 7px !important;
+}
+
+.topbar-brand {
+  min-width: 285px !important;
+  max-width: 355px !important;
+  gap: 10px !important;
+}
+
+.topbar-program-logo {
+  width: 122px !important;
+  height: 38px !important;
+}
+
+.brand-divider {
+  height: 28px !important;
+  margin: 0 2px !important;
+  opacity: .86 !important;
+}
+
+.brand-context strong {
+  font-size: .98rem !important;
+}
+
+.brand-context small {
+  font-size: .74rem !important;
+  margin-top: 2px !important;
+}
+
+.fila-row.dragging,
+.fila-row.dragging td {
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.fila-row.dragging td {
+  background: rgba(0,155,193,.08) !important;
+  border-color: rgba(0,155,193,.16) !important;
+}
+
+.fila-row.dragging .drag-handle {
+  background: rgba(0,155,193,.18) !important;
+  transform: scale(.96);
+}
+
+#listaFilaBike.fila-dropzone-active,
+#listaFilaCorrida.fila-dropzone-active {
+  outline: 1px dashed rgba(0,155,193,.22) !important;
+  outline-offset: 4px !important;
+}
