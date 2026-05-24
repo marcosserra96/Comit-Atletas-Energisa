@@ -448,3 +448,84 @@ body {
   .logo h1 { font-size: 1.42rem !important; }
   .login-subtitle { font-size: .76rem !important; }
 }
+
+/* =====================================================
+   V50 — Login Premium
+   ===================================================== */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255,255,255,.22), transparent 20%),
+    radial-gradient(circle at 80% 78%, rgba(243,112,33,.14), transparent 24%),
+    linear-gradient(180deg, rgba(0,0,0,.08), rgba(0,0,0,.22));
+}
+.container {
+  max-width: 460px;
+  position: relative;
+  z-index: 1;
+}
+.logo {
+  margin-bottom: 18px;
+}
+.logo img {
+  height: 72px;
+  max-width: 260px;
+  object-fit: contain;
+  margin-bottom: 18px;
+  filter: drop-shadow(0 14px 30px rgba(0,0,0,.22));
+}
+.logo h1 {
+  font-size: 30px;
+  line-height: 1.05;
+  margin: 0;
+  letter-spacing: -.03em;
+}
+.logo .login-subtitle {
+  margin: 8px 0 0 !important;
+  color: rgba(255,255,255,.82);
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+.login-box {
+  max-width: 360px;
+  padding: 30px 34px;
+  border-radius: 26px;
+  box-shadow: 0 24px 70px rgba(0,0,0,.24);
+  border: 1px solid rgba(255,255,255,.30);
+  animation: loginCardIn .42s cubic-bezier(.2,.8,.2,1) both;
+}
+.login-box h2 {
+  font-size: 19px;
+  letter-spacing: -.02em;
+}
+.login-box input {
+  min-height: 48px;
+  border-radius: 14px;
+}
+button {
+  min-height: 48px;
+  border-radius: 14px;
+}
+.register-text {
+  line-height: 1.4;
+}
+.register-text a {
+  padding: 2px 4px;
+  border-radius: 8px;
+}
+.register-text a:hover {
+  background: rgba(243,112,33,.10);
+}
+@keyframes loginCardIn {
+  from { opacity: 0; transform: translateY(12px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (max-width: 520px) {
+  .container { padding: 18px; }
+  .logo img { height: 58px; max-width: 220px; }
+  .logo h1 { font-size: 25px; }
+  .login-box { padding: 26px 22px; border-radius: 22px; }
+}

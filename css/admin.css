@@ -5904,3 +5904,832 @@ body[data-theme="dark"] .inactivity-item small {
     grid-template-columns: 1fr !important;
   }
 }
+
+/* =====================================================
+   V48 - Ajuste fino do Pódio Top 3
+   Corrige nomes cortados/colidindo com pontuação e deixa os cards mais limpos.
+   ===================================================== */
+.podium-card .podium-split {
+  gap: 16px !important;
+  align-items: stretch;
+}
+
+.podium-card .podium-split > div {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.podium-card .podium-list {
+  display: grid !important;
+  gap: 10px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.podium-card .podium-rank,
+.podium-card .podium-list li.podium-rank {
+  position: relative;
+  display: grid !important;
+  grid-template-columns: 34px minmax(0, 1fr) 36px !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: 100%;
+  min-width: 0;
+  min-height: 62px !important;
+  padding: 10px 12px !important;
+  border-radius: 18px !important;
+  border: 1px solid rgba(0, 155, 193, .12) !important;
+  background: linear-gradient(135deg, rgba(255,255,255,.92), rgba(0,155,193,.035)) !important;
+  box-shadow: 0 8px 18px rgba(31, 45, 61, .045);
+}
+
+.podium-card .podium-rank-1,
+.podium-card .podium-list li.podium-rank-1 {
+  min-height: 76px !important;
+  border-color: rgba(243, 112, 33, .30) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(243,112,33,.13), transparent 38%),
+    linear-gradient(135deg, rgba(255,255,255,.96), rgba(243,112,33,.055)) !important;
+}
+
+.podium-card .podium-medal {
+  width: 30px !important;
+  height: 30px !important;
+  min-width: 30px !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 1rem !important;
+  background: rgba(255,255,255,.86) !important;
+  box-shadow: 0 8px 16px rgba(31,45,61,.08) !important;
+}
+
+.podium-card .podium-athlete {
+  min-width: 0 !important;
+  width: 100%;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 3px !important;
+  overflow: hidden !important;
+}
+
+.podium-card .podium-athlete strong {
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  width: 100%;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  white-space: normal !important;
+  text-overflow: ellipsis !important;
+  line-height: 1.18 !important;
+  font-size: .88rem !important;
+  font-weight: 850 !important;
+  color: var(--text) !important;
+}
+
+.podium-card .podium-rank-1 .podium-athlete strong {
+  font-size: .9rem !important;
+}
+
+.podium-card .podium-athlete em {
+  display: inline-flex !important;
+  max-width: 100%;
+  padding: 2px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: .66rem !important;
+  font-weight: 800 !important;
+  font-style: normal !important;
+  color: var(--text-light) !important;
+}
+
+.podium-card .podium-rank-1 .podium-athlete em {
+  color: #b45309 !important;
+}
+
+.podium-card .podium-score,
+.podium-card .podium-list li > strong.podium-score {
+  justify-self: end !important;
+  align-self: center !important;
+  min-width: 30px !important;
+  width: 30px !important;
+  height: 28px !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 999px !important;
+  background: rgba(0, 155, 193, .10) !important;
+  color: var(--primary) !important;
+  font-size: .78rem !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  overflow: visible !important;
+}
+
+body[data-theme="dark"] .podium-card .podium-rank,
+[data-theme="dark"] .podium-card .podium-rank {
+  background: linear-gradient(135deg, rgba(255,255,255,.035), rgba(0,155,193,.08)) !important;
+  border-color: rgba(0,155,193,.18) !important;
+  box-shadow: none !important;
+}
+
+body[data-theme="dark"] .podium-card .podium-rank-1,
+[data-theme="dark"] .podium-card .podium-rank-1 {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(243,112,33,.18), transparent 38%),
+    linear-gradient(135deg, rgba(243,112,33,.10), rgba(0,155,193,.06)) !important;
+  border-color: rgba(243,112,33,.34) !important;
+}
+
+body[data-theme="dark"] .podium-card .podium-medal,
+[data-theme="dark"] .podium-card .podium-medal {
+  background: rgba(255,255,255,.10) !important;
+}
+
+body[data-theme="dark"] .podium-card .podium-score,
+[data-theme="dark"] .podium-card .podium-score {
+  background: rgba(0, 155, 193, .18) !important;
+  color: color-mix(in srgb, var(--primary) 76%, #ffffff) !important;
+}
+
+@media (max-width: 1120px) {
+  .podium-card .podium-split {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .podium-card .podium-rank,
+  .podium-card .podium-list li.podium-rank {
+    grid-template-columns: 30px minmax(0, 1fr) 30px !important;
+    gap: 8px !important;
+    padding: 9px 10px !important;
+  }
+
+  .podium-card .podium-athlete strong {
+    font-size: .84rem !important;
+  }
+}
+
+/* =====================================================
+   V49 - Ajustes de espaçamento: Header + Identidade visual
+   Escopo seguro: somente CSS, sem alterar regras ou dados.
+   ===================================================== */
+
+/* Header: melhora proporção entre logo, título, busca e ações */
+.topbar.topbar-slim {
+  min-height: 66px !important;
+  height: 66px !important;
+  padding: 8px 22px !important;
+  gap: 20px !important;
+  align-items: center !important;
+  border-top-width: 3px !important;
+}
+
+.topbar-brand {
+  min-width: 330px !important;
+  max-width: 430px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 16px !important;
+  flex: 0 0 auto !important;
+}
+
+.topbar-program-logo {
+  width: 142px !important;
+  height: 44px !important;
+  object-fit: contain !important;
+  object-position: left center !important;
+  flex: 0 0 auto !important;
+}
+
+.brand-divider {
+  width: 1px !important;
+  height: 34px !important;
+  background: rgba(255,255,255,.26) !important;
+  flex: 0 0 auto !important;
+}
+
+.brand-context {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  min-width: 0 !important;
+  line-height: 1.05 !important;
+}
+
+.brand-context strong {
+  font-size: 1rem !important;
+  line-height: 1.1 !important;
+  white-space: nowrap !important;
+}
+
+.brand-context small {
+  margin-top: 3px !important;
+  font-size: .76rem !important;
+  opacity: .84 !important;
+  white-space: nowrap !important;
+}
+
+.topbar-actions {
+  flex: 1 1 auto !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+}
+
+.topbar-slim .global-search {
+  flex: 0 1 420px !important;
+  max-width: 420px !important;
+  min-width: 260px !important;
+  height: 42px !important;
+}
+
+.topbar-slim .global-search input {
+  height: 42px !important;
+  font-size: .88rem !important;
+}
+
+.topbar-slim .btn-topo {
+  width: 42px !important;
+  height: 42px !important;
+  min-width: 42px !important;
+  border-radius: 14px !important;
+}
+
+#userGroupBadge {
+  min-height: 34px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 13px !important;
+  border-radius: 12px !important;
+  line-height: 1 !important;
+}
+
+/* Garante respiro no fim da página para o menu flutuante não cobrir cards */
+main {
+  padding-bottom: 130px !important;
+}
+
+/* Identidade visual: cards mais estáveis e sem sobreposição */
+.admin-brand-card {
+  overflow: visible !important;
+}
+
+.admin-brand-card .admin-panel-header {
+  margin-bottom: 16px !important;
+}
+
+.admin-brand-card .brand-admin-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+  margin: 0 0 18px 0 !important;
+  align-items: stretch !important;
+}
+
+.admin-brand-card .brand-preview {
+  min-height: 168px !important;
+  padding: 16px !important;
+  gap: 12px !important;
+  justify-content: space-between !important;
+  border-radius: 18px !important;
+}
+
+.admin-brand-card .brand-preview span {
+  display: block !important;
+  line-height: 1.1 !important;
+}
+
+.admin-brand-card .brand-preview img {
+  width: 100% !important;
+  max-width: 220px !important;
+  height: 58px !important;
+  object-fit: contain !important;
+  object-position: left center !important;
+}
+
+.admin-brand-card .brand-preview small {
+  display: block !important;
+  max-width: 260px !important;
+}
+
+.admin-brand-card .brand-editor-layout {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 18px !important;
+  margin-top: 0 !important;
+  align-items: start !important;
+}
+
+.admin-brand-card .brand-color-editor {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(150px, 1fr)) !important;
+  gap: 12px !important;
+  align-items: stretch !important;
+  max-width: 100% !important;
+}
+
+.admin-brand-card .brand-color-editor label {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  grid-template-rows: auto 42px !important;
+  min-height: 88px !important;
+  padding: 12px !important;
+  gap: 9px !important;
+  align-items: start !important;
+  overflow: hidden !important;
+  line-height: 1.15 !important;
+}
+
+.admin-brand-card .brand-color-editor input[type="color"] {
+  width: 100% !important;
+  height: 42px !important;
+  min-width: 0 !important;
+  border-radius: 12px !important;
+}
+
+.admin-brand-card .brand-theme-preview {
+  width: 100% !important;
+  max-width: 760px !important;
+  min-height: 0 !important;
+  padding: 16px !important;
+  border-radius: 20px !important;
+  margin-top: 0 !important;
+  justify-self: start !important;
+  gap: 12px !important;
+}
+
+.admin-brand-card .brand-theme-card {
+  margin-top: 0 !important;
+  padding: 15px !important;
+}
+
+.admin-brand-card .brand-theme-preview code {
+  display: block !important;
+  margin-top: 0 !important;
+  overflow-wrap: anywhere !important;
+}
+
+.admin-brand-card .brand-admin-actions {
+  margin-top: 18px !important;
+  display: flex !important;
+  gap: 12px !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+}
+
+.admin-brand-card .brand-admin-actions .btn-primario,
+.admin-brand-card .brand-admin-actions .btn-acao {
+  min-height: 46px !important;
+  padding: 0 18px !important;
+}
+
+.admin-brand-card .brand-note-box {
+  margin-top: 14px !important;
+}
+
+@media (min-width: 1180px) {
+  .admin-brand-card .brand-editor-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 420px) !important;
+    align-items: start !important;
+  }
+  .admin-brand-card .brand-color-editor {
+    grid-template-columns: repeat(3, minmax(130px, 1fr)) !important;
+  }
+  .admin-brand-card .brand-theme-preview {
+    max-width: none !important;
+  }
+}
+
+@media (max-width: 920px) {
+  .topbar.topbar-slim {
+    height: auto !important;
+    min-height: 64px !important;
+    padding: 9px 14px !important;
+  }
+  .topbar-brand {
+    min-width: 0 !important;
+    max-width: none !important;
+    flex: 1 1 auto !important;
+  }
+  .topbar-program-logo {
+    width: 120px !important;
+    height: 38px !important;
+  }
+  .brand-context strong {
+    font-size: .92rem !important;
+  }
+  .brand-context small {
+    font-size: .70rem !important;
+  }
+  .topbar-actions {
+    width: 100% !important;
+  }
+  .topbar-slim .global-search {
+    flex: 1 1 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+  }
+  .admin-brand-card .brand-admin-grid,
+  .admin-brand-card .brand-color-editor {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 620px) {
+  main {
+    padding-bottom: 150px !important;
+  }
+  .brand-divider,
+  .brand-context small {
+    display: none !important;
+  }
+  .topbar-program-logo {
+    width: 112px !important;
+  }
+  .admin-brand-card .brand-admin-grid,
+  .admin-brand-card .brand-color-editor {
+    grid-template-columns: 1fr !important;
+  }
+  .admin-brand-card .brand-admin-actions .btn-primario,
+  .admin-brand-card .brand-admin-actions .btn-acao {
+    width: 100% !important;
+  }
+}
+
+/* =====================================================
+   V50 — Design System, Transições e Drag & Drop Premium
+   ===================================================== */
+:root {
+  --ease-premium: cubic-bezier(.2,.8,.2,1);
+  --surface-1: rgba(255,255,255,.92);
+  --surface-2: rgba(255,255,255,.76);
+  --line-soft: rgba(0, 155, 193, .12);
+  --shadow-soft: 0 18px 45px rgba(14, 39, 63, .08);
+  --shadow-hover: 0 22px 55px rgba(14, 39, 63, .14);
+  --radius-card: 24px;
+  --radius-control: 14px;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  text-rendering: geometricPrecision;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  main > section,
+  .sub-content,
+  .t-content,
+  .ficha-tab-content,
+  .modal .modal-content,
+  .ficha-modal-shell {
+    animation: v50FadeUp .28s var(--ease-premium) both;
+  }
+
+  .card,
+  .analysis-card,
+  .strategic-action-card,
+  .program-health-card,
+  .executive-kpi,
+  .admin-panel-card,
+  .admin-kpi-card,
+  .quick-export-panel,
+  .login-box,
+  .btn-primario,
+  .btn-acao,
+  .btn-topo,
+  .t-tab,
+  .sub-tab,
+  .nav-item,
+  .menu-flutuante button {
+    transition:
+      transform .20s var(--ease-premium),
+      box-shadow .20s var(--ease-premium),
+      border-color .20s var(--ease-premium),
+      background-color .20s var(--ease-premium),
+      color .20s var(--ease-premium),
+      opacity .20s var(--ease-premium);
+  }
+}
+
+@keyframes v50FadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Superfícies: menos aspecto de cards soltos e mais produto único */
+.card,
+.analysis-card,
+.strategic-action-card,
+.program-health-card,
+.admin-panel-card,
+.quick-export-panel,
+.admin-control-hero,
+.podium-card,
+.ficha-modal-shell,
+.modal-content {
+  border-radius: var(--radius-card) !important;
+  border: 1px solid rgba(0, 155, 193, .10) !important;
+  box-shadow: var(--shadow-soft) !important;
+}
+
+.card:hover,
+.analysis-card:hover,
+.strategic-action-card:hover,
+.admin-panel-card:hover,
+.quick-export-panel:hover,
+.program-health-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover) !important;
+}
+
+/* Títulos padronizados */
+.analysis-card-header h3,
+.strategic-action-card h3,
+.admin-panel-header h3,
+.admin-control-hero h3,
+.card h3,
+.header-acao h2 {
+  letter-spacing: -.02em;
+}
+
+.analysis-card-header p,
+.strategic-action-card p,
+.admin-panel-header p,
+.page-subtitle,
+.card p {
+  line-height: 1.45;
+}
+
+/* Botões com hierarquia mais clara */
+.btn-primario {
+  border-radius: 15px !important;
+  box-shadow: 0 12px 24px rgba(0,155,193,.16) !important;
+}
+.btn-primario:hover { transform: translateY(-2px); }
+.btn-acao {
+  border-radius: 14px !important;
+  background: rgba(255,255,255,.72) !important;
+}
+.btn-acao:hover { transform: translateY(-1px); }
+
+/* Menu flutuante mais discreto */
+.menu-flutuante {
+  border-radius: 24px !important;
+  padding: 8px !important;
+  box-shadow: 0 20px 45px rgba(0,0,0,.10) !important;
+  backdrop-filter: blur(18px) saturate(1.08) !important;
+}
+.menu-flutuante button,
+.menu-flutuante a {
+  border-radius: 18px !important;
+  min-height: 42px !important;
+}
+.menu-flutuante .active,
+.menu-flutuante button.active,
+.menu-flutuante a.active {
+  box-shadow: 0 10px 22px rgba(0,155,193,.22) !important;
+}
+
+/* Header mais coeso */
+.topbar.topbar-slim {
+  box-shadow: 0 14px 30px rgba(0,0,0,.10) !important;
+}
+.topbar-program-logo {
+  object-fit: contain !important;
+  object-position: left center !important;
+}
+.brand-context strong { letter-spacing: -.01em !important; }
+.global-search {
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.22) !important;
+}
+.global-search-results {
+  border-radius: 18px !important;
+  box-shadow: 0 18px 50px rgba(0,0,0,.16) !important;
+}
+
+/* Inputs e selects com padrão único */
+input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+select,
+textarea {
+  border-radius: var(--radius-control) !important;
+  transition: border-color .18s var(--ease-premium), box-shadow .18s var(--ease-premium), background-color .18s var(--ease-premium) !important;
+}
+input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):focus,
+select:focus,
+textarea:focus {
+  box-shadow: 0 0 0 4px rgba(0,155,193,.12) !important;
+}
+
+/* Modais com cabeçalho mais premium */
+.modal-content,
+.ficha-modal-shell {
+  overflow: hidden;
+}
+.modal-content h2,
+.ficha-modal-title,
+.ficha-modal-shell h2 {
+  letter-spacing: -.02em;
+}
+.modal-content .modal-actions,
+.ficha-modal-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  backdrop-filter: blur(12px);
+}
+
+/* Empty states mais consistentes */
+.empty-state,
+.tabela-vazia,
+.lista-vazia,
+.estado-vazio,
+.empty-table-state {
+  border-radius: 18px !important;
+  border: 1px dashed rgba(0,155,193,.24) !important;
+  background: linear-gradient(135deg, rgba(0,155,193,.06), rgba(0,179,126,.04)) !important;
+  color: var(--text-light) !important;
+}
+
+/* Tema escuro: reduz cards claros e melhora contraste */
+body[data-theme="dark"] {
+  --surface-1: rgba(24,24,24,.94);
+  --surface-2: rgba(30,30,30,.82);
+  --line-soft: rgba(255,255,255,.10);
+  --shadow-soft: 0 18px 45px rgba(0,0,0,.24);
+  --shadow-hover: 0 22px 55px rgba(0,0,0,.34);
+}
+body[data-theme="dark"] .card,
+body[data-theme="dark"] .analysis-card,
+body[data-theme="dark"] .strategic-action-card,
+body[data-theme="dark"] .program-health-card,
+body[data-theme="dark"] .executive-kpi,
+body[data-theme="dark"] .admin-panel-card,
+body[data-theme="dark"] .admin-kpi-card,
+body[data-theme="dark"] .quick-export-panel,
+body[data-theme="dark"] .admin-control-hero,
+body[data-theme="dark"] .podium-card {
+  background: linear-gradient(145deg, rgba(30,30,30,.96), rgba(20,24,25,.94)) !important;
+  border-color: rgba(255,255,255,.09) !important;
+}
+body[data-theme="dark"] .btn-acao {
+  background: rgba(255,255,255,.06) !important;
+  border-color: rgba(255,255,255,.12) !important;
+}
+body[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+body[data-theme="dark"] select,
+body[data-theme="dark"] textarea {
+  background: rgba(255,255,255,.06) !important;
+  color: #f1f5f7 !important;
+  border-color: rgba(255,255,255,.12) !important;
+}
+body[data-theme="dark"] .proximo-evento-item,
+body[data-theme="dark"] .event-card,
+body[data-theme="dark"] .evento-card,
+body[data-theme="dark"] .next-event-card {
+  background: linear-gradient(135deg, rgba(255,255,255,.06), rgba(0,155,193,.08)) !important;
+  border-color: rgba(255,255,255,.12) !important;
+  color: #f1f5f7 !important;
+}
+body[data-theme="dark"] .empty-state,
+body[data-theme="dark"] .tabela-vazia,
+body[data-theme="dark"] .lista-vazia,
+body[data-theme="dark"] .estado-vazio,
+body[data-theme="dark"] .empty-table-state {
+  background: linear-gradient(135deg, rgba(0,155,193,.10), rgba(0,179,126,.06)) !important;
+  border-color: rgba(0,155,193,.22) !important;
+}
+
+/* Pódio: nomes longos mais confortáveis */
+.podium-item,
+.podium-list-item,
+.podium-row {
+  min-width: 0 !important;
+}
+.podium-item strong,
+.podium-list-item strong,
+.podium-row strong,
+#podiumBike strong,
+#podiumCorrida strong {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  white-space: normal !important;
+}
+
+/* Radar: alerta menos agressivo */
+.inactivity-card,
+.radar-card,
+.inactive-list li,
+.alert-row {
+  border-radius: 14px !important;
+}
+body[data-theme="dark"] .inactivity-card,
+body[data-theme="dark"] .radar-card {
+  background: rgba(230,57,70,.08) !important;
+  border-color: rgba(230,57,70,.20) !important;
+}
+
+/* Drag and drop premium: reordenação dinâmica */
+.fila-helper-v50,
+.fila-helper {
+  border-radius: 14px !important;
+  background: linear-gradient(135deg, rgba(0,155,193,.08), rgba(0,179,126,.05)) !important;
+  border: 1px solid rgba(0,155,193,.13) !important;
+  padding: 10px 12px !important;
+  margin: 8px 0 10px !important;
+  color: var(--text-light) !important;
+}
+#listaFilaBike,
+#listaFilaCorrida {
+  position: relative;
+}
+#listaFilaBike.fila-dropzone-active,
+#listaFilaCorrida.fila-dropzone-active {
+  outline: 2px dashed rgba(0,155,193,.26);
+  outline-offset: 6px;
+  border-radius: 16px;
+}
+.fila-row {
+  cursor: grab !important;
+  transform-origin: center;
+  transition: background-color .18s var(--ease-premium), box-shadow .18s var(--ease-premium), opacity .18s var(--ease-premium) !important;
+}
+.fila-row td {
+  transition: background-color .18s var(--ease-premium), border-color .18s var(--ease-premium) !important;
+}
+.fila-row:hover td {
+  background: rgba(0,155,193,.045) !important;
+}
+.fila-row.dragging {
+  opacity: .55 !important;
+  cursor: grabbing !important;
+  filter: saturate(1.1);
+}
+.fila-row.dragging td {
+  background: rgba(0,155,193,.12) !important;
+  box-shadow: inset 4px 0 0 var(--primary) !important;
+}
+.fila-row .drag-handle {
+  width: 26px !important;
+  height: 26px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-right: 8px !important;
+  border-radius: 10px !important;
+  background: rgba(0,155,193,.08) !important;
+  color: var(--primary) !important;
+}
+body[data-theme="dark"] .fila-row:hover td {
+  background: rgba(0,155,193,.10) !important;
+}
+body[data-theme="dark"] .fila-row .drag-handle {
+  background: rgba(0,155,193,.14) !important;
+}
+
+/* Admin: blocos com cara de centro de controle */
+.admin-control-layout {
+  align-items: start !important;
+}
+.admin-brand-card,
+.admin-panel-card,
+.admin-check-card {
+  overflow: visible !important;
+}
+.admin-kpi-card {
+  border-radius: 20px !important;
+}
+.admin-kpi-card strong {
+  letter-spacing: -.03em;
+}
+
+/* Login/relacionamento visual com o portal */
+@media (max-width: 720px) {
+  .menu-flutuante {
+    max-width: calc(100vw - 20px) !important;
+    overflow-x: auto !important;
+  }
+  .menu-flutuante button,
+  .menu-flutuante a {
+    min-width: 44px !important;
+  }
+  .analysis-card,
+  .card,
+  .strategic-action-card,
+  .admin-panel-card {
+    border-radius: 20px !important;
+  }
+}

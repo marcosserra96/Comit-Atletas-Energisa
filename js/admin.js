@@ -669,16 +669,124 @@ function aplicarPerfilPermissao(perfil) {
 
 
 // =====================================================
-// ↕️ DRAG AND DROP DAS FILAS
+// ↕️ DRAG AND DROP DAS FILAS - V50 COM REORDENAÇÃO DINÂMICA
 // =====================================================
 function setupDragDropFilas() {
+  let draggedRow = null;
   let draggedId = null;
   let draggedEquipe = null;
+
+  const getTbodyEquipe = (tbody) => {
+    if (!tbody) return "";
+    if (tbody.id === "listaFilaBike") return "bike";
+    if (tbody.id === "listaFilaCorrida") return "corrida";
+    return "";
+  };
+
+  const animarReordenacao = (tbody, mutacao) => {
+    if (!tbody) return mutacao?.();
+    const itens = Array.from(tbody.querySelectorAll(".fila-row"));
+    const antes = new Map(itens.map(el => [el, el.getBoundingClientRect()]));
+    mutacao?.();
+    const depois = Array.from(tbody.querySelectorAll(".fila-row"));
+    depois.forEach(el => {
+      const origem = antes.get(el);
+      if (!origem) return;
+      const destino = el.getBoundingClientRect();
+      const dx = origem.left - destino.left;
+      const dy = origem.top - destino.top;
+      if (!dx && !dy) return;
+      el.animate([
+        { transform: `translate(${dx}px, ${dy}px)` },
+        { transform: "translate(0, 0)" }
+      ], {
+        duration: 210,
+        easing: "cubic-bezier(.2,.8,.2,1)"
+      });
+    });
+  };
+
+  const getAfterElement = (tbody, y) => {
+    const rows = [...tbody.querySelectorAll(".fila-row:not(.dragging)")];
+    return rows.reduce((closest, child) => {
+      const box = child.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > closest.offset) return { offset, element: child };
+      return closest;
+    }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
+  };
+
+  const salvarOrdemFila = async (tbody) => {
+    const equipeFila = getTbodyEquipe(tbody);
+    const idsOrdenados = Array.from(tbody.querySelectorAll(".fila-row"))
+      .map(row => row.dataset.id)
+      .filter(Boolean);
+
+    if (!idsOrdenados.length) return;
+
+    const atletasFila = idsOrdenados
+      .map(id => appState.mapAtletas[id])
+      .filter(Boolean);
+
+    const datasOrdenadas = atletasFila
+      .map(a => a.criadoEm || new Date().toISOString())
+      .sort((a, b) => new Date(a) - new Date(b));
+
+    const idArrastado = draggedId || idsOrdenados[0];
+
+    try {
+      await Promise.all(idsOrdenados.map((id, index) => updateDoc(doc(db, "atletas", id), {
+        criadoEm: datasOrdenadas[index] || new Date(Date.now() + index * 1000).toISOString(),
+        ordemFila: index + 1,
+        ordemFilaAtualizadaEm: new Date().toISOString(),
+        ordemFilaAtualizadaPor: auth.currentUser?.uid || ""
+      })));
+
+      await registrarAuditoria("fila_reorganizada", "atletas", idArrastado, {
+        equipe: equipeFila,
+        ordem: idsOrdenados
+      });
+
+      showToast("Fila reorganizada com sucesso!", "success");
+      atualizarTelas();
+    } catch (err) {
+      showToast("Erro ao reorganizar fila: " + err.message, "error");
+      atualizarTelas();
+    }
+  };
 
   document.querySelectorAll("#listaFilaBike, #listaFilaCorrida").forEach(tbody => {
     const container = tbody.closest(".tabela-container");
     if(container && !container.previousElementSibling?.classList?.contains("fila-helper")) {
-      container.insertAdjacentHTML("beforebegin", `<div class="fila-helper"><i data-lucide="grip-vertical" style="width:14px;"></i> Arraste um atleta para reorganizar a posição na fila.</div>`);
+      container.insertAdjacentHTML("beforebegin", `<div class="fila-helper fila-helper-v50"><i data-lucide="grip-vertical" style="width:14px;"></i> Arraste um atleta. A fila se reorganiza em tempo real antes de salvar.</div>`);
+    }
+
+    if (tbody.dataset.dragContainerSetup !== "1") {
+      tbody.dataset.dragContainerSetup = "1";
+      tbody.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        if (!draggedRow || !draggedId) return;
+        if (draggedEquipe !== getTbodyEquipe(tbody)) return;
+
+        const afterElement = getAfterElement(tbody, e.clientY);
+        const atualAntes = draggedRow.nextElementSibling;
+        const deveInserirAntes = afterElement;
+        const jaEstaNoLugar = deveInserirAntes === draggedRow || atualAntes === deveInserirAntes;
+        if (jaEstaNoLugar) return;
+
+        animarReordenacao(tbody, () => {
+          if (afterElement == null) tbody.appendChild(draggedRow);
+          else tbody.insertBefore(draggedRow, afterElement);
+        });
+      });
+
+      tbody.addEventListener("drop", async (e) => {
+        e.preventDefault();
+        tbody.classList.remove("fila-dropzone-active");
+        document.querySelectorAll(".fila-row.drag-over").forEach(r => r.classList.remove("drag-over"));
+        if (!draggedRow || draggedEquipe !== getTbodyEquipe(tbody)) return;
+        await salvarOrdemFila(tbody);
+      });
     }
   });
 
@@ -687,66 +795,22 @@ function setupDragDropFilas() {
     row.dataset.dragSetup = "1";
 
     row.addEventListener("dragstart", (e) => {
+      draggedRow = row;
       draggedId = row.dataset.id;
       draggedEquipe = row.dataset.equipeFila;
       row.classList.add("dragging");
+      row.closest("tbody")?.classList.add("fila-dropzone-active");
       e.dataTransfer.effectAllowed = "move";
       e.dataTransfer.setData("text/plain", draggedId || "");
     });
 
     row.addEventListener("dragend", () => {
       row.classList.remove("dragging");
+      document.querySelectorAll(".fila-dropzone-active").forEach(el => el.classList.remove("fila-dropzone-active"));
       document.querySelectorAll(".fila-row.drag-over").forEach(r => r.classList.remove("drag-over"));
+      draggedRow = null;
       draggedId = null;
       draggedEquipe = null;
-    });
-
-    row.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      if (!draggedId || draggedId === row.dataset.id) return;
-      if (draggedEquipe !== row.dataset.equipeFila) return;
-      row.classList.add("drag-over");
-    });
-
-    row.addEventListener("dragleave", () => row.classList.remove("drag-over"));
-
-    row.addEventListener("drop", async (e) => {
-      e.preventDefault();
-      row.classList.remove("drag-over");
-
-      const targetId = row.dataset.id;
-      if (!draggedId || !targetId || draggedId === targetId) return;
-
-      const origem = appState.mapAtletas[draggedId];
-      const destino = appState.mapAtletas[targetId];
-
-      if (!origem || !destino || origem.equipe !== destino.equipe) {
-        showToast("Só é possível reorganizar atletas dentro da mesma fila.", "error");
-        return;
-      }
-
-      try {
-        const origemCriadoEm = origem.criadoEm || new Date().toISOString();
-        const destinoCriadoEm = destino.criadoEm || new Date().toISOString();
-
-        await updateDoc(doc(db, "atletas", draggedId), {
-          criadoEm: destinoCriadoEm,
-          ordemFilaAtualizadaEm: new Date().toISOString(),
-          ordemFilaAtualizadaPor: auth.currentUser?.uid || ""
-        });
-
-        await updateDoc(doc(db, "atletas", targetId), {
-          criadoEm: origemCriadoEm,
-          ordemFilaAtualizadaEm: new Date().toISOString(),
-          ordemFilaAtualizadaPor: auth.currentUser?.uid || ""
-        });
-        await registrarAuditoria("fila_reorganizada", "atletas", draggedId, { origem: draggedId, destino: targetId, equipe: origem.equipe });
-
-        showToast("Fila reorganizada com sucesso!", "success");
-        atualizarTelas();
-      } catch (err) {
-        showToast("Erro ao reorganizar fila: " + err.message, "error");
-      }
     });
   });
 }
