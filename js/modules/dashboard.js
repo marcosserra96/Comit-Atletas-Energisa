@@ -118,6 +118,10 @@ function atualizarCardsModalidade(stats) {
   setTextDashboard("dashCorridaTop", stats.corrida.topAtleta);
 }
 
+function atualizarIconesOutlineDashboard() {
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
 function renderizarPodios(arrayAtletas) {
   const htmlPodio = (arr) => {
     if (arr.length === 0) {
@@ -125,11 +129,10 @@ function renderizarPodios(arrayAtletas) {
     }
 
     return arr.map((a, i) => {
-      const medalha = i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉';
       const posicao = i + 1;
       return `
         <li class="podium-rank podium-rank-${posicao}">
-          <span class="podium-medal">${medalha}</span>
+          <span class="podium-medal podium-medal-${posicao}"><i data-lucide="medal"></i><b>${posicao}</b></span>
           <span class="podium-athlete">
             <strong title="${escapeHtml(a.nome)}">${escapeHtml(a.nome)}</strong>
             ${i === 0 ? '<em>Destaque do ranking</em>' : '<em>Top ' + posicao + '</em>'}
@@ -144,6 +147,7 @@ function renderizarPodios(arrayAtletas) {
 
   setHtmlDashboard("listaPodioBike", htmlPodio(bikeAtletas));
   setHtmlDashboard("listaPodioCorrida", htmlPodio(corridaAtletas));
+  atualizarIconesOutlineDashboard();
 }
 
 function renderizarRadarInatividade(arrayAtletas) {
@@ -155,7 +159,7 @@ function renderizarRadarInatividade(arrayAtletas) {
     return arr.map(a => {
       const periodo = a.diasAusente === 999 ? 'Sem registro' : `${a.diasAusente} dias`;
       return `<li class="inactivity-item">
-        <span class="inactivity-name"><span>⚠️</span><strong title="${escapeHtml(a.nome)}">${escapeHtml(a.nome)}</strong></span>
+        <span class="inactivity-name"><i data-lucide="alert-triangle"></i><strong title="${escapeHtml(a.nome)}">${escapeHtml(a.nome)}</strong></span>
         <small>${periodo}</small>
       </li>`;
     }).join('');
@@ -163,6 +167,7 @@ function renderizarRadarInatividade(arrayAtletas) {
 
   setHtmlDashboard("listaEvasaoBike", htmlEvasao(radarBike));
   setHtmlDashboard("listaEvasaoCorrida", htmlEvasao(radarCorrida));
+  atualizarIconesOutlineDashboard();
 }
 
 function renderizarGraficoEvolucaoMensal(monthly) {
@@ -428,11 +433,11 @@ function atualizarPainelEstrategicoFinal(arrayAtletas, totalAtivosGerais, analyt
   setTextDashboard("dashFilaAguardando", filaAguardando);
 
   const acoes = [
-    { tipo: "warning", icon: "📅", titulo: "Eventos sem lançamento", desc: "Eventos realizados nos últimos 7 dias ainda não foram lançados.", valor: eventosPendentes },
-    { tipo: "danger", icon: "⚠️", titulo: "Atletas sem atividade 30d", desc: "Priorize contato, justificativa ou reengajamento.", valor: atletasInativos30d },
-    { tipo: "warning", icon: "↕️", titulo: "Fila aguardando decisão", desc: "Revise a ordem, recusas e movimentações pendentes.", valor: filaAguardando },
-    { tipo: "warning", icon: "🧩", titulo: "Regras sem uso", desc: "Regras cadastradas que ainda não apareceram no histórico.", valor: regrasSemUso },
-    { tipo: "warning", icon: "👤", titulo: "Atletas sem histórico", desc: "Atletas ativos que nunca tiveram participação registrada.", valor: analytics.semAtividade }
+    { tipo: "warning", icon: "calendar-clock", titulo: "Eventos sem lançamento", desc: "Eventos realizados nos últimos 7 dias ainda não foram lançados.", valor: eventosPendentes },
+    { tipo: "danger", icon: "alert-triangle", titulo: "Atletas sem atividade 30d", desc: "Priorize contato, justificativa ou reengajamento.", valor: atletasInativos30d },
+    { tipo: "warning", icon: "arrow-up-down", titulo: "Fila aguardando decisão", desc: "Revise a ordem, recusas e movimentações pendentes.", valor: filaAguardando },
+    { tipo: "warning", icon: "puzzle", titulo: "Regras sem uso", desc: "Regras cadastradas que ainda não apareceram no histórico.", valor: regrasSemUso },
+    { tipo: "warning", icon: "user-round", titulo: "Atletas sem histórico", desc: "Atletas ativos que nunca tiveram participação registrada.", valor: analytics.semAtividade }
   ].filter(a => Number(a.valor) > 0);
 
   const container = document.getElementById("listaAcoesRecomendadas");
@@ -446,10 +451,11 @@ function atualizarPainelEstrategicoFinal(arrayAtletas, totalAtivosGerais, analyt
     if (cardAcoes) cardAcoes.style.display = "block";
     container.innerHTML = acoes.map(a => `
       <div class="strategic-action-item ${a.tipo}">
-        <div class="strategic-action-icon">${a.icon}</div>
+        <div class="strategic-action-icon"><i data-lucide="${a.icon}"></i></div>
         <div><div class="strategic-action-title">${escapeHtml(a.titulo)}</div><div class="strategic-action-desc">${escapeHtml(a.desc)}</div></div>
         <div class="strategic-action-count">${a.valor}</div>
       </div>`).join("");
+    atualizarIconesOutlineDashboard();
   }
 }
 

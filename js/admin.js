@@ -600,7 +600,7 @@ async function carregarAgenda() {
     
     futuros.forEach(e => { 
       const d = new Date(e.data + "T00:00:00"); const mes = d.toLocaleString('pt-BR', {month: 'short'}).replace('.',''); const dia = d.getDate().toString().padStart(2, '0'); 
-      let icon = e.modalidade === "Bicicleta" ? "🚴" : e.modalidade === "Corrida" ? "🏃" : "🤝"; 
+      const icon = e.modalidade === "Bicicleta" ? "bike" : e.modalidade === "Corrida" ? "footprints" : "handshake"; 
       const kmInfo = Number(e.km || 0) > 0 ? ` • ${formatarKm(e.km)} km` : "";
       const btnExcluir = hasGestao ? `<button class="btn-excluir-evento agenda-action" aria-label="Cancelar evento" data-id="${e.id}"><i data-lucide="x"></i></button>` : ''; 
       const localEvento = e.local || 'Local não informado';
@@ -608,7 +608,7 @@ async function carregarAgenda() {
         <div class="agenda-data"><span>${mes}</span><strong>${dia}</strong></div>
         <div class="agenda-info">
           <div class="agenda-title-row"><h4 title="${e.titulo}">${e.titulo}</h4>${btnExcluir}</div>
-          <p><span>${icon}</span> <span>${localEvento}</span>${kmInfo ? `<strong>${kmInfo.replace(' • ', '')}</strong>` : ''}</p>
+          <p><i data-lucide="${icon}"></i> <span>${localEvento}</span>${kmInfo ? `<strong>${kmInfo.replace(' • ', '')}</strong>` : ''}</p>
         </div>
       </div>`; 
     }); 
@@ -1391,7 +1391,10 @@ function obterPadraoInformativo() {
     mostrarTop3: true,
     mostrarAlertas: true,
     mostrarDemais: true,
-    abrirEmNovaAba: true
+    abrirEmNovaAba: true,
+    paginasSeparadas: true,
+    alertaCriterio: "sem_treino_mes",
+    alertaValor: 30
   };
   try {
     return { ...padrao, ...JSON.parse(localStorage.getItem(CHAVE_PADRAO_INFORMATIVO) || "{}") };
@@ -1422,12 +1425,15 @@ function aplicarPadraoInformativoNoAdmin() {
   const setCheck = (id, valor) => { const el = document.getElementById(id); if (el) el.checked = valor !== false; };
   setValue("cfgInfoModalidadePadrao", cfg.modalidade);
   setValue("cfgInfoLimitePadrao", cfg.limite);
+  setValue("cfgInfoAlertaCriterio", cfg.alertaCriterio || "sem_treino_mes");
+  setValue("cfgInfoAlertaValor", cfg.alertaValor ?? 30);
   setCheck("cfgInfoKpisPadrao", cfg.mostrarKpis);
   setCheck("cfgInfoLegendaPadrao", cfg.mostrarLegenda);
   setCheck("cfgInfoTop3Padrao", cfg.mostrarTop3);
   setCheck("cfgInfoAlertasPadrao", cfg.mostrarAlertas);
   setCheck("cfgInfoDemaisPadrao", cfg.mostrarDemais);
   setCheck("cfgInfoAbrirPadrao", cfg.abrirEmNovaAba);
+  setCheck("cfgInfoPaginasPadrao", cfg.paginasSeparadas);
 }
 
 function salvarPadraoInformativoAdmin() {
@@ -1436,12 +1442,15 @@ function salvarPadraoInformativoAdmin() {
   const cfg = {
     modalidade: valor("cfgInfoModalidadePadrao") || "todos",
     limite: valor("cfgInfoLimitePadrao") || "28",
+    alertaCriterio: valor("cfgInfoAlertaCriterio") || "sem_treino_mes",
+    alertaValor: Number(valor("cfgInfoAlertaValor") || 0),
     mostrarKpis: marcado("cfgInfoKpisPadrao"),
     mostrarLegenda: marcado("cfgInfoLegendaPadrao"),
     mostrarTop3: marcado("cfgInfoTop3Padrao"),
     mostrarAlertas: marcado("cfgInfoAlertasPadrao"),
     mostrarDemais: marcado("cfgInfoDemaisPadrao"),
-    abrirEmNovaAba: marcado("cfgInfoAbrirPadrao")
+    abrirEmNovaAba: marcado("cfgInfoAbrirPadrao"),
+    paginasSeparadas: marcado("cfgInfoPaginasPadrao")
   };
   localStorage.setItem(CHAVE_PADRAO_INFORMATIVO, JSON.stringify(cfg));
   aplicarPadraoInformativoNoModal();
@@ -1528,7 +1537,8 @@ function setupExportacoesOperacionais() {
     ["btnExportarListaAtletas", exportarListaAtletasCsv],
     ["btnExportarListaEventos", exportarListaEventosCsv],
     ["btnExportarParticipacaoAtletas", exportarParticipacaoAtletasCsv],
-    ["btnGerarInformativoRanking", abrirModalInformativoRanking]
+    ["btnGerarInformativoRanking", abrirModalInformativoRanking],
+    ["btnModoApresentacao", gerarModoApresentacao]
   ];
 
   acoes.forEach(([id, fn]) => {
@@ -1700,18 +1710,11 @@ function fecharModalInformativoRanking() {
 
 function coletarOpcoesInformativoRanking() {
   const valor = id => document.getElementById(id)?.value;
-  const marcado = id => document.getElementById(id)?.checked !== false;
+  const cfg = obterPadraoInformativo();
   return {
-    modalidade: valor("filtroInformativoModalidade") || "todos",
-    limite: valor("filtroInformativoLimite") || "28",
-    formato: valor("filtroInformativoFormato") || "html",
-    paginasSeparadas: marcado("chkInformativoPaginasSeparadas"),
-    mostrarKpis: marcado("chkInformativoKpis"),
-    mostrarLegenda: marcado("chkInformativoLegenda"),
-    mostrarTop3: marcado("chkInformativoTop3"),
-    mostrarAlertas: marcado("chkInformativoAlertas"),
-    mostrarDemais: marcado("chkInformativoDemais"),
-    abrirEmNovaAba: marcado("chkInformativoAbrir")
+    ...cfg,
+    modalidade: valor("filtroInformativoModalidade") || cfg.modalidade || "todos",
+    formato: valor("filtroInformativoFormato") || "html"
   };
 }
 
@@ -1737,7 +1740,9 @@ function gerarInformativoRankingHtml(opcoes = {}) {
     mostrarTop3: opcoes.mostrarTop3 !== false,
     mostrarAlertas: opcoes.mostrarAlertas !== false,
     mostrarDemais: opcoes.mostrarDemais !== false,
-    abrirEmNovaAba: opcoes.abrirEmNovaAba !== false
+    abrirEmNovaAba: opcoes.abrirEmNovaAba !== false,
+    alertaCriterio: opcoes.alertaCriterio || "sem_treino_mes",
+    alertaValor: Number(opcoes.alertaValor ?? 30)
   };
 
   const resumo = calcularResumoRanking(atletas, historico, ano, mes);
@@ -1790,6 +1795,7 @@ function calcularResumoRanking(atletas, historico, ano, mes) {
       pontosMes: 0,
       kmMes: 0,
       treinosMes: 0,
+      ultimaData: "",
       ativo: a.ativo !== false
     });
   });
@@ -1800,9 +1806,9 @@ function calcularResumoRanking(atletas, historico, ano, mes) {
   historico.forEach(h => {
     if (!h.atletaId || !porAtleta.has(h.atletaId)) return;
     const data = h.dataTreino || "";
-    if (!data.startsWith(`${ano}-${String(mes).padStart(2, "0")}`)) return;
-
     const item = porAtleta.get(h.atletaId);
+    if (data && (!item.ultimaData || data > item.ultimaData)) item.ultimaData = data;
+    if (!data.startsWith(`${ano}-${String(mes).padStart(2, "0")}`)) return;
     const pontos = Number(h.pontos) || 0;
     item.pontosMes += pontos;
 
@@ -1851,7 +1857,7 @@ function montarHtmlInformativoRanking({ mesLabel, diasUteis, totalPontos, totalK
     const kmPagina = dadosPagina.reduce((s, a) => s + a.kmMes, 0);
     const treinosPagina = dadosPagina.reduce((s, a) => s + a.treinosMes, 0);
     const totalRankingPagina = dadosPagina.length;
-    const totalAlertasPagina = dadosPagina.filter(a => a.pontosMes <= 0 && a.treinosMes <= 0).length;
+    const totalAlertasPagina = dadosPagina.filter(a => atletaEstaEmAlerta(a, opcoes)).length;
     const labelPagina = listaPagina.length === 2 ? modalidadeLabel : listaPagina[0]?.titulo || modalidadeLabel;
     const secaoPagina = listaPagina.length === 1 ? `RANKING DO MÊS - ${String(listaPagina[0].titulo || "").toUpperCase()}` : tituloSecao;
     const classeTabela = listaPagina.length === 1 ? "tables single" : "tables";
@@ -2019,11 +2025,26 @@ function montarCssInformativoRanking() {
   `;
 }
 
+function atletaEstaEmAlerta(atleta, opcoes = {}) {
+  const criterio = opcoes.alertaCriterio || "sem_treino_mes";
+  const valor = Number(opcoes.alertaValor ?? 30);
+  if (criterio === "ate_x_treinos") return Number(atleta.treinosMes || 0) <= valor;
+  if (criterio === "ate_x_pontos") return Number(atleta.pontosMes || 0) <= valor;
+  if (criterio === "sem_treino_30d") {
+    if (!atleta.ultimaData) return true;
+    const ultima = new Date(`${atleta.ultimaData}T00:00:00`);
+    if (Number.isNaN(ultima.getTime())) return true;
+    const diff = Math.floor((Date.now() - ultima.getTime()) / 86400000);
+    return diff > (valor || 30);
+  }
+  return Number(atleta.treinosMes || 0) <= 0;
+}
+
 function montarTabelaRankingInformativo(titulo, lista, opcoes = {}) {
   const limite = opcoes.limite === 999 ? 999 : Number(opcoes.limite || 28);
   const filtrada = lista.filter((a, idx) => {
     const ehTop3 = idx < 3;
-    const ehAlerta = a.pontosMes <= 0 && a.treinosMes <= 0;
+    const ehAlerta = atletaEstaEmAlerta(a, opcoes);
     if (ehTop3) return opcoes.mostrarTop3 !== false;
     if (ehAlerta) return opcoes.mostrarAlertas !== false;
     return opcoes.mostrarDemais !== false;
@@ -2031,7 +2052,7 @@ function montarTabelaRankingInformativo(titulo, lista, opcoes = {}) {
 
   const linhas = filtrada.map((a, idx) => {
     const posicaoReal = lista.findIndex(item => item.id === a.id) + 1;
-    const classe = posicaoReal <= 3 ? "top3" : (a.pontosMes <= 0 && a.treinosMes <= 0 ? "alert" : "normal");
+    const classe = posicaoReal <= 3 ? "top3" : (atletaEstaEmAlerta(a, opcoes) ? "alert" : "normal");
     return `<tr class="${classe}">
       <td>${posicaoReal}</td>
       <td title="${escapeAttr(a.nome)}">${escapeHtml(a.nome)}</td>
@@ -2047,6 +2068,39 @@ function montarTabelaRankingInformativo(titulo, lista, opcoes = {}) {
     <thead><tr><th>ID</th><th>Atletas Energisa - ${escapeHtml(titulo)}</th><th>Pontos</th><th>Treinos</th><th>KM</th></tr></thead>
     <tbody>${linhas || vazio}</tbody>
   </table>`;
+}
+
+function gerarModoApresentacao() {
+  const atletas = Object.values(appState.mapAtletas || {});
+  const historico = (appState.historicoCompleto || []).filter(h => h.estornado !== true);
+  if (atletas.length === 0) return showToast("Nenhum atleta carregado para montar a apresentação.", "error");
+
+  const hoje = new Date();
+  const ano = hoje.getFullYear();
+  const mes = hoje.getMonth() + 1;
+  const mesLabel = hoje.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  const cfg = obterPadraoInformativo();
+  const resumo = calcularResumoRanking(atletas, historico, ano, mes);
+  const bike = resumo.filter(a => normalizarEquipe(a.equipe) === "bicicleta").sort(ordenarRanking);
+  const corrida = resumo.filter(a => normalizarEquipe(a.equipe) === "corrida").sort(ordenarRanking);
+  const todos = [...bike, ...corrida];
+  const totalPontos = todos.reduce((s, a) => s + a.pontosMes, 0);
+  const totalKm = todos.reduce((s, a) => s + a.kmMes, 0);
+  const totalTreinos = todos.reduce((s, a) => s + a.treinosMes, 0);
+  const alertas = todos.filter(a => atletaEstaEmAlerta(a, cfg));
+  const eventos = (appState.cacheEventos || []).slice(0, 5);
+  const blocoTop = (titulo, lista) => `<div class="slide-card"><h3>${titulo}</h3>${lista.slice(0,3).map((a,i)=>`<div class="rank-row"><span>${["🥇","🥈","🥉"][i] || i+1}</span><strong>${escapeHtml(a.nome)}</strong><em>${formatarNumero(a.pontosMes,0)} pts</em></div>`).join("") || "<p>Sem dados.</p>"}</div>`;
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Modo apresentação - Atletas Energisa</title><style>
+  :root{--navy:#07192d;--cyan:#009bc1;--green:#00b37e;--orange:#f37021;--card:rgba(255,255,255,.08);--line:rgba(255,255,255,.16)}
+  *{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#041321;color:#fff;scroll-snap-type:y mandatory;overflow-y:auto} section{min-height:100vh;padding:48px 64px;scroll-snap-align:start;display:flex;flex-direction:column;justify-content:center;background:radial-gradient(circle at top left,rgba(0,155,193,.28),transparent 34%),var(--navy)}
+  .brand{display:flex;align-items:center;gap:20px;margin-bottom:34px}.brand img{width:210px;max-height:86px;object-fit:contain}.brand span{color:#bdd4e3;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.hero h1{font-size:58px;line-height:1;margin:0 0 12px}.hero p{font-size:22px;color:#c6d8e5;margin:0}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:34px}.kpi,.slide-card{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:24px;box-shadow:0 24px 60px rgba(0,0,0,.28)}.kpi span{color:#aac3d4;font-weight:800;text-transform:uppercase;font-size:13px}.kpi strong{display:block;font-size:42px;margin-top:10px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}.slide-card h3{font-size:30px;margin:0 0 18px;color:var(--cyan)}.rank-row{display:grid;grid-template-columns:44px 1fr 86px;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--line);font-size:20px}.rank-row em{text-align:right;font-style:normal;color:var(--cyan);font-weight:900}.alert-list{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.alert-list div{background:rgba(243,112,33,.14);border:1px solid rgba(243,112,33,.35);border-radius:14px;padding:12px 14px;color:#ffd3bd;font-weight:800}.event{padding:16px;border-bottom:1px solid var(--line);font-size:20px}.footer{margin-top:24px;color:#89a8bc;font-size:14px}@media(max-width:900px){section{padding:32px 22px}.hero h1{font-size:38px}.grid,.kpis,.alert-list{grid-template-columns:1fr}.brand img{width:160px}}</style></head><body>
+  <section class="hero"><div class="brand"><img src="assets/logos/logo-comite-branca.png" onerror="this.style.display='none'" alt="Atletas Energisa"><div><span>Modo apresentação</span><h1>Resumo do mês</h1><p>${escapeHtml(capitalizar(mesLabel))} · Comitê Atletas Energisa</p></div></div><div class="kpis"><div class="kpi"><span>Pontos</span><strong>${formatarNumero(totalPontos,0)}</strong></div><div class="kpi"><span>Treinos</span><strong>${formatarNumero(totalTreinos,0)}</strong></div><div class="kpi"><span>KM</span><strong>${formatarNumero(totalKm,1)}</strong></div><div class="kpi"><span>Alertas</span><strong>${alertas.length}</strong></div></div></section>
+  <section><div class="grid">${blocoTop("🚴 Top 3 Bike", bike)}${blocoTop("🏃 Top 3 Corrida", corrida)}</div></section>
+  <section><div class="slide-card"><h3>⚠️ Atletas em alerta</h3><div class="alert-list">${alertas.slice(0,20).map(a=>`<div>${escapeHtml(a.nome)} · ${formatarNumero(a.treinosMes,0)} treinos</div>`).join("") || "<p>Nenhum atleta em alerta pelo critério atual.</p>"}</div></div></section>
+  <section><div class="slide-card"><h3>📅 Próximos eventos</h3>${eventos.map(e=>`<div class="event"><strong>${escapeHtml(e.titulo || "Evento")}</strong><br><span>${escapeHtml(e.data || "Sem data")} · ${escapeHtml(e.local || e.localidade || "Local não informado")}</span></div>`).join("") || "<p>Nenhum evento cadastrado.</p>"}<div class="footer">Use Page Down / barra de espaço ou role a tela para avançar.</div></div></section>
+</body></html>`;
+  abrirHtmlNovaAba(html, false);
+  showToast("Modo apresentação aberto em nova aba.", "success");
 }
 
 function abrirHtmlNovaAba(html, imprimir = false) {

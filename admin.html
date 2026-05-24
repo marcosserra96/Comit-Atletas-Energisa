@@ -62,6 +62,7 @@
         </div>
         <div class="quick-export-actions">
           <button id="btnGerarInformativoRanking" class="btn-primario btn-informativo-destaque" type="button"><i data-lucide="trophy"></i><span>Informativo do ranking</span></button>
+          <button id="btnModoApresentacao" class="btn-acao btn-apresentacao" type="button"><i data-lucide="presentation"></i><span>Modo apresentação</span></button>
           <button id="btnExportarListaAtletas" class="btn-acao" type="button"><i data-lucide="users"></i><span>Lista de atletas</span></button>
           <button id="btnExportarListaEventos" class="btn-acao" type="button"><i data-lucide="calendar-days"></i><span>Lista de eventos</span></button>
           <button id="btnExportarParticipacaoAtletas" class="btn-acao" type="button"><i data-lucide="activity"></i><span>Participação</span></button>
@@ -135,13 +136,13 @@
           </div>
           <div class="modality-engagement-list">
             <div class="modality-engagement bike">
-              <div class="modality-title"><span>🚴 Bike</span><strong id="totalBike">0</strong></div>
+              <div class="modality-title"><span class="outline-modality-label"><i data-lucide="bike"></i><span>Bike</span></span><strong id="totalBike">0</strong></div>
               <div class="modality-progress"><span id="dashBikeEngBar"></span></div>
               <div class="modality-stats"><span><b id="dashBikeAtivos30d">0</b> ativos 30d</span><span id="dashBikeEngajamento">0%</span></div>
               <small><span id="dashBikeInativos">0</span> sem atividade recente · <span id="dashBikeKm">0 km</span></small>
             </div>
             <div class="modality-engagement corrida">
-              <div class="modality-title"><span>🏃 Corrida</span><strong id="totalCorrida">0</strong></div>
+              <div class="modality-title"><span class="outline-modality-label"><i data-lucide="footprints"></i><span>Corrida</span></span><strong id="totalCorrida">0</strong></div>
               <div class="modality-progress"><span id="dashCorridaEngBar"></span></div>
               <div class="modality-stats"><span><b id="dashCorridaAtivos30d">0</b> ativos 30d</span><span id="dashCorridaEngajamento">0%</span></div>
               <small><span id="dashCorridaInativos">0</span> sem atividade recente · <span id="dashCorridaKm">0 km</span></small>
@@ -156,14 +157,14 @@
           </div>
           <div class="performance-compare">
             <div>
-              <h4>🚴 Bike</h4>
+              <h4><span class="outline-modality-label"><i data-lucide="bike"></i><span>Bike</span></span></h4>
               <div class="perf-row"><span>Média pts/atleta</span><strong id="mediaBike">0</strong></div>
               <div class="perf-row"><span>Participações</span><strong id="dashBikeParticipacoes">0</strong></div>
               <div class="perf-row"><span>Pontos totais</span><strong id="dashBikePontosTotal">0</strong></div>
               <div class="perf-row"><span>Top atleta</span><strong id="dashBikeTop">-</strong></div>
             </div>
             <div>
-              <h4>🏃 Corrida</h4>
+              <h4><span class="outline-modality-label"><i data-lucide="footprints"></i><span>Corrida</span></span></h4>
               <div class="perf-row"><span>Média pts/atleta</span><strong id="mediaCorrida">0</strong></div>
               <div class="perf-row"><span>Participações</span><strong id="dashCorridaParticipacoes">0</strong></div>
               <div class="perf-row"><span>Pontos totais</span><strong id="dashCorridaPontosTotal">0</strong></div>
@@ -179,11 +180,11 @@
           </div>
           <div class="podium-split">
             <div>
-              <h4>🚴 Bike</h4>
+              <h4><span class="outline-modality-label"><i data-lucide="bike"></i><span>Bike</span></span></h4>
               <ul id="listaPodioBike" class="podium-list"></ul>
             </div>
             <div>
-              <h4>🏃 Corrida</h4>
+              <h4><span class="outline-modality-label"><i data-lucide="footprints"></i><span>Corrida</span></span></h4>
               <ul id="listaPodioCorrida" class="podium-list"></ul>
             </div>
           </div>
@@ -196,11 +197,11 @@
           <p style="font-size: 0.85rem; color: #999; margin-bottom: 10px;">Atletas ausentes há mais de 30 dias.</p>
           <div class="flex-2-col">
             <div style="flex: 1; min-width: 0;">
-              <h4 style="color: var(--primary); font-size: 0.9rem; margin: 0 0 5px 0;">🚴 Bike</h4>
+              <h4 style="color: var(--primary); font-size: 0.9rem; margin: 0 0 5px 0;"><span class="outline-modality-label"><i data-lucide="bike"></i><span>Bike</span></span></h4>
               <ul id="listaEvasaoBike" style="list-style: none; padding: 0; margin: 0;"></ul>
             </div>
             <div style="flex: 1; border-left: 1px solid var(--border); padding-left: 15px; min-width: 0;">
-              <h4 style="color: var(--secondary); font-size: 0.9rem; margin: 0 0 5px 0;">🏃 Corrida</h4>
+              <h4 style="color: var(--secondary); font-size: 0.9rem; margin: 0 0 5px 0;"><span class="outline-modality-label"><i data-lucide="footprints"></i><span>Corrida</span></span></h4>
               <ul id="listaEvasaoCorrida" style="list-style: none; padding: 0; margin: 0;"></ul>
             </div>
           </div>
@@ -609,7 +610,7 @@
                 <p>Defina a configuração padrão usada ao gerar o comunicado mensal dos atletas.</p>
               </div>
             </div>
-            <div class="admin-config-grid">
+            <div class="admin-config-grid admin-config-grid-wide">
               <label><span>Equipe padrão</span>
                 <select id="cfgInfoModalidadePadrao">
                   <option value="todos">Bike e Corrida</option>
@@ -626,6 +627,17 @@
                   <option value="todos">Todos</option>
                 </select>
               </label>
+              <label><span>Critério de alerta</span>
+                <select id="cfgInfoAlertaCriterio">
+                  <option value="sem_treino_mes">Sem treino no mês</option>
+                  <option value="sem_treino_30d">Sem treino há mais de X dias</option>
+                  <option value="ate_x_treinos">Até X treinos no mês</option>
+                  <option value="ate_x_pontos">Até X pontos no mês</option>
+                </select>
+              </label>
+              <label><span>Valor do critério</span>
+                <input id="cfgInfoAlertaValor" type="number" min="0" step="1" value="30" placeholder="Ex.: 30">
+              </label>
             </div>
             <div class="admin-config-checks">
               <label><input id="cfgInfoKpisPadrao" type="checkbox" checked> KPIs do mês</label>
@@ -634,7 +646,9 @@
               <label><input id="cfgInfoAlertasPadrao" type="checkbox" checked> Atletas em alerta</label>
               <label><input id="cfgInfoDemaisPadrao" type="checkbox" checked> Demais atletas</label>
               <label><input id="cfgInfoAbrirPadrao" type="checkbox" checked> Abrir em nova aba</label>
+              <label><input id="cfgInfoPaginasPadrao" type="checkbox" checked> Separar Bike e Corrida em páginas</label>
             </div>
+            <div class="admin-config-note"><i data-lucide="info"></i><span>O comitê escolhe só equipe e formato na hora de gerar. O restante segue este padrão administrativo.</span></div>
             <div class="admin-actions-row compact-actions">
               <button id="btnSalvarPadraoInformativo" class="btn-primario" type="button"><i data-lucide="save"></i> Salvar padrão</button>
               <button id="btnAbrirInformativoPadrao" class="btn-acao" type="button"><i data-lucide="file-text"></i> Gerar informativo</button>
@@ -1096,28 +1110,18 @@
         <div>
           <span class="eyebrow">Informativo dos atletas</span>
           <h3>Gerar ranking mensal</h3>
-          <p>Escolha a equipe e os blocos que entram no comunicado antes de gerar o arquivo.</p>
+<p>Escolha apenas equipe e formato. Blocos, alertas e quantidade seguem o padrão definido no Admin.</p>
         </div>
         <button id="btnFecharModalInformativo" class="btn-icon-soft" type="button" title="Fechar"><i data-lucide="x"></i></button>
       </div>
 
-      <div class="modal-informativo-grid">
+      <div class="modal-informativo-grid modal-informativo-grid-simple">
         <label>
           <span>Equipe</span>
           <select id="filtroInformativoModalidade">
             <option value="todos">Bike e Corrida</option>
             <option value="bicicleta">Somente Bike</option>
             <option value="corrida">Somente Corrida</option>
-          </select>
-        </label>
-        <label>
-          <span>Quantidade na tabela</span>
-          <select id="filtroInformativoLimite">
-            <option value="10">Top 10</option>
-            <option value="15">Top 15</option>
-            <option value="20">Top 20</option>
-            <option value="28" selected>Até 28 linhas</option>
-            <option value="todos">Todos</option>
           </select>
         </label>
         <label>
@@ -1129,18 +1133,8 @@
         </label>
       </div>
 
-      <div class="modal-informativo-options">
-        <label><input id="chkInformativoPaginasSeparadas" type="checkbox" checked> Separar Bike e Corrida em páginas</label>
-        <label><input id="chkInformativoKpis" type="checkbox" checked> KPIs do mês</label>
-        <label><input id="chkInformativoLegenda" type="checkbox" checked> Legenda</label>
-        <label><input id="chkInformativoTop3" type="checkbox" checked> Top 3 em verde</label>
-        <label><input id="chkInformativoAlertas" type="checkbox" checked> Atletas em alerta</label>
-        <label><input id="chkInformativoDemais" type="checkbox" checked> Demais atletas</label>
-        <label><input id="chkInformativoAbrir" type="checkbox" checked> Abrir em nova aba</label>
-      </div>
-
       <div class="modal-informativo-note">
-        Verde destaca os 3 melhores do ranking. Laranja mostra quem está em alerta por baixa participação. Você pode gerar Bike, Corrida ou o consolidado.
+        Verde destaca os 3 melhores do ranking. Laranja segue o critério de alerta definido em Gestão Base > Padrão do informativo.
       </div>
 
       <div class="modal-informativo-actions">
