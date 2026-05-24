@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestão do Comitê | Atletas Energisa ⚡️</title>
+  <title>Gestão do Comitê | Atletas Energisa</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
   
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -1082,11 +1082,11 @@
         </select>
         <small>Use o perfil para evitar combinações erradas de permissões.</small>
       </div>
-      <div class="perm-item"><label style="margin:0;">📊 Estratégico (Visualizar)</label><input type="checkbox" class="chk-perm" value="visao-geral" /></div>
-      <div class="perm-item"><label style="margin:0;">📝 Contabilização (Lançamentos)</label><input type="checkbox" class="chk-perm" value="contabilizacao" /></div>
-      <div class="perm-item"><label style="margin:0; color: #27ae60; font-weight: bold;">💰 Financeiro (Acesso e Edição)</label><input type="checkbox" class="chk-perm" value="financeiro_edit" /></div>
-      <div class="perm-item"><label style="margin:0;">⚙️ Gestão de Base (Aprovações)</label><input type="checkbox" class="chk-perm" value="gestao" /></div>
-      <div class="perm-item"><label style="margin:0;">⚙️ Configurações (Minha Conta)</label><input type="checkbox" class="chk-perm" value="configuracoes" /></div>
+      <div class="perm-item"><label style="margin:0;"><i data-lucide="layout-dashboard"></i> Estratégico (Visualizar)</label><input type="checkbox" class="chk-perm" value="visao-geral" /></div>
+      <div class="perm-item"><label style="margin:0;"><i data-lucide="clipboard-pen-line"></i> Contabilização (Lançamentos)</label><input type="checkbox" class="chk-perm" value="contabilizacao" /></div>
+      <div class="perm-item"><label style="margin:0; color: #27ae60; font-weight: bold;"><i data-lucide="badge-dollar-sign"></i> Financeiro (Acesso e Edição)</label><input type="checkbox" class="chk-perm" value="financeiro_edit" /></div>
+      <div class="perm-item"><label style="margin:0;"><i data-lucide="users-round"></i> Gestão de Base (Aprovações)</label><input type="checkbox" class="chk-perm" value="gestao" /></div>
+      <div class="perm-item"><label style="margin:0;"><i data-lucide="settings"></i> Configurações (Minha Conta)</label><input type="checkbox" class="chk-perm" value="configuracoes" /></div>
       <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px;"><button id="fecharModalPermissoes" style="background: var(--border); padding: 10px; color: var(--text);">Cancelar</button><button id="salvarPermissoesBtn" class="btn-primario">Salvar Acessos</button></div>
     </div>
   </div>
@@ -1133,8 +1133,8 @@
         </label>
       </div>
 
-      <div class="modal-informativo-note">
-        Verde destaca os 3 melhores do ranking. Laranja segue o critério de alerta definido em Gestão Base > Padrão do informativo.
+      <div id="resumoPadraoInformativoModal" class="modal-informativo-note modal-informativo-note-config">
+        <i data-lucide="settings-2"></i><span>Usando padrão definido em Gestão Base > Padrão do informativo.</span>
       </div>
 
       <div class="modal-informativo-actions">

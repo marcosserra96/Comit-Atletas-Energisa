@@ -7711,3 +7711,48 @@ body.dark-mode .podium-card .podium-rank-1 .podium-athlete em {
     grid-template-columns: 1fr !important;
   }
 }
+
+/* V56 - QA informativo centralizado + ícones outline */
+.points-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--primary);
+  font-weight: 800;
+}
+.points-mini svg,
+.strike-badge svg,
+.drag-handle svg,
+.perm-item label svg,
+.modal-informativo-note svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+.strike-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  color: var(--text-light);
+  cursor: grab;
+}
+.perm-item label {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 8px;
+}
+.modal-informativo-note-config {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  line-height: 1.45;
+}
+.modal-informativo-note-config span {
+  min-width: 0;
+}
