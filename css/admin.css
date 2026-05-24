@@ -5781,3 +5781,126 @@ body[data-theme="dark"] .inactivity-item small {
     align-items: flex-start;
   }
 }
+
+/* =====================================================
+   V47 - Admin identidade visual e manutenção sensível
+   ===================================================== */
+.admin-brand-card .brand-admin-grid {
+  grid-template-columns: repeat(2, minmax(220px, 1fr)) !important;
+  gap: 16px !important;
+}
+
+.admin-brand-card .brand-preview {
+  min-height: 150px !important;
+  justify-content: flex-start !important;
+  overflow: hidden !important;
+}
+
+.admin-brand-card .brand-preview img {
+  width: min(220px, 100%) !important;
+  height: 68px !important;
+  object-fit: contain !important;
+  object-position: left center !important;
+  flex: 0 0 auto !important;
+}
+
+.admin-brand-card .brand-editor-layout {
+  grid-template-columns: 1fr !important;
+  align-items: start !important;
+  gap: 14px !important;
+}
+
+.admin-brand-card .brand-color-editor {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(140px, 1fr)) !important;
+  gap: 12px !important;
+  align-items: stretch !important;
+}
+
+.admin-brand-card .brand-color-editor label {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  grid-template-rows: auto 42px !important;
+  align-items: start !important;
+  gap: 8px !important;
+  min-height: 86px !important;
+  padding: 12px !important;
+  line-height: 1.15 !important;
+  overflow: hidden !important;
+}
+
+.admin-brand-card .brand-color-editor input[type="color"] {
+  width: 100% !important;
+  height: 42px !important;
+  border-radius: 12px !important;
+}
+
+.admin-brand-card .brand-theme-preview {
+  min-height: 190px !important;
+}
+
+.admin-danger-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.btn-danger-soft {
+  appearance: none;
+  border: 1px solid rgba(230,57,70,.26);
+  background: rgba(230,57,70,.055);
+  color: var(--danger);
+  border-radius: 14px;
+  min-height: 48px;
+  padding: 10px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+}
+
+.btn-danger-soft:hover {
+  transform: translateY(-1px);
+  background: rgba(230,57,70,.10);
+  box-shadow: 0 10px 24px rgba(230,57,70,.10);
+}
+
+.btn-danger-soft svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+}
+
+.danger-note-box {
+  margin: 12px 0 !important;
+  border-color: rgba(230,57,70,.22) !important;
+  background: rgba(230,57,70,.055) !important;
+}
+
+.danger-full-button {
+  color: var(--danger) !important;
+  border-color: rgba(230,57,70,.45) !important;
+  width: 100% !important;
+  justify-content: center !important;
+  padding: 12px !important;
+  margin-top: 4px !important;
+}
+
+@media (max-width: 980px) {
+  .admin-brand-card .brand-color-editor,
+  .admin-danger-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-brand-card .brand-admin-grid,
+  .admin-brand-card .brand-color-editor,
+  .admin-danger-actions {
+    grid-template-columns: 1fr !important;
+  }
+}

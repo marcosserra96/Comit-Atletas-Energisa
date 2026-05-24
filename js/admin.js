@@ -1057,6 +1057,7 @@ function setupAdminCenter() {
   setupAdminInformativoPadrao();
   setupAdminChecklist();
   setupIdentidadeVisualAdmin();
+  setupManutencaoSensivelAdmin();
 
   atualizarAdminCenterResumo();
   atualizarChecklistAdmin();
@@ -1148,6 +1149,69 @@ function atualizarPreviewIdentidade(tema, preview, codigo) {
   if (codigo) {
     codigo.textContent = `Principal ${tema.primary} • Secundária ${tema.secondary} • Destaque ${tema.accent}`;
   }
+}
+
+
+function setupManutencaoSensivelAdmin() {
+  const acoes = [
+    ["btnApagarLancamentos", "Lançamentos", ["historico_pontos"]],
+    ["btnApagarEventos", "Eventos", ["agenda_eventos"]],
+    ["btnApagarAtletas", "Atletas", ["atletas"], { preservarAdmins: true }],
+    ["btnApagarRegras", "Regras de pontuação", ["regras_pontuacao"]],
+    ["btnApagarFinanceiro", "Financeiro", ["financeiro", "despesas"]],
+    ["btnApagarComentarios", "Comentários", ["comentarios_atletas"]]
+  ];
+
+  acoes.forEach(([id, rotulo, colecoes, opcoes]) => {
+    const btn = document.getElementById(id);
+    if (!btn || btn.dataset.listenerAplicado) return;
+    btn.dataset.listenerAplicado = "1";
+    btn.addEventListener("click", () => apagarDadosPorGrupo(rotulo, colecoes, opcoes || {}));
+  });
+}
+
+async function apagarDadosPorGrupo(rotulo, colecoes, opcoes = {}) {
+  if (appState.userRole !== "admin") {
+    return showToast("Apenas administradores podem apagar dados.", "error");
+  }
+
+  mostrarConfirmacao(
+    `Apagar ${rotulo}`,
+    `Essa ação vai apagar os dados de ${rotulo.toLowerCase()} e não poderá ser desfeita. Exporte um backup antes de continuar.`,
+    async () => {
+      const termo = `APAGAR ${rotulo.toUpperCase()}`;
+      const digitado = prompt(`Para confirmar, digite exatamente: ${termo}`);
+      if (digitado !== termo) {
+        return showToast("Confirmação não realizada. Nada foi apagado.", "info");
+      }
+
+      try {
+        showToast(`Apagando ${rotulo.toLowerCase()}...`, "info");
+        const resumo = {};
+
+        for (const nomeColecao of colecoes) {
+          const snap = await getDocs(collection(db, nomeColecao));
+          let apagados = 0;
+
+          for (const documento of snap.docs) {
+            const dados = documento.data();
+            if (opcoes.preservarAdmins && (dados.role === "admin" || dados.perfil === "admin")) continue;
+            await deleteDoc(doc(db, nomeColecao, documento.id));
+            apagados++;
+          }
+
+          resumo[nomeColecao] = apagados;
+        }
+
+        await registrarAuditoria("apagar_dados_admin", "sistema", rotulo, { colecoes, resumo });
+        showToast(`${rotulo} apagado com sucesso.`, "success");
+        setTimeout(() => window.location.reload(), 1200);
+      } catch (err) {
+        showToast(`Erro ao apagar ${rotulo.toLowerCase()}: ${err.message}`, "error");
+      }
+    },
+    "danger"
+  );
 }
 
 function atualizarAdminCenterResumo() {

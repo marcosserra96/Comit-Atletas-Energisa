@@ -732,10 +732,25 @@
             <div class="admin-panel-header">
               <div>
                 <h3><i data-lucide="alert-octagon"></i> Manutenção sensível</h3>
-                <p>Use somente após exportar backup. Esta ação não deve fazer parte da rotina normal.</p>
+                <p>Use somente após exportar backup. Escolha exatamente o que deseja apagar.</p>
               </div>
             </div>
-            <button id="btnLimparBase" class="btn-acao" style="color: var(--danger); border-color: var(--danger); width: 100%; justify-content: center; padding: 12px;"><i data-lucide="trash-2"></i> Zerar Todo o Banco de Dados</button>
+
+            <div class="admin-danger-actions">
+              <button id="btnApagarLancamentos" class="btn-danger-soft" type="button"><i data-lucide="history"></i><span>Apagar lançamentos</span></button>
+              <button id="btnApagarEventos" class="btn-danger-soft" type="button"><i data-lucide="calendar-x"></i><span>Apagar eventos</span></button>
+              <button id="btnApagarAtletas" class="btn-danger-soft" type="button"><i data-lucide="user-x"></i><span>Apagar atletas</span></button>
+              <button id="btnApagarRegras" class="btn-danger-soft" type="button"><i data-lucide="list-x"></i><span>Apagar regras</span></button>
+              <button id="btnApagarFinanceiro" class="btn-danger-soft" type="button"><i data-lucide="badge-dollar-sign"></i><span>Apagar financeiro</span></button>
+              <button id="btnApagarComentarios" class="btn-danger-soft" type="button"><i data-lucide="message-square-x"></i><span>Apagar comentários</span></button>
+            </div>
+
+            <div class="admin-note-box danger-note-box">
+              <i data-lucide="shield-alert"></i>
+              <span>Essas ações são permanentes. A exclusão de atletas preserva usuários administradores.</span>
+            </div>
+
+            <button id="btnLimparBase" class="btn-acao danger-full-button" type="button"><i data-lucide="trash-2"></i> Zerar todo o banco de dados</button>
           </div>
         </div>
 
