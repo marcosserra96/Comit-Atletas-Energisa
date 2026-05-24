@@ -2,7 +2,7 @@
 // js/admin.js - ORQUESTRADOR PRINCIPAL
 // =====================================================
 import { 
-  auth, db, collection, getDocs, doc, getDoc, updateDoc, deleteDoc, addDoc, 
+  auth, db, collection, getDocs, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, 
   onAuthStateChanged, query, where, increment 
 } from "./firebase.js";
 
@@ -12,6 +12,83 @@ import { setupDashboard, renderGraficosETop } from "./modules/dashboard.js";
 import { setupFinanceiroPlanilha, carregarFinanceiroPlanilha } from "./modules/financeiro.js";
 import { setupContabilizacao, setAtualizarTelasCallback } from "./modules/pontuacao.js";
 import { setupCadastrarPessoa, setupImportacaoAtletas, setupToggleAtivos, setupLimparBase, setAtualizarTelasGestao } from "./modules/gestao.js";
+
+
+// =====================================================
+// 🎨 CONFIGURAÇÃO DE IDENTIDADE VISUAL
+// =====================================================
+const TEMA_PADRAO_PORTAL = {
+  primary: "#009bc1",
+  secondary: "#00b37e",
+  accent: "#f37021",
+  danger: "#e63946",
+  bgLight: "#f5f7fa",
+  bgDark: "#121212",
+  cardDark: "#1e1e1e"
+};
+
+function normalizarTemaPortal(config = {}) {
+  return {
+    ...TEMA_PADRAO_PORTAL,
+    ...(config || {})
+  };
+}
+
+function hexToRgb(hex) {
+  const limpo = String(hex || "").replace("#", "").trim();
+  if (!/^[0-9a-fA-F]{6}$/.test(limpo)) return null;
+  return {
+    r: parseInt(limpo.slice(0, 2), 16),
+    g: parseInt(limpo.slice(2, 4), 16),
+    b: parseInt(limpo.slice(4, 6), 16)
+  };
+}
+
+function ajustarHex(hex, percentual = -12) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return hex;
+  const fator = percentual / 100;
+  const calc = (v) => Math.max(0, Math.min(255, Math.round(percentual < 0 ? v * (1 + fator) : v + (255 - v) * fator)));
+  return `#${[calc(rgb.r), calc(rgb.g), calc(rgb.b)].map(v => v.toString(16).padStart(2, "0")).join("")}`;
+}
+
+function aplicarIdentidadeVisual(config = {}) {
+  const tema = normalizarTemaPortal(config);
+  const rootStyle = document.documentElement.style;
+  rootStyle.setProperty("--primary", tema.primary);
+  rootStyle.setProperty("--primary-hover", ajustarHex(tema.primary, -16));
+  rootStyle.setProperty("--secondary", tema.secondary);
+  rootStyle.setProperty("--accent", tema.accent);
+  rootStyle.setProperty("--danger", tema.danger);
+  rootStyle.setProperty("--brand-bg-light", tema.bgLight);
+  rootStyle.setProperty("--brand-bg-dark", tema.bgDark);
+  rootStyle.setProperty("--brand-card-dark", tema.cardDark);
+  rootStyle.setProperty("--brand-header-start", ajustarHex(tema.primary, -26));
+  rootStyle.setProperty("--brand-header-mid", tema.primary);
+  rootStyle.setProperty("--brand-header-end", tema.secondary);
+  appState.configTemaPortal = tema;
+  localStorage.setItem("atletasConfigTemaPortal", JSON.stringify(tema));
+  return tema;
+}
+
+async function carregarIdentidadeVisual() {
+  try {
+    const local = localStorage.getItem("atletasConfigTemaPortal");
+    if (local) aplicarIdentidadeVisual(JSON.parse(local));
+  } catch (_) {}
+
+  try {
+    const snap = await getDoc(doc(db, "configuracoes", "tema"));
+    if (snap.exists()) {
+      aplicarIdentidadeVisual(snap.data());
+    } else {
+      aplicarIdentidadeVisual(TEMA_PADRAO_PORTAL);
+    }
+  } catch (err) {
+    console.warn("Não foi possível carregar as cores do tema:", err);
+    aplicarIdentidadeVisual(appState.configTemaPortal || TEMA_PADRAO_PORTAL);
+  }
+}
 
 // =====================================================
 // 🔒 INICIALIZAÇÃO E PERMISSÕES
@@ -27,6 +104,7 @@ onAuthStateChanged(auth, async (user) => {
           ["visao-geral", "contabilizacao", "financeiro_view", "financeiro_edit", "gestao", "configuracoes"] : 
           (docSnap.data().permissoes || ["visao-geral", "configuracoes"]);
         
+        await carregarIdentidadeVisual();
         construirMenu(); 
         iniciarPainelAdmin();
       } else { window.location.href = "index.html"; }
@@ -199,11 +277,12 @@ async function carregarEquipesEDashboard() {
     const n = u.dataNascimento ? new Date(u.dataNascimento+"T00:00:00").toLocaleDateString('pt-BR') : 'N/D';
     const tooltipInfo = `📍 ${u.localidade || 'Local não informado'}\n🎂 Nasc: ${n}\n🗓️ Entrou em: ${u.anoEntrada || 'N/D'}`;
 
-    const switchAtivo = (hasGestao && u.role !== 'admin') ? `<label class="switch" title="Ativar/Desativar"><input type="checkbox" class="toggle-ativo" data-id="${u.id}" ${ativo ? 'checked' : ''}><span class="slider"></span></label>` : ''; 
+    const podeGerenciarMembro = hasGestao && (appState.userRole === 'admin' || (u.role !== 'admin' && u.role !== 'comite'));
+    const switchAtivo = podeGerenciarMembro ? `<label class="switch" title="Ativar/Desativar"><input type="checkbox" class="toggle-ativo" data-id="${u.id}" ${ativo ? 'checked' : ''}><span class="slider"></span></label>` : ''; 
     const btnFicha = `<button class="btn-acao btn-ficha" data-id="${u.id}" style="color: var(--primary); border-color: var(--primary); padding: 4px; margin-left: 5px;" title="Ver ficha do atleta"><i data-lucide="clipboard-list" style="width: 16px;"></i></button>`; 
     const btnPerm = (u.role === 'comite' && appState.userRole === 'admin') ? `<button class="btn-primario btn-permissoes" data-id="${u.id}" data-nome="${u.nome}" style="background: #f39c12; padding: 6px 10px; font-size: 0.8rem; margin-left: 5px;"><i data-lucide="key" style="width: 14px;"></i></button>` : ''; 
-    const btnEditar = hasGestao ? `<button class="btn-acao btn-editar-membro" data-id="${u.id}" style="color: var(--warning); border-color: var(--warning); padding: 4px; margin-left: 5px;"><i data-lucide="edit-2" style="width: 16px;"></i></button>` : ''; 
-    const btnExcluir = (auth.currentUser?.uid !== u.id && hasGestao) ? `<button class="btn-acao btn-excluir-membro" data-id="${u.id}" style="color: red; border: 0; padding: 4px; margin-left: 5px;"><i data-lucide="x-circle" style="width: 18px;"></i></button>` : ''; 
+    const btnEditar = podeGerenciarMembro ? `<button class="btn-acao btn-editar-membro" data-id="${u.id}" style="color: var(--warning); border-color: var(--warning); padding: 4px; margin-left: 5px;"><i data-lucide="edit-2" style="width: 16px;"></i></button>` : ''; 
+    const btnExcluir = (auth.currentUser?.uid !== u.id && podeGerenciarMembro) ? `<button class="btn-acao btn-excluir-membro" data-id="${u.id}" style="color: red; border: 0; padding: 4px; margin-left: 5px;"><i data-lucide="x-circle" style="width: 18px;"></i></button>` : ''; 
     const displayPts = u.role === 'atleta' ? `<br><small style="color: var(--primary);">🏆 ${pts} pts</small>` : ''; 
     
     // A correção definitiva da linha (retiramos o flex direto do <td> e usamos um container <div>)
@@ -296,6 +375,13 @@ async function carregarEquipesEDashboard() {
       document.getElementById("editNome").value = u.nome; 
       document.getElementById("editEmail").value = u.email !== "undefined" ? (u.email || "") : ""; 
       document.getElementById("editPapel").value = u.role === "comite" ? "Comitê" : u.equipe; 
+      const optComite = document.querySelector('#editPapel option[value="Comitê"]');
+      if (optComite) {
+        optComite.hidden = appState.userRole !== "admin";
+        optComite.disabled = appState.userRole !== "admin";
+      }
+      const avisoPerfilAdmin = document.getElementById("avisoPerfilAdmin");
+      if (avisoPerfilAdmin) avisoPerfilAdmin.style.display = appState.userRole === "admin" ? "none" : "block";
       document.getElementById("editSexo").value = u.sexo || "Masculino";
       document.getElementById("editNasc").value = u.dataNascimento || "";
       document.getElementById("editLocalidade").value = u.localidade || "";
@@ -970,10 +1056,98 @@ function setupAdminCenter() {
   setupExportacoesOperacionais();
   setupAdminInformativoPadrao();
   setupAdminChecklist();
+  setupIdentidadeVisualAdmin();
 
   atualizarAdminCenterResumo();
   atualizarChecklistAdmin();
   carregarAuditoriaAdmin();
+}
+
+function setupIdentidadeVisualAdmin() {
+  const campos = {
+    primary: document.getElementById("brandCorPrincipal"),
+    secondary: document.getElementById("brandCorSecundaria"),
+    accent: document.getElementById("brandCorDestaque"),
+    danger: document.getElementById("brandCorAlerta"),
+    bgLight: document.getElementById("brandFundoClaro"),
+    bgDark: document.getElementById("brandFundoEscuro"),
+    cardDark: document.getElementById("brandCardEscuro")
+  };
+  const btnSalvar = document.getElementById("btnSalvarIdentidadeVisual");
+  const btnPadrao = document.getElementById("btnRestaurarIdentidadeVisual");
+  const preview = document.getElementById("brandPreviewTema");
+  const codigo = document.getElementById("brandCodigoTemaAtual");
+
+  if (!btnSalvar || !campos.primary) return;
+
+  const preencherCampos = (tema) => {
+    const normalizado = normalizarTemaPortal(tema);
+    Object.entries(campos).forEach(([k, el]) => { if (el) el.value = normalizado[k]; });
+    atualizarPreviewIdentidade(normalizado, preview, codigo);
+  };
+
+  const lerCampos = () => normalizarTemaPortal(Object.fromEntries(
+    Object.entries(campos).map(([k, el]) => [k, el?.value || TEMA_PADRAO_PORTAL[k]])
+  ));
+
+  preencherCampos(appState.configTemaPortal || TEMA_PADRAO_PORTAL);
+
+  Object.values(campos).forEach(el => {
+    if (!el || el.dataset.listenerAplicado) return;
+    el.dataset.listenerAplicado = "1";
+    el.addEventListener("input", () => {
+      const tema = lerCampos();
+      aplicarIdentidadeVisual(tema);
+      atualizarPreviewIdentidade(tema, preview, codigo);
+    });
+  });
+
+  if (!btnSalvar.dataset.listenerAplicado) {
+    btnSalvar.dataset.listenerAplicado = "1";
+    btnSalvar.addEventListener("click", async () => {
+      const tema = lerCampos();
+      btnSalvar.disabled = true;
+      btnSalvar.textContent = "Salvando...";
+      try {
+        await setDoc(doc(db, "configuracoes", "tema"), {
+          ...tema,
+          atualizadoEm: new Date().toISOString(),
+          atualizadoPor: auth.currentUser?.uid || ""
+        }, { merge: true });
+        aplicarIdentidadeVisual(tema);
+        await registrarAuditoria("identidade_visual_atualizada", "configuracoes", "tema", tema);
+        showToast("Cores do portal atualizadas com sucesso.", "success");
+      } catch (err) {
+        showToast("Erro ao salvar identidade visual: " + err.message, "error");
+      } finally {
+        btnSalvar.disabled = false;
+        btnSalvar.textContent = "Salvar cores do portal";
+      }
+    });
+  }
+
+  if (btnPadrao && !btnPadrao.dataset.listenerAplicado) {
+    btnPadrao.dataset.listenerAplicado = "1";
+    btnPadrao.addEventListener("click", () => {
+      preencherCampos(TEMA_PADRAO_PORTAL);
+      aplicarIdentidadeVisual(TEMA_PADRAO_PORTAL);
+      showToast("Prévia restaurada para o padrão Energisa. Clique em salvar para gravar.", "info");
+    });
+  }
+}
+
+function atualizarPreviewIdentidade(tema, preview, codigo) {
+  if (preview) {
+    preview.style.setProperty("--preview-primary", tema.primary);
+    preview.style.setProperty("--preview-secondary", tema.secondary);
+    preview.style.setProperty("--preview-accent", tema.accent);
+    preview.style.setProperty("--preview-danger", tema.danger);
+    preview.style.setProperty("--preview-bg", tema.bgDark);
+    preview.style.setProperty("--preview-card", tema.cardDark);
+  }
+  if (codigo) {
+    codigo.textContent = `Principal ${tema.primary} • Secundária ${tema.secondary} • Destaque ${tema.accent}`;
+  }
 }
 
 function atualizarAdminCenterResumo() {
@@ -2190,7 +2364,16 @@ function setupModalEditar() {
     const id = document.getElementById("editId").value; const nome = document.getElementById("editNome").value.trim(); const email = document.getElementById("editEmail").value.trim(); const papel = document.getElementById("editPapel").value; 
     const sexo = document.getElementById("editSexo").value; const nasc = document.getElementById("editNasc").value; const localidade = document.getElementById("editLocalidade").value.trim(); const anoEntrada = document.getElementById("editAnoEntrada").value;
     
-    if (!nome) return; let role = "atleta"; let equipe = papel; if (papel === "Comitê") { role = "comite"; equipe = "Nenhuma"; } 
+    if (!nome) return; 
+    const cadastroAtual = appState.mapAtletas[id] || {};
+    if (appState.userRole !== "admin" && (papel === "Comitê" || cadastroAtual.role === "admin" || cadastroAtual.role === "comite")) {
+      showToast("Apenas administradores podem alterar perfis de acesso ou membros do comitê.", "error");
+      return;
+    }
+
+    let role = "atleta"; 
+    let equipe = papel; 
+    if (papel === "Comitê") { role = "comite"; equipe = "Nenhuma"; } 
     e.target.textContent = "Salvando..."; e.target.classList.add("loading"); e.target.disabled = true; 
     
     try { 

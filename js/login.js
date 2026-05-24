@@ -1,67 +1,175 @@
 // =====================================================
-// js/login.js - AUTENTICAÇÃO SEGURA
+// js/login.js - AUTENTICAÇÃO E SOLICITAÇÃO DE ACESSO
 // =====================================================
-import { auth, db, signInWithEmailAndPassword, getDoc, doc, signOut } from "./firebase.js";
+import {
+  auth, db,
+  signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  getDoc, doc, setDoc, signOut
+} from "./firebase.js";
+
+const TEMA_PADRAO_LOGIN = {
+  primary: "#009bc1",
+  secondary: "#00b37e",
+  accent: "#f37021",
+  danger: "#e63946"
+};
+
+function aplicarCoresLogin(config = {}) {
+  const tema = { ...TEMA_PADRAO_LOGIN, ...(config || {}) };
+  const root = document.documentElement.style;
+  root.setProperty("--azul", tema.primary);
+  root.setProperty("--verde", tema.secondary);
+  root.setProperty("--destaque", tema.accent);
+  root.setProperty("--vermelho", tema.danger);
+}
+
+async function carregarCoresLogin() {
+  try {
+    const local = localStorage.getItem("atletasConfigTemaPortal");
+    if (local) aplicarCoresLogin(JSON.parse(local));
+  } catch (_) {}
+
+  try {
+    const snap = await getDoc(doc(db, "configuracoes", "tema"));
+    if (snap.exists()) {
+      const data = snap.data();
+      aplicarCoresLogin(data);
+      localStorage.setItem("atletasConfigTemaPortal", JSON.stringify(data));
+    }
+  } catch (err) {
+    console.warn("Não foi possível carregar as cores do login:", err);
+  }
+}
 
 function showToast(message, type = "info") {
   const container = document.getElementById("toastContainer");
   if (!container) return;
   const t = document.createElement("div");
   t.className = `toast ${type}`;
-  t.innerHTML = message;
+  t.textContent = message;
   container.appendChild(t);
-  
-  if(typeof lucide !== 'undefined') lucide.createIcons();
   setTimeout(() => t.remove(), 4000);
 }
 
+function alternarTela(modo) {
+  const boxLogin = document.getElementById("boxLogin");
+  const boxSolicitar = document.getElementById("boxSolicitar");
+  if (!boxLogin || !boxSolicitar) return;
+
+  const solicitando = modo === "solicitar";
+  boxLogin.style.display = solicitando ? "none" : "block";
+  boxSolicitar.style.display = solicitando ? "block" : "none";
+
+  const primeiroCampo = document.getElementById(solicitando ? "regNome" : "email");
+  setTimeout(() => primeiroCampo?.focus(), 80);
+}
+
 const fazerLogin = async () => {
-  const email = document.getElementById("email").value.trim();
-  const pass = document.getElementById("password").value.trim();
+  const email = document.getElementById("email")?.value.trim();
+  const pass = document.getElementById("password")?.value.trim();
   const btn = document.getElementById("loginBtn");
 
   if (!email || !pass) {
-    return showToast("Preencha e-mail e palavra-passe.", "error");
+    return showToast("Preencha e-mail e senha.", "error");
   }
 
-  btn.textContent = "Verificando..."; 
+  btn.textContent = "Verificando...";
   btn.classList.add("loading");
   btn.disabled = true;
-  
+
   try {
     await signInWithEmailAndPassword(auth, email, pass);
     const user = auth.currentUser;
     const docSnap = await getDoc(doc(db, "atletas", user.uid));
-    
+
     if (docSnap.exists()) {
       const data = docSnap.data();
-      
+
       if (data.status === "Pendente") {
-        showToast("A tua conta aguarda aprovação da Gestão.", "info");
+        showToast("Sua solicitação ainda está aguardando aprovação do administrador.", "info");
         await signOut(auth);
       } else if (data.role === "atleta") {
-        showToast("Acesso restrito à equipa de Gestão.", "error");
+        showToast("Este acesso é restrito ao comitê.", "error");
         await signOut(auth);
       } else {
-        showToast("Acesso liberado! A redirecionar...", "success");
-        setTimeout(() => window.location.href = "admin.html", 1000);
-        return; 
+        showToast("Acesso liberado! Redirecionando...", "success");
+        setTimeout(() => window.location.href = "admin.html", 800);
+        return;
       }
     } else {
-      showToast("Perfil de acesso não encontrado na base de dados.", "error");
+      showToast("Perfil de acesso não encontrado na base.", "error");
       await signOut(auth);
     }
   } catch (error) {
     console.error("Erro no login:", error);
-    showToast("E-mail ou palavra-passe incorretos.", "error");
+    showToast("E-mail ou senha incorretos.", "error");
   }
-  
-  btn.textContent = "Entrar no Sistema"; 
+
+  btn.textContent = "Entrar no Sistema";
   btn.classList.remove("loading");
   btn.disabled = false;
 };
 
+const solicitarAcesso = async () => {
+  const nome = document.getElementById("regNome")?.value.trim();
+  const email = document.getElementById("regEmail")?.value.trim();
+  const senha = document.getElementById("regPassword")?.value.trim();
+  const btn = document.getElementById("registerBtn");
+
+  if (!nome || !email || !senha) {
+    return showToast("Preencha nome, e-mail e senha para enviar a solicitação.", "error");
+  }
+  if (senha.length < 6) {
+    return showToast("A senha precisa ter pelo menos 6 caracteres.", "error");
+  }
+
+  btn.textContent = "Enviando...";
+  btn.classList.add("loading");
+  btn.disabled = true;
+
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, email, senha);
+    await setDoc(doc(db, "atletas", cred.user.uid), {
+      nome,
+      email,
+      role: "comite",
+      status: "Pendente",
+      equipe: "Comitê",
+      ativo: false,
+      permissoes: ["visao-geral"],
+      criadoEm: new Date().toISOString(),
+      origemCadastro: "solicitacao_login"
+    }, { merge: true });
+
+    await signOut(auth);
+    showToast("Solicitação enviada. Aguarde a aprovação do administrador.", "success");
+    document.getElementById("regNome").value = "";
+    document.getElementById("regEmail").value = "";
+    document.getElementById("regPassword").value = "";
+    alternarTela("login");
+  } catch (error) {
+    console.error("Erro ao solicitar acesso:", error);
+    const msg = error?.code === "auth/email-already-in-use"
+      ? "Este e-mail já possui cadastro. Tente fazer login ou solicite a aprovação do administrador."
+      : "Não foi possível enviar a solicitação. Verifique os dados e tente novamente.";
+    showToast(msg, "error");
+  } finally {
+    btn.textContent = "Enviar Solicitação";
+    btn.classList.remove("loading");
+    btn.disabled = false;
+  }
+};
+
 document.getElementById("loginBtn")?.addEventListener("click", fazerLogin);
+document.getElementById("registerBtn")?.addEventListener("click", solicitarAcesso);
+document.getElementById("linkSolicitar")?.addEventListener("click", (e) => { e.preventDefault(); alternarTela("solicitar"); });
+document.getElementById("linkLogin")?.addEventListener("click", (e) => { e.preventDefault(); alternarTela("login"); });
+
 document.getElementById("password")?.addEventListener("keypress", (e) => {
   if (e.key === "Enter") fazerLogin();
 });
+document.getElementById("regPassword")?.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") solicitarAcesso();
+});
+
+carregarCoresLogin();

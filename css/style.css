@@ -1,6 +1,7 @@
 :root {
   --azul: #009bc1;
   --verde: #00b37e;
+  --destaque: #f37021;
   --vermelho: #e63946;
   --branco: #ffffff;
   --cinza-claro: #f3f4f6;
@@ -11,7 +12,7 @@ body {
   margin: 0;
   padding: 0;
   font-family: "Poppins", sans-serif;
-  background: linear-gradient(-45deg, var(--azul), var(--verde), #007fa0, var(--azul));
+  background: radial-gradient(circle at 20% 20%, rgba(255,255,255,.18), transparent 28%), linear-gradient(-45deg, var(--azul), var(--verde), #007fa0, var(--azul));
   background-size: 400% 400%;
   animation: gradientBG 15s ease infinite;
   min-height: 100vh;
@@ -144,7 +145,7 @@ button.loading::after {
 }
 
 .register-text a {
-  color: #f37021;
+  color: var(--destaque);
   text-decoration: none;
   font-weight: 600;
   position: relative;
@@ -157,7 +158,7 @@ button.loading::after {
   height: 2px;
   bottom: -2px;
   left: 0;
-  background-color: #f37021;
+  background-color: var(--destaque);
   transition: width 0.3s ease;
 }
 
@@ -352,4 +353,47 @@ body {
   .container { padding: 22px !important; }
   .logo img { width: min(245px, 82vw) !important; }
   .login-box { padding: 24px 22px !important; }
+}
+
+
+/* V43 - Login e solicitação de acesso refinados */
+.login-subtitle {
+  margin: -20px 0 24px;
+  color: rgba(255,255,255,.82);
+  font-weight: 600;
+  letter-spacing: .03em;
+}
+
+.login-box {
+  backdrop-filter: blur(12px);
+}
+
+#boxSolicitar {
+  animation: slideUp .28s ease both;
+}
+
+.toast {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 9999;
+  max-width: 340px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #24313f;
+  box-shadow: 0 16px 45px rgba(0,0,0,.18);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  border-left: 4px solid var(--azul);
+}
+.toast.success { border-left-color: var(--verde); }
+.toast.error { border-left-color: var(--vermelho); }
+.toast.info { border-left-color: var(--destaque); }
+
+@media (max-width: 520px) {
+  .container { padding: 18px; }
+  .login-box { padding: 24px; max-width: 330px; }
+  .logo img { max-width: 230px; height: auto; }
 }

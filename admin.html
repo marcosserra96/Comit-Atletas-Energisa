@@ -219,7 +219,7 @@
         <div>
           <h2>Atletas</h2>
           <p style="margin: 6px 0 0; color: var(--text-light); font-size: 0.9rem;">
-            Consulta rápida da base, com acesso direto à ficha individual.
+            Tela de acompanhamento do comitê: consulte fichas, participação, pontuação e situação dos atletas sem misturar com a manutenção da base.
           </p>
         </div>
       </div>
@@ -453,15 +453,31 @@
     <section id="gestao">
       <div class="sub-menu">
         <button class="sub-tab admin-only-element" data-target="sub-aprovacoes"><i data-lucide="shield-alert"></i> Aprovações</button>
-        <button class="sub-tab active" data-target="sub-cadastrar"><i data-lucide="user-plus"></i> Novo Membro</button>
-        <button class="sub-tab" data-target="sub-equipes"><i data-lucide="users"></i> Equipes e Filas</button>
+        <button class="sub-tab active" data-target="sub-cadastrar"><i data-lucide="user-plus"></i> Novo cadastro</button>
+        <button class="sub-tab" data-target="sub-equipes"><i data-lucide="users"></i> Cadastros e acessos</button>
         <button class="sub-tab" data-target="sub-regras"><i data-lucide="list-checks"></i> Regras de Pontuação</button>
         <button class="sub-tab admin-only-element" data-target="sub-dados" style="color: var(--danger);"><i data-lucide="database"></i> Dados</button>
       </div>
 
-      <div id="sub-aprovacoes" class="sub-content"><div class="tabela-container"><table class="tabela-simples"><tbody id="listaAprovacoes"></tbody></table></div></div>
+      <div id="sub-aprovacoes" class="sub-content">
+        <div class="admin-section-intro compact">
+          <div>
+            <span class="eyebrow">Administração</span>
+            <h3><i data-lucide="shield-alert"></i> Cadastros pendentes</h3>
+            <p>Aprove ou rejeite solicitações de entrada antes que o usuário tenha acesso ao portal.</p>
+          </div>
+        </div>
+        <div class="tabela-container"><table class="tabela-simples"><tbody id="listaAprovacoes"></tbody></table></div>
+      </div>
       
       <div id="sub-cadastrar" class="sub-content active">
+        <div class="admin-section-intro">
+          <div>
+            <span class="eyebrow">Manutenção da base</span>
+            <h3><i data-lucide="user-plus"></i> Novo cadastro</h3>
+            <p>Use esta área para incluir manualmente novos atletas ou importar uma planilha. A tela Atletas fica reservada para consulta e acompanhamento.</p>
+          </div>
+        </div>
         <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr;">
           
           <div class="card" style="margin: 0;">
@@ -520,7 +536,14 @@
           <button class="t-tab" data-target="tab-comite">Comitê</button>
         </div>
         
-        <div id="tab-fila" class="t-content active">
+        <div class="admin-section-intro compact">
+        <div>
+          <span class="eyebrow">Cadastros e acessos</span>
+          <h3><i data-lucide="users-round"></i> Administração de atletas, filas e comitê</h3>
+          <p>Aqui ficam ações administrativas: aprovar fila, editar cadastro, ativar/inativar, alterar perfil e revisar membros do comitê.</p>
+        </div>
+      </div>
+      <div id="tab-fila" class="t-content active">
           <div style="display: flex; flex-direction: column; gap: 20px;">
             <div>
               <h4 style="color: var(--primary); margin: 0 0 10px 0; display:flex; align-items:center; gap:5px;"><i data-lucide="bike" style="width:18px;"></i> Fila - Bicicleta</h4>
@@ -653,15 +676,55 @@
                 <small>Indicada para report/informativo.</small>
               </div>
             </div>
-            <div class="brand-token-grid">
-              <div><span>Principal</span><strong style="--swatch:#009bc1"></strong><code>#009BC1</code></div>
-              <div><span>Secundária</span><strong style="--swatch:#00b37e"></strong><code>#00B37E</code></div>
-              <div><span>Destaque</span><strong style="--swatch:#f37021"></strong><code>#F37021</code></div>
-              <div><span>Fundo escuro</span><strong style="--swatch:#07192d"></strong><code>#07192D</code></div>
+            <div class="brand-editor-layout">
+              <div class="brand-color-editor">
+                <label>Cor principal
+                  <input type="color" id="brandCorPrincipal" value="#009bc1" />
+                </label>
+                <label>Cor secundária
+                  <input type="color" id="brandCorSecundaria" value="#00b37e" />
+                </label>
+                <label>Cor de destaque
+                  <input type="color" id="brandCorDestaque" value="#f37021" />
+                </label>
+                <label>Cor de alerta
+                  <input type="color" id="brandCorAlerta" value="#e63946" />
+                </label>
+                <label>Fundo claro
+                  <input type="color" id="brandFundoClaro" value="#f5f7fa" />
+                </label>
+                <label>Fundo escuro
+                  <input type="color" id="brandFundoEscuro" value="#121212" />
+                </label>
+                <label>Card escuro
+                  <input type="color" id="brandCardEscuro" value="#1e1e1e" />
+                </label>
+              </div>
+              <div id="brandPreviewTema" class="brand-theme-preview">
+                <div class="brand-theme-top">
+                  <span></span>
+                  <strong>Prévia do tema</strong>
+                </div>
+                <div class="brand-theme-card">
+                  <small>Card do portal</small>
+                  <b>Atletas Energisa</b>
+                  <em>Botões, destaques e alertas acompanham as cores escolhidas.</em>
+                  <div class="brand-theme-actions">
+                    <span class="primary">Principal</span>
+                    <span class="secondary">Secundária</span>
+                    <span class="accent">Destaque</span>
+                  </div>
+                </div>
+                <code id="brandCodigoTemaAtual">Principal #009BC1 • Secundária #00B37E • Destaque #F37021</code>
+              </div>
+            </div>
+            <div class="brand-admin-actions">
+              <button id="btnSalvarIdentidadeVisual" class="btn-primario" type="button"><i data-lucide="save"></i> Salvar cores do portal</button>
+              <button id="btnRestaurarIdentidadeVisual" class="btn-acao" type="button"><i data-lucide="rotate-ccw"></i> Restaurar padrão Energisa</button>
             </div>
             <div class="admin-note-box brand-note-box">
               <i data-lucide="github"></i>
-              <span>Para alterar definitivamente as logos, substitua os arquivos em <strong>assets/logos</strong> no GitHub e publique novamente.</span>
+              <span>As cores podem ser alteradas por aqui. Para alterar definitivamente as logos, substitua os arquivos em <strong>assets/logos</strong> no GitHub e publique novamente.</span>
             </div>
           </div>
 
@@ -781,6 +844,7 @@
           <option value="Fila - Corrida">Fila - Corrida</option>
           <option value="Comitê">Comitê Gestor</option>
         </select>
+        <small id="avisoPerfilAdmin" style="display:none; margin-top:6px; color:var(--muted);">Perfis de acesso são alterados apenas por administradores.</small>
       </div>
   
       <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px;">
