@@ -7019,3 +7019,266 @@ body[data-theme="dark"] .podium-card .podium-list li:first-child {
     grid-template-columns: 1fr !important;
   }
 }
+
+/* =====================================================
+   V53 - QA visual real: correção de seletores conflitantes
+   Corrige de forma mais forte o pódio, header e identidade visual.
+   ===================================================== */
+
+/* Header slim: logo e título próximos, sem reservar largura antiga */
+.topbar.topbar-slim .topbar-brand,
+header.topbar.topbar-slim .topbar-brand {
+  min-width: 0 !important;
+  width: auto !important;
+  max-width: none !important;
+  flex: 0 0 auto !important;
+  gap: 8px !important;
+  padding-right: 12px !important;
+}
+
+.topbar.topbar-slim .topbar-program-logo,
+header.topbar.topbar-slim .topbar-program-logo {
+  width: 96px !important;
+  height: 32px !important;
+  flex: 0 0 96px !important;
+  object-fit: contain !important;
+  object-position: left center !important;
+  display: block !important;
+}
+
+.topbar.topbar-slim .brand-divider,
+header.topbar.topbar-slim .brand-divider {
+  height: 28px !important;
+  margin-left: 2px !important;
+  margin-right: 4px !important;
+}
+
+.topbar.topbar-slim .brand-context,
+header.topbar.topbar-slim .brand-context {
+  min-width: 130px !important;
+  margin-left: 0 !important;
+}
+
+.topbar.topbar-slim .brand-context strong,
+header.topbar.topbar-slim .brand-context strong {
+  font-size: .94rem !important;
+  line-height: 1.05 !important;
+}
+
+.topbar.topbar-slim .brand-context small,
+header.topbar.topbar-slim .brand-context small {
+  font-size: .70rem !important;
+  line-height: 1.05 !important;
+}
+
+/* Pódio: remove regras antigas que criavam sobreposição/corte */
+.podium-card .podium-list li:first-child::before,
+.podium-card .podium-list li.podium-rank-1::before {
+  content: none !important;
+  display: none !important;
+}
+
+.podium-card .podium-list li:first-child > strong,
+.podium-card .podium-list li.podium-rank-1 > strong {
+  padding-right: 0 !important;
+}
+
+.podium-card .podium-split {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(260px, 1fr)) !important;
+  gap: 16px !important;
+  align-items: stretch !important;
+}
+
+.podium-card .podium-split > div {
+  min-width: 0 !important;
+  overflow: visible !important;
+  padding: 16px !important;
+}
+
+.podium-card .podium-list,
+#listaPodioBike,
+#listaPodioCorrida {
+  display: grid !important;
+  gap: 12px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+}
+
+.podium-card .podium-list li.podium-rank,
+.podium-card .podium-rank,
+#listaPodioBike li,
+#listaPodioCorrida li {
+  display: grid !important;
+  grid-template-columns: 34px minmax(0, 1fr) 38px !important;
+  align-items: center !important;
+  column-gap: 12px !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  min-height: 72px !important;
+  height: auto !important;
+  padding: 12px 12px !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+}
+
+.podium-card .podium-list li.podium-rank-1,
+.podium-card .podium-rank-1,
+#listaPodioBike li:first-child,
+#listaPodioCorrida li:first-child {
+  min-height: 84px !important;
+}
+
+.podium-card .podium-medal {
+  grid-column: 1 !important;
+  justify-self: center !important;
+  align-self: center !important;
+  width: 30px !important;
+  min-width: 30px !important;
+  height: 30px !important;
+}
+
+.podium-card .podium-athlete {
+  grid-column: 2 !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  overflow: visible !important;
+  display: grid !important;
+  gap: 4px !important;
+}
+
+.podium-card .podium-athlete strong,
+.podium-card .podium-list li .podium-athlete strong {
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  white-space: normal !important;
+  text-overflow: ellipsis !important;
+  line-height: 1.14 !important;
+  max-height: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  word-break: normal !important;
+}
+
+.podium-card .podium-athlete em {
+  display: block !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.podium-card .podium-score,
+.podium-card .podium-list li > strong.podium-score {
+  grid-column: 3 !important;
+  justify-self: end !important;
+  align-self: center !important;
+  width: 34px !important;
+  min-width: 34px !important;
+  height: 30px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: visible !important;
+}
+
+@media (max-width: 1120px) {
+  .podium-card .podium-split {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Identidade visual: a prévia fica abaixo dos campos, nunca sobreposta */
+.admin-brand-card {
+  overflow: visible !important;
+}
+
+.admin-brand-card .brand-editor-layout {
+  display: block !important;
+  margin-top: 18px !important;
+}
+
+.admin-brand-card .brand-color-editor {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(128px, 1fr)) !important;
+  gap: 12px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 0 18px 0 !important;
+}
+
+.admin-brand-card .brand-color-editor label {
+  min-width: 0 !important;
+  min-height: 86px !important;
+  padding: 12px !important;
+  box-sizing: border-box !important;
+}
+
+.admin-brand-card .brand-theme-preview,
+#brandPreviewTema.brand-theme-preview {
+  position: static !important;
+  display: grid !important;
+  width: 100% !important;
+  max-width: 720px !important;
+  min-height: 0 !important;
+  margin: 8px 0 0 0 !important;
+  transform: none !important;
+  inset: auto !important;
+  z-index: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.admin-brand-card .brand-theme-top,
+#brandPreviewTema .brand-theme-top {
+  padding-bottom: 0 !important;
+  margin-bottom: 14px !important;
+}
+
+.admin-brand-card .brand-theme-card,
+#brandPreviewTema .brand-theme-card {
+  margin: 0 !important;
+}
+
+.admin-brand-card .brand-admin-actions {
+  margin-top: 18px !important;
+}
+
+.admin-brand-card .brand-admin-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(220px, 1fr)) !important;
+  gap: 16px !important;
+}
+
+.admin-brand-card .brand-preview {
+  overflow: hidden !important;
+}
+
+.admin-brand-card .brand-preview img {
+  max-width: 200px !important;
+  height: 54px !important;
+  object-fit: contain !important;
+}
+
+@media (max-width: 980px) {
+  .admin-brand-card .brand-color-editor {
+    grid-template-columns: repeat(2, minmax(130px, 1fr)) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-brand-card .brand-admin-grid,
+  .admin-brand-card .brand-color-editor {
+    grid-template-columns: 1fr !important;
+  }
+}
