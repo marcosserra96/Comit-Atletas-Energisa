@@ -8546,3 +8546,397 @@ body.dark-mode #listaEvasaoCorrida.inactivity-list li {
     min-height: 0 !important;
   }
 }
+
+/* =====================================================
+   V59 - QA Navegado: disposição final, anti-overflow e consistência
+   Ajustes focados em evitar buracos, sobreposições e textos espremidos.
+   ===================================================== */
+
+/* Base anti-estouro para cards, grids e textos longos */
+#estrategico *,
+#sub-dados *,
+.modal *,
+.ficha-modal-shell * {
+  box-sizing: border-box;
+}
+
+#estrategico .analysis-card,
+#sub-dados .admin-panel-card,
+#sub-dados .admin-kpi-card,
+.card,
+.modal-content,
+.ficha-modal-shell {
+  min-width: 0 !important;
+}
+
+#estrategico .analysis-card-header,
+#sub-dados .admin-panel-header {
+  gap: 10px !important;
+}
+
+#estrategico .analysis-card-header h3,
+#estrategico .analysis-card-header p,
+#sub-dados .admin-panel-header h3,
+#sub-dados .admin-panel-header p,
+.perf-row span,
+.perf-row strong,
+.podium-athlete strong,
+.podium-athlete em,
+.inactivity-list li,
+.events-agenda-list * {
+  min-width: 0 !important;
+}
+
+/* Estratégico: layout intencional sem card solto.
+   Linha 1: engajamento em largura total.
+   Linha 2: performance + eventos.
+   Linha 3: pódio + radar. */
+#estrategico .strategic-analysis-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  grid-auto-flow: row !important;
+  align-items: start !important;
+  gap: 18px !important;
+}
+
+#estrategico .strategic-analysis-grid > .analysis-card {
+  align-self: stretch !important;
+  height: auto !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Engajamento por modalidade vira faixa de leitura rápida */
+#estrategico .strategic-analysis-grid > .analysis-card:has(.modality-engagement-list) {
+  grid-column: 1 / -1 !important;
+}
+
+#estrategico .modality-engagement-list {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+}
+
+#estrategico .modality-engagement {
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Performance: evita quebra feia em “Top atleta” e nomes longos */
+#estrategico .performance-compare {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+
+#estrategico .performance-compare > div {
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+  overflow: hidden !important;
+}
+
+#estrategico .perf-row {
+  display: grid !important;
+  grid-template-columns: minmax(92px, .9fr) minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-height: 34px !important;
+}
+
+#estrategico .perf-row span {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+#estrategico .perf-row strong {
+  max-width: none !important;
+  justify-self: end !important;
+  text-align: right !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  white-space: normal !important;
+  line-height: 1.15 !important;
+  overflow: hidden !important;
+}
+
+/* Eventos: botão e card sempre contidos */
+#estrategico .events-card {
+  min-height: 100% !important;
+}
+
+#listaEventosAgenda .agenda-card-event,
+#listaEventosAgenda .agenda-item {
+  grid-template-columns: 64px minmax(0, 1fr) !important;
+  padding: 12px !important;
+}
+
+#listaEventosAgenda .agenda-data {
+  width: 58px !important;
+  min-width: 58px !important;
+  height: 58px !important;
+}
+
+#listaEventosAgenda .agenda-title-row {
+  grid-template-columns: minmax(0, 1fr) 30px !important;
+}
+
+#listaEventosAgenda .btn-icon,
+#listaEventosAgenda button {
+  max-width: 34px !important;
+  overflow: hidden !important;
+}
+
+/* Pódio: remove aparência de card cortado e protege nome/badge */
+#estrategico .podium-card,
+#estrategico .radar-card {
+  min-height: 380px !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+#estrategico .podium-card .podium-split,
+#estrategico .radar-card .radar-columns {
+  flex: 1 1 auto !important;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+}
+
+#estrategico .podium-card .podium-list {
+  gap: 9px !important;
+}
+
+#estrategico .podium-card .podium-rank,
+#estrategico .podium-card .podium-list li.podium-rank {
+  grid-template-columns: 30px minmax(0, 1fr) 32px !important;
+  gap: 10px !important;
+  min-height: 64px !important;
+  padding: 10px 12px !important;
+  overflow: hidden !important;
+  align-items: center !important;
+}
+
+#estrategico .podium-card .podium-rank-1,
+#estrategico .podium-card .podium-list li.podium-rank-1 {
+  min-height: 76px !important;
+}
+
+#estrategico .podium-card .podium-athlete {
+  overflow: visible !important;
+  padding-right: 2px !important;
+}
+
+#estrategico .podium-card .podium-athlete strong {
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+  white-space: normal !important;
+  line-height: 1.12 !important;
+  max-height: 2.35em !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  word-break: normal !important;
+  hyphens: none !important;
+}
+
+#estrategico .podium-card .podium-athlete em {
+  max-width: 100% !important;
+  display: block !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+#estrategico .podium-card .podium-score {
+  position: static !important;
+  justify-self: end !important;
+  align-self: center !important;
+  z-index: 1 !important;
+}
+
+/* Radar: mesma largura do pódio, lista compacta e sem “vermelhão” */
+#estrategico .radar-card .radar-columns > div {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+#estrategico .radar-card .inactivity-list {
+  flex: 1 1 auto !important;
+  max-height: 260px !important;
+  padding-right: 4px !important;
+}
+
+#estrategico .radar-card .inactivity-list li {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 8px !important;
+  align-items: center !important;
+}
+
+#estrategico .radar-card .inactivity-list li strong,
+#estrategico .radar-card .inactivity-list li span:first-child {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+#estrategico .radar-card .inactivity-list li small {
+  max-width: 96px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Admin: layout por áreas, reduz buracos e evita preview sobrepondo campos */
+#sub-dados .admin-control-layout {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  grid-template-areas:
+    "saude informativo"
+    "acessos acessos"
+    "identidade identidade"
+    "manutencao manutencao" !important;
+  align-items: start !important;
+  gap: 18px !important;
+}
+
+#sub-dados .admin-check-card { grid-area: saude !important; }
+#sub-dados .admin-control-layout > .admin-panel-card:nth-of-type(2) { grid-area: informativo !important; }
+#sub-dados .admin-control-layout > .admin-panel-card:nth-of-type(3) { grid-area: acessos !important; }
+#sub-dados .admin-brand-card { grid-area: identidade !important; grid-column: auto !important; }
+#sub-dados .admin-danger-compact { grid-area: manutencao !important; grid-column: auto !important; }
+
+#sub-dados .admin-panel-header {
+  min-height: 0 !important;
+}
+
+#sub-dados .admin-brand-card .brand-editor-layout {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px) !important;
+  gap: 18px !important;
+  align-items: start !important;
+}
+
+#sub-dados .admin-brand-card .brand-color-editor {
+  grid-template-columns: repeat(2, minmax(150px, 1fr)) !important;
+}
+
+#sub-dados .admin-brand-card .brand-theme-preview,
+#sub-dados #brandPreviewTema.brand-theme-preview {
+  position: static !important;
+  top: auto !important;
+  align-self: start !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  z-index: 0 !important;
+}
+
+#sub-dados .admin-brand-card .brand-admin-actions {
+  border-top: 1px solid rgba(0,155,193,.10) !important;
+  padding-top: 14px !important;
+}
+
+#sub-dados .admin-danger-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+#sub-dados .admin-danger-actions .btn-danger-soft {
+  min-width: 0 !important;
+  width: 100% !important;
+  justify-content: flex-start !important;
+}
+
+/* Modais: rodapé sem cobrir conteúdo e controles sem estourar */
+.modal-content {
+  max-width: min(780px, calc(100vw - 28px)) !important;
+  max-height: calc(100vh - 36px) !important;
+  overflow: auto !important;
+}
+
+.modal-content .modal-actions,
+.ficha-modal-footer {
+  margin-top: 18px !important;
+  padding-top: 12px !important;
+  border-top: 1px solid rgba(0,155,193,.10) !important;
+}
+
+.modal-content select,
+.modal-content input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+.modal-content textarea {
+  max-width: 100% !important;
+}
+
+/* Tema escuro: contraste e coerência em cards internos */
+body[data-theme="dark"] #estrategico .performance-compare > div,
+body[data-theme="dark"] #estrategico .podium-card .podium-split > div,
+body[data-theme="dark"] #estrategico .radar-card .radar-columns > div,
+body[data-theme="dark"] #listaEventosAgenda .agenda-card-event,
+body[data-theme="dark"] #listaEventosAgenda .agenda-item,
+[data-theme="dark"] #estrategico .performance-compare > div,
+[data-theme="dark"] #estrategico .podium-card .podium-split > div,
+[data-theme="dark"] #estrategico .radar-card .radar-columns > div,
+[data-theme="dark"] #listaEventosAgenda .agenda-card-event,
+[data-theme="dark"] #listaEventosAgenda .agenda-item {
+  background: linear-gradient(145deg, rgba(255,255,255,.055), rgba(0,155,193,.055)) !important;
+  border-color: rgba(255,255,255,.10) !important;
+}
+
+body[data-theme="dark"] #estrategico .analysis-card-header p,
+body[data-theme="dark"] #estrategico .perf-row span,
+body[data-theme="dark"] #estrategico .podium-athlete em,
+body[data-theme="dark"] #estrategico .radar-card .inactivity-list li small,
+[data-theme="dark"] #estrategico .analysis-card-header p,
+[data-theme="dark"] #estrategico .perf-row span,
+[data-theme="dark"] #estrategico .podium-athlete em,
+[data-theme="dark"] #estrategico .radar-card .inactivity-list li small {
+  color: rgba(255,255,255,.68) !important;
+}
+
+/* Responsivo/tablet: empilha sem sobras artificiais */
+@media (max-width: 1180px) {
+  #estrategico .strategic-analysis-grid,
+  #sub-dados .admin-control-layout {
+    grid-template-columns: 1fr !important;
+    grid-template-areas: none !important;
+  }
+
+  #estrategico .strategic-analysis-grid > .analysis-card:has(.modality-engagement-list),
+  #sub-dados .admin-check-card,
+  #sub-dados .admin-brand-card,
+  #sub-dados .admin-danger-compact {
+    grid-column: auto !important;
+    grid-area: auto !important;
+  }
+
+  #sub-dados .admin-control-layout > .admin-panel-card {
+    grid-area: auto !important;
+  }
+
+  #sub-dados .admin-brand-card .brand-editor-layout {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 780px) {
+  #estrategico .modality-engagement-list,
+  #estrategico .performance-compare,
+  #estrategico .podium-card .podium-split,
+  #estrategico .radar-card .radar-columns,
+  #sub-dados .admin-brand-card .brand-color-editor,
+  #sub-dados .admin-danger-actions {
+    grid-template-columns: 1fr !important;
+  }
+
+  #estrategico .podium-card,
+  #estrategico .radar-card {
+    min-height: 0 !important;
+  }
+
+  #estrategico .perf-row {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+  }
+}
