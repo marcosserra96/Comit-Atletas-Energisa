@@ -8243,3 +8243,306 @@ body.dark-mode .podium-split > div {
     grid-template-columns: 1fr !important;
   }
 }
+
+/* =====================================================
+   V58 - Reorganização final de disposição
+   Preenche buracos no dashboard, leva eventos para o grid
+   estratégico e deixa Radar com o mesmo peso visual do Pódio.
+   Também compacta o Admin em faixas mais equilibradas.
+===================================================== */
+
+/* Dashboard estratégico sem buracos: 3 linhas equilibradas em desktop */
+#estrategico .strategic-analysis-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 18px !important;
+  align-items: stretch !important;
+  grid-auto-flow: row dense !important;
+}
+
+#estrategico .strategic-analysis-grid > .analysis-card {
+  min-width: 0 !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+}
+
+#estrategico .analysis-wide {
+  grid-row: auto !important;
+  grid-column: auto !important;
+}
+
+#estrategico .analysis-card-header.compact {
+  min-height: 68px !important;
+  display: block !important;
+}
+
+#estrategico .analysis-card-header h3 {
+  min-width: 0 !important;
+  white-space: normal !important;
+}
+
+#estrategico .analysis-card-header p {
+  margin-top: 4px !important;
+  min-height: 18px !important;
+}
+
+/* Performance + Eventos: mesma presença visual na segunda linha */
+#estrategico .performance-compare,
+#estrategico .events-agenda-list {
+  flex: 1 1 auto !important;
+}
+
+#estrategico .events-card {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+#estrategico .events-agenda-list,
+#listaEventosAgenda.events-agenda-list {
+  display: grid !important;
+  gap: 12px !important;
+  align-content: start !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+}
+
+#estrategico .events-add-button {
+  width: 100% !important;
+  justify-content: center !important;
+  margin-top: auto !important;
+  min-height: 42px !important;
+  border-style: dashed !important;
+}
+
+/* Agenda com visual coerente e sem elementos invadindo */
+#listaEventosAgenda .agenda-card-event,
+#listaEventosAgenda .agenda-item {
+  display: grid !important;
+  grid-template-columns: 70px minmax(0, 1fr) !important;
+  gap: 14px !important;
+  align-items: center !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 78px !important;
+  padding: 14px !important;
+  border-radius: 18px !important;
+  overflow: hidden !important;
+}
+
+#listaEventosAgenda .agenda-data {
+  width: 64px !important;
+  min-width: 64px !important;
+  height: 62px !important;
+  border-radius: 15px !important;
+}
+
+#listaEventosAgenda .agenda-info,
+#listaEventosAgenda .agenda-title-row,
+#listaEventosAgenda .agenda-info h4,
+#listaEventosAgenda .agenda-info p {
+  min-width: 0 !important;
+}
+
+#listaEventosAgenda .agenda-title-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 34px !important;
+  gap: 8px !important;
+  align-items: center !important;
+}
+
+#listaEventosAgenda .agenda-info h4,
+#listaEventosAgenda .agenda-info p {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* Pódio e Radar com mesmo peso visual */
+#estrategico .podium-card,
+#estrategico .radar-card {
+  min-height: 360px !important;
+}
+
+#estrategico .podium-card .podium-split,
+#estrategico .radar-card .radar-columns {
+  flex: 1 1 auto !important;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 16px !important;
+  min-width: 0 !important;
+  align-items: stretch !important;
+}
+
+#estrategico .radar-card .radar-columns > div,
+#estrategico .podium-card .podium-split > div {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  padding: 14px !important;
+  border-radius: 20px !important;
+  background:
+    radial-gradient(circle at 95% 0%, rgba(0,155,193,.08), transparent 38%),
+    rgba(0,155,193,.035) !important;
+  border: 1px solid rgba(0,155,193,.11) !important;
+}
+
+#estrategico .radar-card h4,
+#estrategico .podium-card h4 {
+  width: fit-content !important;
+  max-width: 100% !important;
+  margin: 0 0 10px !important;
+  padding: 7px 12px !important;
+  border-radius: 999px !important;
+  background: var(--bg-card) !important;
+  border: 1px solid rgba(0,155,193,.14) !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+#listaEvasaoBike.inactivity-list,
+#listaEvasaoCorrida.inactivity-list,
+#estrategico .radar-card .inactivity-list {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: grid !important;
+  gap: 8px !important;
+  max-height: 238px !important;
+  overflow: auto !important;
+  scrollbar-width: thin !important;
+}
+
+#listaEvasaoBike.inactivity-list li,
+#listaEvasaoCorrida.inactivity-list li,
+#estrategico .radar-card .inactivity-list li {
+  min-height: 44px !important;
+  padding: 9px 10px !important;
+  border-radius: 14px !important;
+  background: rgba(230,57,70,.055) !important;
+  border: 1px solid rgba(230,57,70,.12) !important;
+}
+
+#listaEvasaoBike.inactivity-list li small,
+#listaEvasaoCorrida.inactivity-list li small {
+  max-width: 112px !important;
+}
+
+/* Tema escuro: elimina cards claros e excesso de vermelho */
+[data-theme="dark"] #estrategico .radar-card .radar-columns > div,
+[data-theme="dark"] #estrategico .podium-card .podium-split > div,
+body.dark-mode #estrategico .radar-card .radar-columns > div,
+body.dark-mode #estrategico .podium-card .podium-split > div {
+  background:
+    radial-gradient(circle at 95% 0%, rgba(0,155,193,.14), transparent 40%),
+    rgba(255,255,255,.035) !important;
+  border-color: rgba(255,255,255,.10) !important;
+}
+
+[data-theme="dark"] #listaEvasaoBike.inactivity-list li,
+[data-theme="dark"] #listaEvasaoCorrida.inactivity-list li,
+body.dark-mode #listaEvasaoBike.inactivity-list li,
+body.dark-mode #listaEvasaoCorrida.inactivity-list li {
+  background: rgba(230,57,70,.075) !important;
+  border-color: rgba(230,57,70,.18) !important;
+}
+
+/* Admin: grid sem buracos grandes e cards com alturas coerentes */
+#sub-dados .admin-control-layout {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 18px !important;
+  align-items: stretch !important;
+  grid-auto-flow: row dense !important;
+}
+
+#sub-dados .admin-panel-card {
+  min-width: 0 !important;
+  height: 100% !important;
+  margin: 0 !important;
+}
+
+#sub-dados .admin-brand-card,
+#sub-dados .admin-danger-compact {
+  grid-column: span 2 !important;
+}
+
+#sub-dados .admin-panel-header {
+  min-height: 70px !important;
+  align-items: flex-start !important;
+}
+
+#sub-dados .admin-kpi-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+
+#sub-dados .admin-kpi-card {
+  min-width: 0 !important;
+  height: 100% !important;
+}
+
+#sub-dados .admin-config-grid.admin-config-grid-wide {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+#sub-dados .admin-config-checks {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px 12px !important;
+}
+
+#sub-dados .admin-brand-card .brand-editor-layout {
+  grid-template-columns: minmax(0, 1.05fr) minmax(360px, .95fr) !important;
+  align-items: start !important;
+}
+
+#sub-dados .admin-brand-card .brand-theme-preview,
+#sub-dados #brandPreviewTema.brand-theme-preview {
+  grid-template-columns: 1fr !important;
+  align-self: start !important;
+  position: sticky !important;
+  top: 86px !important;
+}
+
+/* Responsivo: empilha sem buracos */
+@media (max-width: 1180px) {
+  #estrategico .strategic-analysis-grid,
+  #sub-dados .admin-control-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  #sub-dados .admin-brand-card,
+  #sub-dados .admin-danger-compact {
+    grid-column: auto !important;
+  }
+
+  #sub-dados .admin-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  #sub-dados .admin-brand-card .brand-editor-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  #sub-dados .admin-brand-card .brand-theme-preview,
+  #sub-dados #brandPreviewTema.brand-theme-preview {
+    position: static !important;
+  }
+}
+
+@media (max-width: 760px) {
+  #estrategico .performance-compare,
+  #estrategico .podium-card .podium-split,
+  #estrategico .radar-card .radar-columns,
+  #sub-dados .admin-config-grid.admin-config-grid-wide,
+  #sub-dados .admin-config-checks,
+  #sub-dados .admin-kpi-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  #estrategico .podium-card,
+  #estrategico .radar-card {
+    min-height: 0 !important;
+  }
+}
