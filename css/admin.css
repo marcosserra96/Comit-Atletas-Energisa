@@ -7756,3 +7756,490 @@ body.dark-mode .podium-card .podium-rank-1 .podium-athlete em {
 .modal-informativo-note-config span {
   min-width: 0;
 }
+
+/* =======================================================
+   V57 - Refinamento final de disposição e anti-sobreposição
+   Objetivo: corrigir espaços vazios, alinhamentos, cortes e áreas que invadem outras.
+======================================================= */
+:root {
+  --layout-gap: 18px;
+  --card-pad: 18px;
+  --radius-xl: 22px;
+}
+
+/* Base anti-estouro */
+*, *::before, *::after { box-sizing: border-box; }
+main, section, .card, .analysis-card, .admin-panel-card, .modal-content, .ficha-modal-shell { min-width: 0; }
+img, svg, canvas { max-width: 100%; }
+
+/* Respiro inferior consistente para o menu flutuante */
+main,
+.admin-main,
+.app-main,
+#conteudoPrincipal {
+  padding-bottom: clamp(96px, 10vh, 132px) !important;
+}
+
+/* Cabeçalhos de cards mais previsíveis */
+.analysis-card,
+.admin-panel-card,
+.card {
+  overflow: hidden;
+}
+.analysis-card-header,
+.admin-panel-header,
+.card-header {
+  min-width: 0 !important;
+}
+.analysis-card-header h3,
+.admin-panel-header h3,
+.card-header h3 {
+  min-width: 0 !important;
+  line-height: 1.18 !important;
+}
+.analysis-card-header p,
+.admin-panel-header p,
+.card-header p {
+  max-width: 720px;
+  line-height: 1.45 !important;
+}
+
+/* Grid estratégico: melhora alinhamento e reduz buracos */
+.strategic-analysis-grid {
+  display: grid !important;
+  grid-template-columns: minmax(420px, 1fr) minmax(420px, 1fr) !important;
+  gap: var(--layout-gap) !important;
+  align-items: stretch !important;
+  grid-auto-flow: row dense !important;
+}
+.strategic-analysis-grid > .analysis-card {
+  height: 100% !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 14px !important;
+}
+.analysis-card-header {
+  flex: 0 0 auto !important;
+  min-height: 0 !important;
+  margin-bottom: 0 !important;
+}
+.analysis-card > :not(.analysis-card-header) {
+  min-width: 0 !important;
+}
+
+/* Performance por modalidade: remove cara de tabela apertada */
+.performance-compare {
+  width: 100% !important;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+  align-items: stretch !important;
+}
+.performance-compare > div {
+  min-width: 0 !important;
+  height: 100% !important;
+  padding: 16px !important;
+  border-radius: 18px !important;
+}
+.performance-compare h4 {
+  margin: 0 0 14px 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  max-width: 100% !important;
+}
+.perf-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(54px, auto) !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-height: 34px !important;
+}
+.perf-row span,
+.perf-row strong {
+  min-width: 0 !important;
+}
+.perf-row strong {
+  max-width: 180px !important;
+  justify-self: end !important;
+  text-align: right !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* Pódio: grid real, sem badge invadir nome e sem blocos cortando */
+.podium-card .podium-split {
+  width: 100% !important;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 16px !important;
+  align-items: stretch !important;
+}
+.podium-card .podium-split > div {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+.podium-card .podium-split h4 {
+  width: fit-content !important;
+  max-width: 100% !important;
+  margin: 0 0 10px !important;
+  padding: 8px 13px !important;
+  border-radius: 999px !important;
+  background: rgba(0,155,193,.07) !important;
+  border: 1px solid rgba(0,155,193,.12) !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+.podium-card .podium-list {
+  display: grid !important;
+  grid-template-rows: repeat(3, minmax(72px, auto)) !important;
+  gap: 10px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+.podium-card .podium-list li,
+.podium-card .podium-list li.podium-rank,
+#listaPodioBike > li,
+#listaPodioCorrida > li {
+  display: grid !important;
+  grid-template-columns: 42px minmax(0, 1fr) 40px !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-height: 72px !important;
+  width: 100% !important;
+  padding: 12px 12px !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  border-bottom: 0 !important;
+}
+.podium-card .podium-list li.podium-rank-1 {
+  min-height: 80px !important;
+}
+.podium-card .podium-medal {
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  justify-self: center !important;
+  overflow: visible !important;
+}
+.podium-card .podium-athlete {
+  min-width: 0 !important;
+  width: 100% !important;
+  display: grid !important;
+  gap: 4px !important;
+  align-content: center !important;
+  overflow: hidden !important;
+}
+.podium-card .podium-athlete strong {
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: normal !important;
+  line-height: 1.16 !important;
+  max-height: 2.35em !important;
+  padding-right: 0 !important;
+}
+.podium-card .podium-athlete em {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  line-height: 1.15 !important;
+}
+.podium-card .podium-score {
+  width: 38px !important;
+  height: 34px !important;
+  min-width: 38px !important;
+  justify-self: end !important;
+  align-self: center !important;
+  z-index: 1 !important;
+}
+.podium-card .podium-empty {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 72px !important;
+  border: 1px dashed var(--border) !important;
+  border-radius: 16px !important;
+  color: var(--text-light) !important;
+}
+
+/* Radar e eventos: evita chips, botões e textos invadindo */
+.inactivity-grid,
+.inactivity-columns,
+.radar-inatividade-grid {
+  min-width: 0 !important;
+}
+#listaEvasaoBike li,
+#listaEvasaoCorrida li,
+.inactivity-list li {
+  min-width: 0 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 8px !important;
+  overflow: hidden !important;
+}
+#listaEvasaoBike li > *,
+#listaEvasaoCorrida li > *,
+.inactivity-list li > * {
+  min-width: 0 !important;
+}
+#listaEvasaoBike li small,
+#listaEvasaoCorrida li small,
+.inactivity-list li small {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 120px !important;
+}
+#listaEventosAgenda {
+  display: grid !important;
+  gap: 12px !important;
+}
+#listaEventosAgenda .agenda-item,
+#listaEventosAgenda .agenda-card-event {
+  display: grid !important;
+  grid-template-columns: 74px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 14px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+#listaEventosAgenda .agenda-data {
+  width: 74px !important;
+  min-width: 74px !important;
+  height: 64px !important;
+  display: grid !important;
+  place-items: center !important;
+}
+#listaEventosAgenda .agenda-info,
+#listaEventosAgenda .agenda-title-row {
+  min-width: 0 !important;
+  width: 100% !important;
+}
+#listaEventosAgenda .agenda-title-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+#listaEventosAgenda .agenda-info h4 {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+#listaEventosAgenda .agenda-info p {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+#listaEventosAgenda .agenda-action {
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+}
+
+/* Identidade visual admin: layout em faixas, sem sobreposição, sem espaço perdido */
+.admin-brand-card {
+  display: grid !important;
+  gap: 18px !important;
+  overflow: visible !important;
+}
+.admin-brand-card .brand-admin-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(220px, 1fr)) !important;
+  gap: 14px !important;
+  align-items: stretch !important;
+  margin: 0 !important;
+}
+.admin-brand-card .brand-preview {
+  min-width: 0 !important;
+  min-height: 164px !important;
+  display: grid !important;
+  grid-template-rows: auto 1fr auto !important;
+  gap: 12px !important;
+}
+.admin-brand-card .brand-preview img {
+  max-width: 220px !important;
+  width: min(100%, 220px) !important;
+  height: 64px !important;
+  object-fit: contain !important;
+  object-position: left center !important;
+  align-self: center !important;
+}
+.admin-brand-card .brand-editor-layout {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 16px !important;
+  align-items: start !important;
+  width: 100% !important;
+  margin: 0 !important;
+}
+.admin-brand-card .brand-color-editor {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(128px, 1fr)) !important;
+  gap: 12px !important;
+  width: 100% !important;
+}
+.admin-brand-card .brand-color-editor label {
+  min-width: 0 !important;
+  min-height: 86px !important;
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  grid-template-rows: auto 40px !important;
+  align-content: start !important;
+  gap: 8px !important;
+  overflow: hidden !important;
+}
+.admin-brand-card .brand-color-editor input[type="color"] {
+  width: 100% !important;
+  height: 40px !important;
+}
+.admin-brand-card .brand-theme-preview,
+#brandPreviewTema.brand-theme-preview {
+  position: static !important;
+  transform: none !important;
+  inset: auto !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: 190px minmax(0, 1fr) !important;
+  gap: 14px !important;
+  align-items: stretch !important;
+  padding: 14px !important;
+  margin: 0 !important;
+  z-index: 0 !important;
+}
+.admin-brand-card .brand-theme-top {
+  grid-column: 1 / -1 !important;
+}
+.admin-brand-card .brand-theme-card {
+  margin: 0 !important;
+  min-width: 0 !important;
+}
+.admin-brand-card .brand-theme-preview code {
+  align-self: end !important;
+  min-width: 0 !important;
+  overflow-wrap: anywhere !important;
+}
+.admin-brand-card .brand-admin-actions {
+  display: flex !important;
+  gap: 12px !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  margin: 0 !important;
+}
+.admin-brand-card .brand-note-box {
+  margin: 0 !important;
+}
+
+/* Formulários e modais: rodapé e controles não sobrepõem conteúdo */
+.modal-content,
+.modal-card,
+.modal-panel {
+  max-height: min(88vh, 820px) !important;
+  overflow: auto !important;
+  overscroll-behavior: contain !important;
+}
+.modal-content select,
+.modal-content input,
+.modal-content textarea,
+.card select,
+.card input,
+.card textarea {
+  min-width: 0 !important;
+}
+.modal-content .form-grid,
+.card .form-grid {
+  align-items: end !important;
+}
+
+/* Dark mode QA: evita cards claros em áreas escuras */
+[data-theme="dark"] #listaEventosAgenda .agenda-card-event,
+body.dark-mode #listaEventosAgenda .agenda-card-event {
+  background: rgba(255,255,255,.045) !important;
+  border-color: rgba(255,255,255,.10) !important;
+  color: var(--text) !important;
+}
+[data-theme="dark"] #listaEventosAgenda .agenda-info p,
+body.dark-mode #listaEventosAgenda .agenda-info p {
+  color: rgba(255,255,255,.70) !important;
+}
+[data-theme="dark"] .performance-compare > div,
+[data-theme="dark"] .podium-split > div,
+body.dark-mode .performance-compare > div,
+body.dark-mode .podium-split > div {
+  background: rgba(255,255,255,.035) !important;
+  border-color: rgba(255,255,255,.10) !important;
+}
+
+@media (min-width: 1320px) {
+  .strategic-analysis-grid {
+    grid-template-columns: minmax(500px, 1fr) minmax(500px, 1fr) !important;
+  }
+}
+
+@media (max-width: 1180px) {
+  .strategic-analysis-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .admin-brand-card .brand-color-editor {
+    grid-template-columns: repeat(3, minmax(130px, 1fr)) !important;
+  }
+}
+
+@media (max-width: 860px) {
+  .performance-compare,
+  .podium-card .podium-split,
+  .admin-brand-card .brand-admin-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .admin-brand-card .brand-color-editor {
+    grid-template-columns: repeat(2, minmax(130px, 1fr)) !important;
+  }
+  .admin-brand-card .brand-theme-preview,
+  #brandPreviewTema.brand-theme-preview {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 620px) {
+  .analysis-card,
+  .admin-panel-card,
+  .card {
+    padding: 16px !important;
+    border-radius: 20px !important;
+  }
+  #listaEventosAgenda .agenda-item,
+  #listaEventosAgenda .agenda-card-event {
+    grid-template-columns: 58px minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+  #listaEventosAgenda .agenda-data {
+    width: 58px !important;
+    min-width: 58px !important;
+    height: 58px !important;
+  }
+  .podium-card .podium-list li,
+  .podium-card .podium-list li.podium-rank,
+  #listaPodioBike > li,
+  #listaPodioCorrida > li {
+    grid-template-columns: 34px minmax(0, 1fr) 36px !important;
+    gap: 8px !important;
+    padding: 11px !important;
+  }
+  .admin-brand-card .brand-color-editor {
+    grid-template-columns: 1fr !important;
+  }
+}
