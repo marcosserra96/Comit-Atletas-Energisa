@@ -838,6 +838,24 @@ function setupAtletasConsulta() {
     el.addEventListener("change", renderAtletasConsulta);
   });
 
+  document.querySelectorAll("#toggleVisualAtletas .view-toggle-btn").forEach(btn => {
+    if (btn.dataset.listenerAplicado) return;
+    btn.dataset.listenerAplicado = "1";
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("#toggleVisualAtletas .view-toggle-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      localStorage.setItem("atletasConsultaView", btn.dataset.view || "cards");
+      renderAtletasConsulta();
+    });
+  });
+
+  const viewSalva = localStorage.getItem("atletasConsultaView") || "cards";
+  const btnViewSalva = document.querySelector(`#toggleVisualAtletas .view-toggle-btn[data-view="${viewSalva}"]`);
+  if (btnViewSalva) {
+    document.querySelectorAll("#toggleVisualAtletas .view-toggle-btn").forEach(b => b.classList.remove("active"));
+    btnViewSalva.classList.add("active");
+  }
+
   const busca = document.getElementById("buscaGlobalAtleta");
   const resultados = document.getElementById("resultadoBuscaGlobal");
 
@@ -898,16 +916,59 @@ function renderAtletasConsulta() {
     return;
   }
 
-  grid.innerHTML = atletas.map(a => criarCardAtleta(a)).join("");
+  const view = document.querySelector("#toggleVisualAtletas .view-toggle-btn.active")?.dataset.view || localStorage.getItem("atletasConsultaView") || "cards";
 
-  grid.querySelectorAll(".athlete-card-premium").forEach(card => {
-    card.addEventListener("click", (e) => {
-      e.preventDefault();
-      abrirFichaAtleta(card.dataset.id);
+  if (view === "lista") {
+    grid.classList.add("athlete-list-mode");
+    grid.innerHTML = criarTabelaAtletasConsulta(atletas);
+    grid.querySelectorAll(".athlete-list-row").forEach(row => {
+      row.addEventListener("click", (e) => {
+        if (e.target.closest("button")) return;
+        abrirFichaAtleta(row.dataset.id);
+      });
     });
-  });
+    grid.querySelectorAll(".btn-ficha-lista-atleta").forEach(btn => {
+      btn.addEventListener("click", () => abrirFichaAtleta(btn.dataset.id));
+    });
+  } else {
+    grid.classList.remove("athlete-list-mode");
+    grid.innerHTML = atletas.map(a => criarCardAtleta(a)).join("");
+
+    grid.querySelectorAll(".athlete-card-premium").forEach(card => {
+      card.addEventListener("click", (e) => {
+        e.preventDefault();
+        abrirFichaAtleta(card.dataset.id);
+      });
+    });
+  }
 
   if(typeof lucide !== "undefined") lucide.createIcons();
+}
+
+function criarTabelaAtletasConsulta(atletas) {
+  const linhas = atletas.map(a => {
+    const ativo = a.ativo !== false;
+    const equipe = a.equipe || "Nenhuma";
+    const hist = (appState.historicoCompleto || []).filter(h => h.atletaId === a.id);
+    const eventos = new Set(hist.map(h => h.eventoId || h.loteId || `${h.dataTreino}|${h.descTreino}`)).size;
+    const kmTotal = calcularKmAtleta(a.id);
+    const ultimo = hist.length > 0 ? hist[0].dataTreino : "";
+    return `<tr class="athlete-list-row" data-id="${escapeAttr(a.id)}">
+      <td><strong>${escapeHtml(a.nome || "Sem nome")}</strong><small>${escapeHtml(a.email || a.localidade || "")}</small></td>
+      <td><span class="status-badge ${equipe === "Corrida" ? "run" : "bike"}">${escapeHtml(equipe)}</span></td>
+      <td>${Number(a.pontuacaoTotal) || 0}</td>
+      <td>${formatarKm(kmTotal)} km</td>
+      <td>${eventos}</td>
+      <td>${ultimo ? formatarDataCurta(ultimo) : "-"}</td>
+      <td><span class="status-badge ${ativo ? "active" : "inactive"}">${ativo ? "Ativo" : "Inativo"}</span></td>
+      <td><button type="button" class="btn-acao btn-compact btn-ficha-lista-atleta" data-id="${escapeAttr(a.id)}"><i data-lucide="id-card"></i> Ficha</button></td>
+    </tr>`;
+  }).join("");
+
+  return `<div class="athlete-list-wrapper tabela-container"><table class="tabela-simples athlete-list-table">
+    <thead><tr><th>Atleta</th><th>Equipe</th><th>Pontos</th><th>KM</th><th>Eventos</th><th>Último</th><th>Status</th><th>Ações</th></tr></thead>
+    <tbody>${linhas}</tbody>
+  </table></div>`;
 }
 
 function criarCardAtleta(a) {
@@ -2162,11 +2223,12 @@ function gerarModoApresentacao() {
   const alertas = todos.filter(a => atletaEstaEmAlerta(a, cfg));
   const eventos = (appState.cacheEventos || []).slice(0, 5);
   const blocoTop = (titulo, lista, icone) => `<div class="slide-card"><h3>${iconSvgInformativo(icone, "slide-svg-icon")}<span>${titulo}</span></h3>${lista.slice(0,3).map((a,i)=>`<div class="rank-row"><span class="rank-medal">${iconSvgInformativo(`medal${i+1}`, "slide-medal-icon")}</span><strong>${escapeHtml(a.nome)}</strong><em>${formatarNumero(a.pontosMes,0)} pts</em></div>`).join("") || "<p>Sem dados.</p>"}</div>`;
+  const logoApresentacao = new URL("assets/logos/logo-comite-branca.png", window.location.href).href;
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Modo apresentação - Atletas Energisa</title><style>
-  :root{--navy:#07192d;--cyan:#009bc1;--green:#00b37e;--orange:#f37021;--card:rgba(255,255,255,.08);--line:rgba(255,255,255,.16)}
-  *{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#041321;color:#fff;scroll-snap-type:y mandatory;overflow-y:auto} section{min-height:100vh;padding:48px 64px;scroll-snap-align:start;display:flex;flex-direction:column;justify-content:center;background:radial-gradient(circle at top left,rgba(0,155,193,.28),transparent 34%),var(--navy)}
-  .brand{display:flex;align-items:center;gap:20px;margin-bottom:34px}.brand img{width:210px;max-height:86px;object-fit:contain}.brand span{color:#bdd4e3;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.hero h1{font-size:58px;line-height:1;margin:0 0 12px}.hero p{font-size:22px;color:#c6d8e5;margin:0}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:34px}.kpi,.slide-card{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:24px;box-shadow:0 24px 60px rgba(0,0,0,.28)}.kpi span{color:#aac3d4;font-weight:800;text-transform:uppercase;font-size:13px}.kpi strong{display:block;font-size:42px;margin-top:10px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}.slide-card h3{font-size:30px;margin:0 0 18px;color:var(--cyan);display:flex;align-items:center;gap:10px}.slide-svg-icon{width:30px;height:30px}.slide-medal-icon{width:26px;height:26px}.rank-medal{display:inline-flex;align-items:center;justify-content:center}.rank-row{display:grid;grid-template-columns:44px 1fr 86px;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--line);font-size:20px}.rank-row em{text-align:right;font-style:normal;color:var(--cyan);font-weight:900}.alert-list{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.alert-list div{background:rgba(243,112,33,.14);border:1px solid rgba(243,112,33,.35);border-radius:14px;padding:12px 14px;color:#ffd3bd;font-weight:800}.event{padding:16px;border-bottom:1px solid var(--line);font-size:20px}.footer{margin-top:24px;color:#89a8bc;font-size:14px}@media(max-width:900px){section{padding:32px 22px}.hero h1{font-size:38px}.grid,.kpis,.alert-list{grid-template-columns:1fr}.brand img{width:160px}}</style></head><body>
-  <section class="hero"><div class="brand"><img src="assets/logos/logo-comite-branca.png" onerror="this.style.display='none'" alt="Atletas Energisa"><div><span>Modo apresentação</span><h1>Resumo do mês</h1><p>${escapeHtml(capitalizar(mesLabel))} · Comitê Atletas Energisa</p></div></div><div class="kpis"><div class="kpi"><span>Pontos</span><strong>${formatarNumero(totalPontos,0)}</strong></div><div class="kpi"><span>Treinos</span><strong>${formatarNumero(totalTreinos,0)}</strong></div><div class="kpi"><span>KM</span><strong>${formatarNumero(totalKm,1)}</strong></div><div class="kpi"><span>Alertas</span><strong>${alertas.length}</strong></div></div></section>
+  :root{--navy:#07192d;--cyan:#00a9c8;--green:#00b37e;--orange:#f37021;--card:rgba(255,255,255,.085);--line:rgba(255,255,255,.15)}
+  *{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#041321;color:#fff;scroll-snap-type:y mandatory;overflow-y:auto} section{min-height:100vh;padding:46px 64px;scroll-snap-align:start;display:flex;flex-direction:column;justify-content:center;background:radial-gradient(circle at top left,rgba(0,169,200,.30),transparent 35%),linear-gradient(135deg,#07192d,#061222 68%)}
+  .brand{display:flex;align-items:center;gap:18px;margin-bottom:34px}.brand img{width:190px;max-height:76px;object-fit:contain}.brand span{color:#bdd4e3;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.hero h1{font-size:56px;line-height:1;margin:0 0 12px}.hero p{font-size:22px;color:#c6d8e5;margin:0}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:34px}.kpi,.slide-card{background:var(--card);border:1px solid var(--line);border-radius:26px;padding:24px;box-shadow:0 24px 60px rgba(0,0,0,.28);backdrop-filter:blur(10px)}.kpi span{color:#aac3d4;font-weight:800;text-transform:uppercase;font-size:13px}.kpi strong{display:block;font-size:42px;margin-top:10px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}.slide-card h3{font-size:30px;margin:0 0 18px;color:var(--cyan);display:flex;align-items:center;gap:10px}.slide-svg-icon{width:30px;height:30px}.slide-medal-icon{width:26px;height:26px}.rank-medal{display:inline-flex;align-items:center;justify-content:center}.rank-row{display:grid;grid-template-columns:44px minmax(0,1fr) 86px;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--line);font-size:20px}.rank-row strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rank-row em{text-align:right;font-style:normal;color:var(--cyan);font-weight:900}.alert-list{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.alert-list div{background:rgba(243,112,33,.14);border:1px solid rgba(243,112,33,.35);border-radius:14px;padding:12px 14px;color:#ffd3bd;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.event{padding:16px;border-bottom:1px solid var(--line);font-size:20px}.footer{margin-top:24px;color:#89a8bc;font-size:14px}@media(max-width:900px){section{padding:32px 22px}.hero h1{font-size:38px}.grid,.kpis,.alert-list{grid-template-columns:1fr}.brand img{width:150px}}</style></head><body>
+  <section class="hero"><div class="brand"><img src="${logoApresentacao}" onerror="this.style.display='none'" alt="Atletas Energisa"><div><span>Modo apresentação</span><h1>Resumo do mês</h1><p>${escapeHtml(capitalizar(mesLabel))} · Comitê Atletas Energisa</p></div></div><div class="kpis"><div class="kpi"><span>Pontos</span><strong>${formatarNumero(totalPontos,0)}</strong></div><div class="kpi"><span>Treinos</span><strong>${formatarNumero(totalTreinos,0)}</strong></div><div class="kpi"><span>KM</span><strong>${formatarNumero(totalKm,1)}</strong></div><div class="kpi"><span>Alertas</span><strong>${alertas.length}</strong></div></div></section>
   <section><div class="grid">${blocoTop("Top 3 Bike", bike, "bike")}${blocoTop("Top 3 Corrida", corrida, "run")}</div></section>
   <section><div class="slide-card"><h3>${iconSvgInformativo("alert", "slide-svg-icon")}<span>Atletas em alerta</span></h3><div class="alert-list">${alertas.slice(0,20).map(a=>`<div>${escapeHtml(a.nome)} · ${formatarNumero(a.treinosMes,0)} treinos</div>`).join("") || "<p>Nenhum atleta em alerta pelo critério atual.</p>"}</div></div></section>
   <section><div class="slide-card"><h3>${iconSvgInformativo("calendar", "slide-svg-icon")}<span>Próximos eventos</span></h3>${eventos.map(e=>`<div class="event"><strong>${escapeHtml(e.titulo || "Evento")}</strong><br><span>${escapeHtml(e.data || "Sem data")} · ${escapeHtml(e.local || e.localidade || "Local não informado")}</span></div>`).join("") || "<p>Nenhum evento cadastrado.</p>"}<div class="footer">Use Page Down / barra de espaço ou role a tela para avançar.</div></div></section>
