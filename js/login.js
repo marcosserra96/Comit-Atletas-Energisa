@@ -147,12 +147,28 @@ const solicitarAcesso = async () => {
     document.getElementById("regEmail").value = "";
     document.getElementById("regPassword").value = "";
     alternarTela("login");
-  } catch (error) {
-    console.error("Erro ao solicitar acesso:", error);
-    const msg = error?.code === "auth/email-already-in-use"
-      ? "Este e-mail já possui cadastro. Tente fazer login ou solicite a aprovação do administrador."
-      : "Não foi possível enviar a solicitação. Verifique os dados e tente novamente.";
-    showToast(msg, "error");
+} catch (error) {
+  console.error("Erro ao solicitar acesso:", error);
+  let msg;
+  switch (error?.code) {
+    case "auth/email-already-in-use":
+      msg = "Este e-mail já possui cadastro. Tente fazer login ou peça aprovação ao administrador.";
+      break;
+    case "auth/invalid-email":   msg = "E-mail inválido. Confira o endereço."; break;
+    case "auth/weak-password":   msg = "Senha muito fraca (mínimo 6 caracteres)."; break;
+    case "auth/operation-not-allowed":
+      msg = "Cadastro por e-mail/senha está desativado no Firebase (Authentication → Sign-in method).";
+      break;
+    case "permission-denied":
+      msg = "Sem permissão para gravar a solicitação — ajuste as regras do Firestore.";
+      break;
+    default:
+      msg = "Falha ao enviar: " + (error?.code || error?.message || "erro desconhecido");
+  }
+  // se o Auth foi criado mas a gravação falhou, evita ficar logado como usuário órfão
+  try { await signOut(auth); } catch (_) {}
+  showToast(msg, "error");
+}
   } finally {
     btn.textContent = "Enviar Solicitação";
     btn.classList.remove("loading");
