@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Criar Admin Inicial</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #eef2f6;
+      margin: 0;
+      padding: 32px;
+      color: #102331;
+    }
+
+    .card {
+      max-width: 520px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 14px;
+      padding: 24px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.08);
+      border: 1px solid #e6ebf1;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 22px;
+    }
+
+    p {
+      color: #64748b;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    label {
+      display: block;
+      margin-top: 14px;
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    input {
+      width: 100%;
+      padding: 11px;
+      margin-top: 6px;
+      border-radius: 10px;
+      border: 1px solid #d9e1ea;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    button {
+      margin-top: 18px;
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      background: #009bc1;
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
+    button:hover {
+      background: #007f9d;
+    }
+
+    .status {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+
+    .ok {
+      background: #e9f7f0;
+      color: #0a6b4a;
+      border: 1px solid #c9ebdc;
+    }
+
+    .erro {
+      background: #fdeaec;
+      color: #b3252f;
+      border: 1px solid #f4cdd1;
+    }
+
+    .warn {
+      background: #fff4ec;
+      color: #92591a;
+      border: 1px solid #f3d9bd;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h1>Criar Admin Inicial</h1>
+
+    <p>
+      Use esta tela apenas uma vez para criar ou reconstruir o perfil admin
+      do usuário logado no Firebase Authentication.
+    </p>
+
+    <label>Nome</label>
+    <input id="nome" type="text" value="Marcos">
+
+    <label>Equipe</label>
+    <input id="equipe" type="text" value="Comitê">
+
+    <button id="btnCriar">Criar / reconstruir meu admin</button>
+
+    <div id="status" class="status warn">Verificando login...</div>
+  </div>
+
+  <script type="module">
+    import {
+      auth,
+      db,
+      doc,
+      setDoc,
+      getDoc,
+      onAuthStateChanged
+    } from "./js/firebase.js";
+
+    const $ = id => document.getElementById(id);
+    const statusEl = $("status");
+
+    let usuarioAtual = null;
+
+    function status(msg, tipo = "warn") {
+      statusEl.textContent = msg;
+      statusEl.className = "status " + tipo;
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        usuarioAtual = null;
+        status(
+          "Você não está logado.\n\nFaça login no portal primeiro e depois volte para esta tela.",
+          "erro"
+        );
+        return;
+      }
+
+      usuarioAtual = user;
+
+      try {
+        const ref = doc(db, "atletas", user.uid);
+        const snap = await getDoc(ref);
+
+        if (snap.exists()) {
+          const data = snap.data();
+
+          status(
+            `Logado como: ${user.email}\nUID: ${user.uid}\n\nDocumento atual encontrado:\nrole: ${data.role || "-"}\nstatus: ${data.status || "-"}\nativo: ${data.ativo === true}`,
+            data.role === "admin" ? "ok" : "warn"
+          );
+        } else {
+          status(
+            `Logado como: ${user.email}\nUID: ${user.uid}\n\nNenhum documento encontrado em atletas/${user.uid}.`,
+            "warn"
+          );
+        }
+      } catch (e) {
+        status("Erro ao verificar usuário:\n" + (e.code || e.message), "erro");
+      }
+    });
+
+    $("btnCriar").addEventListener("click", async () => {
+      if (!usuarioAtual) {
+        status("Você precisa estar logado para criar o admin.", "erro");
+        return;
+      }
+
+      const nome = $("nome").value.trim() || usuarioAtual.displayName || "Administrador";
+      const equipe = $("equipe").value.trim() || "Comitê";
+
+      if (!confirm(`Criar/reconstruir o admin para ${usuarioAtual.email}?`)) {
+        return;
+      }
+
+      try {
+        const ref = doc(db, "atletas", usuarioAtual.uid);
+
+        await setDoc(ref, {
+          email: usuarioAtual.email,
+          nome: nome,
+          role: "admin",
+          status: "Aprovado",
+          ativo: true,
+          equipe: equipe,
+          permissoes: [
+            "visao-geral",
+            "gestao",
+            "pontuacao",
+            "financeiro",
+            "relatorios",
+            "configuracoes"
+          ],
+          origemCadastro: "bootstrap_admin_html",
+          atualizadoEm: new Date().toISOString()
+        }, { merge: true });
+
+        status(
+          `Admin criado/reconstruído com sucesso.\n\nE-mail: ${usuarioAtual.email}\nUID: ${usuarioAtual.uid}\nrole: admin\nstatus: Aprovado`,
+          "ok"
+        );
+      } catch (e) {
+        status(
+          "Erro ao criar admin:\n" + (e.code || e.message) +
+          "\n\nSe aparecer permission-denied, você precisa aplicar a regra temporária de bootstrap.",
+          "erro"
+        );
+      }
+    });
+  </script>
+</body>
+</html>
