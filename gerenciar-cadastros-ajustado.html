@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gerenciar / Excluir cadastros — Atletas Energisa</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--teal:#009bc1;--teal-d:#007f9d;--ink:#102331;--muted:#64748b;--line:#e6ebf1;--red:#e63946;--green:#00b37e;--orange:#f37021}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Poppins",sans-serif;background:#eef2f6;color:var(--ink);padding:24px}
+  .wrap{max-width:980px;margin:0 auto}
+  h1{font-size:1.4rem;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:.88rem;margin:0 0 18px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
+  .status{font-size:.9rem;padding:10px 14px;border-radius:10px;margin-bottom:14px}
+  .status.ok{background:#e9f7f0;color:#0a6b4a;border:1px solid #c9ebdc}
+  .status.warn{background:#fff4ec;color:#b45309;border:1px solid #f6dcc4}
+  .status.err{background:#fdeaec;color:#b3252f;border:1px solid #f4cdd1}
+  .warn-box{background:#fff8f0;border:1px solid #f3d9bd;border-radius:10px;padding:13px;font-size:.83rem;color:#92591a;margin-bottom:14px}
+  button{font-family:inherit;font-weight:600;font-size:.88rem;border-radius:10px;padding:10px 16px;cursor:pointer;border:1.5px solid var(--line);background:#fff;color:var(--ink)}
+  button:hover{background:#f6f9fb}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .btn-primary{background:var(--teal);border-color:var(--teal);color:#fff}
+  .btn-danger{background:var(--red);border-color:var(--red);color:#fff}
+  .btn-orange{background:var(--orange);border-color:var(--orange);color:#fff}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+  .filtros{display:inline-flex;background:#f1f4f8;border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
+  .filtros button{border:0;background:transparent;padding:7px 12px;font-size:.82rem;color:var(--muted)}
+  .filtros button.active{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+  input[type=text]{font-family:inherit;padding:9px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:.88rem;flex:1;min-width:180px}
+  table{width:100%;border-collapse:collapse;font-size:.85rem}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+  th{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.04em}
+  .badge{font-size:.68rem;font-weight:600;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.03em}
+  .b-admin{background:#fdeaec;color:#b3252f}.b-comite{background:#e7f1fb;color:#1f6fb0}.b-atleta{background:#eef3f7;color:#5b6b7a}.b-sem{background:#fff4ec;color:#b45309}
+  .voce{font-size:.7rem;color:var(--muted);font-style:italic}
+  .barra-acao{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:16px;border-top:1px solid var(--line);padding-top:16px}
+  #log,#logAuditoria{font-size:.82rem;color:var(--muted);margin-top:10px;white-space:pre-wrap;line-height:1.45}
+  .hidden{display:none}
+  td.c{width:34px;text-align:center}
+  .grid-auditoria{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+  .mini{background:#f8fafc;border:1px solid var(--line);border-radius:12px;padding:12px}
+  .mini strong{display:block;font-size:.78rem;color:var(--muted);margin-bottom:4px}
+  .mini span{font-size:1.25rem;font-weight:700;color:var(--ink)}
+  @media(max-width:760px){.grid-auditoria{grid-template-columns:1fr}.wrap{max-width:100%}body{padding:14px}table{font-size:.78rem}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Gerenciar / Excluir cadastros</h1>
+  <p class="sub">Exclui o cadastro no Firestore e também o login real no Firebase Authentication.</p>
+
+  <div id="status" class="status warn">Verificando login…</div>
+
+  <div class="warn-box">
+    <strong>Atenção:</strong> exclusão é permanente. Faça backup antes. Você não consegue excluir o <strong>seu próprio</strong> usuário aqui.
+    A exclusão completa é feita por Cloud Function, porque o navegador não deve ter permissão direta para apagar usuários do Authentication.
+  </div>
+
+  <div class="card">
+    <div class="toolbar">
+      <button id="btnCarregar" class="btn-primary">Carregar cadastros</button>
+      <button id="btnAuditar" class="btn-orange">Verificar acessos admin</button>
+    </div>
+
+    <div id="auditoria" class="hidden">
+      <div class="grid-auditoria">
+        <div class="mini"><strong>Admins no Firestore</strong><span id="qtdAdminsFirestore">0</span></div>
+        <div class="mini"><strong>Admins sem Auth</strong><span id="qtdAdminsSemAuth">0</span></div>
+        <div class="mini"><strong>Auth sem documento</strong><span id="qtdAuthSemDoc">0</span></div>
+      </div>
+      <div id="logAuditoria"></div>
+    </div>
+
+    <div id="painel" class="hidden">
+      <div class="toolbar" style="margin-top:16px">
+        <div class="filtros" id="filtros">
+          <button data-f="todos" class="active">Todos</button>
+          <button data-f="atleta">Atletas</button>
+          <button data-f="comite">Comitê</button>
+          <button data-f="admin">Admin</button>
+        </div>
+        <input type="text" id="busca" placeholder="Buscar por nome ou e-mail…">
+        <button id="btnSelVis">Selecionar visíveis</button>
+        <button id="btnLimparSel">Limpar seleção</button>
+      </div>
+
+      <table>
+        <thead><tr><th class="c"></th><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Equipe</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+
+      <div class="barra-acao">
+        <span id="contagem" style="font-size:.85rem">0 selecionados</span>
+        <span style="flex:1"></span>
+        <span style="font-size:.83rem;color:var(--muted)">Digite <strong>APAGAR</strong>:</span>
+        <input type="text" id="confirma" placeholder="APAGAR" autocomplete="off" style="flex:0 0 130px;min-width:0">
+        <button id="btnApagar" class="btn-danger" disabled>Excluir selecionados</button>
+      </div>
+      <div id="log"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { db, auth, collection, getDocs, doc, getDoc, onAuthStateChanged, functions, httpsCallable }
+  from "./js/firebase.js";
+
+const $ = id => document.getElementById(id);
+const statusEl = $("status");
+let todos = [];
+let selecionados = new Set();
+let filtro = "todos";
+let meuUid = null;
+let souAdmin = false;
+
+const excluirCadastrosCompletos = httpsCallable(functions, "excluirCadastrosCompletos");
+const auditarAcessosAdmin = httpsCallable(functions, "auditarAcessosAdmin");
+
+const setStatus = (t, tipo) => { statusEl.textContent = t; statusEl.className = "status " + tipo; };
+const esc = v => String(v ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    setStatus("Você não está logado. Abra o portal nesta mesma janela, faça login como admin e recarregue esta página.", "err");
+    $("btnCarregar").disabled = true;
+    $("btnAuditar").disabled = true;
+    return;
+  }
+
+  meuUid = user.uid;
+
+  try {
+    const meu = await getDoc(doc(db, "atletas", user.uid));
+    const role = meu.exists() ? meu.data().role : "(sem documento)";
+    souAdmin = role === "admin";
+
+    if (souAdmin) {
+      setStatus(`Logado como ${user.email} — role: admin. Pode prosseguir.`, "ok");
+    } else {
+      setStatus(`Logado como ${user.email} — role: ${role}. Apenas admin pode excluir e auditar acessos.`, "warn");
+      $("btnCarregar").disabled = true;
+      $("btnAuditar").disabled = true;
+    }
+  } catch(e){
+    setStatus("Logado, mas não foi possível ler seu perfil: " + (e.code || e.message), "warn");
+  }
+});
+
+async function carregarCadastros() {
+  $("btnCarregar").disabled = true;
+  $("btnCarregar").textContent = "Carregando…";
+  try {
+    const snap = await getDocs(collection(db, "atletas"));
+    todos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    selecionados.clear();
+    $("painel").classList.remove("hidden");
+    $("btnCarregar").textContent = "Recarregar";
+    render();
+  } catch (e) {
+    setStatus("Erro ao carregar: " + (e.code || e.message), "err");
+  }
+  $("btnCarregar").disabled = false;
+}
+
+$("btnCarregar").addEventListener("click", carregarCadastros);
+
+$("btnAuditar").addEventListener("click", async () => {
+  $("btnAuditar").disabled = true;
+  $("btnAuditar").textContent = "Verificando…";
+  $("logAuditoria").textContent = "";
+
+  try {
+    const resp = await auditarAcessosAdmin();
+    const r = resp.data || {};
+    $("auditoria").classList.remove("hidden");
+    $("qtdAdminsFirestore").textContent = r.adminsFirestore?.length || 0;
+    $("qtdAdminsSemAuth").textContent = r.adminsSemAuth?.length || 0;
+    $("qtdAuthSemDoc").textContent = r.authSemDocumento?.length || 0;
+
+    const linhas = [];
+    linhas.push("ADMINS ENCONTRADOS NO FIRESTORE:");
+    (r.adminsFirestore || []).forEach(a => linhas.push(`• ${a.email || "sem e-mail"} | ${a.nome || "sem nome"} | uid: ${a.uid}`));
+
+    if ((r.adminsSemAuth || []).length) {
+      linhas.push("\nATENÇÃO — ADMIN NO FIRESTORE, MAS SEM USUÁRIO NO AUTH:");
+      r.adminsSemAuth.forEach(a => linhas.push(`• ${a.email || "sem e-mail"} | uid: ${a.uid}`));
+    }
+
+    if ((r.authSemDocumento || []).length) {
+      linhas.push("\nATENÇÃO — USUÁRIO NO AUTH, MAS SEM DOCUMENTO EM atletas:");
+      r.authSemDocumento.forEach(a => linhas.push(`• ${a.email || "sem e-mail"} | uid: ${a.uid}`));
+    }
+
+    $("logAuditoria").textContent = linhas.join("\n") || "Nenhum problema encontrado.";
+    setStatus("Auditoria concluída.", "ok");
+  } catch (e) {
+    setStatus("Erro na auditoria: " + (e.code || e.message), "err");
+    $("logAuditoria").textContent = e.message || String(e);
+  }
+
+  $("btnAuditar").disabled = false;
+  $("btnAuditar").textContent = "Verificar acessos admin";
+});
+
+function visiveis() {
+  const q = $("busca").value.trim().toLowerCase();
+  return todos.filter(p => {
+    const okFiltro = filtro === "todos"
+      || (filtro === "comite" && p.role === "comite")
+      || (filtro === "admin" && p.role === "admin")
+      || (filtro === "atleta" && p.role === "atleta");
+    const okBusca = !q || (p.nome||"").toLowerCase().includes(q) || (p.email||"").toLowerCase().includes(q);
+    return okFiltro && okBusca;
+  });
+}
+
+function render() {
+  const tbody = $("tbody");
+  tbody.innerHTML = "";
+
+  visiveis().forEach(p => {
+    const ehVoce = p.id === meuUid;
+    const roleClass = p.role === "admin" ? "b-admin" : p.role === "comite" ? "b-comite" : p.role === "atleta" ? "b-atleta" : "b-sem";
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="c">${ehVoce
+        ? "🔒"
+        : `<input type="checkbox" data-id="${esc(p.id)}" ${selecionados.has(p.id) ? "checked" : ""}>`}</td>
+      <td>${esc(p.nome || "—")} ${ehVoce ? '<span class="voce">(você)</span>' : ""}</td>
+      <td>${esc(p.email || "—")}</td>
+      <td><span class="badge ${roleClass}">${esc(p.role || "—")}</span></td>
+      <td>${esc(p.equipe || "—")}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll("input[type=checkbox]").forEach(cb => {
+    cb.addEventListener("change", e => {
+      const id = e.target.dataset.id;
+      e.target.checked ? selecionados.add(id) : selecionados.delete(id);
+      atualizarContagem();
+    });
+  });
+
+  atualizarContagem();
+}
+
+function atualizarContagem() {
+  $("contagem").textContent = `${selecionados.size} selecionado(s)`;
+  validarApagar();
+}
+
+function validarApagar() {
+  $("btnApagar").disabled = !(souAdmin && selecionados.size > 0 && $("confirma").value.trim().toUpperCase() === "APAGAR");
+}
+
+$("filtros").addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  filtro = b.dataset.f;
+  document.querySelectorAll("#filtros button").forEach(x => x.classList.toggle("active", x === b));
+  render();
+});
+
+$("busca").addEventListener("input", render);
+$("confirma").addEventListener("input", validarApagar);
+
+$("btnSelVis").addEventListener("click", () => {
+  visiveis().forEach(p => { if (p.id !== meuUid) selecionados.add(p.id); });
+  render();
+});
+
+$("btnLimparSel").addEventListener("click", () => {
+  selecionados.clear();
+  render();
+});
+
+$("btnApagar").addEventListener("click", async () => {
+  if (!souAdmin || $("confirma").value.trim().toUpperCase() !== "APAGAR") return;
+
+  const uids = [...selecionados].filter(id => id !== meuUid);
+  if (!uids.length) return;
+
+  const ok = confirm(`Confirma a exclusão completa de ${uids.length} cadastro(s)? Isso remove Firestore e Authentication.`);
+  if (!ok) return;
+
+  $("btnApagar").disabled = true;
+  $("btnApagar").textContent = "Excluindo…";
+  const log = $("log");
+  log.textContent = "Enviando exclusão segura para o Firebase…";
+
+  try {
+    const resp = await excluirCadastrosCompletos({ uids });
+    const r = resp.data || {};
+
+    const linhas = [];
+    linhas.push(`Concluído.`);
+    linhas.push(`Firestore removidos: ${r.firestoreRemovidos || 0}`);
+    linhas.push(`Authentication removidos: ${r.authRemovidos || 0}`);
+
+    if ((r.naoEncontradosAuth || []).length) {
+      linhas.push(`Auth já não existia para: ${r.naoEncontradosAuth.join(", ")}`);
+    }
+    if ((r.erros || []).length) {
+      linhas.push("\nErros:");
+      r.erros.forEach(e => linhas.push(`• ${e.uid}: ${e.erro}`));
+    }
+
+    log.textContent = linhas.join("\n");
+    setStatus(`Exclusão completa finalizada. Auth: ${r.authRemovidos || 0}. Firestore: ${r.firestoreRemovidos || 0}.`, (r.erros || []).length ? "warn" : "ok");
+
+    await carregarCadastros();
+    selecionados.clear();
+    $("confirma").value = "";
+    render();
+  } catch (e) {
+    setStatus("Erro ao excluir: " + (e.code || e.message), "err");
+    log.textContent = e.message || String(e);
+  }
+
+  $("btnApagar").textContent = "Excluir selecionados";
+  validarApagar();
+});
+</script>
+</body>
+</html>

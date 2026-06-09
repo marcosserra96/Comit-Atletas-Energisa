@@ -1,0 +1,20 @@
+No seu arquivo ./js/firebase.js, além dos imports que você já tem, inclua e exporte Functions:
+
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
+
+const functions = getFunctions(app);
+
+export {
+  app,
+  db,
+  auth,
+  functions,
+  httpsCallable,
+  collection,
+  getDocs,
+  doc,
+  getDoc,
+  onAuthStateChanged
+};
+
+Observação: mantenha os outros imports/exports que seu projeto já usa. O ponto obrigatório é exportar functions e httpsCallable.
