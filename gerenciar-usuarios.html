@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel de Manutenção de Usuários</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--azul:#009bc1;--azul2:#007f9d;--laranja:#f37021;--bg:#eef3f7;--card:#fff;--ink:#0f2638;--muted:#637083;--line:#dfe7ef;--red:#e63946;--green:#0a9f6a;--yellow:#b7791f;--softred:#fde8eb;--softgreen:#e9f8f1;--softblue:#eaf6fb;--softorange:#fff3e9}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Poppins,Arial,sans-serif;color:var(--ink);padding:22px}.wrap{max-width:1180px;margin:0 auto}h1{font-size:1.55rem;margin:0}.sub{margin:4px 0 18px;color:var(--muted);font-size:.9rem}.status{padding:12px 14px;border-radius:12px;border:1px solid var(--line);font-size:.9rem;margin-bottom:12px}.status.ok{background:var(--softgreen);border-color:#bee8d4;color:#087047}.status.warn{background:var(--softorange);border-color:#ffd8ac;color:#9a5a11}.status.err{background:var(--softred);border-color:#f7bdc4;color:#a8222e}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:0 8px 24px rgba(15,38,56,.04)}.warnbox{background:#fff8ed;border:1px solid #f5d7aa;border-radius:14px;padding:13px 15px;color:#8d560d;font-size:.86rem;margin-bottom:14px}.topbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.tabs{display:flex;gap:4px;background:#edf2f7;border:1px solid var(--line);padding:4px;border-radius:14px;flex-wrap:wrap}.tab{border:0;background:transparent;color:var(--muted);padding:9px 13px;border-radius:11px;font-weight:700;cursor:pointer}.tab.active{background:#fff;color:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,.08)}button{font-family:inherit;border:1.5px solid var(--line);background:#fff;color:var(--ink);border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer}button:hover{background:#f7fafc}button:disabled{opacity:.45;cursor:not-allowed}.primary{background:var(--azul);border-color:var(--azul);color:#fff}.primary:hover{background:var(--azul2)}.orange{background:var(--laranja);border-color:var(--laranja);color:#fff}.danger{background:var(--red);border-color:var(--red);color:#fff}.ghost{background:#fff}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:14px}.metric{background:#f8fbfd;border:1px solid var(--line);border-radius:14px;padding:12px}.metric b{font-size:1.25rem}.metric span{display:block;color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:.04em}.panel{display:none}.panel.active{display:block}.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:14px 0}input,select{font-family:inherit;border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;background:#fff;color:var(--ink);font-size:.88rem}input[type=text],input[type=email]{min-width:220px}.grow{flex:1}.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:14px}table{width:100%;border-collapse:collapse;font-size:.84rem;background:#fff}th,td{padding:10px 11px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}th{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;background:#f8fbfd}.badge{display:inline-flex;align-items:center;border-radius:999px;padding:3px 9px;font-size:.7rem;font-weight:800;text-transform:uppercase}.admin{background:#fde8eb;color:#b42330}.comite{background:#e7f2fb;color:#1769aa}.atleta{background:#eef2f7;color:#526173}.auth{background:#fff3e7;color:#b65a0c}.ambos{background:#e9f8f1;color:#087047}.firestore{background:#eef2f7;color:#526173}.rowselected{outline:2px solid var(--azul);outline-offset:-2px;background:#f0fbff}.actions{display:grid;grid-template-columns:1.2fr .8fr .8fr .8fr;gap:10px;margin-top:12px}.actionbox{border:1px solid var(--line);border-radius:15px;padding:13px;background:#fbfdff}.actionbox h3{margin:0 0 9px;font-size:.92rem}.small{font-size:.78rem;color:var(--muted)}.log{background:#0f2638;color:#d8edf5;border-radius:14px;padding:12px;min-height:70px;white-space:pre-wrap;font-size:.78rem;margin-top:12px;overflow:auto}.hidden{display:none}.selectedbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#f8fbfd;border:1px dashed #cbd8e3;border-radius:14px;padding:12px;margin-top:12px}.selectedbar b{color:var(--azul2)}@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}.actions{grid-template-columns:1fr}.topbar{align-items:stretch}.tabs{width:100%}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Painel de Manutenção de Usuários</h1>
+  <p class="sub">Audite Firestore, Authentication, reconstrução de acessos e exclusões controladas.</p>
+
+  <div id="status" class="status warn">Verificando login...</div>
+
+  <div class="warnbox"><b>Atenção:</b> ações neste painel são críticas. O painel não exclui o seu próprio usuário e também bloqueia a remoção do último admin.</div>
+
+  <div class="card">
+    <div class="topbar">
+      <button id="btnAuditar" class="primary">Auditar usuários</button>
+      <button id="btnListarFirestore">Listar Firestore</button>
+      <button id="btnListarAuth">Listar Authentication</button>
+      <span class="grow"></span>
+      <button id="btnLimpar" class="ghost">Limpar seleção</button>
+    </div>
+
+    <div class="grid" id="metricas"></div>
+
+    <div class="selectedbar hidden" id="selectedbar">
+      <span>Selecionado: <b id="selNome">—</b></span>
+      <span class="small" id="selDetalhe">—</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="tabs">
+      <button class="tab active" data-tab="auditoria">Auditoria</button>
+      <button class="tab" data-tab="firestore">Firestore</button>
+      <button class="tab" data-tab="auth">Authentication</button>
+      <button class="tab" data-tab="admins">Admins</button>
+      <button class="tab" data-tab="comite">Comitê</button>
+      <button class="tab" data-tab="acoes">Ações</button>
+    </div>
+
+    <div class="toolbar">
+      <input type="text" id="busca" class="grow" placeholder="Buscar por nome, e-mail ou UID...">
+      <select id="filtroOrigem">
+        <option value="todos">Todas as origens</option>
+        <option value="ambos">Integrados</option>
+        <option value="auth">Só Authentication</option>
+        <option value="firestore">Só Firestore</option>
+      </select>
+      <select id="filtroRole">
+        <option value="todos">Todos os perfis</option>
+        <option value="admin">Admin</option>
+        <option value="comite">Comitê</option>
+        <option value="atleta">Atleta</option>
+        <option value="semrole">Sem perfil</option>
+      </select>
+    </div>
+
+    <div id="auditoria" class="panel active"><div class="tablewrap"><table><thead><tr><th>Origem</th><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Equipe</th><th>UID</th><th>Status</th></tr></thead><tbody id="tbAuditoria"></tbody></table></div></div>
+    <div id="firestore" class="panel"><div class="tablewrap"><table><thead><tr><th>Origem</th><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Equipe</th><th>UID</th></tr></thead><tbody id="tbFirestore"></tbody></table></div></div>
+    <div id="auth" class="panel"><div class="tablewrap"><table><thead><tr><th>Origem</th><th>E-mail</th><th>Nome Auth</th><th>UID</th><th>Criado em</th><th>Último login</th><th>Status</th></tr></thead><tbody id="tbAuth"></tbody></table></div></div>
+    <div id="admins" class="panel"><div class="tablewrap"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Equipe</th><th>UID</th></tr></thead><tbody id="tbAdmins"></tbody></table></div></div>
+    <div id="comite" class="panel"><div class="tablewrap"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Equipe</th><th>UID</th></tr></thead><tbody id="tbComite"></tbody></table></div></div>
+
+    <div id="acoes" class="panel">
+      <div class="actions">
+        <div class="actionbox">
+          <h3>Reconstruir cadastro</h3>
+          <input id="recUid" type="text" placeholder="UID ou selecione na lista" style="width:100%;margin-bottom:8px">
+          <input id="recEmail" type="email" placeholder="E-mail, se não tiver UID" style="width:100%;margin-bottom:8px">
+          <input id="recNome" type="text" placeholder="Nome" style="width:100%;margin-bottom:8px">
+          <input id="recEquipe" type="text" placeholder="Equipe" style="width:100%;margin-bottom:8px">
+          <select id="recRole" style="width:100%;margin-bottom:8px"><option value="atleta">Atleta</option><option value="comite">Comitê</option><option value="admin">Admin</option></select>
+          <button id="btnReconstruir" class="primary" style="width:100%">Reconstruir</button>
+          <p class="small">Use para usuários que existem no Auth, mas sumiram do Firestore.</p>
+        </div>
+
+        <div class="actionbox">
+          <h3>Alterar perfil</h3>
+          <input id="editUid" type="text" placeholder="UID" style="width:100%;margin-bottom:8px">
+          <input id="editNome" type="text" placeholder="Nome" style="width:100%;margin-bottom:8px">
+          <input id="editEquipe" type="text" placeholder="Equipe" style="width:100%;margin-bottom:8px">
+          <select id="editRole" style="width:100%;margin-bottom:8px"><option value="atleta">Atleta</option><option value="comite">Comitê</option><option value="admin">Admin</option></select>
+          <button id="btnAtualizarPerfil" class="orange" style="width:100%">Salvar perfil</button>
+        </div>
+
+        <div class="actionbox">
+          <h3>Excluir separado</h3>
+          <input id="delUid" type="text" placeholder="UID" style="width:100%;margin-bottom:8px">
+          <input id="delEmail" type="email" placeholder="E-mail" style="width:100%;margin-bottom:8px">
+          <button id="btnExcluirFirestore" style="width:100%;margin-bottom:8px">Excluir só Firestore</button>
+          <button id="btnExcluirAuth" class="danger" style="width:100%">Excluir só Auth</button>
+        </div>
+
+        <div class="actionbox">
+          <h3>Excluir completo</h3>
+          <input id="fullUid" type="text" placeholder="UID" style="width:100%;margin-bottom:8px">
+          <input id="fullEmail" type="email" placeholder="E-mail" style="width:100%;margin-bottom:8px">
+          <input id="confirmaCritica" type="text" placeholder="Digite EXCLUIR" style="width:100%;margin-bottom:8px">
+          <button id="btnExcluirCompleto" class="danger" style="width:100%">Excluir Firestore + Auth</button>
+          <p class="small">Use com cuidado. Esta é a limpeza definitiva do cadastro.</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="log" class="log">Aguardando ação...</div>
+  </div>
+</div>
+
+<script type="module">
+import { auth, db, doc, getDoc, onAuthStateChanged, functions, httpsCallable } from "./js/firebase.js";
+
+const $ = id => document.getElementById(id);
+const statusEl = $("status");
+const logEl = $("log");
+let meuUid = null;
+let dados = { authUsers: [], firestoreUsers: [], integrados: [], authSemFirestore: [], firestoreSemAuth: [], admins: [], comite: [], emailsDuplicados: [], totais: {} };
+let selecionado = null;
+let abaAtual = "auditoria";
+
+const fnAuditar = httpsCallable(functions, "auditarUsuarios");
+const fnListarFirestore = httpsCallable(functions, "listarFirestoreUsuarios");
+const fnListarAuth = httpsCallable(functions, "listarAuthUsuarios");
+const fnReconstruir = httpsCallable(functions, "reconstruirCadastro");
+const fnAtualizarPerfil = httpsCallable(functions, "atualizarPerfilUsuario");
+const fnExcluirFirestore = httpsCallable(functions, "excluirFirestoreUsuario");
+const fnExcluirAuth = httpsCallable(functions, "excluirAuthUsuario");
+const fnExcluirCompleto = httpsCallable(functions, "excluirUsuarioCompleto");
+
+function setStatus(msg, tipo="warn") { statusEl.textContent = msg; statusEl.className = "status " + tipo; }
+function log(msg) { logEl.textContent = `[${new Date().toLocaleTimeString("pt-BR")}] ${msg}\n` + logEl.textContent; }
+function roleBadge(role) { const r = role || "sem role"; const cls = role === "admin" ? "admin" : role === "comite" ? "comite" : role === "atleta" ? "atleta" : "firestore"; return `<span class="badge ${cls}">${r}</span>`; }
+function origemBadge(origem) { const label = origem === "ambos" ? "Integrado" : origem === "auth" ? "Só Auth" : origem === "firestore" ? "Só Firestore" : origem; return `<span class="badge ${origem}">${label}</span>`; }
+function esc(v) { return String(v ?? "").replace(/[&<>"]/g, s => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[s])); }
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    setStatus("Você não está logado. Faça login como admin e recarregue esta página.", "err");
+    return;
+  }
+  meuUid = user.uid;
+  try {
+    const snap = await getDoc(doc(db, "atletas", user.uid));
+    const role = snap.exists() ? snap.data().role : "sem documento";
+    if (role === "admin") setStatus(`Logado como ${user.email} — admin autorizado.`, "ok");
+    else setStatus(`Logado como ${user.email}, mas seu role é '${role}'. As funções vão bloquear ações críticas.`, "warn");
+  } catch (e) {
+    setStatus("Login detectado, mas não consegui validar seu perfil: " + (e.code || e.message), "err");
+  }
+});
+
+function metricas() {
+  const t = dados.totais || {};
+  $("metricas").innerHTML = [
+    [t.auth || 0, "Authentication"], [t.firestore || 0, "Firestore"], [t.authSemFirestore || 0, "Auth sem Firestore"], [t.firestoreSemAuth || 0, "Firestore sem Auth"],
+    [t.admins || 0, "Admins"], [t.comite || 0, "Comitê"], [t.integrados || 0, "Integrados"], [t.emailsDuplicados || 0, "E-mails duplicados"]
+  ].map(m => `<div class="metric"><b>${m[0]}</b><span>${m[1]}</span></div>`).join("");
+}
+
+function baseAuditoria() {
+  const integrados = (dados.integrados || []).map(u => ({...u, origem:"ambos", status:"OK"}));
+  const authOnly = (dados.authSemFirestore || []).map(u => ({...u, origem:"auth", nome:u.displayName || "", role:"", equipe:"", status:"Reconstruir Firestore"}));
+  const fsOnly = (dados.firestoreSemAuth || []).map(u => ({...u, origem:"firestore", status:"Auth ausente"}));
+  return [...authOnly, ...fsOnly, ...integrados];
+}
+
+function filtrar(lista) {
+  const q = $("busca").value.trim().toLowerCase();
+  const origem = $("filtroOrigem").value;
+  const role = $("filtroRole").value;
+  return lista.filter(u => {
+    const texto = `${u.uid||""} ${u.nome||""} ${u.email||""} ${u.displayName||""}`.toLowerCase();
+    const okBusca = !q || texto.includes(q);
+    const okOrigem = origem === "todos" || u.origem === origem;
+    const okRole = role === "todos" || (role === "semrole" ? !u.role : u.role === role);
+    return okBusca && okOrigem && okRole;
+  });
+}
+
+function rowAttrs(u) { return `data-uid="${esc(u.uid)}" data-email="${esc(u.email)}"`; }
+
+function renderTabelaAuditoria() {
+  $("tbAuditoria").innerHTML = filtrar(baseAuditoria()).map(u => `
+    <tr ${rowAttrs(u)}><td>${origemBadge(u.origem)}</td><td>${esc(u.nome || u.displayName || "—")}</td><td>${esc(u.email || "—")}</td><td>${roleBadge(u.role)}</td><td>${esc(u.equipe || "—")}</td><td>${esc(u.uid)}</td><td>${esc(u.status || "")}</td></tr>`).join("");
+}
+function renderFirestore() {
+  const lista = (dados.firestoreUsers || []).map(u => ({...u, origem:"firestore"}));
+  $("tbFirestore").innerHTML = filtrar(lista).map(u => `
+    <tr ${rowAttrs(u)}><td>${origemBadge("firestore")}</td><td>${esc(u.nome||"—")}</td><td>${esc(u.email||"—")}</td><td>${roleBadge(u.role)}</td><td>${esc(u.equipe||"—")}</td><td>${esc(u.uid)}</td></tr>`).join("");
+}
+function renderAuth() {
+  const lista = (dados.authUsers || []).map(u => ({...u, origem:"auth"}));
+  $("tbAuth").innerHTML = filtrar(lista).map(u => `
+    <tr ${rowAttrs(u)}><td>${origemBadge("auth")}</td><td>${esc(u.email||"—")}</td><td>${esc(u.displayName||"—")}</td><td>${esc(u.uid)}</td><td>${esc(u.creationTime||"—")}</td><td>${esc(u.lastSignInTime||"—")}</td><td>${u.disabled ? "Desativado" : "Ativo"}</td></tr>`).join("");
+}
+function renderAdmins() {
+  $("tbAdmins").innerHTML = (dados.admins || []).map(u => `<tr ${rowAttrs(u)}><td>${esc(u.nome||"—")}</td><td>${esc(u.email||"—")}</td><td>${esc(u.equipe||"—")}</td><td>${esc(u.uid)}</td></tr>`).join("");
+}
+function renderComite() {
+  $("tbComite").innerHTML = (dados.comite || []).map(u => `<tr ${rowAttrs(u)}><td>${esc(u.nome||"—")}</td><td>${esc(u.email||"—")}</td><td>${esc(u.equipe||"—")}</td><td>${esc(u.uid)}</td></tr>`).join("");
+}
+function renderAll() { metricas(); renderTabelaAuditoria(); renderFirestore(); renderAuth(); renderAdmins(); renderComite(); aplicarCliqueLinhas(); }
+
+function aplicarCliqueLinhas() {
+  document.querySelectorAll("tbody tr").forEach(tr => {
+    tr.addEventListener("click", () => selecionar({ uid: tr.dataset.uid, email: tr.dataset.email }));
+  });
+}
+
+function selecionar(u) {
+  selecionado = u;
+  document.querySelectorAll("tr").forEach(x => x.classList.remove("rowselected"));
+  document.querySelectorAll(`tr[data-uid="${CSS.escape(u.uid || "")}"]`).forEach(x => x.classList.add("rowselected"));
+  $("selectedbar").classList.remove("hidden");
+  $("selNome").textContent = u.email || u.uid || "—";
+  $("selDetalhe").textContent = u.uid || "—";
+
+  ["recUid","editUid","delUid","fullUid"].forEach(id => $(id).value = u.uid || "");
+  ["recEmail","delEmail","fullEmail"].forEach(id => $(id).value = u.email || "");
+
+  const fs = (dados.firestoreUsers || []).find(x => x.uid === u.uid) || {};
+  $("recNome").value = fs.nome || "";
+  $("recEquipe").value = fs.equipe || "";
+  $("editNome").value = fs.nome || "";
+  $("editEquipe").value = fs.equipe || "";
+  $("editRole").value = fs.role || "atleta";
+}
+
+async function executar(label, fn) {
+  try {
+    setStatus(label + "...", "warn");
+    const res = await fn();
+    setStatus(label + " concluído.", "ok");
+    log(label + " concluído: " + JSON.stringify(res?.data || res || {}, null, 2));
+    return res;
+  } catch (e) {
+    const msg = e?.message || e?.code || String(e);
+    setStatus(label + " falhou: " + msg, "err");
+    log(label + " falhou: " + msg);
+    throw e;
+  }
+}
+
+$("btnAuditar").addEventListener("click", async () => {
+  const res = await executar("Auditoria", () => fnAuditar({}));
+  dados = res.data;
+  renderAll();
+});
+$("btnListarFirestore").addEventListener("click", async () => {
+  const res = await executar("Listagem Firestore", () => fnListarFirestore({}));
+  dados.firestoreUsers = res.data.usuarios || [];
+  renderAll();
+});
+$("btnListarAuth").addEventListener("click", async () => {
+  const res = await executar("Listagem Authentication", () => fnListarAuth({}));
+  dados.authUsers = res.data.usuarios || [];
+  renderAll();
+});
+$("btnLimpar").addEventListener("click", () => { selecionado = null; $("selectedbar").classList.add("hidden"); document.querySelectorAll("tr").forEach(x => x.classList.remove("rowselected")); });
+
+$("busca").addEventListener("input", renderAll);
+$("filtroOrigem").addEventListener("change", renderAll);
+$("filtroRole").addEventListener("change", renderAll);
+
+document.querySelectorAll(".tab").forEach(btn => btn.addEventListener("click", () => {
+  document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+  btn.classList.add("active");
+  abaAtual = btn.dataset.tab;
+  $(abaAtual).classList.add("active");
+}));
+
+$("btnReconstruir").addEventListener("click", async () => {
+  await executar("Reconstrução", () => fnReconstruir({ uid: $("recUid").value, email: $("recEmail").value, nome: $("recNome").value, equipe: $("recEquipe").value, role: $("recRole").value }));
+});
+$("btnAtualizarPerfil").addEventListener("click", async () => {
+  await executar("Atualização de perfil", () => fnAtualizarPerfil({ uid: $("editUid").value, nome: $("editNome").value, equipe: $("editEquipe").value, role: $("editRole").value }));
+});
+$("btnExcluirFirestore").addEventListener("click", async () => {
+  if (!confirm("Excluir apenas o documento do Firestore?")) return;
+  await executar("Exclusão Firestore", () => fnExcluirFirestore({ uid: $("delUid").value }));
+});
+$("btnExcluirAuth").addEventListener("click", async () => {
+  if (!confirm("Excluir apenas o login do Authentication?")) return;
+  await executar("Exclusão Authentication", () => fnExcluirAuth({ uid: $("delUid").value, email: $("delEmail").value }));
+});
+$("btnExcluirCompleto").addEventListener("click", async () => {
+  if ($("confirmaCritica").value.trim().toUpperCase() !== "EXCLUIR") { setStatus("Digite EXCLUIR para confirmar a exclusão completa.", "warn"); return; }
+  if (!confirm("Excluir Firestore + Authentication definitivamente?")) return;
+  await executar("Exclusão completa", () => fnExcluirCompleto({ uid: $("fullUid").value, email: $("fullEmail").value }));
+});
+</script>
+</body>
+</html>
