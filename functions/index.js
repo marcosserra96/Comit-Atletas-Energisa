@@ -4,320 +4,593 @@ const admin = require("firebase-admin");
 admin.initializeApp();
 
 const db = admin.firestore();
-const auth = admin.auth();
-
-const ROLES = new Set(["admin", "comite", "atleta"]);
 
 function normalizeEmail(email) {
   return String(email || "").trim().toLowerCase();
 }
 
-function cleanText(value) {
-  return String(value || "").trim();
-}
-
-function sanitizeRole(role) {
-  const r = String(role || "atleta").trim().toLowerCase();
-  if (!ROLES.has(r)) {
-    throw new functions.https.HttpsError("invalid-argument", "Role inválido. Use admin, comite ou atleta.");
-  }
-  return r;
-}
-
 async function assertAdmin(context) {
   if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado.");
+    throw new functions.https.HttpsError(
+      "unauthenticated",
+      "Usuário não autenticado."
+    );
   }
 
-  const myUid = context.auth.uid;
-  const myDoc = await db.collection("atletas").doc(myUid).get();
+  const uid = context.auth.uid;
 
-  if (!myDoc.exists || myDoc.data().role !== "admin") {
-    throw new functions.https.HttpsError("permission-denied", "Apenas admin pode executar esta ação.");
+  const meuDoc = await db.collection("atletas").doc(uid).get();
+
+  if (!meuDoc.exists) {
+    throw new functions.https.HttpsError(
+      "permission-denied",
+      "Seu usuário não possui documento na coleção atletas."
+    );
   }
 
-  return { uid: myUid, email: context.auth.token.email || "" };
+  const meuPerfil = meuDoc.data() || {};
+
+  if (meuPerfil.role !== "admin") {
+    throw new functions.https.HttpsError(
+      "permission-denied",
+      "Apenas usuários admin podem executar esta ação."
+    );
+  }
+
+  return {
+    uid,
+    email: context.auth.token.email || "",
+    perfil: meuPerfil
+  };
 }
 
-async function listAllAuthUsers() {
-  const users = [];
-  let nextPageToken;
+async function listAllAuthUsers(nextPageToken, acc = []) {
+  const result = await admin.auth().listUsers(1000, nextPageToken);
 
-  do {
-    const result = await auth.listUsers(1000, nextPageToken);
-    result.users.forEach((u) => {
-      users.push({
-        uid: u.uid,
-        email: normalizeEmail(u.email),
-        displayName: u.displayName || "",
-        disabled: !!u.disabled,
-        creationTime: u.metadata.creationTime || "",
-        lastSignInTime: u.metadata.lastSignInTime || "",
-        customClaims: u.customClaims || {}
-      });
-    });
-    nextPageToken = result.pageToken;
-  } while (nextPageToken);
+  const usuarios = result.users.map((u) => ({
+    uid: u.uid,
+    email: normalizeEmail(u.email),
+    displayName: String(u.displayName || ""),
+    disabled: u.disabled === true,
+    emailVerified: u.emailVerified === true,
+    creationTime: u.metadata?.creationTime || "",
+    lastSignInTime: u.metadata?.lastSignInTime || "",
+    providerIds: Array.isArray(u.providerData)
+      ? u.providerData.map((p) => p.providerId)
+      : []
+  }));
 
-  return users;
+  const final = acc.concat(usuarios);
+
+  if (result.pageToken) {
+    return listAllAuthUsers(result.pageToken, final);
+  }
+
+  return final;
 }
 
 async function listAllFirestoreAthletes() {
   const snap = await db.collection("atletas").get();
+
   return snap.docs.map((d) => {
     const data = d.data() || {};
+
     return {
       uid: d.id,
-      nome: data.nome || data.name || "",
+      nome: String(data.nome || data.name || ""),
       email: normalizeEmail(data.email),
-      role: data.role || "",
-      equipe: data.equipe || "",
-      raw: data
+      role: String(data.role || ""),
+      status: String(data.status || ""),
+      ativo: data.ativo === true,
+      equipe: String(data.equipe || ""),
+      criadoEm: data.criadoEm?.toDate
+        ? data.criadoEm.toDate().toISOString()
+        : "",
+      atualizadoEm: data.atualizadoEm?.toDate
+        ? data.atualizadoEm.toDate().toISOString()
+        : ""
     };
   });
 }
 
 function buildAudit(authUsers, firestoreUsers) {
   const authByUid = new Map(authUsers.map((u) => [u.uid, u]));
-  const fsByUid = new Map(firestoreUsers.map((u) => [u.uid, u]));
+  const fireByUid = new Map(firestoreUsers.map((u) => [u.uid, u]));
 
-  const authSemFirestore = authUsers
-    .filter((u) => !fsByUid.has(u.uid))
-    .map((u) => ({ ...u, origem: "auth" }));
-
-  const firestoreSemAuth = firestoreUsers
-    .filter((u) => !authByUid.has(u.uid))
-    .map((u) => ({ ...u, origem: "firestore" }));
-
-  const integrados = firestoreUsers
-    .filter((u) => authByUid.has(u.uid))
-    .map((u) => ({ ...u, auth: authByUid.get(u.uid), origem: "ambos" }));
+  const authSemFirestore = authUsers.filter((u) => !fireByUid.has(u.uid));
+  const firestoreSemAuth = firestoreUsers.filter((u) => !authByUid.has(u.uid));
 
   const admins = firestoreUsers.filter((u) => u.role === "admin");
   const comite = firestoreUsers.filter((u) => u.role === "comite");
+  const atletas = firestoreUsers.filter((u) => u.role === "atleta");
 
-  const emailMap = new Map();
+  const emails = new Map();
+
   [...authUsers, ...firestoreUsers].forEach((u) => {
     if (!u.email) return;
-    if (!emailMap.has(u.email)) emailMap.set(u.email, []);
-    emailMap.get(u.email).push({ uid: u.uid, origem: authByUid.has(u.uid) && fsByUid.has(u.uid) ? "ambos" : authByUid.has(u.uid) ? "auth" : "firestore" });
+
+    if (!emails.has(u.email)) {
+      emails.set(u.email, []);
+    }
+
+    emails.get(u.email).push({
+      uid: u.uid,
+      origem: authByUid.has(u.uid) && fireByUid.has(u.uid)
+        ? "Auth + Firestore"
+        : authByUid.has(u.uid)
+          ? "Auth"
+          : "Firestore"
+    });
   });
 
-  const emailsDuplicados = [...emailMap.entries()]
-    .filter(([, items]) => items.length > 1)
-    .map(([email, items]) => ({ email, items }));
+  const emailsDuplicados = [...emails.entries()]
+    .filter(([, lista]) => lista.length > 1)
+    .map(([email, registros]) => ({
+      email,
+      registros
+    }));
 
   return {
-    totais: {
-      auth: authUsers.length,
-      firestore: firestoreUsers.length,
-      integrados: integrados.length,
+    resumo: {
+      totalAuth: authUsers.length,
+      totalFirestore: firestoreUsers.length,
       authSemFirestore: authSemFirestore.length,
       firestoreSemAuth: firestoreSemAuth.length,
       admins: admins.length,
       comite: comite.length,
+      atletas: atletas.length,
       emailsDuplicados: emailsDuplicados.length
     },
-    authUsers,
-    firestoreUsers,
-    integrados,
     authSemFirestore,
     firestoreSemAuth,
     admins,
     comite,
+    atletas,
     emailsDuplicados
   };
 }
 
+async function deleteFirestoreProfile(uid) {
+  await db.collection("atletas").doc(uid).delete();
+}
+
+async function deleteAuthUser(uid) {
+  await admin.auth().deleteUser(uid);
+}
+
 async function countAdminsExcept(uidToIgnore = "") {
-  const snap = await db.collection("atletas").where("role", "==", "admin").get();
+  const snap = await db
+    .collection("atletas")
+    .where("role", "==", "admin")
+    .get();
+
   return snap.docs.filter((d) => d.id !== uidToIgnore).length;
 }
 
-exports.auditarUsuarios = functions.https.onCall(async (data, context) => {
-  await assertAdmin(context);
-  const [authUsers, firestoreUsers] = await Promise.all([
-    listAllAuthUsers(),
-    listAllFirestoreAthletes()
-  ]);
-  return buildAudit(authUsers, firestoreUsers);
+// ==============================
+// LISTAGENS
+// ==============================
+
+exports.listarAuthUsuarios = functions.https.onCall(async (data, context) => {
+  try {
+    await assertAdmin(context);
+
+    const usuarios = await listAllAuthUsers();
+
+    return {
+      ok: true,
+      usuarios
+    };
+  } catch (error) {
+    console.error("Erro em listarAuthUsuarios:", error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      "internal",
+      error.message || "Erro interno em listarAuthUsuarios."
+    );
+  }
 });
 
 exports.listarFirestoreUsuarios = functions.https.onCall(async (data, context) => {
-  await assertAdmin(context);
-  return { usuarios: await listAllFirestoreAthletes() };
+  try {
+    await assertAdmin(context);
+
+    const usuarios = await listAllFirestoreAthletes();
+
+    return {
+      ok: true,
+      usuarios
+    };
+  } catch (error) {
+    console.error("Erro em listarFirestoreUsuarios:", error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      "internal",
+      error.message || "Erro interno em listarFirestoreUsuarios."
+    );
+  }
 });
 
-exports.listarAuthUsuarios = functions.https.onCall(async (data, context) => {
-  await assertAdmin(context);
-  return { usuarios: await listAllAuthUsers() };
+exports.auditarUsuarios = functions.https.onCall(async (data, context) => {
+  try {
+    await assertAdmin(context);
+
+    const [authUsers, firestoreUsers] = await Promise.all([
+      listAllAuthUsers(),
+      listAllFirestoreAthletes()
+    ]);
+
+    const auditoria = buildAudit(authUsers, firestoreUsers);
+
+    return {
+      ok: true,
+      ...auditoria
+    };
+  } catch (error) {
+    console.error("Erro em auditarUsuarios:", error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      "internal",
+      error.message || "Erro interno em auditarUsuarios."
+    );
+  }
 });
+
+// ==============================
+// RECONSTRUÇÃO / EDIÇÃO
+// ==============================
 
 exports.reconstruirCadastro = functions.https.onCall(async (data, context) => {
-  const adminUser = await assertAdmin(context);
+  try {
+    await assertAdmin(context);
 
-  let uid = cleanText(data.uid);
-  let email = normalizeEmail(data.email);
-  const role = sanitizeRole(data.role || "atleta");
-  const nome = cleanText(data.nome);
-  const equipe = cleanText(data.equipe);
+    const uid = String(data.uid || "").trim();
+    const role = String(data.role || "atleta").trim();
 
-  if (!uid && !email) {
-    throw new functions.https.HttpsError("invalid-argument", "Informe UID ou e-mail.");
-  }
-
-  let userRecord;
-  if (uid) {
-    userRecord = await auth.getUser(uid);
-  } else {
-    userRecord = await auth.getUserByEmail(email);
-    uid = userRecord.uid;
-  }
-
-  email = normalizeEmail(userRecord.email || email);
-
-  await db.collection("atletas").doc(uid).set({
-    nome: nome || userRecord.displayName || "",
-    email,
-    equipe,
-    role,
-    reconstruido: true,
-    reconstruidoEm: admin.firestore.FieldValue.serverTimestamp(),
-    reconstruidoPor: adminUser.uid,
-    atualizadoEm: admin.firestore.FieldValue.serverTimestamp()
-  }, { merge: true });
-
-  return { ok: true, uid, email, role };
-});
-
-exports.atualizarPerfilUsuario = functions.https.onCall(async (data, context) => {
-  const adminUser = await assertAdmin(context);
-
-  const uid = cleanText(data.uid);
-  if (!uid) {
-    throw new functions.https.HttpsError("invalid-argument", "UID não informado.");
-  }
-
-  const ref = db.collection("atletas").doc(uid);
-  const before = await ref.get();
-  const beforeRole = before.exists ? before.data().role : "";
-  const role = sanitizeRole(data.role || beforeRole || "atleta");
-
-  if (uid === adminUser.uid && role !== "admin") {
-    throw new functions.https.HttpsError("invalid-argument", "Você não pode remover seu próprio perfil admin por este painel.");
-  }
-
-  if (beforeRole === "admin" && role !== "admin") {
-    const remainingAdmins = await countAdminsExcept(uid);
-    if (remainingAdmins <= 0) {
-      throw new functions.https.HttpsError("failed-precondition", "Não é permitido remover o último admin.");
+    if (!uid) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "UID não informado."
+      );
     }
+
+    if (!["admin", "comite", "atleta"].includes(role)) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Role inválido. Use admin, comite ou atleta."
+      );
+    }
+
+    const authUser = await admin.auth().getUser(uid);
+
+    const payload = {
+      email: normalizeEmail(authUser.email),
+      nome: String(authUser.displayName || ""),
+      role,
+      status: role === "admin" ? "Aprovado" : "Pendente",
+      ativo: role === "admin",
+      equipe: "",
+      reconstruido: true,
+      reconstruidoEm: admin.firestore.FieldValue.serverTimestamp(),
+      atualizadoEm: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    await db.collection("atletas").doc(uid).set(payload, { merge: true });
+
+    return {
+      ok: true,
+      uid,
+      email: payload.email,
+      role
+    };
+  } catch (error) {
+    console.error("Erro em reconstruirCadastro:", error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      "internal",
+      error.message || "Erro interno em reconstruirCadastro."
+    );
   }
-
-  const payload = {
-    role,
-    atualizadoEm: admin.firestore.FieldValue.serverTimestamp(),
-    atualizadoPor: adminUser.uid
-  };
-
-  if (data.nome !== undefined) payload.nome = cleanText(data.nome);
-  if (data.equipe !== undefined) payload.equipe = cleanText(data.equipe);
-  if (data.email !== undefined) payload.email = normalizeEmail(data.email);
-
-  await ref.set(payload, { merge: true });
-
-  return { ok: true, uid, role };
 });
+
+exports.alterarPerfilUsuario = functions.https.onCall(async (data, context) => {
+  try {
+    const adminAtual = await assertAdmin(context);
+
+    const uid = String(data.uid || "").trim();
+    const role = String(data.role || "").trim();
+
+    if (!uid) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "UID não informado."
+      );
+    }
+
+    if (!["admin", "comite", "atleta"].includes(role)) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Role inválido. Use admin, comite ou atleta."
+      );
+    }
+
+    if (uid === adminAtual.uid && role !== "admin") {
+      const outrosAdmins = await countAdminsExcept(uid);
+
+      if (outrosAdmins === 0) {
+        throw new functions.https.HttpsError(
+          "failed-precondition",
+          "Você não pode remover o último admin."
+        );
+      }
+    }
+
+    await db.collection("atletas").doc(uid).set(
+      {
+        role,
+        status: role === "admin" ? "Aprovado" : "Pendente",
+        ativo: role === "admin",
+        atualizadoEm: admin.firestore.FieldValue.serverTimestamp()
+      },
+      { merge: true }
+    );
+
+    return {
+      ok: true,
+      uid,
+      role
+    };
+  } catch (error) {
+    console.error("Erro em alterarPerfilUsuario:", error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      "internal",
+      error.message || "Erro interno em alterarPerfilUsuario."
+    );
+  }
+});
+
+// ==============================
+// EXCLUSÕES
+// ==============================
 
 exports.excluirFirestoreUsuario = functions.https.onCall(async (data, context) => {
-  const adminUser = await assertAdmin(context);
-  const uid = cleanText(data.uid);
+  try {
+    const adminAtual = await assertAdmin(context);
 
-  if (!uid) throw new functions.https.HttpsError("invalid-argument", "UID não informado.");
-  if (uid === adminUser.uid) throw new functions.https.HttpsError("invalid-argument", "Você não pode excluir seu próprio documento.");
+    const uid = String(data.uid || "").trim();
 
-  const ref = db.collection("atletas").doc(uid);
-  const snap = await ref.get();
-
-  if (snap.exists && snap.data().role === "admin") {
-    const remainingAdmins = await countAdminsExcept(uid);
-    if (remainingAdmins <= 0) {
-      throw new functions.https.HttpsError("failed-precondition", "Não é permitido excluir o último admin.");
+    if (!uid) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "UID não informado."
+      );
     }
-  }
 
-  await ref.delete();
-  return { ok: true, uid };
+    if (uid === adminAtual.uid) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Você não pode excluir seu próprio perfil do Firestore."
+      );
+    }
+
+    const alvoDoc = await db.collection("atletas").doc(uid).get();
+
+    if (alvoDoc.exists && alvoDoc.data()?.role === "admin") {
+      const outrosAdmins = await countAdminsExcept(uid);
+
+      if (outrosAdmins === 0) {
+        throw new functions.https.HttpsError(
+          "failed-precondition",
+          "Você não pode excluir o último admin."
+        );
+      }
+    }
+
+    await deleteFirestoreProfile(uid);
+
+    return {
+      ok: true,
+      uid
+    };
+  } catch (error) {
+    console.error("Erro em excluirFirestoreUsuario:", error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      "internal",
+      error.message || "Erro interno em excluirFirestoreUsuario."
+    );
+  }
 });
 
 exports.excluirAuthUsuario = functions.https.onCall(async (data, context) => {
-  const adminUser = await assertAdmin(context);
-  let uid = cleanText(data.uid);
-  const email = normalizeEmail(data.email);
+  try {
+    const adminAtual = await assertAdmin(context);
 
-  if (!uid && !email) throw new functions.https.HttpsError("invalid-argument", "Informe UID ou e-mail.");
+    const uid = String(data.uid || "").trim();
 
-  let userRecord;
-  if (uid) userRecord = await auth.getUser(uid);
-  else userRecord = await auth.getUserByEmail(email);
-
-  uid = userRecord.uid;
-
-  if (uid === adminUser.uid) {
-    throw new functions.https.HttpsError("invalid-argument", "Você não pode excluir seu próprio login.");
-  }
-
-  const fsDoc = await db.collection("atletas").doc(uid).get();
-  if (fsDoc.exists && fsDoc.data().role === "admin") {
-    const remainingAdmins = await countAdminsExcept(uid);
-    if (remainingAdmins <= 0) {
-      throw new functions.https.HttpsError("failed-precondition", "Não é permitido excluir o último admin.");
+    if (!uid) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "UID não informado."
+      );
     }
-  }
 
-  await auth.deleteUser(uid);
-  return { ok: true, uid, email: normalizeEmail(userRecord.email) };
+    if (uid === adminAtual.uid) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Você não pode excluir seu próprio login."
+      );
+    }
+
+    await deleteAuthUser(uid);
+
+    return {
+      ok: true,
+      uid
+    };
+  } catch (error) {
+    console.error("Erro em excluirAuthUsuario:", error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      "internal",
+      error.message || "Erro interno em excluirAuthUsuario."
+    );
+  }
 });
 
 exports.excluirUsuarioCompleto = functions.https.onCall(async (data, context) => {
-  const adminUser = await assertAdmin(context);
-  let uid = cleanText(data.uid);
-  const email = normalizeEmail(data.email);
+  try {
+    const adminAtual = await assertAdmin(context);
 
-  if (!uid && !email) throw new functions.https.HttpsError("invalid-argument", "Informe UID ou e-mail.");
+    const uid = String(data.uid || "").trim();
 
-  let userRecord = null;
-  if (uid) {
-    try { userRecord = await auth.getUser(uid); } catch (e) { userRecord = null; }
-  } else {
-    try { userRecord = await auth.getUserByEmail(email); uid = userRecord.uid; } catch (e) { userRecord = null; }
-  }
-
-  if (!uid && userRecord) uid = userRecord.uid;
-  if (!uid) throw new functions.https.HttpsError("not-found", "Não foi possível localizar UID para exclusão.");
-
-  if (uid === adminUser.uid) {
-    throw new functions.https.HttpsError("invalid-argument", "Você não pode excluir seu próprio usuário.");
-  }
-
-  const ref = db.collection("atletas").doc(uid);
-  const snap = await ref.get();
-
-  if (snap.exists && snap.data().role === "admin") {
-    const remainingAdmins = await countAdminsExcept(uid);
-    if (remainingAdmins <= 0) {
-      throw new functions.https.HttpsError("failed-precondition", "Não é permitido excluir o último admin.");
+    if (!uid) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "UID não informado."
+      );
     }
+
+    if (uid === adminAtual.uid) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Você não pode excluir seu próprio usuário."
+      );
+    }
+
+    const alvoDoc = await db.collection("atletas").doc(uid).get();
+
+    if (alvoDoc.exists && alvoDoc.data()?.role === "admin") {
+      const outrosAdmins = await countAdminsExcept(uid);
+
+      if (outrosAdmins === 0) {
+        throw new functions.https.HttpsError(
+          "failed-precondition",
+          "Você não pode excluir o último admin."
+        );
+      }
+    }
+
+    await deleteFirestoreProfile(uid);
+
+    try {
+      await deleteAuthUser(uid);
+    } catch (authError) {
+      if (authError.code !== "auth/user-not-found") {
+        throw authError;
+      }
+    }
+
+    return {
+      ok: true,
+      uid
+    };
+  } catch (error) {
+    console.error("Erro em excluirUsuarioCompleto:", error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      "internal",
+      error.message || "Erro interno em excluirUsuarioCompleto."
+    );
   }
+});
 
-  if (snap.exists) await ref.delete();
-  if (userRecord) await auth.deleteUser(uid);
+exports.excluirUsuarioPorEmail = functions.https.onCall(async (data, context) => {
+  try {
+    const adminAtual = await assertAdmin(context);
 
-  return {
-    ok: true,
-    uid,
-    email: normalizeEmail(userRecord?.email || email),
-    firestoreDeleted: snap.exists,
-    authDeleted: !!userRecord
-  };
+    const email = normalizeEmail(data.email);
+
+    if (!email) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "E-mail não informado."
+      );
+    }
+
+    const authUser = await admin.auth().getUserByEmail(email);
+
+    if (authUser.uid === adminAtual.uid) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Você não pode excluir seu próprio usuário."
+      );
+    }
+
+    const alvoDoc = await db.collection("atletas").doc(authUser.uid).get();
+
+    if (alvoDoc.exists && alvoDoc.data()?.role === "admin") {
+      const outrosAdmins = await countAdminsExcept(authUser.uid);
+
+      if (outrosAdmins === 0) {
+        throw new functions.https.HttpsError(
+          "failed-precondition",
+          "Você não pode excluir o último admin."
+        );
+      }
+    }
+
+    if (alvoDoc.exists) {
+      await deleteFirestoreProfile(authUser.uid);
+    }
+
+    await deleteAuthUser(authUser.uid);
+
+    return {
+      ok: true,
+      uid: authUser.uid,
+      email
+    };
+  } catch (error) {
+    console.error("Erro em excluirUsuarioPorEmail:", error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    if (error.code === "auth/user-not-found") {
+      throw new functions.https.HttpsError(
+        "not-found",
+        "Nenhum usuário encontrado no Authentication com esse e-mail."
+      );
+    }
+
+    throw new functions.https.HttpsError(
+      "internal",
+      error.message || "Erro interno em excluirUsuarioPorEmail."
+    );
+  }
 });
