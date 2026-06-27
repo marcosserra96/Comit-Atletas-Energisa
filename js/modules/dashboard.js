@@ -47,6 +47,7 @@ export function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike,
   const engPct = (totalAtivosGerais > 0 ? Math.round((engajados30d / totalAtivosGerais) * 100) : 0) + "%";
   setTextDashboard("engajamento30d", engPct);
   setTextDashboard("engajamento30d_badge", engPct);
+  setTextDashboard("dashAtivos30d_label", `${engajados30d} atletas ativos`);
   setTextDashboard("dashAtivos30d", engajados30d);
   setTextDashboard("dashParticipacoes", analytics.participacoes);
   setTextDashboard("dashKmTotal", `${formatarKm(analytics.kmTotal)} km`);
