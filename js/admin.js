@@ -140,27 +140,75 @@ function construirMenu() {
     if (activeMenu && sec.id === activeMenu.dataset.section) sec.classList.add("active-section"); 
   });
 
-  const badge = document.getElementById("userGroupBadge"); 
-  if(badge) {
-    badge.style.display = "inline-block";
-    if (appState.userRole === "admin") { badge.textContent = "Admin"; badge.style.background = "var(--danger)"; } 
-    else { badge.textContent = "Comitê"; badge.style.background = "var(--primary)"; }
-  }
+  // Badge de role e avatar do usuário
+  const badge = document.getElementById("userGroupBadge");
+  const avatar = document.getElementById("userAvatar");
+  const displayName = document.getElementById("userDisplayName");
+  const roleLabel = appState.userRole === "admin" ? "Admin" : "Comitê";
+  if (badge) { badge.style.display = "block"; badge.textContent = roleLabel; }
+
+  // Preenche nome e inicial do avatar com os dados do usuário logado
+  const nomeUsuario = appState.mapAtletas?.[appState.currentUser?.uid]?.nome || appState.currentUser?.email || "Usuário";
+  const primeiroNome = nomeUsuario.split(" ")[0];
+  if (displayName) displayName.textContent = primeiroNome;
+  if (avatar) avatar.textContent = primeiroNome.charAt(0).toUpperCase();
 
   if (appState.userRole !== "admin") { document.querySelectorAll(".admin-only-element").forEach(el => el.style.display = "none"); }
-  
+
   document.querySelectorAll(".menu-item").forEach(item => {
     item.addEventListener("click", () => {
-      document.querySelectorAll(".menu-item").forEach(btn => btn.classList.remove("active")); 
+      document.querySelectorAll(".menu-item").forEach(btn => btn.classList.remove("active"));
       item.classList.add("active");
-      document.querySelectorAll("main section").forEach(sec => { 
-        sec.classList.remove("active-section"); 
-        if (sec.id === item.dataset.section) sec.classList.add("active-section"); 
+      document.querySelectorAll("main section").forEach(sec => {
+        sec.classList.remove("active-section");
+        if (sec.id === item.dataset.section) sec.classList.add("active-section");
       });
-      if(typeof lucide !== 'undefined') lucide.createIcons();
+      // No mobile fecha a sidebar após navegar
+      if (window.innerWidth <= 768) document.body.classList.remove("sidebar-open");
+      if (typeof lucide !== 'undefined') lucide.createIcons();
     });
   });
-  if(typeof lucide !== 'undefined') lucide.createIcons();
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+
+  setupSidebar();
+}
+
+function setupSidebar() {
+  const sidebar = document.getElementById("appSidebar");
+  const collapseBtn = document.getElementById("sidebarCollapseBtn");
+  const hamburgerBtn = document.getElementById("sidebarToggleBtn");
+  const searchInput = document.getElementById("buscaGlobalAtleta");
+
+  // Persistir estado de collapse
+  const collapsed = localStorage.getItem("sidebarCollapsed") === "true";
+  if (collapsed) document.body.classList.add("sidebar-collapsed");
+
+  collapseBtn?.addEventListener("click", () => {
+    const isCollapsed = document.body.classList.toggle("sidebar-collapsed");
+    localStorage.setItem("sidebarCollapsed", isCollapsed);
+    const icon = collapseBtn.querySelector("i[data-lucide]");
+    if (icon) { icon.setAttribute("data-lucide", isCollapsed ? "panel-left-open" : "panel-left-close"); if (typeof lucide !== 'undefined') lucide.createIcons(); }
+  });
+
+  // Hamburger: no desktop faz o mesmo que collapse; no mobile abre/fecha
+  hamburgerBtn?.addEventListener("click", () => {
+    if (window.innerWidth <= 768) {
+      document.body.classList.toggle("sidebar-open");
+    } else {
+      const isCollapsed = document.body.classList.toggle("sidebar-collapsed");
+      localStorage.setItem("sidebarCollapsed", isCollapsed);
+      const icon = collapseBtn?.querySelector("i[data-lucide]");
+      if (icon) { icon.setAttribute("data-lucide", isCollapsed ? "panel-left-open" : "panel-left-close"); if (typeof lucide !== 'undefined') lucide.createIcons(); }
+    }
+  });
+
+  // Atalho "/" para focar na busca
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "/" && document.activeElement !== searchInput && !["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName)) {
+      e.preventDefault();
+      searchInput?.focus();
+    }
+  });
 }
 
 function iniciarPainelAdmin() {

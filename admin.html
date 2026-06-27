@@ -20,30 +20,49 @@
 <body>
   <div id="toastContainer"></div>
 
-  <header class="topbar topbar-slim">
-    <div class="topbar-brand">
-      <img class="topbar-program-logo" src="assets/logos/logo-comite-branca-trim.png" alt="Atletas Energisa" />
-      <div class="brand-divider"></div>
-      <div class="brand-context">
-        <strong>Portal do Comitê</strong>
-        <small>Atletas Energisa</small>
-      </div>
+  <header class="app-topbar">
+    <div class="app-topbar__brand">
+      <button class="app-topbar__hamburger" id="sidebarToggleBtn" title="Menu" type="button" aria-label="Abrir/fechar menu">
+        <i data-lucide="menu"></i>
+      </button>
+      <img class="app-topbar__logo" src="assets/logos/logo-comite-branca-trim.png" alt="Atletas Energisa" />
     </div>
-    <div class="topbar-actions">
-      <div class="global-search">
-        <i data-lucide="search"></i>
-        <input type="text" id="buscaGlobalAtleta" placeholder="Buscar atleta..." autocomplete="off" />
-        <div id="resultadoBuscaGlobal" class="global-search-results"></div>
+
+    <div class="app-topbar__search">
+      <i data-lucide="search" class="app-topbar__search-icon"></i>
+      <input type="text" id="buscaGlobalAtleta" class="app-topbar__search-input" placeholder="Buscar atleta…" autocomplete="off" />
+      <kbd class="app-topbar__search-hint">/</kbd>
+      <div id="resultadoBuscaGlobal" class="global-search-results"></div>
+    </div>
+
+    <div class="app-topbar__actions">
+      <button id="btnToggleTema" class="app-topbar__icon-btn theme-toggle-top" title="Alternar tema" type="button">
+        <i data-lucide="moon"></i>
+      </button>
+      <div class="app-topbar__user" id="topbarUser">
+        <div class="app-topbar__avatar" id="userAvatar">?</div>
+        <div class="app-topbar__user-info">
+          <strong id="userDisplayName">—</strong>
+          <span id="userGroupBadge" style="display:none;"></span>
+        </div>
       </div>
-      <button id="btnToggleTema" class="btn-topo theme-toggle-top" title="Alternar tema" type="button"><i data-lucide="moon"></i></button>
-      <span id="userGroupBadge" style="display:none;"></span>
-      <button id="logoutBtn" class="btn-topo" title="Sair" type="button"><i data-lucide="log-out"></i></button>
+      <button id="logoutBtn" class="app-topbar__icon-btn" title="Sair" type="button">
+        <i data-lucide="log-out"></i>
+      </button>
     </div>
   </header>
 
-  <nav class="menu-flutuante" id="menuNavegacao"></nav>
+  <aside class="app-sidebar" id="appSidebar">
+    <nav class="app-sidebar__nav" id="menuNavegacao"></nav>
+    <div class="app-sidebar__footer">
+      <button class="app-sidebar__collapse" id="sidebarCollapseBtn" title="Minimizar" type="button">
+        <i data-lucide="panel-left-close"></i>
+        <span>Minimizar</span>
+      </button>
+    </div>
+  </aside>
 
-  <main>
+  <main class="app-main">
     <section id="visao-geral" class="active-section">
 
       <!-- ── 1. Cabeçalho ───────────────────────────────────── -->
