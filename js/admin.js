@@ -113,26 +113,41 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 function construirMenu() {
-  const menu = document.getElementById("menuNavegacao"); 
+  const menu = document.getElementById("menuNavegacao");
   menu.innerHTML = "";
-  
-  const itensDisponiveis = [
-    { id: "visao-geral", icon: "layout-dashboard", text: "Estratégico" },
-    { id: "atletas", icon: "id-card", text: "Atletas", permCheck: ["visao-geral", "gestao"] },
-    { id: "contabilizacao", icon: "calculator", text: "Lançamentos" },
-    { id: "financeiro", icon: "dollar-sign", text: "Financeiro", permCheck: ["financeiro_view", "financeiro_edit"] },
-    { id: "gestao", icon: "users", text: "Gestão Base" },
-    { id: "configuracoes", icon: "settings", text: "Ajustes" }
+
+  // Itens visíveis para comitê e admin
+  const itensComite = [
+    { id: "visao-geral",    icon: "house",        text: "Início" },
+    { id: "atletas",        icon: "users",        text: "Atletas",    permCheck: ["visao-geral", "gestao"] },
+    { id: "contabilizacao", icon: "pencil-line",  text: "Registrar" },
+    { id: "financeiro",     icon: "wallet",       text: "Financeiro", permCheck: ["financeiro_view", "financeiro_edit"] },
+    { id: "configuracoes",  icon: "sliders-horizontal", text: "Minha Conta" },
+  ];
+
+  // Itens exclusivos do admin — aparecem após separador visual
+  const itensAdmin = [
+    { id: "gestao", icon: "settings-2", text: "Configurar Portal", adminOnly: true },
   ];
 
   let abaAtiva = false;
-  itensDisponiveis.forEach(item => {
-    let hasAccess = item.permCheck ? item.permCheck.some(p => appState.userPermissoes.includes(p)) : appState.userPermissoes.includes(item.id);
+  itensComite.forEach(item => {
+    const hasAccess = item.permCheck
+      ? item.permCheck.some(p => appState.userPermissoes.includes(p))
+      : appState.userPermissoes.includes(item.id);
     if (hasAccess || appState.userRole === "admin") {
-      const isFirst = !abaAtiva; if(isFirst) abaAtiva = true;
+      const isFirst = !abaAtiva; if (isFirst) abaAtiva = true;
       menu.innerHTML += `<div class="menu-item ${isFirst ? 'active' : ''}" data-section="${item.id}"><i data-lucide="${item.icon}"></i><span>${item.text}</span></div>`;
     }
   });
+
+  // Separador + itens de admin
+  if (appState.userRole === "admin") {
+    menu.innerHTML += `<div class="sidebar-divider"><span>Administração</span></div>`;
+    itensAdmin.forEach(item => {
+      menu.innerHTML += `<div class="menu-item menu-item--admin" data-section="${item.id}"><i data-lucide="${item.icon}"></i><span>${item.text}</span></div>`;
+    });
+  }
   
   document.querySelectorAll("main section").forEach(sec => {
     sec.classList.remove("active-section");
@@ -171,6 +186,25 @@ function construirMenu() {
   if (typeof lucide !== 'undefined') lucide.createIcons();
 
   setupSidebar();
+}
+
+function setupAtalhosSectionHeader() {
+  // Botão "Cadastrar atleta" no header da seção Atletas → ativa a aba Cadastrar
+  document.getElementById("btnIrCadastrar")?.addEventListener("click", () => {
+    const tab = document.querySelector('#atletas .sub-tab[data-target="sub-cadastrar"]');
+    tab?.click();
+  });
+  // Botão "Registrar treino" no header da seção Registrar → garante aba correta ativa
+  document.getElementById("btnIrLancar")?.addEventListener("click", () => {
+    const tab = document.querySelector('#contabilizacao .sub-tab[data-target="sub-lancar"]');
+    tab?.click();
+  });
+  // Botão "Novo gasto" no header da seção Financeiro → abre modal de despesa
+  document.getElementById("btnIrGastos")?.addEventListener("click", () => {
+    const tab = document.querySelector('#financeiro .sub-tab[data-target="sub-fin-planilha"]');
+    tab?.click();
+    setTimeout(() => document.getElementById("btnAbrirModalDespesa")?.click(), 100);
+  });
 }
 
 function setupSidebar() {
@@ -212,7 +246,8 @@ function setupSidebar() {
 }
 
 function iniciarPainelAdmin() {
-  setupSubTabs(); 
+  setupSubTabs();
+  setupAtalhosSectionHeader();
   setupConfiguracoesGerais();
   setupDashboard();
   setTimeout(() => garantirBibliotecasPDF().catch(() => {}), 2000);
