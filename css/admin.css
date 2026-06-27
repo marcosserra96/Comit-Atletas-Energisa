@@ -2014,6 +2014,102 @@ body[data-theme="dark"] .executive-kpi { background: rgba(255,255,255,.04); }
 }
 
 /* =======================================================
+   PDF V11 — Header, hero e KPI cards redesenhados
+======================================================= */
+
+/* Header com logo */
+.pdf-v11-header {
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:14px 18px;
+  background:#f7fbfc;
+  border:1px solid #dce9ee;
+  border-radius:14px;
+  margin-bottom:16px;
+}
+.pdf-v11-header__logo { flex:0 0 auto; }
+.pdf-v11-header__text { flex:1; }
+.pdf-v11-header__title { font-size:16px; font-weight:700; color:#07192d; margin:0; }
+.pdf-v11-header__sub { font-size:11px; color:#607d8b; margin:2px 0 0; }
+.pdf-v11-header__badge {
+  font-size:10px;
+  font-weight:700;
+  color:#007b91;
+  background:rgba(0,123,145,.08);
+  border-radius:8px;
+  padding:5px 10px;
+  white-space:nowrap;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+}
+
+/* Hero engajamento — página 1 */
+.pdf-v11-hero {
+  display:flex;
+  align-items:center;
+  gap:20px;
+  background:linear-gradient(135deg,#07192d 0%,#065a6e 55%,#00836e 100%);
+  border-radius:16px;
+  padding:18px 22px;
+  margin-bottom:14px;
+  color:#fff;
+}
+.pdf-v11-hero__ring {
+  position:relative;
+  width:110px;
+  height:110px;
+  flex:0 0 auto;
+}
+.pdf-v11-hero__ring-label {
+  position:absolute;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+}
+.pdf-v11-hero__ring-label strong { font-size:22px; font-weight:800; line-height:1; }
+.pdf-v11-hero__ring-label span { font-size:9px; opacity:.8; margin-top:2px; text-transform:uppercase; }
+.pdf-v11-hero__stats {
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
+  flex:1;
+}
+.pdf-v11-hero__stat { text-align:center; }
+.pdf-v11-hero__stat strong { display:block; font-size:17px; font-weight:800; color:#fff; }
+.pdf-v11-hero__stat span { font-size:9px; opacity:.75; text-transform:uppercase; letter-spacing:.04em; }
+
+/* KPI cards modernos */
+.pdf-v11-kpi-card {
+  border:1px solid #dce9ee;
+  background:#f7fbfc;
+  border-radius:12px;
+  padding:12px 14px;
+}
+.pdf-v11-kpi-card span { display:block; color:#607d8b; font-size:10px; text-transform:uppercase; font-weight:700; margin-bottom:4px; }
+.pdf-v11-kpi-card strong { display:block; color:#07192d; font-size:16px; font-weight:800; }
+
+/* Gráfico na p2 */
+.pdf-v11-chart { width:100%; height:280px; object-fit:contain; display:block; }
+
+/* Footer redesenhado */
+.pdf-v11-footer {
+  position:absolute;
+  left:48px;
+  right:48px;
+  bottom:22px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  border-top:1px solid #e5edf1;
+  padding-top:8px;
+  color:#90a4ae;
+  font-size:9.5px;
+}
+
+/* =======================================================
    V11 - Refinos finais de layout Dashboard e PDF
 ======================================================= */
 /* Dashboard: elimina buracos do grid e deixa cards mais proporcionais */

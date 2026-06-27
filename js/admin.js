@@ -8,7 +8,7 @@ import {
 
 import { appState } from "./modules/state.js";
 import { showToast, mostrarConfirmacao, setupSubTabs, setupConfiguracoesGerais } from "./modules/ui.js";
-import { setupDashboard, renderGraficosETop } from "./modules/dashboard.js";
+import { setupDashboard, renderGraficosETop, garantirBibliotecasPDF } from "./modules/dashboard.js";
 import { setupFinanceiroPlanilha, carregarFinanceiroPlanilha } from "./modules/financeiro.js";
 import { setupContabilizacao, setAtualizarTelasCallback } from "./modules/pontuacao.js";
 import { setupCadastrarPessoa, setupImportacaoAtletas, setupToggleAtivos, setupLimparBase, setAtualizarTelasGestao } from "./modules/gestao.js";
@@ -167,6 +167,7 @@ function iniciarPainelAdmin() {
   setupSubTabs(); 
   setupConfiguracoesGerais();
   setupDashboard();
+  setTimeout(() => garantirBibliotecasPDF().catch(() => {}), 2000);
   setupFinanceiroPlanilha();
   setupContabilizacao();
   setupCadastrarPessoa();

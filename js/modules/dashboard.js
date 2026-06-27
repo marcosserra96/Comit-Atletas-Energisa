@@ -208,6 +208,19 @@ function renderizarGraficoEvolucaoMensal(monthly) {
   });
 }
 
+async function carregarLogoBase64() {
+  try {
+    const resp = await fetch("assets/logos/logo-comite-colorida.png");
+    const blob = await resp.blob();
+    return await new Promise((res, rej) => {
+      const reader = new FileReader();
+      reader.onload = () => res(reader.result);
+      reader.onerror = rej;
+      reader.readAsDataURL(blob);
+    });
+  } catch { return null; }
+}
+
 async function exportarPDFExecutivo() {
   const temaAtual = document.body.getAttribute("data-theme");
   if (temaAtual === "dark") document.body.removeAttribute("data-theme");
@@ -216,7 +229,7 @@ async function exportarPDFExecutivo() {
   const modalPdf = document.getElementById("pdfOverlay");
 
   try {
-    await garantirBibliotecasPDF();
+    const [, logoB64] = await Promise.all([garantirBibliotecasPDF(), carregarLogoBase64()]);
     if (typeof html2canvas === "undefined" || !window.jspdf?.jsPDF) {
       return showToast("Bibliotecas de PDF não carregadas. Verifique a conexão com a internet ou bloqueio dos CDNs.", "error");
     }
@@ -224,33 +237,34 @@ async function exportarPDFExecutivo() {
     if (modalPdf) modalPdf.style.display = "flex";
     await aguardar(150);
 
-    const exportRoot = construirReportPaginasA4();
+    const exportRoot = construirReportPaginasA4(logoB64);
     document.body.appendChild(exportRoot);
-    await aguardar(250);
+    await aguardar(300);
 
     const pageWidth = 794;
     const pageHeight = 1123;
     const paginas = Array.from(exportRoot.querySelectorAll(".pdf-page-v10"));
     const pdf = new window.jspdf.jsPDF("p", "pt", [pageWidth, pageHeight]);
 
-    for (let i = 0; i < paginas.length; i++) {
-      const canvas = await html2canvas(paginas[i], {
-        scale: 2,
-        backgroundColor: "#ffffff",
-        useCORS: true,
-        allowTaint: true,
-        width: pageWidth,
-        height: pageHeight,
-        windowWidth: pageWidth,
-        windowHeight: pageHeight,
-        scrollX: 0,
-        scrollY: 0
-      });
+    const opts = {
+      scale: 1.5,
+      backgroundColor: "#ffffff",
+      useCORS: true,
+      allowTaint: true,
+      width: pageWidth,
+      height: pageHeight,
+      windowWidth: pageWidth,
+      windowHeight: pageHeight,
+      scrollX: 0,
+      scrollY: 0
+    };
 
-      const imgData = canvas.toDataURL("image/jpeg", 0.98);
+    const canvases = await Promise.all(paginas.map(p => html2canvas(p, opts)));
+    canvases.forEach((canvas, i) => {
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
       if (i > 0) pdf.addPage([pageWidth, pageHeight], "p");
       pdf.addImage(imgData, "JPEG", 0, 0, pageWidth, pageHeight, undefined, "FAST");
-    }
+    });
 
     const dataHoje = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
     pdf.save(`Report_Atletas_${dataHoje}.pdf`);
@@ -266,7 +280,7 @@ async function exportarPDFExecutivo() {
   }
 }
 
-async function garantirBibliotecasPDF() {
+export async function garantirBibliotecasPDF() {
   const carregarScript = (src) => new Promise((resolve, reject) => {
     const existente = document.querySelector(`script[src="${src}"]`);
     if (existente) {
@@ -293,7 +307,7 @@ async function garantirBibliotecasPDF() {
   }
 }
 
-function construirReportPaginasA4() {
+function construirReportPaginasA4(logoB64 = null) {
   const analytics = calcularAnalyticsReport();
   const monthly = calcularSeriesMensais();
   const atletas = Object.values(appState.mapAtletas || {}).filter(a => a.role === 'atleta' && a.status === 'Aprovado' && !String(a.equipe || '').startsWith('Fila'));
@@ -306,70 +320,129 @@ function construirReportPaginasA4() {
   const chartImg = document.getElementById('graficoTendencia')?.toDataURL("image/png", 1.0) || "";
   const custo = Number(appState.gastoTotalGlobal) || 0;
   const totalAtivos = arrayAtletas.filter(a => a.ativo !== false).length;
-  const eng = document.getElementById("engajamento30d")?.textContent || "0%";
+  const engPct = parseInt(document.getElementById("engajamento30d")?.textContent || "0", 10) || 0;
+  const engStr = engPct + "%";
+  const engCor = engPct >= 70 ? "#00b37e" : engPct >= 40 ? "#f37021" : "#e63946";
+  const engLabel = engPct >= 70 ? "Saudável" : engPct >= 40 ? "Atenção" : "Crítico";
+  const dataHoje = new Date().toLocaleDateString('pt-BR');
+
+  const logoHtml = logoB64
+    ? `<img src="${logoB64}" style="height:44px;object-fit:contain;display:block;" />`
+    : `<span style="font-weight:800;font-size:14px;color:#007b91;">Atletas Energisa</span>`;
 
   const root = document.createElement("div");
   root.id = "pdfExportClone";
   root.className = "pdf-export-book-v10";
-  root.style.position = "absolute";
-  root.style.left = "-9999px";
-  root.style.top = "0";
-  root.style.width = "794px";
+  root.style.cssText = "position:absolute;left:-9999px;top:0;width:794px;";
 
-  const pagina = (titulo, subtitulo, html) => {
+  const pagina = (numero, titulo, subtitulo, html) => {
     const div = document.createElement("div");
     div.className = "pdf-page-v10";
     div.innerHTML = `
-      <div class="pdf-v10-header"><div><h1>${titulo}</h1><p>${subtitulo}</p></div><span>Atletas Energisa</span></div>
+      <div class="pdf-v11-header">
+        <div class="pdf-v11-header__logo">${logoHtml}</div>
+        <div class="pdf-v11-header__text">
+          <div class="pdf-v11-header__title">${titulo}</div>
+          <div class="pdf-v11-header__sub">${subtitulo}</div>
+        </div>
+        <div class="pdf-v11-header__badge">Energisa · Comitê de Atletas</div>
+      </div>
       ${html}
-      <div class="pdf-v10-footer">Gerado em ${new Date().toLocaleDateString('pt-BR')} · Report Oficial</div>
+      <div class="pdf-v11-footer">
+        <span>Comitê de Atletas Energisa · Report Oficial ${new Date().getFullYear()}</span>
+        <span>Gerado em ${dataHoje} · Página ${numero} de 4</span>
+      </div>
     `;
     root.appendChild(div);
   };
 
-  pagina("Report Oficial", "Resumo executivo do programa", `
-    <div class="pdf-v10-kpis">
-      ${kpiPdf("Atletas ativos", totalAtivos)}
-      ${kpiPdf("Engajamento 30d", eng)}
-      ${kpiPdf("Participações", analytics.participacoes)}
-      ${kpiPdf("KM total", `${formatarKm(analytics.kmTotal)} km`)}
-      ${kpiPdf("Custo realizado", custo.toLocaleString('pt-BR', {style:'currency', currency:'BRL'}))}
-      ${kpiPdf("Custo / atleta", (totalAtivos ? custo / totalAtivos : 0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'}))}
-      ${kpiPdf("Custo / participação", (analytics.participacoes ? custo / analytics.participacoes : 0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'}))}
-      ${kpiPdf("Custo / km", (analytics.kmTotal ? custo / analytics.kmTotal : 0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'}))}
+  // ── Página 1: Visão executiva ─────────────────────────────
+  pagina(1, "Visão Executiva", "Resumo completo do programa de atletas", `
+    <div class="pdf-v11-hero">
+      <div class="pdf-v11-hero__ring">
+        <svg width="110" height="110" viewBox="0 0 110 110">
+          <circle cx="55" cy="55" r="44" fill="none" stroke="#e8f5f8" stroke-width="10"/>
+          <circle cx="55" cy="55" r="44" fill="none" stroke="${engCor}" stroke-width="10"
+            stroke-dasharray="${2*Math.PI*44}" stroke-dashoffset="${2*Math.PI*44*(1-engPct/100)}"
+            stroke-linecap="round" transform="rotate(-90 55 55)"/>
+        </svg>
+        <div class="pdf-v11-hero__ring-label">
+          <strong style="color:${engCor}">${engStr}</strong>
+          <span>${engLabel}</span>
+        </div>
+      </div>
+      <div class="pdf-v11-hero__stats">
+        <div class="pdf-v11-hero__stat">
+          <strong>${totalAtivos}</strong><span>Atletas ativos</span>
+        </div>
+        <div class="pdf-v11-hero__stat">
+          <strong>${analytics.participacoes}</strong><span>Participações</span>
+        </div>
+        <div class="pdf-v11-hero__stat">
+          <strong>${formatarKm(analytics.kmTotal)} km</strong><span>KM percorridos</span>
+        </div>
+        <div class="pdf-v11-hero__stat">
+          <strong>${custo.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</strong><span>Custo realizado</span>
+        </div>
+      </div>
+    </div>
+    <div class="pdf-v10-grid-2" style="margin-bottom:14px;">
+      <div class="pdf-v11-kpi-card">
+        <span>Custo / atleta</span>
+        <strong>${(totalAtivos ? custo/totalAtivos : 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</strong>
+      </div>
+      <div class="pdf-v11-kpi-card">
+        <span>Custo / participação</span>
+        <strong>${(analytics.participacoes ? custo/analytics.participacoes : 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</strong>
+      </div>
+      <div class="pdf-v11-kpi-card">
+        <span>Custo / km</span>
+        <strong>${(analytics.kmTotal ? custo/analytics.kmTotal : 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</strong>
+      </div>
+      <div class="pdf-v11-kpi-card">
+        <span>Engajamento 30d</span>
+        <strong style="color:${engCor}">${engStr}</strong>
+      </div>
     </div>
     <div class="pdf-v10-section"><h2>Leitura executiva</h2><ul>${montarAnalisesExecutivasReport(analytics)}</ul></div>
-    <div class="pdf-v10-section"><h2>Ações recomendadas</h2>${alertas}</div>
+    <div class="pdf-v10-section"><h2>Ações prioritárias</h2>${alertas}</div>
   `);
 
-  pagina("Evolução mensal", "Participações, pontos e KM no ano atual", `
-    <div class="pdf-v10-section"><h2>Série mensal</h2>${chartImg ? `<img class="pdf-v10-chart" src="${chartImg}" />` : montarTabelaMensalPdf(monthly)}</div>
-    <div class="pdf-v10-grid-3">
+  // ── Página 2: Evolução mensal ─────────────────────────────
+  pagina(2, "Evolução Mensal", `Participações, pontos e KM — ${new Date().getFullYear()}`, `
+    <div class="pdf-v10-section" style="margin-bottom:14px;">
+      <h2>Gráfico de evolução</h2>
+      ${chartImg ? `<img class="pdf-v11-chart" src="${chartImg}" />` : `<p style="color:#607d8b;font-size:12px;">Gráfico não disponível.</p>`}
+    </div>
+    <div class="pdf-v10-grid-3" style="margin-bottom:14px;">
       ${kpiBoxPdf("Mês atual", document.getElementById("dashMesAtualResumo")?.textContent || "-")}
-      ${kpiBoxPdf("Tendência", document.getElementById("dashTendencia3m")?.textContent || "-")}
+      ${kpiBoxPdf("Tendência 3m", document.getElementById("dashTendencia3m")?.textContent || "-")}
       ${kpiBoxPdf("Melhor mês", melhorMes(monthly))}
     </div>
-    <div class="pdf-v10-section"><h2>Resumo por mês</h2>${montarTabelaMensalPdf(monthly)}</div>
+    <div class="pdf-v10-section"><h2>Resumo mensal detalhado</h2>${montarTabelaMensalPdf(monthly)}</div>
   `);
 
-  pagina("Modalidades", "Comparativo de engajamento e performance", `
-    <div class="pdf-v10-grid-2">
-      ${modalidadePdf("Bike", stats.bike)}
-      ${modalidadePdf("Corrida", stats.corrida)}
+  // ── Página 3: Modalidades ─────────────────────────────────
+  pagina(3, "Modalidades", "Comparativo Bicicleta × Corrida", `
+    <div class="pdf-v10-grid-2" style="margin-bottom:14px;">
+      ${modalidadePdf("🚴 Bicicleta", stats.bike, "#009bc1")}
+      ${modalidadePdf("🏃 Corrida", stats.corrida, "#00b37e")}
     </div>
-    <div class="pdf-v10-section"><h2>Interpretação</h2><ul>
-      <li>Bike: ${stats.bike.total} atletas, ${stats.bike.engajamento}% de engajamento e ${formatarKm(stats.bike.km)} km.</li>
-      <li>Corrida: ${stats.corrida.total} atletas, ${stats.corrida.engajamento}% de engajamento e ${formatarKm(stats.corrida.km)} km.</li>
-      <li>Modalidade com maior volume de KM: ${analytics.modalidadeMaisKm}.</li>
+    <div class="pdf-v10-section" style="margin-bottom:14px;"><h2>Análise comparativa</h2><ul>
+      <li><span>Atletas — Bike × Corrida</span><strong>${stats.bike.total} × ${stats.corrida.total}</strong></li>
+      <li><span>Engajamento — Bike × Corrida</span><strong>${stats.bike.engajamento}% × ${stats.corrida.engajamento}%</strong></li>
+      <li><span>KM total — Bike × Corrida</span><strong>${formatarKm(stats.bike.km)} × ${formatarKm(stats.corrida.km)} km</strong></li>
+      <li><span>Modalidade com mais KM</span><strong>${analytics.modalidadeMaisKm}</strong></li>
     </ul></div>
+    <div class="pdf-v10-grid-2">
+      <div class="pdf-v10-section"><h2>Pódio 🚴 Bike</h2><ul>${podioPdf(arrayAtletas, 'bike')}</ul></div>
+      <div class="pdf-v10-section"><h2>Pódio 🏃 Corrida</h2><ul>${podioPdf(arrayAtletas, 'corrida')}</ul></div>
+    </div>
   `);
 
-  pagina("Gestão", "Pódios, alertas, lançamentos e agenda", `
-    <div class="pdf-v10-grid-2">
-      <div class="pdf-v10-section"><h2>Pódio Bike</h2><ul>${podioPdf(arrayAtletas, 'bike')}</ul></div>
-      <div class="pdf-v10-section"><h2>Pódio Corrida</h2><ul>${podioPdf(arrayAtletas, 'corrida')}</ul></div>
-    </div>
-    <div class="pdf-v10-grid-2">
+  // ── Página 4: Gestão ──────────────────────────────────────
+  pagina(4, "Gestão & Agenda", "Radar de inatividade, eventos e lançamentos", `
+    <div class="pdf-v10-grid-2" style="margin-bottom:14px;">
       <div class="pdf-v10-section"><h2>Radar de inatividade</h2><ul>${radarPdf(arrayAtletas)}</ul></div>
       <div class="pdf-v10-section"><h2>Próximos eventos</h2>${proximosEventosPdf()}</div>
     </div>
@@ -385,16 +458,17 @@ function kpiPdf(label, value) {
 function kpiBoxPdf(label, value) {
   return `<div class="pdf-v10-section small"><h2>${escapeHtml(label)}</h2><strong>${escapeHtml(value)}</strong></div>`;
 }
-function modalidadePdf(nome, s) {
-  return `<div class="pdf-v10-section"><h2>${escapeHtml(nome)}</h2><div class="pdf-v10-metrics">
+function modalidadePdf(nome, s, cor = "#007b91") {
+  return `<div class="pdf-v10-section" style="border-top:3px solid ${cor};"><h2 style="color:${cor};">${escapeHtml(nome)}</h2><div class="pdf-v10-metrics">
     ${kpiPdf("Atletas", s.total)}${kpiPdf("Ativos 30d", s.ativos30d)}${kpiPdf("Engajamento", `${s.engajamento}%`)}${kpiPdf("Pontos", s.pontos)}${kpiPdf("Participações", s.participacoes)}${kpiPdf("KM", `${formatarKm(s.km)} km`)}${kpiPdf("Média pts/atleta", s.mediaPts)}${kpiPdf("Top atleta", s.topAtleta)}
   </div></div>`;
 }
 
 function podioPdf(arrayAtletas, tipo) {
+  const medalhas = ["🥇", "🥈", "🥉", "4.", "5."];
   const arr = arrayAtletas.filter(a => tipo === 'bike' ? (a.eq === 'Bicicleta' || a.eq === 'Bike') : a.eq === 'Corrida').sort((a,b) => b.pts - a.pts).slice(0,5);
   if (!arr.length) return "<li>Sem pontuação registrada.</li>";
-  return arr.map((a,i) => `<li><span>${i+1}. ${escapeHtml(a.nome)}</span><strong>${Number(a.pts)||0} pts</strong></li>`).join("");
+  return arr.map((a,i) => `<li><span>${medalhas[i]} ${escapeHtml(a.nome)}</span><strong>${Number(a.pts)||0} pts</strong></li>`).join("");
 }
 
 function radarPdf(arrayAtletas) {
