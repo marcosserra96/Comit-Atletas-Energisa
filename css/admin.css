@@ -9325,3 +9325,296 @@ body.dark-mode .lancamento-save-bar {
   background: var(--bg-card) !important;
   border-color: rgba(255,255,255,.10) !important;
 }
+
+/* =====================================================
+   VISÃO ESTRATÉGICA — Redesign V2
+   ===================================================== */
+
+/* ── Faixa de KPIs ─────────────────────────────────── */
+.vg-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.vg-kpi-chip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.vg-kpi-chip:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,.09);
+}
+
+.vg-kpi-chip > i,
+.vg-kpi-chip > svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--primary);
+  opacity: .7;
+}
+
+.vg-kpi-chip > div { min-width: 0; }
+
+.vg-kpi-chip span {
+  display: block;
+  font-size: .68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--text-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vg-kpi-chip strong {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vg-kpi-accent {
+  background: linear-gradient(135deg, rgba(0,155,193,.1), rgba(0,179,126,.07));
+  border-color: rgba(0,155,193,.2);
+}
+
+.vg-kpi-accent strong { color: var(--primary); }
+.vg-kpi-accent > i, .vg-kpi-accent > svg { opacity: 1; }
+
+.vg-kpi-financial {
+  background: linear-gradient(135deg, rgba(243,112,33,.07), rgba(243,112,33,.03));
+  border-color: rgba(243,112,33,.18);
+}
+
+.vg-kpi-financial > i, .vg-kpi-financial > svg { color: var(--accent, #f37021); }
+
+/* ── Grid superior: Saúde + Ações ──────────────────── */
+.vg-top-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.vg-health-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.vg-health-desc {
+  font-size: .86rem;
+  color: var(--text-light);
+  margin: 10px 0 0 !important;
+  line-height: 1.5;
+}
+
+.vg-health-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.vg-health-meta span {
+  font-size: .74rem;
+  font-weight: 600;
+  color: var(--primary);
+  background: rgba(0,155,193,.09);
+  border: 1px solid rgba(0,155,193,.18);
+  padding: 5px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.vg-actions-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.vg-actions-header {
+  margin-bottom: 14px;
+}
+
+.vg-actions-header h3 {
+  margin: 0 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--primary);
+  font-size: .95rem;
+}
+
+.vg-efficiency-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.vg-efficiency-pills span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: .74rem;
+  font-weight: 600;
+  color: var(--text-light);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.vg-efficiency-pills span i,
+.vg-efficiency-pills span svg {
+  width: 12px;
+  height: 12px;
+  opacity: .6;
+}
+
+.vg-efficiency-pills b {
+  color: var(--text);
+  font-weight: 700;
+}
+
+/* ── Gráfico (largura total) ────────────────────────── */
+.vg-chart-card {
+  margin-bottom: 16px;
+}
+
+.vg-chart-shell {
+  height: 320px !important;
+}
+
+/* ── Cards de modalidade ────────────────────────────── */
+.vg-modality-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.vg-modality-card {
+  border-top: 3px solid transparent;
+}
+
+.vg-modality-bike {
+  border-top-color: var(--primary);
+  background: linear-gradient(160deg, rgba(0,155,193,.04) 0%, var(--bg-card) 50%);
+}
+
+.vg-modality-corrida {
+  border-top-color: var(--secondary);
+  background: linear-gradient(160deg, rgba(0,179,126,.04) 0%, var(--bg-card) 50%);
+}
+
+.vg-modality-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.vg-modality-total {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--primary);
+  line-height: 1;
+}
+
+.vg-modality-corrida .vg-modality-total {
+  color: var(--secondary);
+}
+
+.vg-eng-pct {
+  font-weight: 800;
+  font-size: .95rem;
+  color: var(--primary) !important;
+}
+
+.vg-modality-corrida .vg-eng-pct {
+  color: var(--secondary) !important;
+}
+
+.vg-modality-perf {
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.vg-modality-bike .modality-progress span {
+  background: linear-gradient(135deg, var(--primary), #00a693);
+}
+
+.vg-modality-corrida .modality-progress span {
+  background: linear-gradient(135deg, var(--secondary), #7ac943);
+}
+
+/* ── Grid inferior: Pódio + Eventos + Radar ─────────── */
+.vg-bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+/* ── Painel de exportações (mais discreto) ───────────── */
+.vg-export-panel {
+  opacity: .9;
+  margin-top: 4px;
+}
+
+/* ── Responsivo ─────────────────────────────────────── */
+@media (max-width: 1200px) {
+  .vg-kpi-strip { grid-template-columns: repeat(4, 1fr); }
+}
+
+@media (max-width: 900px) {
+  .vg-kpi-strip { grid-template-columns: repeat(3, 1fr); }
+  .vg-top-grid { grid-template-columns: 1fr; }
+  .vg-modality-grid { grid-template-columns: 1fr; }
+  .vg-bottom-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 600px) {
+  .vg-kpi-strip { grid-template-columns: repeat(2, 1fr); }
+  .vg-modality-perf { grid-template-columns: 1fr; }
+}
+
+/* ── Dark mode ──────────────────────────────────────── */
+body[data-theme="dark"] .vg-kpi-chip,
+body.dark-mode .vg-kpi-chip {
+  background: rgba(255,255,255,.04);
+  border-color: rgba(255,255,255,.08);
+}
+
+body[data-theme="dark"] .vg-kpi-accent,
+body.dark-mode .vg-kpi-accent {
+  background: linear-gradient(135deg, rgba(0,155,193,.15), rgba(0,179,126,.1));
+}
+
+body[data-theme="dark"] .vg-efficiency-pills span,
+body.dark-mode .vg-efficiency-pills span {
+  background: rgba(255,255,255,.04);
+  border-color: rgba(255,255,255,.08);
+}

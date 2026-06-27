@@ -44,7 +44,9 @@ export function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike,
   const modStats = calcularStatsModalidades(arrayAtletas, ptsBike, ptsCorrida, totalBike, totalCorrida);
 
   setTextDashboard("totalAtivosGeral", totalAtivosGerais);
-  setTextDashboard("engajamento30d", (totalAtivosGerais > 0 ? Math.round((engajados30d / totalAtivosGerais) * 100) : 0) + "%");
+  const engPct = (totalAtivosGerais > 0 ? Math.round((engajados30d / totalAtivosGerais) * 100) : 0) + "%";
+  setTextDashboard("engajamento30d", engPct);
+  setTextDashboard("engajamento30d_badge", engPct);
   setTextDashboard("dashAtivos30d", engajados30d);
   setTextDashboard("dashParticipacoes", analytics.participacoes);
   setTextDashboard("dashKmTotal", `${formatarKm(analytics.kmTotal)} km`);
@@ -75,7 +77,9 @@ function atualizarResumoMensal(monthly) {
   const part = monthly.participacoes[mesAtual] || 0;
   const pts = monthly.pontos[mesAtual] || 0;
   const km = monthly.km[mesAtual] || 0;
-  setTextDashboard("dashMesAtualResumo", `Mês atual: ${part} part. · ${pts} pts · ${formatarKm(km)} km`);
+  const resumoMes = `Mês atual: ${part} part. · ${pts} pts · ${formatarKm(km)} km`;
+  setTextDashboard("dashMesAtualResumo", resumoMes);
+  setTextDashboard("dashMesAtualResumo_chart", resumoMes);
 
   const ultimos3 = monthly.participacoes.slice(Math.max(0, mesAtual - 2), mesAtual + 1);
   let tendencia = "sem dados";
@@ -86,7 +90,9 @@ function atualizarResumoMensal(monthly) {
     else if (ultimo < primeiro) tendencia = "queda nos últimos meses";
     else tendencia = "estável nos últimos meses";
   }
-  setTextDashboard("dashTendencia3m", `Tendência: ${tendencia}`);
+  const tendenciaTexto = `Tendência: ${tendencia}`;
+  setTextDashboard("dashTendencia3m", tendenciaTexto);
+  setTextDashboard("dashTendencia3m_chart", tendenciaTexto);
 }
 
 function atualizarCardsModalidade(stats) {

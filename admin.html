@@ -45,142 +45,165 @@
 
   <main>
     <section id="visao-geral" class="active-section">
+
+      <!-- ── Cabeçalho ──────────────────────────────────────── -->
       <div class="header-acao home-hero-header">
         <div>
           <h2>Visão Estratégica</h2>
           <p class="page-subtitle">Resumo do programa, alertas e acessos rápidos para acompanhamento do comitê.</p>
         </div>
-        <button id="btnExportarPDF" class="btn-primario btn-report-oficial" type="button"><i data-lucide="printer"></i> Exportar Report Oficial</button>
+        <button id="btnExportarPDF" class="btn-primario btn-report-oficial" type="button"><i data-lucide="printer"></i> Exportar Report</button>
       </div>
 
-      <div class="quick-export-panel quick-export-panel-v38">
-        <div class="quick-export-copy">
-          <span class="eyebrow">Central do Comitê</span>
-          <h3>Comunicação e exportações</h3>
-          <p>Gere o informativo mensal do ranking ou baixe as principais bases para acompanhamento da equipe.</p>
-          <div class="quick-export-note"><i data-lucide="megaphone"></i><span>Use o informativo para comunicar Top 3, atletas em alerta e evolução do mês.</span></div>
+      <!-- ── Faixa de KPIs ───────────────────────────────────── -->
+      <div class="vg-kpi-strip">
+        <div class="vg-kpi-chip">
+          <i data-lucide="users"></i>
+          <div>
+            <span>Atletas ativos</span>
+            <strong id="totalAtivosGeral">0</strong>
+          </div>
         </div>
-        <div class="quick-export-actions">
-          <button id="btnGerarInformativoRanking" class="btn-primario btn-informativo-destaque" type="button"><i data-lucide="trophy"></i><span>Informativo do ranking</span></button>
-          <button id="btnModoApresentacao" class="btn-acao btn-apresentacao" type="button"><i data-lucide="presentation"></i><span>Modo apresentação</span></button>
-          <button id="btnExportarListaAtletas" class="btn-acao" type="button"><i data-lucide="users"></i><span>Lista de atletas</span></button>
-          <button id="btnExportarListaEventos" class="btn-acao" type="button"><i data-lucide="calendar-days"></i><span>Lista de eventos</span></button>
-          <button id="btnExportarParticipacaoAtletas" class="btn-acao" type="button"><i data-lucide="activity"></i><span>Participação</span></button>
+        <div class="vg-kpi-chip vg-kpi-accent">
+          <i data-lucide="zap"></i>
+          <div>
+            <span>Engajamento 30d</span>
+            <strong id="engajamento30d">0%</strong>
+          </div>
+        </div>
+        <div class="vg-kpi-chip">
+          <i data-lucide="user-check"></i>
+          <div>
+            <span>Ativos 30d</span>
+            <strong id="dashAtivos30d">0</strong>
+          </div>
+        </div>
+        <div class="vg-kpi-chip">
+          <i data-lucide="ticket-check"></i>
+          <div>
+            <span>Participações</span>
+            <strong id="dashParticipacoes">0</strong>
+          </div>
+        </div>
+        <div class="vg-kpi-chip">
+          <i data-lucide="route"></i>
+          <div>
+            <span>KM total</span>
+            <strong id="dashKmTotal">0 km</strong>
+          </div>
+        </div>
+        <div class="vg-kpi-chip vg-kpi-financial">
+          <i data-lucide="dollar-sign"></i>
+          <div>
+            <span>Custo realizado</span>
+            <strong id="totalInvestimento">R$ 0,00</strong>
+          </div>
+        </div>
+        <div class="vg-kpi-chip vg-kpi-financial">
+          <i data-lucide="trending-down"></i>
+          <div>
+            <span>Custo / atleta</span>
+            <strong id="roiAtleta">R$ 0,00</strong>
+          </div>
         </div>
       </div>
 
-      <div class="executive-topline">
-        <div class="program-health-card">
+      <!-- ── Linha superior: Saúde + Ações ──────────────────── -->
+      <div class="vg-top-grid">
+
+        <div class="program-health-card vg-health-card">
           <div class="program-health-header">
             <div>
               <span class="eyebrow">Saúde do Programa</span>
-              <h3><span id="totalAtivosGeral">0</span> atletas ativos</h3>
+              <p id="dashResumoSaude" class="vg-health-desc">Aguardando dados de engajamento, participações e KM.</p>
             </div>
-            <div class="health-score" id="engajamento30d">0%</div>
+            <div class="health-score" id="engajamento30d_badge">0%</div>
           </div>
-          <p id="dashResumoSaude">Aguardando dados de engajamento, participações e KM.</p>
-          <div class="health-mini-grid">
-            <div><span>Ativos 30d</span><strong id="dashAtivos30d">0</strong></div>
-            <div><span>Participações</span><strong id="dashParticipacoes">0</strong></div>
-            <div><span>KM total</span><strong id="dashKmTotal">0 km</strong></div>
+          <div class="vg-health-meta">
+            <span id="dashMesAtualResumo">Mês atual: —</span>
+            <span id="dashTendencia3m">Tendência: sem dados</span>
           </div>
         </div>
-        <div class="executive-kpi-grid">
-          <div class="executive-kpi"><i data-lucide="dollar-sign"></i><span>Custo realizado</span><strong id="totalInvestimento">R$ 0,00</strong></div>
-          <div class="executive-kpi"><i data-lucide="users"></i><span>Custo / atleta</span><strong id="roiAtleta">R$ 0,00</strong></div>
-          <div class="executive-kpi"><i data-lucide="ticket-check"></i><span>Custo / participação</span><strong id="dashCustoParticipacao">R$ 0,00</strong></div>
-          <div class="executive-kpi"><i data-lucide="route"></i><span>Custo / km</span><strong id="dashCustoKm">R$ 0,00</strong></div>
-        </div>
-      </div>
 
-      <div class="strategic-command-center">
-        <div class="strategic-action-card">
-          <div class="strategic-action-header">
-            <div>
-              <h3><i data-lucide="sparkles"></i> Ações recomendadas</h3>
-              <p>Prioridades calculadas com base nos eventos, lançamentos, fila e engajamento.</p>
+        <div class="strategic-action-card vg-actions-card">
+          <div class="vg-actions-header">
+            <h3><i data-lucide="sparkles"></i> Ações recomendadas</h3>
+            <div class="vg-efficiency-pills">
+              <span><i data-lucide="calendar-x"></i> <b id="dashEventosPendentes">0</b> eventos pendentes</span>
+              <span><i data-lucide="clock"></i> <b id="dashFilaAguardando">0</b> na fila</span>
+              <span><i data-lucide="coins"></i> <b id="dashCustoParticipacao">R$ 0,00</b> / part.</span>
+              <span><i data-lucide="map-pin"></i> <b id="dashCustoKm">R$ 0,00</b> / km</span>
             </div>
           </div>
           <div id="listaAcoesRecomendadas" class="strategic-action-list"></div>
         </div>
-        <div class="strategic-action-card compact">
-          <h3><i data-lucide="gauge"></i> Eficiência</h3>
-          <div class="efficiency-grid">
-            <div><span>Custo / participação</span><strong id="dashCustoParticipacao">R$ 0,00</strong></div>
-            <div><span>Custo / km</span><strong id="dashCustoKm">R$ 0,00</strong></div>
-            <div><span>Eventos sem lançamento</span><strong id="dashEventosPendentes">0</strong></div>
-            <div><span>Fila aguardando</span><strong id="dashFilaAguardando">0</strong></div>
-          </div>
-        </div>
+
       </div>
 
-      <div class="strategic-analysis-grid">
-        <div class="analysis-card analysis-wide">
-          <div class="analysis-card-header">
-            <div>
-              <h3><i data-lucide="activity"></i> Evolução mensal</h3>
-              <p>Participações, pontos e KM por mês no ano atual.</p>
-            </div>
-            <div class="analysis-summary-pills">
-              <span id="dashMesAtualResumo">Mês atual: 0 part. · 0 pts · 0 km</span>
-              <span id="dashTendencia3m">Tendência: sem dados</span>
-            </div>
+      <!-- ── Gráfico de evolução (largura total) ─────────────── -->
+      <div class="analysis-card vg-chart-card">
+        <div class="analysis-card-header">
+          <div>
+            <h3><i data-lucide="activity"></i> Evolução mensal</h3>
+            <p>Participações, pontos e KM por mês no ano atual.</p>
           </div>
-          <div class="chart-shell"><canvas id="graficoTendencia"></canvas></div>
-        </div>
-
-        <div class="analysis-card">
-          <div class="analysis-card-header compact">
-            <h3><i data-lucide="radar"></i> Engajamento por modalidade</h3>
-            <p>Atletas ativos nos últimos 30 dias.</p>
-          </div>
-          <div class="modality-engagement-list">
-            <div class="modality-engagement bike">
-              <div class="modality-title"><span class="outline-modality-label"><i data-lucide="bike"></i><span>Bike</span></span><strong id="totalBike">0</strong></div>
-              <div class="modality-progress"><span id="dashBikeEngBar"></span></div>
-              <div class="modality-stats"><span><b id="dashBikeAtivos30d">0</b> ativos 30d</span><span id="dashBikeEngajamento">0%</span></div>
-              <small><span id="dashBikeInativos">0</span> sem atividade recente · <span id="dashBikeKm">0 km</span></small>
-            </div>
-            <div class="modality-engagement corrida">
-              <div class="modality-title"><span class="outline-modality-label"><i data-lucide="footprints"></i><span>Corrida</span></span><strong id="totalCorrida">0</strong></div>
-              <div class="modality-progress"><span id="dashCorridaEngBar"></span></div>
-              <div class="modality-stats"><span><b id="dashCorridaAtivos30d">0</b> ativos 30d</span><span id="dashCorridaEngajamento">0%</span></div>
-              <small><span id="dashCorridaInativos">0</span> sem atividade recente · <span id="dashCorridaKm">0 km</span></small>
-            </div>
+          <div class="analysis-summary-pills">
+            <span id="dashMesAtualResumo_chart">—</span>
+            <span id="dashTendencia3m_chart">—</span>
           </div>
         </div>
+        <div class="chart-shell vg-chart-shell"><canvas id="graficoTendencia"></canvas></div>
+      </div>
 
-        <div class="analysis-card">
-          <div class="analysis-card-header compact">
-            <h3><i data-lucide="gauge"></i> Performance por modalidade</h3>
-            <p>Média, volume e atleta de referência.</p>
+      <!-- ── Cards de modalidade ─────────────────────────────── -->
+      <div class="vg-modality-grid">
+
+        <!-- Bike -->
+        <div class="analysis-card vg-modality-card vg-modality-bike">
+          <div class="vg-modality-header">
+            <span class="outline-modality-label"><i data-lucide="bike"></i><span>Bike</span></span>
+            <strong class="vg-modality-total" id="totalBike">0</strong>
           </div>
-          <div class="performance-compare">
-            <div>
-              <h4><span class="outline-modality-label"><i data-lucide="bike"></i><span>Bike</span></span></h4>
-              <div class="perf-row"><span>Média pts/atleta</span><strong id="mediaBike">0</strong></div>
-              <div class="perf-row"><span>Participações</span><strong id="dashBikeParticipacoes">0</strong></div>
-              <div class="perf-row"><span>Pontos totais</span><strong id="dashBikePontosTotal">0</strong></div>
-              <div class="perf-row"><span>Top atleta</span><strong id="dashBikeTop">-</strong></div>
-            </div>
-            <div>
-              <h4><span class="outline-modality-label"><i data-lucide="footprints"></i><span>Corrida</span></span></h4>
-              <div class="perf-row"><span>Média pts/atleta</span><strong id="mediaCorrida">0</strong></div>
-              <div class="perf-row"><span>Participações</span><strong id="dashCorridaParticipacoes">0</strong></div>
-              <div class="perf-row"><span>Pontos totais</span><strong id="dashCorridaPontosTotal">0</strong></div>
-              <div class="perf-row"><span>Top atleta</span><strong id="dashCorridaTop">-</strong></div>
-            </div>
+          <div class="modality-progress"><span id="dashBikeEngBar"></span></div>
+          <div class="modality-stats">
+            <span><b id="dashBikeAtivos30d">0</b> ativos 30d</span>
+            <span id="dashBikeEngajamento" class="vg-eng-pct">0%</span>
+          </div>
+          <div class="vg-modality-perf">
+            <div class="perf-row"><span>Participações</span><strong id="dashBikeParticipacoes">0</strong></div>
+            <div class="perf-row"><span>Pontos totais</span><strong id="dashBikePontosTotal">0</strong></div>
+            <div class="perf-row"><span>Média pts/atleta</span><strong id="mediaBike">0</strong></div>
+            <div class="perf-row"><span>KM acumulado</span><strong id="dashBikeKm">0 km</strong></div>
+            <div class="perf-row"><span>Inativos 30d</span><strong id="dashBikeInativos">0</strong></div>
+            <div class="perf-row"><span>Top atleta</span><strong id="dashBikeTop">—</strong></div>
           </div>
         </div>
 
-        <div class="analysis-card events-card">
-          <div class="analysis-card-header compact">
-            <h3><i data-lucide="calendar-days"></i> Próximos Eventos</h3>
-            <p>Agenda mais próxima do programa.</p>
+        <!-- Corrida -->
+        <div class="analysis-card vg-modality-card vg-modality-corrida">
+          <div class="vg-modality-header">
+            <span class="outline-modality-label"><i data-lucide="footprints"></i><span>Corrida</span></span>
+            <strong class="vg-modality-total" id="totalCorrida">0</strong>
           </div>
-          <div id="listaEventosAgenda" class="events-agenda-list"></div>
-          <button id="abrirModalEvento" class="btn-acao events-add-button" type="button"><i data-lucide="plus-circle"></i> Novo Evento</button>
+          <div class="modality-progress"><span id="dashCorridaEngBar"></span></div>
+          <div class="modality-stats">
+            <span><b id="dashCorridaAtivos30d">0</b> ativos 30d</span>
+            <span id="dashCorridaEngajamento" class="vg-eng-pct">0%</span>
+          </div>
+          <div class="vg-modality-perf">
+            <div class="perf-row"><span>Participações</span><strong id="dashCorridaParticipacoes">0</strong></div>
+            <div class="perf-row"><span>Pontos totais</span><strong id="dashCorridaPontosTotal">0</strong></div>
+            <div class="perf-row"><span>Média pts/atleta</span><strong id="mediaCorrida">0</strong></div>
+            <div class="perf-row"><span>KM acumulado</span><strong id="dashCorridaKm">0 km</strong></div>
+            <div class="perf-row"><span>Inativos 30d</span><strong id="dashCorridaInativos">0</strong></div>
+            <div class="perf-row"><span>Top atleta</span><strong id="dashCorridaTop">—</strong></div>
+          </div>
         </div>
+
+      </div>
+
+      <!-- ── Linha inferior: Pódio + Eventos + Radar ────────── -->
+      <div class="vg-bottom-grid">
 
         <div class="analysis-card podium-card">
           <div class="analysis-card-header compact">
@@ -199,6 +222,15 @@
           </div>
         </div>
 
+        <div class="analysis-card events-card">
+          <div class="analysis-card-header compact">
+            <h3><i data-lucide="calendar-days"></i> Próximos Eventos</h3>
+            <p>Agenda mais próxima do programa.</p>
+          </div>
+          <div id="listaEventosAgenda" class="events-agenda-list"></div>
+          <button id="abrirModalEvento" class="btn-acao events-add-button" type="button"><i data-lucide="plus-circle"></i> Novo Evento</button>
+        </div>
+
         <div class="analysis-card radar-card">
           <div class="analysis-card-header compact">
             <h3><i data-lucide="alert-triangle"></i> Radar de Inatividade</h3>
@@ -215,7 +247,26 @@
             </div>
           </div>
         </div>
+
       </div>
+
+      <!-- ── Central de exportações (secundária) ────────────── -->
+      <div class="quick-export-panel quick-export-panel-v38 vg-export-panel">
+        <div class="quick-export-copy">
+          <span class="eyebrow">Central do Comitê</span>
+          <h3>Comunicação e exportações</h3>
+          <p>Gere o informativo mensal do ranking ou baixe as principais bases para acompanhamento da equipe.</p>
+          <div class="quick-export-note"><i data-lucide="megaphone"></i><span>Use o informativo para comunicar Top 3, atletas em alerta e evolução do mês.</span></div>
+        </div>
+        <div class="quick-export-actions">
+          <button id="btnGerarInformativoRanking" class="btn-primario btn-informativo-destaque" type="button"><i data-lucide="trophy"></i><span>Informativo do ranking</span></button>
+          <button id="btnModoApresentacao" class="btn-acao btn-apresentacao" type="button"><i data-lucide="presentation"></i><span>Modo apresentação</span></button>
+          <button id="btnExportarListaAtletas" class="btn-acao" type="button"><i data-lucide="users"></i><span>Lista de atletas</span></button>
+          <button id="btnExportarListaEventos" class="btn-acao" type="button"><i data-lucide="calendar-days"></i><span>Lista de eventos</span></button>
+          <button id="btnExportarParticipacaoAtletas" class="btn-acao" type="button"><i data-lucide="activity"></i><span>Participação</span></button>
+        </div>
+      </div>
+
     </section>
 
 
