@@ -44,10 +44,13 @@ export function renderGraficosETop(ptsBike, ptsCorrida, arrayAtletas, totalBike,
   const modStats = calcularStatsModalidades(arrayAtletas, ptsBike, ptsCorrida, totalBike, totalCorrida);
 
   setTextDashboard("totalAtivosGeral", totalAtivosGerais);
-  const engPct = (totalAtivosGerais > 0 ? Math.round((engajados30d / totalAtivosGerais) * 100) : 0) + "%";
+  const engNum = totalAtivosGerais > 0 ? Math.round((engajados30d / totalAtivosGerais) * 100) : 0;
+  const engPct = engNum + "%";
   setTextDashboard("engajamento30d", engPct);
   setTextDashboard("engajamento30d_badge", engPct);
   setTextDashboard("dashAtivos30d_label", `${engajados30d} atletas ativos`);
+  atualizarRingEngajamento(engNum);
+  atualizarStatusBanner(engNum, totalAtivosGerais);
   setTextDashboard("dashAtivos30d", engajados30d);
   setTextDashboard("dashParticipacoes", analytics.participacoes);
   setTextDashboard("dashKmTotal", `${formatarKm(analytics.kmTotal)} km`);
@@ -103,7 +106,9 @@ function atualizarCardsModalidade(stats) {
   };
 
   setTextDashboard("totalBike", stats.bike.total);
+  setTextDashboard("totalBike2", stats.bike.total);
   setTextDashboard("totalCorrida", stats.corrida.total);
+  setTextDashboard("totalCorrida2", stats.corrida.total);
   setTextDashboard("dashBikeAtivos30d", stats.bike.ativos30d);
   setTextDashboard("dashCorridaAtivos30d", stats.corrida.ativos30d);
   setTextDashboard("dashBikeEngajamento", `${stats.bike.engajamento}%`);
@@ -610,3 +615,39 @@ function aguardar(ms) { return new Promise(resolve => setTimeout(resolve, ms)); 
 function formatarKm(valor) { const n = Number(valor) || 0; return n.toLocaleString('pt-BR', { minimumFractionDigits: n % 1 === 0 ? 0 : 1, maximumFractionDigits: 1 }); }
 function formatarData(dataStr) { if (!dataStr) return "-"; try { return new Date(dataStr + "T00:00:00").toLocaleDateString('pt-BR'); } catch { return dataStr; } }
 function escapeHtml(value) { return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;"); }
+
+// ── Anel de engajamento SVG ─────────────────────────
+export function atualizarRingEngajamento(pct) {
+  const fill = document.getElementById("vgRingFill");
+  if (!fill) return;
+  const circunf = 2 * Math.PI * 40; // r=40 → ~251.2
+  const offset = circunf - (circunf * Math.min(100, Math.max(0, pct)) / 100);
+  fill.style.strokeDashoffset = offset;
+
+  // Cor do anel conforme saúde
+  const cor = pct >= 70 ? "#00b37e" : pct >= 40 ? "#f37021" : "#e63946";
+  fill.style.stroke = cor;
+}
+
+// ── Banner de status ────────────────────────────────
+export function atualizarStatusBanner(pct, totalAtivos) {
+  const banner = document.getElementById("vgStatusBanner");
+  const dot    = document.getElementById("vgStatusDot");
+  const text   = document.getElementById("vgStatusText");
+  if (!banner || !dot || !text) return;
+
+  let estado, cor, cls;
+  if (totalAtivos === 0) {
+    estado = "Sem dados"; cor = "#94a3b8"; cls = "neutral";
+  } else if (pct >= 70) {
+    estado = "Programa em alta — engajamento saudável"; cor = "#00b37e"; cls = "good";
+  } else if (pct >= 40) {
+    estado = "Atenção — engajamento abaixo do esperado"; cor = "#f37021"; cls = "warn";
+  } else {
+    estado = "Crítico — programa com baixo engajamento"; cor = "#e63946"; cls = "danger";
+  }
+
+  text.textContent = estado;
+  dot.style.background = cor;
+  banner.dataset.state = cls;
+}

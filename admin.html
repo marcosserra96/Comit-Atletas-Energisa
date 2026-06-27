@@ -47,98 +47,113 @@
     <section id="visao-geral" class="active-section">
 
       <!-- ── 1. Cabeçalho ───────────────────────────────────── -->
-      <div class="vg2-header">
+      <div class="vg-header">
         <div>
-          <h2 class="vg2-title">Visão Estratégica</h2>
-          <p class="vg2-subtitle">Acompanhamento do programa · <span id="dashMesAtualResumo">—</span></p>
+          <h2 class="vg-header__title">Visão Estratégica</h2>
+          <p class="vg-header__sub">Acompanhamento do programa · <span id="dashMesAtualResumo">—</span></p>
         </div>
         <button id="btnExportarPDF" class="btn-primario btn-report-oficial" type="button">
           <i data-lucide="printer"></i> Exportar Report
         </button>
       </div>
 
-      <!-- ── 2. Quatro KPIs principais ──────────────────────── -->
-      <div class="vg2-kpis">
+      <!-- ── 2. Banner de status do programa ───────────────── -->
+      <div class="vg-status-banner" id="vgStatusBanner">
+        <div class="vg-status-banner__dot" id="vgStatusDot"></div>
+        <span id="vgStatusText">Carregando programa…</span>
+        <span class="vg-status-banner__sep">·</span>
+        <span id="dashResumoSaude">Aguardando dados</span>
+      </div>
 
-        <div class="vg2-kpi vg2-kpi--primary">
-          <div class="vg2-kpi__icon"><i data-lucide="users"></i></div>
-          <div class="vg2-kpi__body">
-            <span class="vg2-kpi__label">Atletas ativos</span>
-            <strong class="vg2-kpi__value" id="totalAtivosGeral">0</strong>
+      <!-- ── 3. Hero: engajamento + KPIs ───────────────────── -->
+      <div class="vg-hero">
+
+        <div class="vg-hero__engagement">
+          <div class="vg-ring" id="vgRing">
+            <svg viewBox="0 0 100 100" class="vg-ring__svg">
+              <circle class="vg-ring__track" cx="50" cy="50" r="40"/>
+              <circle class="vg-ring__fill" id="vgRingFill" cx="50" cy="50" r="40"
+                stroke-dasharray="251.2" stroke-dashoffset="251.2"/>
+            </svg>
+            <div class="vg-ring__label">
+              <strong id="engajamento30d">0%</strong>
+              <span>engajados</span>
+            </div>
+          </div>
+          <div class="vg-hero__eng-copy">
+            <p class="vg-hero__eng-title">Engajamento 30 dias</p>
+            <p class="vg-hero__eng-sub"><b id="dashAtivos30d">0</b> de <b id="totalAtivosGeral">0</b> atletas ativos recentemente</p>
+            <p class="vg-hero__eng-tend" id="dashTendencia3m">—</p>
           </div>
         </div>
 
-        <div class="vg2-kpi vg2-kpi--highlight">
-          <div class="vg2-kpi__icon"><i data-lucide="zap"></i></div>
-          <div class="vg2-kpi__body">
-            <span class="vg2-kpi__label">Engajamento 30d</span>
-            <strong class="vg2-kpi__value" id="engajamento30d">0%</strong>
-            <span class="vg2-kpi__sub" id="dashAtivos30d_label">0 atletas ativos</span>
-          </div>
-        </div>
+        <div class="vg-hero__divider"></div>
 
-        <div class="vg2-kpi">
-          <div class="vg2-kpi__icon"><i data-lucide="ticket-check"></i></div>
-          <div class="vg2-kpi__body">
-            <span class="vg2-kpi__label">Participações</span>
-            <strong class="vg2-kpi__value" id="dashParticipacoes">0</strong>
+        <div class="vg-hero__kpis">
+          <div class="vg-hero__kpi">
+            <i data-lucide="ticket-check"></i>
+            <div>
+              <strong id="dashParticipacoes">0</strong>
+              <span>Participações</span>
+            </div>
           </div>
-        </div>
-
-        <div class="vg2-kpi">
-          <div class="vg2-kpi__icon"><i data-lucide="route"></i></div>
-          <div class="vg2-kpi__body">
-            <span class="vg2-kpi__label">KM acumulado</span>
-            <strong class="vg2-kpi__value" id="dashKmTotal">0 km</strong>
-            <span class="vg2-kpi__sub" id="dashTendencia3m">—</span>
+          <div class="vg-hero__kpi">
+            <i data-lucide="route"></i>
+            <div>
+              <strong id="dashKmTotal">0 km</strong>
+              <span>KM acumulado</span>
+            </div>
+          </div>
+          <div class="vg-hero__kpi">
+            <i data-lucide="dollar-sign"></i>
+            <div>
+              <strong id="totalInvestimento">R$ 0,00</strong>
+              <span>Custo realizado</span>
+            </div>
+          </div>
+          <div class="vg-hero__kpi">
+            <i data-lucide="trending-up"></i>
+            <div>
+              <strong id="roiAtleta">R$ 0,00</strong>
+              <span>Custo / atleta</span>
+            </div>
           </div>
         </div>
 
       </div>
 
-      <!-- ── 3. Corpo principal: gráfico + painel lateral ────── -->
-      <div class="vg2-main">
+      <!-- ── 4. Gráfico + Ações + Agenda ───────────────────── -->
+      <div class="vg-content">
 
-        <!-- Gráfico de evolução -->
-        <div class="vg2-chart-card">
-          <div class="vg2-card-header">
+        <div class="vg-chart-wrap">
+          <div class="vg-section-head">
             <div>
-              <h3><i data-lucide="activity"></i> Evolução mensal</h3>
-              <p>Participações, pontos e KM ao longo do ano.</p>
+              <h3 class="vg-section-title"><i data-lucide="activity"></i> Evolução mensal</h3>
+              <p class="vg-section-desc" id="dashMesAtualResumo_chart">—</p>
             </div>
-            <div class="vg2-pills">
-              <span id="dashMesAtualResumo_chart">—</span>
-              <span id="dashTendencia3m_chart">—</span>
-            </div>
+            <span class="vg-trend-pill" id="dashTendencia3m_chart">—</span>
           </div>
-          <div class="vg2-chart-shell"><canvas id="graficoTendencia"></canvas></div>
+          <div class="vg-chart-shell"><canvas id="graficoTendencia"></canvas></div>
         </div>
 
-        <!-- Painel lateral: ações + eventos -->
-        <div class="vg2-side">
+        <div class="vg-sidebar">
 
-          <!-- Ações recomendadas -->
-          <div class="vg2-panel">
-            <div class="vg2-panel__header">
-              <h3><i data-lucide="sparkles"></i> O que fazer agora</h3>
-              <div class="vg2-badges">
-                <span class="vg2-badge vg2-badge--warn">
-                  <i data-lucide="clock"></i> <b id="dashEventosPendentes">0</b> eventos
-                </span>
-                <span class="vg2-badge">
-                  <i data-lucide="list-todo"></i> <b id="dashFilaAguardando">0</b> na fila
-                </span>
+          <div class="vg-card vg-actions-wrap">
+            <div class="vg-section-head">
+              <h3 class="vg-section-title"><i data-lucide="sparkles"></i> Prioridades agora</h3>
+              <div class="vg-count-pills">
+                <span class="vg-cpill vg-cpill--warn"><b id="dashEventosPendentes">0</b> eventos</span>
+                <span class="vg-cpill"><b id="dashFilaAguardando">0</b> fila</span>
               </div>
             </div>
             <div id="listaAcoesRecomendadas" class="strategic-action-list"></div>
           </div>
 
-          <!-- Próximos eventos -->
-          <div class="vg2-panel">
-            <div class="vg2-panel__header">
-              <h3><i data-lucide="calendar-days"></i> Próximos eventos</h3>
-              <button id="abrirModalEvento" class="vg2-btn-add" type="button">
-                <i data-lucide="plus"></i> Novo
+          <div class="vg-card vg-agenda-wrap">
+            <div class="vg-section-head">
+              <h3 class="vg-section-title"><i data-lucide="calendar-days"></i> Próximos eventos</h3>
+              <button id="abrirModalEvento" class="vg-btn-new" type="button">
+                <i data-lucide="plus"></i> Novo evento
               </button>
             </div>
             <div id="listaEventosAgenda" class="events-agenda-list"></div>
@@ -147,145 +162,101 @@
         </div>
       </div>
 
-      <!-- ── 4. Modalidades ─────────────────────────────────── -->
-      <div class="vg2-modalities">
+      <!-- ── 5. Modalidades ─────────────────────────────────── -->
+      <div class="vg-modalities">
 
-        <!-- Bike -->
-        <div class="vg2-mod vg2-mod--bike">
-          <div class="vg2-mod__head">
-            <div class="vg2-mod__label">
-              <i data-lucide="bike"></i>
-              <span>Bike</span>
+        <div class="vg-mod vg-mod--bike">
+          <div class="vg-mod__top">
+            <div class="vg-mod__identity">
+              <div class="vg-mod__icon"><i data-lucide="bike"></i></div>
+              <div>
+                <p class="vg-mod__name">Bicicleta</p>
+                <p class="vg-mod__count"><strong id="totalBike">0</strong> atletas</p>
+              </div>
             </div>
-            <div class="vg2-mod__count">
-              <strong id="totalBike">0</strong>
-              <span>atletas</span>
-            </div>
-          </div>
-
-          <div class="vg2-mod__engagement">
-            <div class="vg2-mod__eng-bar">
-              <div class="vg2-mod__eng-fill" id="dashBikeEngBar" style="width:0%"></div>
-            </div>
-            <div class="vg2-mod__eng-meta">
-              <span><b id="dashBikeAtivos30d">0</b> ativos nos últimos 30 dias</span>
+            <div class="vg-mod__eng-block">
               <strong id="dashBikeEngajamento">0%</strong>
+              <span>engajados</span>
             </div>
           </div>
-
-          <div class="vg2-mod__stats">
-            <div class="vg2-mod__stat">
-              <span>Participações</span>
-              <strong id="dashBikeParticipacoes">0</strong>
-            </div>
-            <div class="vg2-mod__stat">
-              <span>Pontos totais</span>
-              <strong id="dashBikePontosTotal">0</strong>
-            </div>
-            <div class="vg2-mod__stat">
-              <span>Média pts/atleta</span>
-              <strong id="mediaBike">0</strong>
-            </div>
-            <div class="vg2-mod__stat">
-              <span>KM acumulado</span>
-              <strong id="dashBikeKm">0 km</strong>
-            </div>
-            <div class="vg2-mod__stat vg2-mod__stat--warn">
-              <span>Inativos 30d</span>
-              <strong id="dashBikeInativos">0</strong>
-            </div>
-            <div class="vg2-mod__stat vg2-mod__stat--top">
-              <span>Top atleta</span>
-              <strong id="dashBikeTop">—</strong>
-            </div>
+          <div class="vg-mod__bar"><div class="vg-mod__bar-fill" id="dashBikeEngBar" style="width:0%"></div></div>
+          <p class="vg-mod__bar-meta"><span id="dashBikeAtivos30d">0</span> de <span id="totalBike2">—</span> ativos nos últimos 30 dias · <span id="dashBikeInativos">0</span> inativos</p>
+          <div class="vg-mod__stats">
+            <div class="vg-mod__stat"><span>Participações</span><strong id="dashBikeParticipacoes">0</strong></div>
+            <div class="vg-mod__stat"><span>Pontos totais</span><strong id="dashBikePontosTotal">0</strong></div>
+            <div class="vg-mod__stat"><span>Média pts/atleta</span><strong id="mediaBike">0</strong></div>
+            <div class="vg-mod__stat"><span>KM acumulado</span><strong id="dashBikeKm">0 km</strong></div>
+          </div>
+          <div class="vg-mod__top-athlete">
+            <i data-lucide="crown"></i>
+            <span>Top atleta</span>
+            <strong id="dashBikeTop">—</strong>
           </div>
         </div>
 
-        <!-- Corrida -->
-        <div class="vg2-mod vg2-mod--corrida">
-          <div class="vg2-mod__head">
-            <div class="vg2-mod__label">
-              <i data-lucide="footprints"></i>
-              <span>Corrida</span>
+        <div class="vg-mod vg-mod--corrida">
+          <div class="vg-mod__top">
+            <div class="vg-mod__identity">
+              <div class="vg-mod__icon"><i data-lucide="footprints"></i></div>
+              <div>
+                <p class="vg-mod__name">Corrida</p>
+                <p class="vg-mod__count"><strong id="totalCorrida">0</strong> atletas</p>
+              </div>
             </div>
-            <div class="vg2-mod__count">
-              <strong id="totalCorrida">0</strong>
-              <span>atletas</span>
-            </div>
-          </div>
-
-          <div class="vg2-mod__engagement">
-            <div class="vg2-mod__eng-bar">
-              <div class="vg2-mod__eng-fill" id="dashCorridaEngBar" style="width:0%"></div>
-            </div>
-            <div class="vg2-mod__eng-meta">
-              <span><b id="dashCorridaAtivos30d">0</b> ativos nos últimos 30 dias</span>
+            <div class="vg-mod__eng-block">
               <strong id="dashCorridaEngajamento">0%</strong>
+              <span>engajados</span>
             </div>
           </div>
-
-          <div class="vg2-mod__stats">
-            <div class="vg2-mod__stat">
-              <span>Participações</span>
-              <strong id="dashCorridaParticipacoes">0</strong>
-            </div>
-            <div class="vg2-mod__stat">
-              <span>Pontos totais</span>
-              <strong id="dashCorridaPontosTotal">0</strong>
-            </div>
-            <div class="vg2-mod__stat">
-              <span>Média pts/atleta</span>
-              <strong id="mediaCorrida">0</strong>
-            </div>
-            <div class="vg2-mod__stat">
-              <span>KM acumulado</span>
-              <strong id="dashCorridaKm">0 km</strong>
-            </div>
-            <div class="vg2-mod__stat vg2-mod__stat--warn">
-              <span>Inativos 30d</span>
-              <strong id="dashCorridaInativos">0</strong>
-            </div>
-            <div class="vg2-mod__stat vg2-mod__stat--top">
-              <span>Top atleta</span>
-              <strong id="dashCorridaTop">—</strong>
-            </div>
+          <div class="vg-mod__bar"><div class="vg-mod__bar-fill" id="dashCorridaEngBar" style="width:0%"></div></div>
+          <p class="vg-mod__bar-meta"><span id="dashCorridaAtivos30d">0</span> de <span id="totalCorrida2">—</span> ativos nos últimos 30 dias · <span id="dashCorridaInativos">0</span> inativos</p>
+          <div class="vg-mod__stats">
+            <div class="vg-mod__stat"><span>Participações</span><strong id="dashCorridaParticipacoes">0</strong></div>
+            <div class="vg-mod__stat"><span>Pontos totais</span><strong id="dashCorridaPontosTotal">0</strong></div>
+            <div class="vg-mod__stat"><span>Média pts/atleta</span><strong id="mediaCorrida">0</strong></div>
+            <div class="vg-mod__stat"><span>KM acumulado</span><strong id="dashCorridaKm">0 km</strong></div>
+          </div>
+          <div class="vg-mod__top-athlete">
+            <i data-lucide="crown"></i>
+            <span>Top atleta</span>
+            <strong id="dashCorridaTop">—</strong>
           </div>
         </div>
 
       </div>
 
-      <!-- ── 5. Pódio + Radar ───────────────────────────────── -->
-      <div class="vg2-bottom">
+      <!-- ── 6. Pódio + Radar ───────────────────────────────── -->
+      <div class="vg-bottom">
 
-        <div class="vg2-panel vg2-podium">
-          <div class="vg2-panel__header">
-            <h3><i data-lucide="award"></i> Pódio Top 3</h3>
-            <p>Por pontuação acumulada</p>
+        <div class="vg-card vg-podium">
+          <div class="vg-section-head">
+            <h3 class="vg-section-title"><i data-lucide="award"></i> Pódio Top 3</h3>
+            <p class="vg-section-desc">Por pontuação acumulada</p>
           </div>
-          <div class="vg2-podium-cols">
+          <div class="vg-podium-cols">
             <div>
-              <h4><i data-lucide="bike"></i> Bike</h4>
+              <p class="vg-sub-label"><i data-lucide="bike"></i> Bike</p>
               <ul id="listaPodioBike" class="podium-list"></ul>
             </div>
             <div>
-              <h4><i data-lucide="footprints"></i> Corrida</h4>
+              <p class="vg-sub-label"><i data-lucide="footprints"></i> Corrida</p>
               <ul id="listaPodioCorrida" class="podium-list"></ul>
             </div>
           </div>
         </div>
 
-        <div class="vg2-panel vg2-radar">
-          <div class="vg2-panel__header">
-            <h3><i data-lucide="alert-triangle"></i> Radar de Inatividade</h3>
-            <p>Ausentes há mais de 30 dias</p>
+        <div class="vg-card vg-radar">
+          <div class="vg-section-head">
+            <h3 class="vg-section-title"><i data-lucide="alert-triangle"></i> Radar de Inatividade</h3>
+            <p class="vg-section-desc">Ausentes há mais de 30 dias</p>
           </div>
-          <div class="vg2-radar-cols">
+          <div class="vg-radar-cols">
             <div>
-              <h4><i data-lucide="bike"></i> Bike</h4>
+              <p class="vg-sub-label"><i data-lucide="bike"></i> Bike</p>
               <ul id="listaEvasaoBike" class="inactivity-list"></ul>
             </div>
             <div>
-              <h4><i data-lucide="footprints"></i> Corrida</h4>
+              <p class="vg-sub-label"><i data-lucide="footprints"></i> Corrida</p>
               <ul id="listaEvasaoCorrida" class="inactivity-list"></ul>
             </div>
           </div>
@@ -293,48 +264,65 @@
 
       </div>
 
-      <!-- ── 6. Financeiro + Exportações ───────────────────── -->
-      <div class="vg2-footer-row">
+      <!-- ── 7. Central de comando: financeiro + exports ─────── -->
+      <div class="vg-command">
 
-        <div class="vg2-fin-card">
-          <h3 class="vg2-fin-title"><i data-lucide="dollar-sign"></i> Financeiro</h3>
-          <div class="vg2-fin-grid">
-            <div class="vg2-fin-item">
-              <span>Custo realizado</span>
-              <strong id="totalInvestimento">R$ 0,00</strong>
-            </div>
-            <div class="vg2-fin-item">
-              <span>Custo / atleta</span>
-              <strong id="roiAtleta">R$ 0,00</strong>
-            </div>
-            <div class="vg2-fin-item">
+        <div class="vg-card vg-financeiro">
+          <h3 class="vg-section-title"><i data-lucide="bar-chart-2"></i> Eficiência financeira</h3>
+          <div class="vg-fin-grid">
+            <div class="vg-fin-cell">
               <span>Custo / participação</span>
               <strong id="dashCustoParticipacao">R$ 0,00</strong>
             </div>
-            <div class="vg2-fin-item">
+            <div class="vg-fin-cell">
               <span>Custo / km</span>
               <strong id="dashCustoKm">R$ 0,00</strong>
             </div>
           </div>
         </div>
 
-        <div class="vg2-export-card">
-          <h3 class="vg2-fin-title"><i data-lucide="share-2"></i> Exportações</h3>
-          <div class="vg2-export-btns">
-            <button id="btnGerarInformativoRanking" class="btn-primario" type="button"><i data-lucide="trophy"></i> Informativo do ranking</button>
-            <button id="btnModoApresentacao" class="btn-acao btn-apresentacao" type="button"><i data-lucide="presentation"></i> Apresentação</button>
-            <button id="btnExportarListaAtletas" class="btn-acao" type="button"><i data-lucide="users"></i> Lista de atletas</button>
-            <button id="btnExportarListaEventos" class="btn-acao" type="button"><i data-lucide="calendar-days"></i> Eventos</button>
-            <button id="btnExportarParticipacaoAtletas" class="btn-acao" type="button"><i data-lucide="activity"></i> Participação</button>
+        <div class="vg-card vg-exports">
+          <h3 class="vg-section-title"><i data-lucide="share-2"></i> Exportações & comunicação</h3>
+          <div class="vg-export-grid">
+            <button id="btnGerarInformativoRanking" class="vg-export-btn vg-export-btn--primary" type="button">
+              <i data-lucide="trophy"></i>
+              <span class="vg-export-btn__label">Informativo do ranking</span>
+              <span class="vg-export-btn__desc">Comunicado Top 3 para a equipe</span>
+            </button>
+            <button id="btnExportarPDF2" class="vg-export-btn" type="button" onclick="document.getElementById('btnExportarPDF').click()">
+              <i data-lucide="file-text"></i>
+              <span class="vg-export-btn__label">Report executivo</span>
+              <span class="vg-export-btn__desc">PDF com 4 páginas A4</span>
+            </button>
+            <button id="btnModoApresentacao" class="vg-export-btn btn-apresentacao" type="button">
+              <i data-lucide="presentation"></i>
+              <span class="vg-export-btn__label">Modo apresentação</span>
+              <span class="vg-export-btn__desc">Tela cheia para reuniões</span>
+            </button>
+            <button id="btnExportarListaAtletas" class="vg-export-btn" type="button">
+              <i data-lucide="users"></i>
+              <span class="vg-export-btn__label">Lista de atletas</span>
+              <span class="vg-export-btn__desc">Excel com dados completos</span>
+            </button>
+            <button id="btnExportarListaEventos" class="vg-export-btn" type="button">
+              <i data-lucide="calendar-days"></i>
+              <span class="vg-export-btn__label">Lista de eventos</span>
+              <span class="vg-export-btn__desc">Agenda e resultados</span>
+            </button>
+            <button id="btnExportarParticipacaoAtletas" class="vg-export-btn" type="button">
+              <i data-lucide="activity"></i>
+              <span class="vg-export-btn__label">Participação</span>
+              <span class="vg-export-btn__desc">Frequência por atleta</span>
+            </button>
           </div>
         </div>
 
       </div>
 
-      <!-- IDs ocultos preservados para compatibilidade com JS -->
+      <!-- IDs ocultos preservados para compatibilidade JS -->
       <span id="dashAtivos30d" style="display:none">0</span>
       <span id="engajamento30d_badge" style="display:none">0%</span>
-      <span id="dashResumoSaude" style="display:none"></span>
+      <span id="dashMesAtualResumo" style="display:none">—</span>
 
     </section>
 
@@ -1225,15 +1213,57 @@
     </div>
   </div>
 
-  <div id="modalEvento" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:2000; justify-content:center; align-items:center;">
-    <div style="background: var(--bg-card); padding: 30px; border-radius: 12px; width: 90%; max-width: 400px;">
-      <h3 style="color: #8e44ad; margin-top: 0;">Agendar Evento</h3>
-      <input type="text" id="eventoTitulo" placeholder="Ex: Corrida Rústica 10k" />
-      <input type="text" id="eventoLocal" placeholder="Local / Encontro" />
-      <input type="number" id="eventoKm" min="0" step="0.01" placeholder="KM previstos por atleta (opcional)" />
-      <select id="eventoModalidade"><option value="Ambas">Ambas</option><option value="Bicicleta">Bicicleta</option><option value="Corrida">Corrida</option></select>
-      <input type="date" id="eventoData" />
-      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;"><button id="fecharModalEvento" style="background: var(--border); padding: 10px; color: var(--text);">Cancelar</button><button id="salvarEventoBtn" class="btn-primario" style="background: #8e44ad;">Salvar Evento</button></div>
+  <div id="modalEvento" class="pm-overlay" style="display:none;">
+    <div class="pm-dialog">
+      <div class="pm-dialog__header">
+        <div class="pm-dialog__icon"><i data-lucide="calendar-plus"></i></div>
+        <div>
+          <h3 class="pm-dialog__title">Agendar evento</h3>
+          <p class="pm-dialog__desc">Adicione um novo evento à agenda do programa.</p>
+        </div>
+        <button id="fecharModalEvento" class="pm-dialog__close" aria-label="Fechar"><i data-lucide="x"></i></button>
+      </div>
+
+      <div class="pm-dialog__body">
+        <div class="pm-field">
+          <label class="pm-label" for="eventoTitulo">Nome do evento</label>
+          <input class="pm-input" type="text" id="eventoTitulo" placeholder="Ex: Corrida Rústica 10k" />
+        </div>
+        <div class="pm-field">
+          <label class="pm-label" for="eventoLocal">Local / ponto de encontro</label>
+          <input class="pm-input" type="text" id="eventoLocal" placeholder="Ex: Parque da Cidade, portão 3" />
+        </div>
+        <div class="pm-field-row">
+          <div class="pm-field">
+            <label class="pm-label" for="eventoData">Data</label>
+            <input class="pm-input" type="date" id="eventoData" />
+          </div>
+          <div class="pm-field">
+            <label class="pm-label" for="eventoKm">KM previstos / atleta</label>
+            <input class="pm-input" type="number" id="eventoKm" min="0" step="0.1" placeholder="0" />
+          </div>
+        </div>
+        <div class="pm-field">
+          <label class="pm-label">Modalidade</label>
+          <div class="pm-seg" id="eventoModalidadeSeg">
+            <button type="button" class="pm-seg__btn active" data-value="Ambas">Ambas</button>
+            <button type="button" class="pm-seg__btn" data-value="Bicicleta"><i data-lucide="bike"></i> Bike</button>
+            <button type="button" class="pm-seg__btn" data-value="Corrida"><i data-lucide="footprints"></i> Corrida</button>
+          </div>
+          <select id="eventoModalidade" style="display:none">
+            <option value="Ambas">Ambas</option>
+            <option value="Bicicleta">Bicicleta</option>
+            <option value="Corrida">Corrida</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="pm-dialog__footer">
+        <button id="fecharModalEvento2" class="pm-btn-cancel" type="button">Cancelar</button>
+        <button id="salvarEventoBtn" class="pm-btn-confirm" type="button">
+          <i data-lucide="check"></i> Salvar evento
+        </button>
+      </div>
     </div>
   </div>
   

@@ -567,22 +567,53 @@ function gerarRelatorioConsolidado() {
 // =====================================================
 // 📅 AGENDA DE EVENTOS E OUTRAS CONFIGURAÇÕES
 // =====================================================
-function setupAgenda() { 
-  const modal = document.getElementById("modalEvento"); 
+function setupAgenda() {
+  const modal = document.getElementById("modalEvento");
   if(!modal) return;
-  document.getElementById("abrirModalEvento")?.addEventListener("click", () => modal.style.display = "flex"); 
-  document.getElementById("fecharModalEvento")?.addEventListener("click", () => modal.style.display = "none"); 
-  document.getElementById("salvarEventoBtn")?.addEventListener("click", async (e) => { 
-    const titulo = document.getElementById("eventoTitulo").value.trim(); const local = document.getElementById("eventoLocal").value.trim(); const mod = document.getElementById("eventoModalidade").value; const data = document.getElementById("eventoData").value; const km = Number(document.getElementById("eventoKm")?.value || 0); 
-    if (!titulo || !data) return showToast("Título e Data são obrigatórios!", "error"); 
-    e.target.textContent = "Salvando..."; e.target.classList.add("loading"); e.target.disabled = true; 
-    try { 
-      await addDoc(collection(db, "agenda_eventos"), { titulo: titulo, local: local, modalidade: mod, data: data, km: km, criadoEm: new Date().toISOString() }); 
-      modal.style.display = "none"; document.getElementById("eventoTitulo").value = ""; document.getElementById("eventoLocal").value = ""; if(document.getElementById("eventoKm")) document.getElementById("eventoKm").value = ""; 
-      showToast("Evento agendado!", "success"); atualizarTelas(); 
-    } catch (err) { showToast("Erro ao agendar: " + err.message, "error"); } 
-    finally { e.target.textContent = "Salvar Evento"; e.target.classList.remove("loading"); e.target.disabled = false; }
-  }); 
+
+  const fecharModal = () => {
+    modal.style.display = "none";
+    modal.classList.remove("pm-overlay--open");
+  };
+
+  const abrirModal = () => {
+    modal.style.display = "flex";
+    requestAnimationFrame(() => modal.classList.add("pm-overlay--open"));
+  };
+
+  document.getElementById("abrirModalEvento")?.addEventListener("click", abrirModal);
+  document.getElementById("fecharModalEvento")?.addEventListener("click", fecharModal);
+  document.getElementById("fecharModalEvento2")?.addEventListener("click", fecharModal);
+  modal.addEventListener("click", (e) => { if (e.target === modal) fecharModal(); });
+
+  // Segmented control de modalidade
+  document.querySelectorAll("#eventoModalidadeSeg .pm-seg__btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("#eventoModalidadeSeg .pm-seg__btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById("eventoModalidade").value = btn.dataset.value;
+    });
+  });
+
+  document.getElementById("salvarEventoBtn")?.addEventListener("click", async (e) => {
+    const titulo = document.getElementById("eventoTitulo").value.trim();
+    const local  = document.getElementById("eventoLocal").value.trim();
+    const mod    = document.getElementById("eventoModalidade").value;
+    const data   = document.getElementById("eventoData").value;
+    const km     = Number(document.getElementById("eventoKm")?.value || 0);
+    if (!titulo || !data) return showToast("Título e Data são obrigatórios!", "error");
+    e.target.textContent = "Salvando..."; e.target.classList.add("loading"); e.target.disabled = true;
+    try {
+      await addDoc(collection(db, "agenda_eventos"), { titulo, local, modalidade: mod, data, km, criadoEm: new Date().toISOString() });
+      fecharModal();
+      document.getElementById("eventoTitulo").value = "";
+      document.getElementById("eventoLocal").value = "";
+      if (document.getElementById("eventoKm")) document.getElementById("eventoKm").value = "";
+      showToast("Evento agendado com sucesso!", "success");
+      atualizarTelas();
+    } catch (err) { showToast("Erro ao agendar: " + err.message, "error"); }
+    finally { e.target.innerHTML = '<i data-lucide="check"></i> Salvar evento'; e.target.classList.remove("loading"); e.target.disabled = false; lucide.createIcons(); }
+  });
 }
 
 async function carregarAgenda() { 
