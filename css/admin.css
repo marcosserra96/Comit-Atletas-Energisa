@@ -9325,3 +9325,410 @@ body.dark-mode .lancamento-save-bar {
   background: var(--bg-card) !important;
   border-color: rgba(255,255,255,.10) !important;
 }
+
+
+/* =====================================================
+   R3 — Dashboard, KPIs e Navegação (UX/UI Review R3)
+   Seguro: somente CSS aditivo. Mantém IDs, JS e regras.
+   ===================================================== */
+
+/* Cabeçalho da seção visão-geral com boas-vindas */
+#visao-geral .home-hero-header {
+  background:
+    radial-gradient(circle at 98% 50%, rgba(0,166,147,.14), transparent 36%),
+    radial-gradient(circle at 4% 80%, rgba(0,155,193,.12), transparent 30%),
+    linear-gradient(135deg, rgba(255,255,255,.96), rgba(248,252,254,.92));
+  border: 1px solid rgba(0,159,194,.12);
+  padding: 22px 24px;
+  border-radius: 24px;
+  box-shadow: 0 16px 38px rgba(4,28,44,.06);
+}
+
+[data-theme="dark"] #visao-geral .home-hero-header {
+  background:
+    radial-gradient(circle at 98% 50%, rgba(0,166,147,.18), transparent 36%),
+    linear-gradient(135deg, rgba(20,34,50,.96), rgba(14,26,40,.92));
+  border-color: rgba(255,255,255,.08);
+}
+
+/* Executive KPI grid — maior equilíbrio e hierarquia */
+.executive-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  align-content: stretch;
+}
+
+.executive-kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 16px;
+}
+
+.executive-kpi i,
+.executive-kpi svg {
+  width: 22px !important;
+  height: 22px !important;
+  opacity: .85;
+}
+
+.executive-kpi span {
+  font-size: .76rem !important;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--text-light) !important;
+}
+
+.executive-kpi strong {
+  font-size: 1.12rem !important;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+/* Efficiency grid operacional — 2 itens */
+.efficiency-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.efficiency-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(0,155,193,.045);
+  border: 1px solid rgba(0,155,193,.10);
+}
+
+.efficiency-grid > div span {
+  font-size: .74rem;
+  color: var(--text-light);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+
+.efficiency-grid > div strong {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -.02em;
+}
+
+[data-theme="dark"] .efficiency-grid > div {
+  background: rgba(0,155,193,.07);
+  border-color: rgba(255,255,255,.08);
+}
+
+/* Health score — exibe como badge circular maior */
+.health-score {
+  min-width: 72px;
+  min-height: 72px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem !important;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  background: linear-gradient(135deg, rgba(0,155,193,.18), rgba(0,179,126,.14));
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+/* Health mini-grid */
+.health-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.health-mini-grid div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  background: rgba(0,155,193,.05);
+  border: 1px solid rgba(0,155,193,.10);
+}
+
+.health-mini-grid span {
+  font-size: .72rem !important;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--text-light) !important;
+}
+
+.health-mini-grid strong {
+  font-size: 1.1rem !important;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -.02em;
+}
+
+/* Botão report oficial — mais premium */
+.btn-report-oficial {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px !important;
+  padding: 10px 18px !important;
+  border-radius: 14px !important;
+  font-weight: 700 !important;
+  font-size: .86rem !important;
+  letter-spacing: .01em;
+  flex-shrink: 0;
+}
+
+/* Quick export: nota mais limpa */
+.quick-export-note {
+  margin-top: 12px !important;
+}
+
+/* Strategic command center */
+.strategic-command-center {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 14px;
+  align-items: start;
+}
+
+/* Strategic action card: acabamento */
+.strategic-action-card {
+  height: 100%;
+}
+
+.strategic-action-card.compact h3 {
+  font-size: .92rem !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.strategic-action-card.compact h3 svg,
+.strategic-action-card.compact h3 i {
+  width: 18px;
+  height: 18px;
+  color: var(--primary);
+}
+
+/* Agenda de eventos — melhor leitura */
+.events-add-button {
+  width: 100%;
+  justify-content: center;
+  margin-top: 12px;
+  border-style: dashed !important;
+}
+
+/* Pódio split — colunas mais legíveis */
+.podium-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+/* Radar de inatividade */
+.radar-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.radar-columns > div {
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(230,57,70,.04);
+  border: 1px solid rgba(230,57,70,.10);
+}
+
+.radar-columns h4 {
+  margin-bottom: 10px;
+}
+
+/* Analysis grid responsivo */
+.strategic-analysis-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.analysis-wide {
+  grid-column: 1 / -1;
+}
+
+/* Eyebrow label */
+.eyebrow {
+  font-size: .72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--primary);
+  opacity: .82;
+}
+
+/* Mobile — Dashboard */
+@media (max-width: 900px) {
+  .strategic-command-center {
+    grid-template-columns: 1fr !important;
+  }
+
+  .executive-kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .strategic-analysis-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .efficiency-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .health-mini-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+
+@media (max-width: 620px) {
+  .executive-kpi-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .health-mini-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .podium-split,
+  .radar-columns {
+    grid-template-columns: 1fr !important;
+  }
+
+  .health-score {
+    min-width: 58px !important;
+    min-height: 58px !important;
+    font-size: .94rem !important;
+  }
+
+  #visao-geral .home-hero-header {
+    padding: 16px !important;
+    border-radius: 18px !important;
+  }
+}
+
+/* Dark mode — análise e operacional */
+[data-theme="dark"] .radar-columns > div {
+  background: rgba(230,57,70,.07) !important;
+  border-color: rgba(230,57,70,.14) !important;
+}
+
+[data-theme="dark"] .health-mini-grid div {
+  background: rgba(0,155,193,.06) !important;
+  border-color: rgba(255,255,255,.07) !important;
+}
+
+[data-theme="dark"] .health-score {
+  background: linear-gradient(135deg, rgba(0,155,193,.22), rgba(0,179,126,.16));
+  color: #6ee7f7;
+}
+
+
+/* =====================================================
+   R3 — Seção Atletas (UX/UI Review R3)
+   ===================================================== */
+
+/* KPI cards: mais esportivos, com hierarquia visual */
+.athlete-kpi-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+.athlete-kpi-card {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(0,155,193,.12) !important;
+  box-shadow: 0 14px 32px rgba(4,28,44,.06) !important;
+  border-radius: 20px !important;
+  min-height: 100px !important;
+  transition: transform .18s ease, box-shadow .18s ease !important;
+}
+
+.athlete-kpi-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 20px 40px rgba(4,28,44,.10) !important;
+}
+
+.athlete-kpi-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, var(--primary), var(--secondary));
+  border-radius: 4px 0 0 4px;
+}
+
+.athlete-kpi-card:nth-child(2)::before { background: linear-gradient(180deg, #0ea5c8, #00b37e); }
+.athlete-kpi-card:nth-child(3)::before { background: linear-gradient(180deg, #00b37e, #00916b); }
+.athlete-kpi-card:nth-child(4)::before { background: linear-gradient(180deg, #f37021, #e05a10); }
+
+.athlete-kpi-card span {
+  font-size: .72rem !important;
+  letter-spacing: .05em;
+}
+
+.athlete-kpi-card strong {
+  font-size: 1.45rem !important;
+  letter-spacing: -.025em;
+}
+
+/* Filter card: remove margin-bottom de inputs dentro */
+.athlete-filter-card input,
+.athlete-filter-card select {
+  margin-bottom: 0 !important;
+}
+
+.athlete-filter-grid {
+  display: grid !important;
+  grid-template-columns: 2fr 1fr 1fr !important;
+  gap: 12px !important;
+  align-items: end !important;
+}
+
+/* Header da seção atletas */
+#atletas .header-acao {
+  margin-bottom: 16px;
+}
+
+/* KPI grid mobile */
+@media (max-width: 900px) {
+  .athlete-kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .athlete-filter-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .athlete-kpi-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+/* Dark mode athlete cards */
+[data-theme="dark"] .athlete-kpi-card {
+  border-color: rgba(255,255,255,.08) !important;
+}

@@ -3,39 +3,127 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Acesso | Comitê Atletas Energisa</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <title>Acesso | Portal Atletas Energisa</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
   <div id="toastContainer"></div>
 
-  <div class="container">
-    <div class="logo">
-      <img src="assets/logos/logo-comite-branca-trim.png" alt="Atletas Energisa" onerror="this.style.display='none'; this.insertAdjacentHTML('afterend', '<span style=\'font-weight:bold; font-size:1.5rem; color:white;\'></span>')" />
-      <h1>Portal do Comitê</h1><p class="login-subtitle">Atletas Energisa</p>
+  <div class="login-bg">
+
+    <!-- Brand -->
+    <div class="brand">
+      <img
+        src="assets/logos/logo-comite-branca-trim.png"
+        alt="Comitê Atletas Energisa"
+        class="brand-logo"
+        onerror="this.style.display='none'"
+      />
+      <h1 class="brand-title">Portal do Comitê</h1>
+      <p class="brand-sub">Atletas Energisa</p>
     </div>
 
-    <div class="login-box" id="boxLogin">
-      <h2>Acesso Restrito ao Comitê</h2>
-      <input type="email" id="email" placeholder="E-mail" required />
-      <input type="password" id="password" placeholder="Senha" required />
-      <button id="loginBtn">Entrar no Sistema</button>
-      <div class="register-text">
-        É do comitê e não tem conta? <a href="#" id="linkSolicitar">Solicite aqui</a>
+    <!-- Login Form -->
+    <div class="auth-card" id="boxLogin">
+      <div class="auth-card-header">
+        <h2>Bem-vindo de volta</h2>
+        <p>Entre com suas credenciais para acessar o portal</p>
+      </div>
+
+      <div class="auth-form">
+        <div class="field">
+          <label for="email">E-mail</label>
+          <div class="input-wrap">
+            <span class="input-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+            </span>
+            <input type="email" id="email" placeholder="seu@email.com" autocomplete="email" required />
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-header">
+            <label for="password">Senha</label>
+            <a href="#" class="forgot-link" id="linkEsqueceuSenha">Esqueceu a senha?</a>
+          </div>
+          <div class="input-wrap">
+            <span class="input-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </span>
+            <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" required />
+            <button type="button" class="toggle-pass" id="togglePass" aria-label="Mostrar senha">
+              <svg class="icon-eye" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="icon-eye-off" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <button type="button" id="loginBtn" class="btn-primary">Entrar</button>
+      </div>
+
+      <div class="auth-footer">
+        É do comitê e não tem conta?
+        <a href="#" id="linkSolicitar">Solicitar acesso</a>
       </div>
     </div>
 
-    <div class="login-box" id="boxSolicitar" style="display: none;">
-      <h2>Solicitar Acesso (Comitê)</h2>
-      <input type="text" id="regNome" placeholder="Seu Nome Completo" required />
-      <input type="email" id="regEmail" placeholder="Seu E-mail" required />
-      <input type="password" id="regPassword" placeholder="Crie uma Senha" required />
-      <button id="registerBtn">Enviar Solicitação</button>
-      <div class="register-text">
-        Já tem acesso? <a href="#" id="linkLogin">Faça Login</a>
+    <!-- Register / Request Access Form -->
+    <div class="auth-card" id="boxSolicitar" style="display: none;">
+      <div class="auth-card-header">
+        <h2>Solicitar Acesso</h2>
+        <p>Preencha os dados abaixo para solicitar seu acesso ao portal</p>
+      </div>
+
+      <div class="auth-form">
+        <div class="field">
+          <label for="regNome">Nome completo</label>
+          <div class="input-wrap">
+            <span class="input-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </span>
+            <input type="text" id="regNome" placeholder="Seu nome completo" autocomplete="name" required />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="regEmail">E-mail</label>
+          <div class="input-wrap">
+            <span class="input-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+            </span>
+            <input type="email" id="regEmail" placeholder="seu@email.com" autocomplete="email" required />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="regPassword">Senha</label>
+          <div class="input-wrap">
+            <span class="input-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </span>
+            <input type="password" id="regPassword" placeholder="Mínimo 6 caracteres" autocomplete="new-password" required />
+            <button type="button" class="toggle-pass" id="toggleRegPass" aria-label="Mostrar senha">
+              <svg class="icon-eye" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="icon-eye-off" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="info-box">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+          Sua solicitação será analisada pelo administrador. Você receberá acesso após aprovação.
+        </div>
+
+        <button type="button" id="registerBtn" class="btn-primary">Enviar Solicitação</button>
+      </div>
+
+      <div class="auth-footer">
+        Já tem acesso?
+        <a href="#" id="linkLogin">Fazer login</a>
       </div>
     </div>
+
   </div>
 
   <script type="module" src="js/login.js" defer></script>

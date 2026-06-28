@@ -6,6 +6,7 @@ import {
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
   getDoc, doc, setDoc, signOut
 } from "./firebase.js";
+import { sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
 const TEMA_PADRAO_LOGIN = {
   primary: "#009bc1",
@@ -17,6 +18,10 @@ const TEMA_PADRAO_LOGIN = {
 function aplicarCoresLogin(config = {}) {
   const tema = { ...TEMA_PADRAO_LOGIN, ...(config || {}) };
   const root = document.documentElement.style;
+  root.setProperty("--primary", tema.primary);
+  root.setProperty("--secondary", tema.secondary);
+  root.setProperty("--accent", tema.accent);
+  root.setProperty("--danger", tema.danger);
   root.setProperty("--azul", tema.primary);
   root.setProperty("--verde", tema.secondary);
   root.setProperty("--destaque", tema.accent);
@@ -105,7 +110,7 @@ const fazerLogin = async () => {
     showToast("E-mail ou senha incorretos.", "error");
   }
 
-  btn.textContent = "Entrar no Sistema";
+  btn.textContent = "Entrar";
   btn.classList.remove("loading");
   btn.disabled = false;
 };
@@ -194,6 +199,41 @@ document.getElementById("password")?.addEventListener("keypress", (e) => {
 });
 document.getElementById("regPassword")?.addEventListener("keypress", (e) => {
   if (e.key === "Enter") solicitarAcesso();
+});
+
+// Toggle password visibility
+function setupPasswordToggle(inputId, toggleId) {
+  const input = document.getElementById(inputId);
+  const btn = document.getElementById(toggleId);
+  if (!input || !btn) return;
+  btn.addEventListener("click", () => {
+    const isHidden = input.type === "password";
+    input.type = isHidden ? "text" : "password";
+    btn.querySelector(".icon-eye").style.display = isHidden ? "none" : "";
+    btn.querySelector(".icon-eye-off").style.display = isHidden ? "" : "none";
+    btn.setAttribute("aria-label", isHidden ? "Ocultar senha" : "Mostrar senha");
+  });
+}
+setupPasswordToggle("password", "togglePass");
+setupPasswordToggle("regPassword", "toggleRegPass");
+
+// Forgot password
+document.getElementById("linkEsqueceuSenha")?.addEventListener("click", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("email")?.value.trim();
+  if (!email) {
+    return showToast("Digite seu e-mail no campo acima para redefinir a senha.", "info");
+  }
+  try {
+    await sendPasswordResetEmail(auth, email);
+    showToast("E-mail de redefinição enviado. Verifique sua caixa de entrada.", "success");
+  } catch (err) {
+    if (err.code === "auth/user-not-found" || err.code === "auth/invalid-email") {
+      showToast("E-mail não encontrado. Verifique o endereço digitado.", "error");
+    } else {
+      showToast("Não foi possível enviar o e-mail de redefinição.", "error");
+    }
+  }
 });
 
 carregarCoresLogin();

@@ -104,10 +104,8 @@
           <div id="listaAcoesRecomendadas" class="strategic-action-list"></div>
         </div>
         <div class="strategic-action-card compact">
-          <h3><i data-lucide="gauge"></i> Eficiência</h3>
+          <h3><i data-lucide="gauge"></i> Operacional</h3>
           <div class="efficiency-grid">
-            <div><span>Custo / participação</span><strong id="dashCustoParticipacao">R$ 0,00</strong></div>
-            <div><span>Custo / km</span><strong id="dashCustoKm">R$ 0,00</strong></div>
             <div><span>Eventos sem lançamento</span><strong id="dashEventosPendentes">0</strong></div>
             <div><span>Fila aguardando</span><strong id="dashFilaAguardando">0</strong></div>
           </div>
@@ -223,8 +221,8 @@
       <div class="header-acao">
         <div>
           <h2>Atletas</h2>
-          <p style="margin: 6px 0 0; color: var(--text-light); font-size: 0.9rem;">
-            Tela de acompanhamento do comitê: consulte fichas, participação, pontuação e situação dos atletas sem misturar com a manutenção da base.
+          <p class="page-subtitle">
+            Consulte fichas, participação, pontuação e situação dos atletas.
           </p>
         </div>
       </div>
@@ -266,11 +264,11 @@
         <div class="athlete-filter-grid">
           <div>
             <label>Buscar atleta</label>
-            <input type="text" id="filtroAtletaCards" placeholder="Digite nome, cidade ou equipe..." style="margin-bottom:0;" />
+            <input type="text" id="filtroAtletaCards" placeholder="Digite nome, cidade ou equipe..." />
           </div>
           <div>
             <label>Equipe</label>
-            <select id="filtroEquipeAtletaCards" style="margin-bottom:0;">
+            <select id="filtroEquipeAtletaCards">
               <option value="">Todas</option>
               <option value="Bicicleta">Bicicleta</option>
               <option value="Corrida">Corrida</option>
@@ -281,7 +279,7 @@
           </div>
           <div>
             <label>Status</label>
-            <select id="filtroStatusAtletaCards" style="margin-bottom:0;">
+            <select id="filtroStatusAtletaCards">
               <option value="ativos">Ativos</option>
               <option value="todos">Todos</option>
               <option value="inativos">Inativos</option>
