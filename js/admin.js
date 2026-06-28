@@ -163,10 +163,14 @@ function construirMenu() {
   if (badge) { badge.style.display = "block"; badge.textContent = roleLabel; }
 
   // Preenche nome e inicial do avatar com os dados do usuário logado
-  const nomeUsuario = appState.mapAtletas?.[appState.currentUser?.uid]?.nome || appState.currentUser?.email || "Usuário";
+  const emailRaw = appState.currentUser?.email || "";
+  const nomeUsuario = appState.mapAtletas?.[appState.currentUser?.uid]?.nome
+    || appState.currentUser?.displayName
+    || (emailRaw ? emailRaw.split("@")[0].replace(/[._]/g, " ") : "Usuário");
   const primeiroNome = nomeUsuario.split(" ")[0];
-  if (displayName) displayName.textContent = primeiroNome;
-  if (avatar) avatar.textContent = primeiroNome.charAt(0).toUpperCase();
+  const nomeCapitalizado = primeiroNome.charAt(0).toUpperCase() + primeiroNome.slice(1).toLowerCase();
+  if (displayName) displayName.textContent = nomeCapitalizado;
+  if (avatar) avatar.textContent = nomeCapitalizado.charAt(0).toUpperCase();
 
   if (appState.userRole !== "admin") { document.querySelectorAll(".admin-only-element").forEach(el => el.style.display = "none"); }
 

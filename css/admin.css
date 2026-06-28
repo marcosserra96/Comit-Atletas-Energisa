@@ -10524,20 +10524,23 @@ body.sidebar-collapsed .app-topbar__brand {
   box-shadow: none;
 }
 .app-topbar__logo {
-  height: 36px;
+  height: 34px;
   width: auto;
   max-width: 130px;
   object-fit: contain;
   object-position: left center;
   margin-left: 10px;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .2s var(--ease-sb), max-width .25s var(--ease-sb);
-  filter: brightness(0) invert(1);
-}
-body:not(.sidebar-collapsed) .app-topbar__logo {
   opacity: 1;
   pointer-events: auto;
+  transition: max-width .25s var(--ease-sb), opacity .2s var(--ease-sb);
+  filter: brightness(0) invert(1);
+}
+body.sidebar-collapsed .app-topbar__logo {
+  max-width: 0;
+  opacity: 0;
+  margin-left: 0;
+  pointer-events: none;
+  overflow: hidden;
 }
 
 /* Search */
