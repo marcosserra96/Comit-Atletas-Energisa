@@ -137,7 +137,7 @@ function construirMenu() {
       : appState.userPermissoes.includes(item.id);
     if (hasAccess || appState.userRole === "admin") {
       const isFirst = !abaAtiva; if (isFirst) abaAtiva = true;
-      menu.innerHTML += `<div class="menu-item ${isFirst ? 'active' : ''}" data-section="${item.id}"><i data-lucide="${item.icon}"></i><span>${item.text}</span></div>`;
+      menu.innerHTML += `<div class="menu-item ${isFirst ? 'active' : ''}" data-section="${item.id}" data-tooltip="${item.text}"><i data-lucide="${item.icon}"></i><span>${item.text}</span></div>`;
     }
   });
 
@@ -145,7 +145,7 @@ function construirMenu() {
   if (appState.userRole === "admin") {
     menu.innerHTML += `<div class="sidebar-divider"><span>Administração</span></div>`;
     itensAdmin.forEach(item => {
-      menu.innerHTML += `<div class="menu-item menu-item--admin" data-section="${item.id}"><i data-lucide="${item.icon}"></i><span>${item.text}</span></div>`;
+      menu.innerHTML += `<div class="menu-item menu-item--admin" data-section="${item.id}" data-tooltip="${item.text}"><i data-lucide="${item.icon}"></i><span>${item.text}</span></div>`;
     });
   }
   
@@ -171,6 +171,14 @@ function construirMenu() {
   const nomeCapitalizado = primeiroNome.charAt(0).toUpperCase() + primeiroNome.slice(1).toLowerCase();
   if (displayName) displayName.textContent = nomeCapitalizado;
   if (avatar) avatar.textContent = nomeCapitalizado.charAt(0).toUpperCase();
+
+  // Sidebar footer user block
+  const sbAvatar = document.getElementById("sbUserAvatar");
+  const sbName   = document.getElementById("sbUserName");
+  const sbRole   = document.getElementById("sbUserRole");
+  if (sbAvatar) sbAvatar.textContent = nomeCapitalizado.charAt(0).toUpperCase();
+  if (sbName)   sbName.textContent   = nomeCapitalizado;
+  if (sbRole)   sbRole.textContent   = roleLabel;
 
   if (appState.userRole !== "admin") { document.querySelectorAll(".admin-only-element").forEach(el => el.style.display = "none"); }
 
