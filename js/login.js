@@ -73,7 +73,8 @@ const fazerLogin = async () => {
     return showToast("Preencha e-mail e senha.", "error");
   }
 
-  btn.textContent = "Verificando...";
+  const btnSpan = btn.querySelector("span") || btn;
+  btnSpan.textContent = "Verificando...";
   btn.classList.add("loading");
   btn.disabled = true;
 
@@ -105,7 +106,7 @@ const fazerLogin = async () => {
     showToast("E-mail ou senha incorretos.", "error");
   }
 
-  btn.textContent = "Entrar no Sistema";
+  (btn.querySelector("span") || btn).textContent = "Entrar";
   btn.classList.remove("loading");
   btn.disabled = false;
 };
@@ -123,7 +124,8 @@ const solicitarAcesso = async () => {
     return showToast("A senha precisa ter pelo menos 6 caracteres.", "error");
   }
 
-  btn.textContent = "Enviando...";
+  const btnSpan = btn.querySelector("span") || btn;
+  btnSpan.textContent = "Enviando...";
   btn.classList.add("loading");
   btn.disabled = true;
 
@@ -178,7 +180,7 @@ const solicitarAcesso = async () => {
 
     showToast(msg, "error");
   } finally {
-    btn.textContent = "Enviar Solicitação";
+    (btn.querySelector("span") || btn).textContent = "Enviar solicitação";
     btn.classList.remove("loading");
     btn.disabled = false;
   }
