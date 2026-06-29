@@ -3,41 +3,157 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Acesso | Comitê Atletas Energisa</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css" />
+  <title>Portal Atletas Energisa</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/login.css" />
 </head>
 <body>
   <div id="toastContainer"></div>
 
-  <div class="container">
-    <div class="logo">
-      <img src="assets/logos/logo-comite-branca-trim.png" alt="Atletas Energisa" onerror="this.style.display='none'; this.insertAdjacentHTML('afterend', '<span style=\'font-weight:bold; font-size:1.5rem; color:white;\'></span>')" />
-      <h1>Portal do Comitê</h1><p class="login-subtitle">Atletas Energisa</p>
-    </div>
+  <!-- Split-screen layout -->
+  <div class="login-wrapper">
 
-    <div class="login-box" id="boxLogin">
-      <h2>Acesso Restrito ao Comitê</h2>
-      <input type="email" id="email" placeholder="E-mail" required />
-      <input type="password" id="password" placeholder="Senha" required />
-      <button id="loginBtn">Entrar no Sistema</button>
-      <div class="register-text">
-        É do comitê e não tem conta? <a href="#" id="linkSolicitar">Solicite aqui</a>
+    <!-- Left panel: branding -->
+    <div class="brand-panel">
+      <div class="brand-content">
+        <div class="brand-logo">
+          <img src="assets/logos/logo-comite-branca-trim.png" alt="Atletas Energisa"
+               onerror="this.style.display='none'" />
+        </div>
+        <h1 class="brand-title">Portal dos<br><span>Atletas Energisa</span></h1>
+        <p class="brand-desc">Gestão integrada de desempenho, pontuação e conquistas para os atletas do programa Energisa.</p>
+        <div class="brand-stats">
+          <div class="stat">
+            <span class="stat-num">500+</span>
+            <span class="stat-label">Atletas</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat">
+            <span class="stat-num">12</span>
+            <span class="stat-label">Modalidades</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat">
+            <span class="stat-num">100%</span>
+            <span class="stat-label">Digital</span>
+          </div>
+        </div>
       </div>
+      <div class="brand-orb brand-orb--1"></div>
+      <div class="brand-orb brand-orb--2"></div>
+      <div class="brand-orb brand-orb--3"></div>
     </div>
 
-    <div class="login-box" id="boxSolicitar" style="display: none;">
-      <h2>Solicitar Acesso (Comitê)</h2>
-      <input type="text" id="regNome" placeholder="Seu Nome Completo" required />
-      <input type="email" id="regEmail" placeholder="Seu E-mail" required />
-      <input type="password" id="regPassword" placeholder="Crie uma Senha" required />
-      <button id="registerBtn">Enviar Solicitação</button>
-      <div class="register-text">
-        Já tem acesso? <a href="#" id="linkLogin">Faça Login</a>
+    <!-- Right panel: form -->
+    <div class="form-panel">
+      <div class="form-container">
+
+        <!-- Login box -->
+        <div class="auth-card" id="boxLogin">
+          <div class="card-header">
+            <div class="card-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <div>
+              <h2>Bem-vindo de volta</h2>
+              <p class="card-subtitle">Acesse sua conta para continuar</p>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="email">E-mail</label>
+            <div class="input-wrapper">
+              <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              <input type="email" id="email" placeholder="seu@email.com" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="password">Senha</label>
+            <div class="input-wrapper">
+              <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <input type="password" id="password" placeholder="••••••••" required />
+              <button type="button" class="toggle-password" aria-label="Mostrar senha" data-target="password">
+                <svg class="eye-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <button id="loginBtn" class="btn-primary">
+            <span>Entrar</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+
+          <div class="auth-footer">
+            Não tem conta ainda? <a href="#" id="linkSolicitar">Solicitar acesso</a>
+          </div>
+        </div>
+
+        <!-- Register box -->
+        <div class="auth-card" id="boxSolicitar" style="display: none;">
+          <div class="card-header">
+            <div class="card-icon card-icon--green">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+            </div>
+            <div>
+              <h2>Solicitar acesso</h2>
+              <p class="card-subtitle">Preencha os dados para enviar sua solicitação</p>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="regNome">Nome completo</label>
+            <div class="input-wrapper">
+              <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <input type="text" id="regNome" placeholder="Seu nome completo" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="regEmail">E-mail</label>
+            <div class="input-wrapper">
+              <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              <input type="email" id="regEmail" placeholder="seu@email.com" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="regPassword">Criar senha</label>
+            <div class="input-wrapper">
+              <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <input type="password" id="regPassword" placeholder="Mínimo 6 caracteres" required />
+              <button type="button" class="toggle-password" aria-label="Mostrar senha" data-target="regPassword">
+                <svg class="eye-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <button id="registerBtn" class="btn-primary btn-primary--green">
+            <span>Enviar solicitação</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+
+          <div class="auth-footer">
+            Já tem conta? <a href="#" id="linkLogin">Fazer login</a>
+          </div>
+        </div>
+
+        <p class="form-panel-brand">Portal dos Atletas Energisa</p>
       </div>
     </div>
   </div>
 
+  <script>
+    // Toggle password visibility
+    document.querySelectorAll('.toggle-password').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const input = document.getElementById(btn.dataset.target);
+        const isText = input.type === 'text';
+        input.type = isText ? 'password' : 'text';
+        btn.querySelector('.eye-icon').style.opacity = isText ? '1' : '0.45';
+      });
+    });
+  </script>
   <script type="module" src="js/login.js" defer></script>
 </body>
 </html>
