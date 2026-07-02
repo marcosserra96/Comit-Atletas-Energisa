@@ -64,6 +64,111 @@ exports.excluirCadastrosCompletos = functions.https.onCall(async (data, context)
   return resultado;
 });
 
+// ── auditarUsuarios ──────────────────────────────────────────────────────────
+// Retorna: { authSemFirestore: [...], firestoreSemAuth: [...] }
+exports.auditarUsuarios = functions.https.onCall(async (data, context) => {
+  await assertAdmin(context);
+
+  const atletasSnap = await db.collection("atletas").get();
+  const fsDocs = atletasSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
+  const fsUids = new Set(fsDocs.map(d => d.uid));
+
+  const authUsers = [];
+  let nextPageToken;
+  do {
+    const page = await auth.listUsers(1000, nextPageToken);
+    authUsers.push(...page.users);
+    nextPageToken = page.pageToken;
+  } while (nextPageToken);
+
+  const authUids = new Set(authUsers.map(u => u.uid));
+
+  const authSemFirestore = authUsers
+    .filter(u => !fsUids.has(u.uid))
+    .map(u => ({ uid: u.uid, email: u.email || null, displayName: u.displayName || null }));
+
+  const firestoreSemAuth = fsDocs
+    .filter(d => !authUids.has(d.uid))
+    .map(d => ({ uid: d.uid, nome: d.nome || null, email: d.email || null, role: d.role || null, status: d.status || null }));
+
+  return { authSemFirestore, firestoreSemAuth };
+});
+
+// ── listarFirestoreUsuarios ───────────────────────────────────────────────────
+// Retorna: { usuarios: [...] }
+exports.listarFirestoreUsuarios = functions.https.onCall(async (data, context) => {
+  await assertAdmin(context);
+
+  const snap = await db.collection("atletas").get();
+  const usuarios = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+  return { usuarios };
+});
+
+// ── alterarPerfilUsuario ──────────────────────────────────────────────────────
+// Recebe: { uid, role, nome, equipe }
+exports.alterarPerfilUsuario = functions.https.onCall(async (data, context) => {
+  await assertAdmin(context);
+
+  const { uid, role, nome, equipe } = data || {};
+  if (!uid) throw new functions.https.HttpsError("invalid-argument", "UID obrigatório.");
+
+  const update = {};
+  if (role) update.role = role;
+  if (nome) update.nome = nome;
+  if (equipe) update.equipe = equipe;
+
+  await db.collection("atletas").doc(uid).update(update);
+  return { ok: true };
+});
+
+// ── reconstruirCadastro ───────────────────────────────────────────────────────
+// Recebe: { uid, email, nome, role, equipe }
+exports.reconstruirCadastro = functions.https.onCall(async (data, context) => {
+  await assertAdmin(context);
+
+  const { uid, email, nome, role = "comite", equipe = "" } = data || {};
+  if (!uid) throw new functions.https.HttpsError("invalid-argument", "UID obrigatório.");
+
+  await db.collection("atletas").doc(uid).set({
+    uid,
+    email: email || "",
+    nome: nome || "",
+    role,
+    equipe,
+    status: "Aprovado",
+    ativo: true,
+    criadoEm: admin.firestore.FieldValue.serverTimestamp()
+  });
+
+  return { ok: true };
+});
+
+// ── excluirFirestoreUsuario ───────────────────────────────────────────────────
+// Recebe: { uid }
+exports.excluirFirestoreUsuario = functions.https.onCall(async (data, context) => {
+  await assertAdmin(context);
+
+  const { uid } = data || {};
+  if (!uid) throw new functions.https.HttpsError("invalid-argument", "UID obrigatório.");
+
+  await db.collection("atletas").doc(uid).delete();
+  return { ok: true };
+});
+
+// ── excluirAuthUsuario ────────────────────────────────────────────────────────
+// Recebe: { uid }
+exports.excluirAuthUsuario = functions.https.onCall(async (data, context) => {
+  await assertAdmin(context);
+
+  const { uid } = data || {};
+  if (!uid) throw new functions.https.HttpsError("invalid-argument", "UID obrigatório.");
+
+  await auth.deleteUser(uid);
+  return { ok: true };
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 exports.auditarAcessosAdmin = functions.https.onCall(async (data, context) => {
   await assertAdmin(context);
 
