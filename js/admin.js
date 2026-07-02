@@ -12,6 +12,7 @@ import { setupDashboard, renderGraficosETop } from "./modules/dashboard.js";
 import { setupFinanceiroPlanilha, carregarFinanceiroPlanilha } from "./modules/financeiro.js";
 import { setupContabilizacao, setAtualizarTelasCallback } from "./modules/pontuacao.js";
 import { setupCadastrarPessoa, setupImportacaoAtletas, setupToggleAtivos, setupLimparBase, setAtualizarTelasGestao } from "./modules/gestao.js";
+import { setupDiagnostico } from "./modules/diagnostico.js";
 
 
 // =====================================================
@@ -173,6 +174,7 @@ function iniciarPainelAdmin() {
   setupImportacaoAtletas();
   setupToggleAtivos();
   setupLimparBase();
+  setupDiagnostico();
 
   setAtualizarTelasCallback(atualizarTelas);
   setAtualizarTelasGestao(atualizarTelas);

@@ -471,6 +471,7 @@
         <button class="sub-tab active" data-target="sub-cadastrar"><i data-lucide="user-plus"></i> Novo cadastro</button>
         <button class="sub-tab" data-target="sub-equipes"><i data-lucide="users"></i> Cadastros e acessos</button>
         <button class="sub-tab" data-target="sub-regras"><i data-lucide="list-checks"></i> Regras de Pontuação</button>
+        <button class="sub-tab admin-only-element" data-target="sub-diagnostico"><i data-lucide="shield-check"></i> Diagnóstico Firebase</button>
         <button class="sub-tab admin-only-element" data-target="sub-dados" style="color: var(--danger);"><i data-lucide="database"></i> Dados</button>
       </div>
 
@@ -580,6 +581,49 @@
         <button id="abrirModalRegra" class="btn-primario" style="margin-bottom:15px;"><i data-lucide="plus"></i> Nova Regra</button>
         <div class="tabela-container"><table class="tabela-simples"><tbody id="listaRegras"></tbody></table></div>
       </div>
+
+      <!-- ======= DIAGNÓSTICO FIREBASE ======= -->
+      <div id="sub-diagnostico" class="sub-content admin-only-element">
+        <div class="admin-section-intro compact">
+          <div>
+            <span class="eyebrow">Administração</span>
+            <h3><i data-lucide="shield-check"></i> Diagnóstico de Permissões Firebase</h3>
+            <p>Verifica em tempo real se as permissões do Firestore e as Cloud Functions estão configuradas corretamente para o usuário logado.</p>
+          </div>
+          <button id="btnRodarDiagnostico" class="btn-primario"><i data-lucide="refresh-cw"></i> Rodar verificação</button>
+        </div>
+
+        <div id="diagResultado" style="display:none">
+          <!-- Resumo -->
+          <div id="diagResumo" class="diag-resumo"></div>
+
+          <!-- Grupos de checks -->
+          <div class="diag-grid">
+            <div class="diag-group">
+              <div class="diag-group-title"><i data-lucide="user-check"></i> Autenticação &amp; Perfil</div>
+              <div id="diagGrupoAuth" class="diag-checks"></div>
+            </div>
+            <div class="diag-group">
+              <div class="diag-group-title"><i data-lucide="database"></i> Firestore — Leitura</div>
+              <div id="diagGrupoRead" class="diag-checks"></div>
+            </div>
+            <div class="diag-group">
+              <div class="diag-group-title"><i data-lucide="pen-line"></i> Firestore — Escrita</div>
+              <div id="diagGrupoWrite" class="diag-checks"></div>
+            </div>
+            <div class="diag-group">
+              <div class="diag-group-title"><i data-lucide="zap"></i> Cloud Functions</div>
+              <div id="diagGrupoFunctions" class="diag-checks"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="diagLoading" style="display:none" class="diag-loading">
+          <div class="diag-spinner"></div>
+          <span>Verificando permissões…</span>
+        </div>
+      </div>
+      <!-- ======= /DIAGNÓSTICO FIREBASE ======= -->
 
       <div id="sub-dados" class="sub-content admin-only-element">
         <div class="admin-control-hero card">
