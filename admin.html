@@ -587,40 +587,40 @@
         <div class="admin-section-intro compact">
           <div>
             <span class="eyebrow">Administração</span>
-            <h3><i data-lucide="shield-check"></i> Diagnóstico de Permissões Firebase</h3>
-            <p>Verifica em tempo real se as permissões do Firestore e as Cloud Functions estão configuradas corretamente para o usuário logado.</p>
+            <h3><i data-lucide="shield-check"></i> Diagnóstico de Usuários</h3>
+            <p>Verifica todos os usuários cadastrados e aponta inconsistências de acesso, perfil e cadastro com opção de corrigir diretamente.</p>
           </div>
-          <button id="btnRodarDiagnostico" class="btn-primario"><i data-lucide="refresh-cw"></i> Rodar verificação</button>
-        </div>
-
-        <div id="diagResultado" style="display:none">
-          <!-- Resumo -->
-          <div id="diagResumo" class="diag-resumo"></div>
-
-          <!-- Grupos de checks -->
-          <div class="diag-grid">
-            <div class="diag-group">
-              <div class="diag-group-title"><i data-lucide="user-check"></i> Autenticação &amp; Perfil</div>
-              <div id="diagGrupoAuth" class="diag-checks"></div>
-            </div>
-            <div class="diag-group">
-              <div class="diag-group-title"><i data-lucide="database"></i> Firestore — Leitura</div>
-              <div id="diagGrupoRead" class="diag-checks"></div>
-            </div>
-            <div class="diag-group">
-              <div class="diag-group-title"><i data-lucide="pen-line"></i> Firestore — Escrita</div>
-              <div id="diagGrupoWrite" class="diag-checks"></div>
-            </div>
-            <div class="diag-group">
-              <div class="diag-group-title"><i data-lucide="zap"></i> Cloud Functions</div>
-              <div id="diagGrupoFunctions" class="diag-checks"></div>
-            </div>
-          </div>
+          <button id="btnRodarDiagnostico" class="btn-primario"><i data-lucide="refresh-cw"></i> Verificar agora</button>
         </div>
 
         <div id="diagLoading" style="display:none" class="diag-loading">
           <div class="diag-spinner"></div>
-          <span>Verificando permissões…</span>
+          <span>Carregando usuários…</span>
+        </div>
+
+        <div id="diagResultado" style="display:none">
+          <div class="diag-header-bar">
+            <span><strong id="diagTotalProblemas">0</strong> usuário(s) com inconsistências</span>
+          </div>
+
+          <div id="diagSemProblemas" class="diag-sem-problemas" style="display:none">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <span>Todos os usuários estão com os acessos corretos!</span>
+          </div>
+
+          <div id="diagTabelaWrap" class="tabela-container" style="display:none">
+            <table class="tabela-simples diag-table">
+              <thead>
+                <tr>
+                  <th>Usuário</th>
+                  <th>Role</th>
+                  <th>Problemas</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="diagTabela"></tbody>
+            </table>
+          </div>
         </div>
       </div>
       <!-- ======= /DIAGNÓSTICO FIREBASE ======= -->
