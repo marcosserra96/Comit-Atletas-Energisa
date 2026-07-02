@@ -1,0 +1,27 @@
+name: Deploy Firebase Functions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'functions/**'
+      - 'firebase.json'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar dependências
+        run: npm ci
+        working-directory: functions
+
+      - name: Deploy Functions
+        uses: w9jds/firebase-action@master
+        with:
+          args: deploy --only functions --project inovacao-emr
+        env:
+          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
