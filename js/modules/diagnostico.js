@@ -1,146 +1,260 @@
 // =====================================================
-// js/modules/diagnostico.js — Diagnóstico de Permissões Firebase
+// js/modules/diagnostico.js — Diagnóstico de Usuários
 // =====================================================
-import { auth, db, functions, collection, getDocs, doc, getDoc, setDoc, deleteDoc, httpsCallable } from '../firebase.js';
+import {
+  db, functions,
+  collection, getDocs, doc, updateDoc,
+  httpsCallable
+} from '../firebase.js';
+import { showToast } from './ui.js';
 
-// Renderiza um item de check no container indicado
-function renderCheck(containerId, { label, detail, status }) {
-  // status: 'ok' | 'err' | 'warn' | 'skip' | 'run'
-  const icons = { ok: '✓', err: '✗', warn: '!', skip: '–', run: '…' };
-  const el = document.createElement('div');
-  el.className = `diag-check ${status}`;
-  el.innerHTML = `
-    <div class="diag-check-icon">${icons[status] ?? '?'}</div>
-    <div class="diag-check-body">
-      <strong>${label}</strong>
-      ${detail ? `<small>${detail}</small>` : ''}
-    </div>`;
-  document.getElementById(containerId)?.appendChild(el);
-  return el;
+const fnAuditar       = httpsCallable(functions, 'auditarUsuarios');
+const fnListarFS      = httpsCallable(functions, 'listarFirestoreUsuarios');
+const fnAtualizarPerfil = httpsCallable(functions, 'alterarPerfilUsuario');
+const fnReconstruir   = httpsCallable(functions, 'reconstruirCadastro');
+const fnExcluirFS     = httpsCallable(functions, 'excluirFirestoreUsuario');
+const fnExcluirAuth   = httpsCallable(functions, 'excluirAuthUsuario');
+
+const ROLES_VALIDOS = ['admin', 'comite', 'atleta'];
+const STATUS_VALIDOS = ['Aprovado', 'Pendente', 'Inativo'];
+
+// ── Detecta problemas de um usuário Firestore ───────────────────────────────
+function detectarProblemas(u, noAuth = false) {
+  const problemas = [];
+
+  if (noAuth) problemas.push({ tipo: 'sem_auth', label: 'Sem conta Auth', severidade: 'err' });
+  if (!u.role || !ROLES_VALIDOS.includes(u.role)) problemas.push({ tipo: 'role_invalida', label: `Role inválida: "${u.role || '—'}"`, severidade: 'err' });
+  if (!u.nome?.trim()) problemas.push({ tipo: 'sem_nome', label: 'Sem nome', severidade: 'warn' });
+  if (!u.email?.trim()) problemas.push({ tipo: 'sem_email', label: 'Sem e-mail', severidade: 'warn' });
+  if (u.role === 'comite' && u.status === 'Pendente') problemas.push({ tipo: 'pendente', label: 'Acesso pendente de aprovação', severidade: 'warn' });
+  if (u.role === 'atleta' && u.status !== 'Aprovado') problemas.push({ tipo: 'atleta_inativo', label: `Status: ${u.status}`, severidade: 'warn' });
+
+  return problemas;
 }
 
-// Executa um check e atualiza o elemento com o resultado
-async function runCheck(containerId, label, fn) {
-  const placeholder = renderCheck(containerId, { label, detail: 'Verificando…', status: 'run' });
-  let status = 'ok', detail = '';
+// ── Renderiza a tabela de resultados ────────────────────────────────────────
+function renderTabela(authSemFS, firestoreSemAuth, fsUsers) {
+  const container = document.getElementById('diagTabela');
+  if (!container) return;
+
+  // Problemas: Auth sem Firestore
+  const linhasAuthSemFS = authSemFS.map(u => ({
+    uid: u.uid,
+    nome: u.displayName || '—',
+    email: u.email || '—',
+    role: '—',
+    status: '—',
+    problemas: [{ tipo: 'sem_doc', label: 'Sem documento Firestore', severidade: 'err' }],
+    origem: 'auth'
+  }));
+
+  // Problemas: Firestore sem Auth
+  const linhasFSSemAuth = firestoreSemAuth.map(u => ({
+    uid: u.uid,
+    nome: u.nome || '—',
+    email: u.email || '—',
+    role: u.role || '—',
+    status: u.status || '—',
+    problemas: [{ tipo: 'sem_auth', label: 'Sem conta Auth', severidade: 'err' }],
+    origem: 'firestore'
+  }));
+
+  // Problemas: usuários integrados mas com campos errados
+  const authUids = new Set(authSemFS.map(u => u.uid));
+  const firestoreSemAuthUids = new Set(firestoreSemAuth.map(u => u.uid));
+  const linhasProblemas = fsUsers
+    .filter(u => !firestoreSemAuthUids.has(u.uid))
+    .map(u => ({
+      uid: u.uid,
+      nome: u.nome || '—',
+      email: u.email || '—',
+      role: u.role || '—',
+      status: u.status || '—',
+      problemas: detectarProblemas(u, false),
+      origem: 'integrado'
+    }))
+    .filter(u => u.problemas.length > 0);
+
+  const todos = [...linhasAuthSemFS, ...linhasFSSemAuth, ...linhasProblemas];
+
+  const totalEl = document.getElementById('diagTotalProblemas');
+  const semProblemasEl = document.getElementById('diagSemProblemas');
+  const tabelaWrap = document.getElementById('diagTabelaWrap');
+
+  if (totalEl) totalEl.textContent = todos.length;
+
+  if (todos.length === 0) {
+    if (semProblemasEl) semProblemasEl.style.display = 'flex';
+    if (tabelaWrap) tabelaWrap.style.display = 'none';
+    return;
+  }
+
+  if (semProblemasEl) semProblemasEl.style.display = 'none';
+  if (tabelaWrap) tabelaWrap.style.display = 'block';
+
+  container.innerHTML = todos.map(u => {
+    const badgesProb = u.problemas.map(p =>
+      `<span class="diag-badge diag-badge--${p.severidade}">${p.label}</span>`
+    ).join('');
+
+    const acoes = buildAcoes(u);
+
+    return `
+      <tr data-uid="${u.uid}" data-origem="${u.origem}">
+        <td>
+          <div class="diag-user-cell">
+            <span class="diag-user-name">${esc(u.nome)}</span>
+            <span class="diag-user-email">${esc(u.email)}</span>
+          </div>
+        </td>
+        <td>${roleBadge(u.role)}</td>
+        <td><div class="diag-badges">${badgesProb}</div></td>
+        <td><div class="diag-acoes">${acoes}</div></td>
+      </tr>`;
+  }).join('');
+
+  // Bind action buttons
+  container.querySelectorAll('[data-acao]').forEach(btn => {
+    btn.addEventListener('click', () => handleAcao(btn));
+  });
+}
+
+function buildAcoes(u) {
+  const btns = [];
+
+  const temSemDoc = u.problemas.some(p => p.tipo === 'sem_doc');
+  const temSemAuth = u.problemas.some(p => p.tipo === 'sem_auth');
+  const temPendente = u.problemas.some(p => p.tipo === 'pendente');
+  const temRoleInvalida = u.problemas.some(p => p.tipo === 'role_invalida');
+
+  if (temSemDoc) {
+    btns.push(`<button class="diag-btn diag-btn--blue" data-acao="reconstruir" data-uid="${u.uid}" data-email="${u.email}" data-nome="${u.nome}" title="Criar documento Firestore">Criar doc</button>`);
+    btns.push(`<button class="diag-btn diag-btn--red" data-acao="excluir_auth" data-uid="${u.uid}" title="Remover do Firebase Auth">Remover Auth</button>`);
+  }
+  if (temSemAuth) {
+    btns.push(`<button class="diag-btn diag-btn--red" data-acao="excluir_fs" data-uid="${u.uid}" title="Remover documento Firestore">Remover doc</button>`);
+  }
+  if (temPendente) {
+    btns.push(`<button class="diag-btn diag-btn--green" data-acao="aprovar" data-uid="${u.uid}" title="Aprovar acesso">Aprovar</button>`);
+    btns.push(`<button class="diag-btn diag-btn--red" data-acao="excluir_fs" data-uid="${u.uid}" title="Rejeitar e remover">Rejeitar</button>`);
+  }
+  if (temRoleInvalida || (!temSemDoc && !temSemAuth)) {
+    btns.push(`
+      <select class="diag-select" data-uid="${u.uid}">
+        <option value="">Definir role…</option>
+        <option value="atleta" ${u.role==='atleta'?'selected':''}>Atleta</option>
+        <option value="comite" ${u.role==='comite'?'selected':''}>Comitê</option>
+        <option value="admin" ${u.role==='admin'?'selected':''}>Admin</option>
+      </select>
+      <button class="diag-btn diag-btn--blue" data-acao="set_role" data-uid="${u.uid}" title="Salvar role">Salvar role</button>
+    `);
+  }
+
+  return btns.join('');
+}
+
+async function handleAcao(btn) {
+  const acao = btn.dataset.acao;
+  const uid = btn.dataset.uid;
+  const row = btn.closest('tr');
+
+  btn.disabled = true;
+  btn.textContent = '…';
+
   try {
-    detail = await fn() ?? '';
+    if (acao === 'aprovar') {
+      await updateDoc(doc(db, 'atletas', uid), { status: 'Aprovado', ativo: true });
+      showToast('Acesso aprovado!', 'success');
+      row?.remove();
+      decrementarContador();
+
+    } else if (acao === 'excluir_fs') {
+      await fnExcluirFS({ uid });
+      showToast('Documento removido.', 'success');
+      row?.remove();
+      decrementarContador();
+
+    } else if (acao === 'excluir_auth') {
+      await fnExcluirAuth({ uid });
+      showToast('Usuário removido do Auth.', 'success');
+      row?.remove();
+      decrementarContador();
+
+    } else if (acao === 'reconstruir') {
+      await fnReconstruir({ uid, email: btn.dataset.email, nome: btn.dataset.nome, role: 'comite', equipe: 'Comitê' });
+      showToast('Documento criado!', 'success');
+      row?.remove();
+      decrementarContador();
+
+    } else if (acao === 'set_role') {
+      const select = row?.querySelector('.diag-select');
+      const role = select?.value;
+      if (!role) { showToast('Selecione um role.', 'error'); btn.disabled = false; btn.textContent = 'Salvar role'; return; }
+      await fnAtualizarPerfil({ uid, role, nome: '', equipe: '' });
+      showToast(`Role atualizado para "${role}".`, 'success');
+      row?.remove();
+      decrementarContador();
+    }
   } catch (e) {
-    status = 'err';
-    detail = e?.code ? `${e.code}` : (e?.message ?? 'Erro desconhecido');
+    showToast('Erro: ' + (e?.message || e?.code || 'desconhecido'), 'error');
+    btn.disabled = false;
+    btn.textContent = acao === 'aprovar' ? 'Aprovar' : acao === 'set_role' ? 'Salvar role' : 'Tentar novamente';
   }
-  placeholder.className = `diag-check ${status}`;
-  placeholder.querySelector('.diag-check-icon').textContent = { ok: '✓', err: '✗', warn: '!', skip: '–' }[status] ?? '?';
-  placeholder.querySelector('small').textContent = detail;
-  return status === 'ok';
 }
 
+function decrementarContador() {
+  const el = document.getElementById('diagTotalProblemas');
+  if (!el) return;
+  const atual = parseInt(el.textContent, 10);
+  const novo = Math.max(0, atual - 1);
+  el.textContent = novo;
+  if (novo === 0) {
+    document.getElementById('diagSemProblemas').style.display = 'flex';
+    document.getElementById('diagTabelaWrap').style.display = 'none';
+  }
+}
+
+// ── Carrega dados e roda diagnóstico ────────────────────────────────────────
 async function rodarDiagnostico() {
-  // Limpa resultados anteriores
-  ['diagGrupoAuth', 'diagGrupoRead', 'diagGrupoWrite', 'diagGrupoFunctions'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.innerHTML = '';
-  });
-  document.getElementById('diagResultado').style.display = 'none';
-  document.getElementById('diagResumo').textContent = '';
-  document.getElementById('diagLoading').style.display = 'flex';
+  const loading = document.getElementById('diagLoading');
+  const resultado = document.getElementById('diagResultado');
+  if (!loading || !resultado) return;
 
-  let total = 0, falhos = 0;
+  loading.style.display = 'flex';
+  resultado.style.display = 'none';
 
-  async function check(group, label, fn) {
-    total++;
-    const ok = await runCheck(group, label, fn);
-    if (!ok) falhos++;
-  }
+  try {
+    const [auditRes, fsRes] = await Promise.all([
+      fnAuditar({}),
+      fnListarFS({})
+    ]);
 
-  // ── Autenticação & Perfil ─────────────────────────────
-  await check('diagGrupoAuth', 'Usuário autenticado', async () => {
-    const u = auth.currentUser;
-    if (!u) throw new Error('Nenhum usuário logado');
-    return u.email;
-  });
+    const { authSemFirestore = [], firestoreSemAuth = [] } = auditRes.data || {};
+    const fsUsers = fsRes.data?.usuarios || [];
 
-  await check('diagGrupoAuth', 'Documento do usuário existe', async () => {
-    const u = auth.currentUser;
-    if (!u) throw new Error('Não autenticado');
-    const snap = await getDoc(doc(db, 'atletas', u.uid));
-    if (!snap.exists()) throw new Error('Documento não encontrado em atletas/{uid}');
-    return `role: ${snap.data().role ?? '—'}`;
-  });
+    loading.style.display = 'none';
+    resultado.style.display = 'block';
+    renderTabela(authSemFirestore, firestoreSemAuth, fsUsers);
 
-  await check('diagGrupoAuth', 'Perfil é admin', async () => {
-    const u = auth.currentUser;
-    if (!u) throw new Error('Não autenticado');
-    const snap = await getDoc(doc(db, 'atletas', u.uid));
-    const role = snap.exists() ? snap.data().role : null;
-    if (role !== 'admin') throw new Error(`role atual: "${role ?? 'sem role'}"`);
-    return 'Confirmado';
-  });
-
-  // ── Firestore — Leitura ───────────────────────────────
-  const colecoes = [
-    ['atletas',           'Coleção atletas'],
-    ['configuracoes',     'Coleção configuracoes'],
-    ['historico_pontos',  'Coleção historico_pontos'],
-    ['regras_pontuacao',  'Coleção regras_pontuacao'],
-    ['despesas',          'Coleção despesas'],
-    ['agenda_eventos',    'Coleção agenda_eventos'],
-    ['auditoria',         'Coleção auditoria'],
-  ];
-
-  for (const [col, label] of colecoes) {
-    await check('diagGrupoRead', label, async () => {
-      const snap = await getDocs(collection(db, col));
-      return `${snap.size} documento(s)`;
-    });
-  }
-
-  // ── Firestore — Escrita ───────────────────────────────
-  const testDocId = `__diag_${Date.now()}`;
-
-  await check('diagGrupoWrite', 'Criar documento (atletas)', async () => {
-    await setDoc(doc(db, 'atletas', testDocId), { _diag: true, ts: Date.now() });
-    return 'OK';
-  });
-
-  await check('diagGrupoWrite', 'Excluir documento (atletas)', async () => {
-    await deleteDoc(doc(db, 'atletas', testDocId));
-    return 'OK';
-  });
-
-  await check('diagGrupoWrite', 'Escrever em configuracoes', async () => {
-    const ref = doc(db, 'configuracoes', '__diag_test');
-    await setDoc(ref, { _diag: true, ts: Date.now() }, { merge: true });
-    await deleteDoc(ref);
-    return 'OK';
-  });
-
-  // ── Cloud Functions ───────────────────────────────────
-  await check('diagGrupoFunctions', 'Chamar listarUsuarios', async () => {
-    const fn = httpsCallable(functions, 'listarUsuarios');
-    const res = await fn({});
-    const total = res?.data?.totais?.auth ?? res?.data?.usuarios?.length ?? '?';
-    return `${total} usuários no Auth`;
-  });
-
-  // ── Resumo ────────────────────────────────────────────
-  document.getElementById('diagLoading').style.display = 'none';
-  document.getElementById('diagResultado').style.display = 'block';
-
-  const resumoEl = document.getElementById('diagResumo');
-  if (falhos === 0) {
-    resumoEl.className = 'diag-resumo ok';
-    resumoEl.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Tudo certo! ${total} verificações passaram sem erros.`;
-  } else {
-    resumoEl.className = `diag-resumo ${falhos === total ? 'err' : 'warn'}`;
-    resumoEl.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> ${falhos} de ${total} verificações falharam. Revise as regras do Firestore e a implantação das Functions.`;
+  } catch (e) {
+    loading.style.display = 'none';
+    showToast('Erro ao carregar usuários: ' + (e?.message || e?.code), 'error');
   }
 }
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function esc(str) {
+  return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function roleBadge(role) {
+  const cls = { admin: 'red', comite: 'blue', atleta: 'gray' }[role] || 'gray';
+  return `<span class="diag-role diag-role--${cls}">${role || '—'}</span>`;
+}
+
+// ── Setup ────────────────────────────────────────────────────────────────────
 export function setupDiagnostico() {
   document.getElementById('btnRodarDiagnostico')?.addEventListener('click', rodarDiagnostico);
 
-  // Roda automaticamente ao abrir a aba
   document.addEventListener('click', e => {
     if (e.target?.closest('[data-target="sub-diagnostico"]')) {
       setTimeout(rodarDiagnostico, 120);
