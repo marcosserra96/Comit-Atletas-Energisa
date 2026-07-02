@@ -15,13 +15,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Instalar dependências
         run: npm install
         working-directory: functions
 
+      - name: Instalar Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Criar arquivo de credenciais
+        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > /tmp/sa.json
+
       - name: Deploy Functions
-        uses: w9jds/firebase-action@master
-        with:
-          args: deploy --only functions --project inovacao-emr
+        run: firebase deploy --only functions --project inovacao-emr
         env:
-          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa.json
