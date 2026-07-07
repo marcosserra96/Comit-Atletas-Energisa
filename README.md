@@ -47,8 +47,25 @@ pelo `npm run seed` (senha `senha123`):
    ```bash
    firebase deploy --only firestore:rules,firestore:indexes --project <id-do-projeto>
    ```
-5. Criar a primeira conta de administrador (via Firebase Console ou um script
-   equivalente ao `scripts/seed.ts`, apontado para o projeto real).
+5. Criar a primeira conta de administrador. As regras do Firestore exigem que
+   quem cria/edita `usuarios`/`atletas` já seja administrador, então isso
+   precisa de uma credencial que ignora as regras (Admin SDK):
+   1. Gerar uma chave de serviço no Firebase Console (Configurações do
+      projeto → Contas de serviço → Gerar nova chave privada) e salvar como
+      `service-account.json` na raiz do projeto (já está no `.gitignore`).
+   2. Rodar:
+      ```bash
+      GOOGLE_APPLICATION_CREDENTIALS=./service-account.json \
+        npx tsx scripts/set-admin-producao.ts --email=voce@energisa.com.br --senha=SENHA --nome="Seu Nome"
+      ```
+      Funciona mesmo rodando de novo (idempotente) e força a senha informada,
+      mesmo se a conta já existir no Authentication.
+   3. Apagar `service-account.json` depois de usar (e revogar a chave no
+      Console, se quiser).
+   - `scripts/verificar-usuario.ts --email=...` faz uma leitura read-only do
+     Auth + Firestore de uma conta, útil para conferir sem precisar de senha.
+   - `scripts/cleanup-admin-placeholder.ts --email=...` remove uma conta
+     criada por engano (Auth + documentos Firestore correspondentes).
 6. Conectar o repositório a um host (ex.: [Vercel](https://vercel.com/new)) e
    configurar as mesmas variáveis de ambiente do passo 3 no painel do host.
 
