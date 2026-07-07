@@ -1,0 +1,37 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "atletas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "equipe", "order": "ASCENDING" },
+        { "fieldPath": "pontuacaoTotal", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "historico_pontos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "atletaId", "order": "ASCENDING" },
+        { "fieldPath": "criadoEm", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "comentarios_atletas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "atletaId", "order": "ASCENDING" },
+        { "fieldPath": "criadoEm", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "solicitacoes_acesso",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "criadoEm", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
