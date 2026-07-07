@@ -1,0 +1,196 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { collection, onSnapshot } from "firebase/firestore";
+import { Calculator, PieChart, Receipt, TrendingUp, Wallet } from "lucide-react";
+import { db } from "@/lib/firebase";
+import { Card } from "@/components/ui/Card";
+import { formatBRL } from "@/lib/format";
+import type { CategoriaDespesa, DespesaDoc } from "@/lib/types";
+
+const CATEGORIA_COR: Record<CategoriaDespesa, string> = {
+  "Provas / Inscrições": "var(--color-secondary)",
+  "Mensalidade Treinador": "#3498db",
+  "Encontros e Eventos": "var(--color-accent)",
+  "Uniformes e Materiais": "var(--color-primary)",
+  Outros: "#95a5a6",
+};
+
+const CATEGORIA_ORDEM: CategoriaDespesa[] = [
+  "Provas / Inscrições",
+  "Mensalidade Treinador",
+  "Encontros e Eventos",
+  "Uniformes e Materiais",
+  "Outros",
+];
+
+export function ResumoTab() {
+  const [despesas, setDespesas] = useState<DespesaDoc[] | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, "despesas"),
+      (snap) => setDespesas(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as DespesaDoc)),
+      () => setDespesas([]),
+    );
+    return unsubscribe;
+  }, []);
+
+  const porEquipe = useMemo(() => {
+    const acc = new Map<string, { proposto: number; realizado: number }>();
+    for (const d of despesas ?? []) {
+      const atual = acc.get(d.equipe) ?? { proposto: 0, realizado: 0 };
+      atual.proposto += d.totalProposto;
+      atual.realizado += d.totalRealizado;
+      acc.set(d.equipe, atual);
+    }
+    return [...acc.entries()].map(([equipe, v]) => ({ equipe, ...v, desvio: v.proposto - v.realizado }));
+  }, [despesas]);
+
+  const porCategoria = useMemo(() => {
+    const acc = new Map<CategoriaDespesa, { proposto: number; realizado: number }>();
+    for (const d of despesas ?? []) {
+      const atual = acc.get(d.categoria) ?? { proposto: 0, realizado: 0 };
+      atual.proposto += d.totalProposto;
+      atual.realizado += d.totalRealizado;
+      acc.set(d.categoria, atual);
+    }
+    return CATEGORIA_ORDEM.filter((cat) => acc.has(cat)).map((categoria) => {
+      const { proposto, realizado } = acc.get(categoria)!;
+      const pct = proposto > 0 ? Math.min((realizado / proposto) * 100, 100) : 100;
+      const estourou = (realizado > proposto && proposto > 0) || (proposto === 0 && realizado > 0);
+      return { categoria, proposto, realizado, pct, estourou };
+    });
+  }, [despesas]);
+
+  const totalProposto = despesas?.reduce((s, d) => s + d.totalProposto, 0) ?? 0;
+  const totalRealizado = despesas?.reduce((s, d) => s + d.totalRealizado, 0) ?? 0;
+  const saldo = totalProposto - totalRealizado;
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <FinKpi icon={Wallet} color="var(--color-primary)" label="Total orçado" desc="Orçamento aprovado" value={formatBRL(totalProposto)} />
+        <FinKpi icon={Receipt} color="var(--color-danger)" label="Total realizado" desc="Gasto confirmado" value={formatBRL(totalRealizado)} />
+        <FinKpi icon={TrendingUp} color="var(--color-secondary)" label="Saldo / desvio" desc="Orçado menos realizado" value={formatBRL(saldo)} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card>
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-text">
+            <Calculator className="size-4 text-text-muted" />
+            Resumo por equipe
+          </h3>
+          {despesas === null ? (
+            <div className="h-24 animate-pulse rounded-[var(--radius)] bg-bg" />
+          ) : porEquipe.length === 0 ? (
+            <p className="py-6 text-center text-sm text-text-muted">Nenhum dado financeiro registrado</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs uppercase text-text-muted">
+                  <th className="py-2 font-semibold">Equipe</th>
+                  <th className="py-2 text-right font-semibold">Orçado</th>
+                  <th className="py-2 text-right font-semibold">Realizado</th>
+                  <th className="py-2 text-right font-semibold">Desvio</th>
+                </tr>
+              </thead>
+              <tbody>
+                {porEquipe.map((e) => (
+                  <tr key={e.equipe} className="border-b border-border last:border-0">
+                    <td className="py-2.5 font-medium text-text">{e.equipe}</td>
+                    <td className="py-2.5 text-right text-text-light">{formatBRL(e.proposto)}</td>
+                    <td className="py-2.5 text-right text-text-light">{formatBRL(e.realizado)}</td>
+                    <td className={`py-2.5 text-right font-semibold ${e.desvio < 0 ? "text-danger" : "text-success"}`}>
+                      {formatBRL(e.desvio)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+
+        <Card>
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-text">
+            <PieChart className="size-4 text-text-muted" />
+            Por categoria
+          </h3>
+          {despesas === null ? (
+            <div className="h-24 animate-pulse rounded-[var(--radius)] bg-bg" />
+          ) : porCategoria.length === 0 ? (
+            <p className="py-6 text-center text-sm text-text-muted">
+              Registre gastos para ver a distribuição por categoria.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-3.5">
+              {porCategoria.map((c) => (
+                <div
+                  key={c.categoria}
+                  className="rounded-[var(--radius)] border border-border bg-bg p-3"
+                  style={{ borderLeft: `3px solid ${CATEGORIA_COR[c.categoria]}` }}
+                >
+                  <p className="mb-1.5 text-sm font-semibold text-text">{c.categoria}</p>
+                  <div className="mb-1.5 flex items-center justify-between text-xs">
+                    <span className="text-text-light">Orçado: {formatBRL(c.proposto)}</span>
+                    <span className="font-semibold" style={{ color: CATEGORIA_COR[c.categoria] }}>
+                      Real: {formatBRL(c.realizado)}
+                    </span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-border">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${c.pct}%`,
+                        backgroundColor: c.estourou ? "var(--color-danger)" : CATEGORIA_COR[c.categoria],
+                      }}
+                    />
+                  </div>
+                  <p className="mt-1.5 text-right text-xs text-text-muted">
+                    Desvio:{" "}
+                    <strong className={c.proposto - c.realizado < 0 ? "text-danger" : "text-text"}>
+                      {formatBRL(c.proposto - c.realizado)}
+                    </strong>
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function FinKpi({
+  icon: Icon,
+  color,
+  label,
+  desc,
+  value,
+}: {
+  icon: typeof Wallet;
+  color: string;
+  label: string;
+  desc: string;
+  value: string;
+}) {
+  return (
+    <div
+      className="flex items-center gap-3.5 rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-sm"
+      style={{ borderLeft: `3px solid ${color}` }}
+    >
+      <span
+        className="flex size-9 shrink-0 items-center justify-center rounded-[var(--radius-sm)]"
+        style={{ backgroundColor: `color-mix(in srgb, ${color} 10%, transparent)`, color }}
+      >
+        <Icon className="size-[18px]" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-text-light">{label}</p>
+        <p className="text-[1.35rem] font-extrabold leading-tight text-text">{value}</p>
+        <p className="text-xs text-text-muted">{desc}</p>
+      </div>
+    </div>
+  );
+}

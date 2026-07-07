@@ -1,0 +1,137 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // "usuarios/{uid}" é o ponteiro auth -> perfil, escrito só por staff no
+    // momento da aprovação/vínculo. É a fonte confiável de role para as regras
+    // (nunca um campo que o próprio usuário possa escrever).
+    function meuUsuario() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+
+    function minhaRole() {
+      return signedIn() && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        ? meuUsuario().role
+        : null;
+    }
+
+    function isAdmin() {
+      return minhaRole() == "administrador";
+    }
+
+    function isComite() {
+      return minhaRole() == "comite";
+    }
+
+    function isStaff() {
+      return isAdmin() || isComite();
+    }
+
+    function meuAtletaId() {
+      return meuUsuario().atletaId;
+    }
+
+    // Permissões granulares do Comitê (ex: "atletas", "registrar", "eventos",
+    // "noticias", "financeiro"). Administrador nunca depende disso — sempre
+    // tem acesso total, verificado separadamente via isAdmin().
+    function minhasPermissoes() {
+      return meuUsuario().get("permissoes", ["inicio"]);
+    }
+
+    function comitePode(chave) {
+      return isComite() && chave in minhasPermissoes();
+    }
+
+    match /usuarios/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isStaff());
+      allow write: if isAdmin();
+    }
+
+    match /solicitacoes_acesso/{uid} {
+      allow create: if signedIn() && request.auth.uid == uid;
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow update, delete: if isAdmin();
+    }
+
+    // Atletas: leitura liberada para qualquer autenticado (perfil/ranking usam
+    // isso); escrita restrita a staff com a permissão "atletas", exceto o
+    // próprio atleta editando só os próprios dados pessoais (nunca
+    // role/equipe/pontuacaoTotal).
+    match /atletas/{atletaId} {
+      allow read: if signedIn();
+      allow create: if isAdmin() || comitePode("atletas");
+      // Comitê com a permissão "atletas" pode editar tudo, exceto o campo
+      // "role" (só administrador promove/rebaixa perfis — evita
+      // escalonamento de privilégio via Comitê). Comitê com a permissão
+      // "registrar" (sem "atletas") ainda pode atualizar só a pontuação, que
+      // é o efeito colateral de lançar/estornar pontos.
+      allow update: if isAdmin() ||
+        (comitePode("atletas") && !("role" in request.resource.data.diff(resource.data).affectedKeys())) ||
+        (comitePode("registrar") &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(["pontuacaoTotal", "atualizadoEm"])) ||
+        (signedIn() && meuAtletaId() == atletaId &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(["nome", "sexo", "dataNascimento", "localidade", "atualizadoEm"]));
+      allow delete: if isAdmin();
+    }
+
+    match /historico_pontos/{id} {
+      allow read: if signedIn();
+      allow create, update: if isAdmin() || comitePode("registrar");
+      allow delete: if isAdmin();
+    }
+
+    // Critérios de pontuação são configuração de programa — só administrador
+    // cria/edita/apaga (comitê só lê, para lançar pontos com base nas regras).
+    match /regras_pontuacao/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /agenda_eventos/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin() || comitePode("eventos");
+    }
+
+    match /noticias/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin() || comitePode("noticias");
+    }
+
+    match /despesas/{id} {
+      allow read, write: if isAdmin() || comitePode("financeiro");
+    }
+
+    // Comentários de atletas são usados tanto pela ficha (permissão "atletas")
+    // quanto pela observação ao lançar pontos (permissão "registrar").
+    match /comentarios_atletas/{id} {
+      allow read, write: if isAdmin() || comitePode("atletas") || comitePode("registrar");
+    }
+
+    // Comitê com a permissão "atletas" pode ler auditoria de ações sobre
+    // atletas (usado na aba Auditoria da ficha); o log completo do programa
+    // continua exclusivo do administrador.
+    match /auditoria/{id} {
+      allow read: if isAdmin() || (comitePode("atletas") && resource.data.entidade == "atletas");
+      allow create: if isStaff();
+      allow update, delete: if false;
+    }
+
+    // "branding" define a identidade visual do portal (cores, fundo do login)
+    // e precisa ser lida até por visitantes não autenticados na tela de login.
+    match /configuracoes/branding {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /configuracoes/{docId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+  }
+}
