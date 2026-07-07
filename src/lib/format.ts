@@ -12,6 +12,7 @@ export function formatLongDate(date: Date) {
 
 export function formatShortDate(value: string | Date) {
   const date = typeof value === "string" ? new Date(`${value}T00:00:00`) : value;
+  if (Number.isNaN(date.getTime())) return "—";
   return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(date);
 }
 

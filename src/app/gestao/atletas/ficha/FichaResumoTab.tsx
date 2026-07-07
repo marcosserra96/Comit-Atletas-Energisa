@@ -123,8 +123,8 @@ export function FichaResumoTab({ atleta }: { atleta: AtletaDoc }) {
               }`}
             >
               <span
-                className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-transform ${
-                  ativo ? "translate-x-[22px]" : "translate-x-0.5"
+                className={`absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow transition-transform ${
+                  ativo ? "translate-x-5" : "translate-x-0"
                 }`}
               />
             </button>

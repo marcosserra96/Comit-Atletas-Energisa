@@ -427,7 +427,7 @@ export function LancarPontosTab() {
           <table className="w-full min-w-[760px] text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs uppercase text-text-muted">
-                <th className="sticky left-0 z-10 bg-bg-card px-4 py-3 font-semibold">Atleta</th>
+                <th className="sticky left-0 z-[1] bg-bg-card px-4 py-3 font-semibold">Atleta</th>
                 {regrasCompativeis.map((r) => (
                   <th key={r.id} className="px-3 py-3 text-center font-semibold">
                     {r.descricao}
@@ -448,7 +448,9 @@ export function LancarPontosTab() {
                     Todo time
                   </label>
                 </th>
-                <th className="border-l border-border px-3 py-3 text-left font-semibold">Observação</th>
+                <th className="w-[180px] border-l border-border px-3 py-3 text-left font-semibold">
+                  Observação
+                </th>
                 <th className="px-4 py-3 text-right font-semibold">Total</th>
               </tr>
             </thead>
@@ -458,7 +460,7 @@ export function LancarPontosTab() {
                 const temMarcacao = isFalta || (marcados[a.id]?.size ?? 0) > 0;
                 return (
                   <tr key={a.id} className="border-b border-border last:border-0">
-                    <td className="sticky left-0 z-10 bg-bg-card px-4 py-3 font-medium text-text">
+                    <td className="sticky left-0 z-[1] bg-bg-card px-4 py-3 font-medium text-text">
                       {a.nome}
                     </td>
                     {regrasCompativeis.map((r) => (
@@ -480,16 +482,18 @@ export function LancarPontosTab() {
                         className="size-4 rounded border-border accent-accent"
                       />
                     </td>
-                    <td className="border-l border-border px-3 py-3">
-                      {temMarcacao && (
+                    <td className="w-[180px] border-l border-border px-3 py-3">
+                      {temMarcacao ? (
                         <input
                           value={observacoes[a.id] ?? ""}
                           onChange={(e) =>
                             setObservacoes((prev) => ({ ...prev, [a.id]: e.target.value }))
                           }
                           placeholder="Lesão, atestado…"
-                          className="h-8 w-full min-w-[160px] rounded-[var(--radius-sm)] border border-border bg-bg px-2 text-xs text-text outline-none placeholder:text-text-muted focus:border-primary"
+                          className="h-8 w-full rounded-[var(--radius-sm)] border border-border bg-bg px-2 text-xs text-text outline-none placeholder:text-text-muted focus:border-primary"
                         />
+                      ) : (
+                        <div className="h-8" />
                       )}
                     </td>
                     <td className="px-4 py-3 text-right font-bold text-text">
