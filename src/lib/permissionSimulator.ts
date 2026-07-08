@@ -64,6 +64,13 @@ const CENARIOS: CenarioDef[] = [
     avaliar: (u) => temPermissao(u, "atletas"),
   },
   {
+    chave: "gerir_criterios",
+    categoria: "Pontuação",
+    label: "Criar, editar ou apagar critérios de pontuação",
+    regra: "Requer a permissão \"Critérios de pontuação\".",
+    avaliar: (u) => temPermissao(u, "regras"),
+  },
+  {
     chave: "lancar_pontos",
     categoria: "Pontuação",
     label: "Lançar ou estornar pontos",

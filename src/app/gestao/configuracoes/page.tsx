@@ -4,17 +4,16 @@ import { useState } from "react";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { SubTabs } from "@/components/ui/SubTabs";
 import { NotAuthorized } from "@/components/ui/NotAuthorized";
-import { CriteriosTab } from "./CriteriosTab";
 import { UsuariosTab } from "./UsuariosTab";
 import { IdentidadeVisualTab } from "./IdentidadeVisualTab";
 import { DiagnosticoTab } from "./DiagnosticoTab";
 import { AuditoriaTab } from "./AuditoriaTab";
 
-type Tab = "criterios" | "usuarios" | "identidade" | "diagnostico" | "auditoria";
+type Tab = "usuarios" | "identidade" | "diagnostico" | "auditoria";
 
 export default function ConfigurarPortalPage() {
   const { usuario } = useActiveSession();
-  const [tab, setTab] = useState<Tab>("criterios");
+  const [tab, setTab] = useState<Tab>("usuarios");
 
   if (usuario.role !== "administrador") {
     return <NotAuthorized />;
@@ -25,7 +24,7 @@ export default function ConfigurarPortalPage() {
       <div>
         <h2 className="text-2xl font-extrabold text-text">Configurar Portal</h2>
         <p className="text-sm text-text-light">
-          Critérios de pontuação, usuários, identidade visual e auditoria do programa.
+          Usuários, identidade visual e auditoria do programa.
         </p>
       </div>
 
@@ -33,7 +32,6 @@ export default function ConfigurarPortalPage() {
         value={tab}
         onChange={setTab}
         options={[
-          { value: "criterios", label: "Critérios de pontuação" },
           { value: "usuarios", label: "Usuários e permissões" },
           { value: "identidade", label: "Identidade visual" },
           { value: "diagnostico", label: "Diagnóstico e dados" },
@@ -41,7 +39,6 @@ export default function ConfigurarPortalPage() {
         ]}
       />
 
-      {tab === "criterios" && <CriteriosTab />}
       {tab === "usuarios" && <UsuariosTab />}
       {tab === "identidade" && <IdentidadeVisualTab />}
       {tab === "diagnostico" && <DiagnosticoTab />}

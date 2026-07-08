@@ -86,11 +86,11 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Critérios de pontuação são configuração de programa — só administrador
-    // cria/edita/apaga (comitê só lê, para lançar pontos com base nas regras).
+    // Critérios de pontuação — leitura liberada a qualquer autenticado (para
+    // lançar pontos com base nas regras); escrita exige a permissão "regras".
     match /regras_pontuacao/{id} {
       allow read: if signedIn();
-      allow write: if isAdmin();
+      allow write: if isAdmin() || comitePode("regras");
     }
 
     match /agenda_eventos/{id} {

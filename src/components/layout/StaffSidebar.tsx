@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
+  ListChecks,
   Target,
   CalendarCheck,
   Newspaper,
@@ -23,6 +24,7 @@ import type { Role } from "@/lib/types";
 const baseItems: { href: string; label: string; icon: typeof LayoutDashboard; permissao?: PermissaoChave }[] = [
   { href: "/gestao", label: "Início", icon: LayoutDashboard, permissao: "inicio" },
   { href: "/gestao/atletas", label: "Atletas", icon: Users, permissao: "atletas" },
+  { href: "/gestao/criterios", label: "Critérios", icon: ListChecks, permissao: "regras" },
   { href: "/gestao/pontuacao", label: "Registrar", icon: Target, permissao: "registrar" },
   { href: "/gestao/eventos", label: "Eventos", icon: CalendarCheck, permissao: "eventos" },
   { href: "/gestao/noticias", label: "Notícias", icon: Newspaper, permissao: "noticias" },
