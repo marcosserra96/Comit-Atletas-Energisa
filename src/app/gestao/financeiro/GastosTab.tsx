@@ -1,15 +1,16 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { collection, deleteDoc, doc, onSnapshot, orderBy, query } from "firebase/firestore";
-import { ChevronDown, FileSpreadsheet, Pencil, Plus, Trash2, Wallet } from "lucide-react";
+import { ChevronDown, FileSpreadsheet, Pencil, Plus, Repeat, Trash2, Wallet } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useToast } from "@/components/ui/Toast";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { formatBRL } from "@/lib/format";
+import { formatBRL, formatShortDate } from "@/lib/format";
 import { exportToExcel } from "@/lib/excel";
 import { cn } from "@/lib/cn";
 import { NovaDespesaModal } from "./NovaDespesaModal";
@@ -23,10 +24,16 @@ const TIPOS_CUSTO = [
   { propKey: "propDemais", realKey: "realDemais", label: "Outros" },
 ] as const;
 
+const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
+const TODOS_OS_ANOS = "todos";
+
 export function GastosTab() {
   const { show } = useToast();
+  const anoAtual = new Date().getFullYear();
   const [despesas, setDespesas] = useState<DespesaDoc[] | null>(null);
   const [empresas, setEmpresas] = useState<EmpresaPagadoraDoc[]>([]);
+  const [anoFiltro, setAnoFiltro] = useState<string>(String(anoAtual));
   const [novaOpen, setNovaOpen] = useState(false);
   const [novaKey, setNovaKey] = useState(0);
   const [editando, setEditando] = useState<DespesaDoc | null>(null);
@@ -52,6 +59,17 @@ export function GastosTab() {
     return unsubscribe;
   }, []);
 
+  const anosDisponiveis = useMemo(
+    () => [...new Set((despesas ?? []).map((d) => d.anoReferencia ?? anoAtual))].sort((a, b) => b - a),
+    [despesas, anoAtual],
+  );
+
+  const despesasFiltradas = useMemo(() => {
+    if (!despesas) return null;
+    if (anoFiltro === TODOS_OS_ANOS) return despesas;
+    return despesas.filter((d) => (d.anoReferencia ?? anoAtual) === Number(anoFiltro));
+  }, [despesas, anoFiltro, anoAtual]);
+
   function handleNovaDespesa() {
     setNovaKey((k) => k + 1);
     setNovaOpen(true);
@@ -70,10 +88,13 @@ export function GastosTab() {
     exportToExcel(
       "gastos.xlsx",
       "Gastos",
-      (despesas ?? []).map((d) => ({
+      (despesasFiltradas ?? []).map((d) => ({
+        Ano: d.anoReferencia ?? "",
+        Mês: d.mesReferencia ? MESES[d.mesReferencia - 1] : "",
         Categoria: d.categoria,
         Evento: d.evento,
         Equipe: d.equipe,
+        Recorrente: d.recorrente ? "Sim" : "Não",
         "Empresa pagadora": d.rateio?.length
           ? d.rateio.map((r) => `${r.empresa} (${formatBRL(r.valor)})`).join("; ")
           : (d.empresaPagadora ?? ""),
@@ -91,6 +112,7 @@ export function GastosTab() {
         Orçado: d.totalProposto,
         Realizado: d.totalRealizado,
         Desvio: d.totalProposto - d.totalRealizado,
+        "Lançado por": d.criadoPorNome ?? "",
         Observações: d.observacoes ?? "",
       })),
     );
@@ -98,20 +120,36 @@ export function GastosTab() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-end gap-2">
-        <Button variant="secondary" onClick={handleExportar} disabled={!despesas || despesas.length === 0}>
-          <FileSpreadsheet className="size-4" />
-          Exportar Excel
-        </Button>
-        <Button onClick={handleNovaDespesa}>
-          <Plus className="size-4" />
-          Nova despesa
-        </Button>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="w-40">
+          <Select value={anoFiltro} onChange={(e) => setAnoFiltro(e.target.value)}>
+            <option value={TODOS_OS_ANOS}>Todos os anos</option>
+            {(anosDisponiveis.includes(anoAtual) ? anosDisponiveis : [anoAtual, ...anosDisponiveis]).map((ano) => (
+              <option key={ano} value={ano}>
+                {ano}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            onClick={handleExportar}
+            disabled={!despesasFiltradas || despesasFiltradas.length === 0}
+          >
+            <FileSpreadsheet className="size-4" />
+            Exportar Excel
+          </Button>
+          <Button onClick={handleNovaDespesa}>
+            <Plus className="size-4" />
+            Nova despesa
+          </Button>
+        </div>
       </div>
 
-      {despesas === null ? (
+      {despesasFiltradas === null ? (
         <Card className="h-40 animate-pulse" />
-      ) : despesas.length === 0 ? (
+      ) : despesasFiltradas.length === 0 ? (
         <Card>
           <EmptyState
             icon={Wallet}
@@ -134,7 +172,7 @@ export function GastosTab() {
               </tr>
             </thead>
             <tbody>
-              {despesas.map((d) => {
+              {despesasFiltradas.map((d) => {
                 const aberto = expandido === d.id;
                 return (
                   <Fragment key={d.id}>
@@ -145,6 +183,12 @@ export function GastosTab() {
                       <td className="px-3 py-3 text-text-light">{d.categoria}</td>
                       <td className="px-3 py-3 font-medium text-text">
                         {d.evento}
+                        {d.recorrente && (
+                          <span className="ml-1.5 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-primary">
+                            <Repeat className="size-3" />
+                            recorrente
+                          </span>
+                        )}
                         {d.avulso && (
                           <span className="ml-1.5 text-[10px] font-bold uppercase tracking-wide text-accent">
                             [avulso]
@@ -192,44 +236,78 @@ export function GastosTab() {
                     {aberto && (
                       <tr key={`${d.id}-detalhes`} className="border-b border-border bg-bg last:border-0">
                         <td colSpan={7} className="px-4 py-3">
-                          <table className="w-full min-w-[420px] text-xs">
-                            <thead>
-                              <tr className="text-left uppercase text-text-muted">
-                                <th className="py-1.5 font-semibold">Tipo de custo</th>
-                                <th className="py-1.5 text-right font-semibold">Orçado</th>
-                                <th className="py-1.5 text-right font-semibold text-secondary">Realizado</th>
-                                <th className="py-1.5 text-right font-semibold">Desvio</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {TIPOS_CUSTO.map((t) => {
-                                const prop = d[t.propKey] ?? 0;
-                                const real = d[t.realKey] ?? 0;
-                                if (!prop && !real) return null;
-                                return (
-                                  <tr key={t.label} className="border-t border-border">
-                                    <td className="py-1.5 text-text">{t.label}</td>
-                                    <td className="py-1.5 text-right text-text-light">{formatBRL(prop)}</td>
-                                    <td className="py-1.5 text-right text-text-light">{formatBRL(real)}</td>
+                          {d.recorrente && d.parcelas?.length ? (
+                            <table className="w-full min-w-[420px] text-xs">
+                              <thead>
+                                <tr className="text-left uppercase text-text-muted">
+                                  <th className="py-1.5 font-semibold">Mês</th>
+                                  <th className="py-1.5 text-right font-semibold">Previsto</th>
+                                  <th className="py-1.5 text-right font-semibold text-secondary">Pago</th>
+                                  <th className="py-1.5 text-right font-semibold">Data</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {d.parcelas.map((p) => (
+                                  <tr key={p.mes} className="border-t border-border">
+                                    <td className="py-1.5 text-text">{MESES[p.mes - 1]}</td>
+                                    <td className="py-1.5 text-right text-text-light">
+                                      {formatBRL(p.valorPrevisto)}
+                                    </td>
                                     <td
-                                      className={`py-1.5 text-right font-semibold ${
-                                        prop - real < 0 ? "text-danger" : "text-text"
-                                      }`}
+                                      className={cn(
+                                        "py-1.5 text-right font-semibold",
+                                        p.pago ? "text-secondary" : "text-text-muted",
+                                      )}
                                     >
-                                      {formatBRL(prop - real)}
+                                      {p.pago ? formatBRL(p.valorPago) : "—"}
+                                    </td>
+                                    <td className="py-1.5 text-right text-text-light">
+                                      {p.pago && p.dataPagamento ? formatShortDate(p.dataPagamento) : "—"}
                                     </td>
                                   </tr>
-                                );
-                              })}
-                              {TIPOS_CUSTO.every((t) => !d[t.propKey] && !d[t.realKey]) && (
-                                <tr>
-                                  <td colSpan={4} className="py-2 text-center text-text-muted">
-                                    Sem detalhamento por tipo de custo.
-                                  </td>
+                                ))}
+                              </tbody>
+                            </table>
+                          ) : (
+                            <table className="w-full min-w-[420px] text-xs">
+                              <thead>
+                                <tr className="text-left uppercase text-text-muted">
+                                  <th className="py-1.5 font-semibold">Tipo de custo</th>
+                                  <th className="py-1.5 text-right font-semibold">Orçado</th>
+                                  <th className="py-1.5 text-right font-semibold text-secondary">Realizado</th>
+                                  <th className="py-1.5 text-right font-semibold">Desvio</th>
                                 </tr>
-                              )}
-                            </tbody>
-                          </table>
+                              </thead>
+                              <tbody>
+                                {TIPOS_CUSTO.map((t) => {
+                                  const prop = d[t.propKey] ?? 0;
+                                  const real = d[t.realKey] ?? 0;
+                                  if (!prop && !real) return null;
+                                  return (
+                                    <tr key={t.label} className="border-t border-border">
+                                      <td className="py-1.5 text-text">{t.label}</td>
+                                      <td className="py-1.5 text-right text-text-light">{formatBRL(prop)}</td>
+                                      <td className="py-1.5 text-right text-text-light">{formatBRL(real)}</td>
+                                      <td
+                                        className={`py-1.5 text-right font-semibold ${
+                                          prop - real < 0 ? "text-danger" : "text-text"
+                                        }`}
+                                      >
+                                        {formatBRL(prop - real)}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                                {TIPOS_CUSTO.every((t) => !d[t.propKey] && !d[t.realKey]) && (
+                                  <tr>
+                                    <td colSpan={4} className="py-2 text-center text-text-muted">
+                                      Sem detalhamento por tipo de custo.
+                                    </td>
+                                  </tr>
+                                )}
+                              </tbody>
+                            </table>
+                          )}
                           {d.rateio && d.rateio.length > 0 ? (
                             <div className="mt-3 text-xs text-text-light">
                               <span className="font-semibold text-text-muted">Rateio entre empresas:</span>{" "}
@@ -251,6 +329,10 @@ export function GastosTab() {
                               <p className="whitespace-pre-wrap text-sm text-text-light">{d.observacoes}</p>
                             </div>
                           )}
+                          <p className="mt-3 text-[11px] text-text-muted">
+                            Lançado por {d.criadoPorNome || "—"}
+                            {d.atualizadoPorNome && ` · última edição de ${d.atualizadoPorNome}`}
+                          </p>
                         </td>
                       </tr>
                     )}

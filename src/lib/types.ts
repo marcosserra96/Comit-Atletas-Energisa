@@ -126,15 +126,34 @@ export type CategoriaDespesa =
   | "Uniformes e Materiais"
   | "Outros";
 
+/** Uma parcela mensal de uma despesa recorrente (ex: mensalidade). */
+export interface ParcelaDespesa {
+  /** 1 a 12. */
+  mes: number;
+  valorPrevisto: number;
+  valorPago: number;
+  pago: boolean;
+  /** Data em que o pagamento saiu de fato (yyyy-mm-dd) — auto-preenchida ao marcar como pago, editável. */
+  dataPagamento?: string;
+}
+
 export interface DespesaDoc {
   id: string;
   categoria: CategoriaDespesa;
   equipe: string;
   evento: string;
+  /** Ano orçamentário a que esse lançamento pertence. */
+  anoReferencia: number;
+  /** Mês (1-12) a que esse lançamento pertence — só para despesas não recorrentes; opcional. */
+  mesReferencia?: number;
   /** Empresa que efetuou o pagamento — só usado quando não há rateio. */
   empresaPagadora?: string;
   /** Quando o valor realizado é dividido entre empresas, cada fatia soma totalRealizado. Tem precedência sobre empresaPagadora. */
   rateio?: { empresa: string; valor: number }[];
+  /** Custo recorrente (ex: mensalidade) — quando true, usa "parcelas" em vez do detalhamento por tipo de custo. */
+  recorrente?: boolean;
+  /** Uma entrada por mês (1 a 12) quando recorrente=true. totalProposto/totalRealizado são derivados daqui. */
+  parcelas?: ParcelaDespesa[];
   /** Lançamento não previsto no orçamento — quando true, não entra no "proposto". */
   avulso: boolean;
   /** Detalhamento do valor proposto por tipo de custo (soma vira totalProposto). */
@@ -154,7 +173,11 @@ export interface DespesaDoc {
   /** Observações livres sobre o lançamento. */
   observacoes?: string;
   criadoEm: unknown;
+  criadoPor: string;
+  criadoPorNome: string;
   atualizadoEm?: unknown;
+  atualizadoPor?: string;
+  atualizadoPorNome?: string;
 }
 
 /** empresas_pagadoras/{id} — lista viva de empresas, cadastrada sob demanda ao lançar despesas. */

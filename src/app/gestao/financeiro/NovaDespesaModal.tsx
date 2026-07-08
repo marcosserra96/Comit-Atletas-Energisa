@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { Plus, X } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
 import { Modal } from "@/components/ui/Modal";
 import { TextField } from "@/components/ui/TextField";
@@ -12,7 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { formatBRL } from "@/lib/format";
 import { garantirEmpresaPagadora } from "@/lib/empresasPagadoras";
 import { cn } from "@/lib/cn";
-import type { CategoriaDespesa, DespesaDoc, EmpresaPagadoraDoc } from "@/lib/types";
+import type { CategoriaDespesa, DespesaDoc, EmpresaPagadoraDoc, ParcelaDespesa } from "@/lib/types";
 
 const CATEGORIAS: CategoriaDespesa[] = [
   "Provas / Inscrições",
@@ -30,7 +31,23 @@ const TIPOS_CUSTO = [
   { chave: "Demais", label: "Outros" },
 ] as const;
 
+const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
 const NOVA_EMPRESA = "__nova__";
+
+function hoje() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function parcelasIniciais(orcadoAnual: number): ParcelaDespesa[] {
+  const porMes = Math.round((orcadoAnual / 12) * 100) / 100;
+  return Array.from({ length: 12 }, (_, i) => ({
+    mes: i + 1,
+    valorPrevisto: porMes,
+    valorPago: 0,
+    pago: false,
+  }));
+}
 
 export function NovaDespesaModal({
   open,
@@ -43,14 +60,23 @@ export function NovaDespesaModal({
   despesa?: DespesaDoc | null;
   empresas?: EmpresaPagadoraDoc[];
 }) {
+  const { uid, atleta: autor } = useActiveSession();
   const { show } = useToast();
+  const anoAtual = new Date().getFullYear();
   const [categoria, setCategoria] = useState<CategoriaDespesa>(despesa?.categoria ?? "Provas / Inscrições");
   const [equipe, setEquipe] = useState(despesa?.equipe ?? "Corrida e Bike");
   const [evento, setEvento] = useState(despesa?.evento ?? "");
+  const [anoReferencia, setAnoReferencia] = useState(despesa?.anoReferencia ?? anoAtual);
+  const [mesReferencia, setMesReferencia] = useState(despesa?.mesReferencia ?? 0);
   const [empresaPagadora, setEmpresaPagadora] = useState(despesa?.empresaPagadora ?? "");
   const [dividirEntreEmpresas, setDividirEntreEmpresas] = useState(!!despesa?.rateio?.length);
   const [rateio, setRateio] = useState<{ empresa: string; valor: number }[]>(
     despesa?.rateio?.length ? despesa.rateio : [{ empresa: "", valor: 0 }],
+  );
+  const [recorrente, setRecorrente] = useState(!!despesa?.recorrente);
+  const [orcadoAnual, setOrcadoAnual] = useState(despesa?.totalProposto ?? 0);
+  const [parcelas, setParcelas] = useState<ParcelaDespesa[]>(
+    despesa?.parcelas?.length ? despesa.parcelas : parcelasIniciais(0),
   );
   const [avulso, setAvulso] = useState(despesa?.avulso ?? false);
   const [observacoes, setObservacoes] = useState(despesa?.observacoes ?? "");
@@ -70,13 +96,27 @@ export function NovaDespesaModal({
   });
   const [loading, setLoading] = useState(false);
 
-  const totalProposto = avulso ? 0 : TIPOS_CUSTO.reduce((s, t) => s + prop[t.chave], 0);
-  const totalRealizado = TIPOS_CUSTO.reduce((s, t) => s + real[t.chave], 0);
+  const totalProposto = recorrente
+    ? parcelas.reduce((s, p) => s + p.valorPrevisto, 0)
+    : avulso
+      ? 0
+      : TIPOS_CUSTO.reduce((s, t) => s + prop[t.chave], 0);
+  const totalRealizado = recorrente
+    ? parcelas.reduce((s, p) => s + (p.pago ? p.valorPago : 0), 0)
+    : TIPOS_CUSTO.reduce((s, t) => s + real[t.chave], 0);
   const somaRateio = rateio.reduce((s, r) => s + r.valor, 0);
   const rateioBate = Math.abs(somaRateio - totalRealizado) < 0.01;
 
   function atualizarRateio(i: number, patch: Partial<{ empresa: string; valor: number }>) {
     setRateio((r) => r.map((linha, idx) => (idx === i ? { ...linha, ...patch } : linha)));
+  }
+
+  function atualizarParcela(i: number, patch: Partial<ParcelaDespesa>) {
+    setParcelas((p) => p.map((linha, idx) => (idx === i ? { ...linha, ...patch } : linha)));
+  }
+
+  function togglePago(i: number, pago: boolean) {
+    atualizarParcela(i, { pago, dataPagamento: pago ? parcelas[i].dataPagamento || hoje() : parcelas[i].dataPagamento });
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -85,7 +125,7 @@ export function NovaDespesaModal({
       show("info", "Informe o título / evento relacionado.");
       return;
     }
-    if (dividirEntreEmpresas) {
+    if (!recorrente && dividirEntreEmpresas) {
       const linhasValidas = rateio.filter((r) => r.empresa.trim());
       if (linhasValidas.length === 0) {
         show("info", "Adicione ao menos uma empresa no rateio.");
@@ -102,10 +142,14 @@ export function NovaDespesaModal({
         categoria,
         equipe,
         evento: evento.trim(),
-        empresaPagadora: dividirEntreEmpresas ? "" : empresaPagadora.trim(),
-        rateio: dividirEntreEmpresas ? rateio.filter((r) => r.empresa.trim()) : [],
-        avulso,
-        ...(avulso
+        anoReferencia,
+        mesReferencia: recorrente || !mesReferencia ? null : mesReferencia,
+        empresaPagadora: recorrente || dividirEntreEmpresas ? "" : empresaPagadora.trim(),
+        rateio: !recorrente && dividirEntreEmpresas ? rateio.filter((r) => r.empresa.trim()) : [],
+        recorrente,
+        parcelas: recorrente ? parcelas : [],
+        avulso: recorrente ? false : avulso,
+        ...(recorrente || avulso
           ? {}
           : {
               propInsc: prop.Insc,
@@ -114,21 +158,35 @@ export function NovaDespesaModal({
               propAlim: prop.Alim,
               propDemais: prop.Demais,
             }),
-        realInsc: real.Insc,
-        realTransp: real.Transp,
-        realHosp: real.Hosp,
-        realAlim: real.Alim,
-        realDemais: real.Demais,
+        ...(recorrente
+          ? {}
+          : {
+              realInsc: real.Insc,
+              realTransp: real.Transp,
+              realHosp: real.Hosp,
+              realAlim: real.Alim,
+              realDemais: real.Demais,
+            }),
         totalProposto,
         totalRealizado,
         observacoes: observacoes.trim(),
       };
       if (despesa) {
-        await setDoc(doc(db, "despesas", despesa.id), { ...dados, atualizadoEm: serverTimestamp() }, { merge: true });
+        await setDoc(
+          doc(db, "despesas", despesa.id),
+          { ...dados, atualizadoEm: serverTimestamp(), atualizadoPor: uid, atualizadoPorNome: autor.nome },
+          { merge: true },
+        );
         show("success", "Despesa atualizada.");
       } else {
         const nova = doc(collection(db, "despesas"));
-        await setDoc(nova, { id: nova.id, ...dados, criadoEm: serverTimestamp() });
+        await setDoc(nova, {
+          id: nova.id,
+          ...dados,
+          criadoEm: serverTimestamp(),
+          criadoPor: uid,
+          criadoPorNome: autor.nome,
+        });
         show("success", "Despesa registrada.");
       }
       onClose();
@@ -173,120 +231,174 @@ export function NovaDespesaModal({
           />
         </div>
 
-        <label className="flex items-center gap-2.5 text-sm font-medium text-text">
-          <input
-            type="checkbox"
-            checked={dividirEntreEmpresas}
-            onChange={(e) => setDividirEntreEmpresas(e.target.checked)}
-            className="size-4 rounded border-border accent-primary"
-          />
-          Dividir o valor realizado entre empresas (rateio)
-        </label>
-
-        {dividirEntreEmpresas ? (
-          <div className="flex flex-col gap-2.5 rounded-[var(--radius)] border border-border bg-bg p-3">
-            <p className="text-sm font-medium text-text">Rateio entre empresas</p>
-            {rateio.map((linha, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <div className="min-w-0 flex-1">
-                  <EmpresaCampo
-                    value={linha.empresa}
-                    empresas={empresas}
-                    onChange={(nome) => atualizarRateio(i, { empresa: nome })}
-                  />
-                </div>
-                <div className="w-32 shrink-0">
-                  <CustoInput value={linha.valor} onChange={(v) => atualizarRateio(i, { valor: v })} />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setRateio((r) => r.filter((_, idx) => idx !== i))}
-                  disabled={rateio.length === 1}
-                  aria-label="Remover empresa do rateio"
-                  className="shrink-0 rounded-[var(--radius-sm)] p-1.5 text-text-muted hover:bg-danger/10 hover:text-danger disabled:pointer-events-none disabled:opacity-30"
-                >
-                  <X className="size-4" />
-                </button>
-              </div>
-            ))}
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="w-fit"
-              onClick={() => setRateio((r) => [...r, { empresa: "", valor: 0 }])}
-            >
-              <Plus className="size-3.5" />
-              Adicionar empresa
-            </Button>
-            <p className={cn("text-xs", rateioBate ? "text-text-muted" : "font-semibold text-danger")}>
-              Fatias somam {formatBRL(somaRateio)} de {formatBRL(totalRealizado)} realizado
-              {!rateioBate && " — ajuste até bater."}
-            </p>
-          </div>
-        ) : (
+        <div className="grid grid-cols-2 gap-3 sm:w-1/2">
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-text">Empresa pagadora</label>
-            <EmpresaCampo value={empresaPagadora} empresas={empresas} onChange={setEmpresaPagadora} />
+            <label className="text-sm font-medium text-text">Ano de referência</label>
+            <Select value={String(anoReferencia)} onChange={(e) => setAnoReferencia(Number(e.target.value))}>
+              {[anoAtual - 1, anoAtual, anoAtual + 1].map((ano) => (
+                <option key={ano} value={ano}>
+                  {ano}
+                </option>
+              ))}
+            </Select>
           </div>
-        )}
+          {!recorrente && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-text">Mês (opcional)</label>
+              <Select value={String(mesReferencia)} onChange={(e) => setMesReferencia(Number(e.target.value))}>
+                <option value="0">Sem mês definido</option>
+                {MESES.map((m, i) => (
+                  <option key={m} value={i + 1}>
+                    {m}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
+        </div>
 
         <label className="flex items-center gap-2.5 text-sm font-medium text-text">
           <input
             type="checkbox"
-            checked={avulso}
-            onChange={(e) => setAvulso(e.target.checked)}
+            checked={recorrente}
+            onChange={(e) => {
+              setRecorrente(e.target.checked);
+              if (e.target.checked && parcelas.every((p) => p.valorPrevisto === 0)) {
+                setParcelas(parcelasIniciais(orcadoAnual));
+              }
+            }}
             className="size-4 rounded border-border accent-primary"
           />
-          Lançamento avulso (não estava no orçamento previsto)
+          Custo recorrente, pago mês a mês (ex: mensalidade)
         </label>
 
-        {/* Tabela lado a lado — telas sm e maiores */}
-        <div className="hidden overflow-hidden rounded-[var(--radius)] border border-border sm:block">
-          <div className="grid grid-cols-[1.3fr_1fr_1fr] gap-px bg-border text-xs font-bold uppercase tracking-wide text-text-muted">
-            <div className="bg-bg-card px-3 py-2">Tipo de custo</div>
-            <div className="bg-bg-card px-3 py-2 text-center">Orçado</div>
-            <div className="bg-bg-card px-3 py-2 text-center text-secondary">Realizado</div>
-          </div>
-          {TIPOS_CUSTO.map((t) => (
-            <div key={t.chave} className="grid grid-cols-[1.3fr_1fr_1fr] gap-px bg-border">
-              <div className="flex items-center bg-bg-card px-3 py-2 text-sm font-medium text-text">{t.label}</div>
-              <div className={cn("bg-bg-card px-2 py-1.5", avulso && "pointer-events-none opacity-30")}>
-                <CustoInput
-                  value={prop[t.chave]}
-                  onChange={(v) => setProp((p) => ({ ...p, [t.chave]: v }))}
-                  disabled={avulso}
-                />
-              </div>
-              <div className="bg-bg-card px-2 py-1.5">
-                <CustoInput value={real[t.chave]} onChange={(v) => setReal((p) => ({ ...p, [t.chave]: v }))} />
-              </div>
-            </div>
-          ))}
-        </div>
+        {recorrente ? (
+          <ParcelasEditor
+            orcadoAnual={orcadoAnual}
+            onOrcadoAnualChange={setOrcadoAnual}
+            onAplicarOrcado={() => setParcelas(parcelasIniciais(orcadoAnual))}
+            parcelas={parcelas}
+            onAtualizarParcela={atualizarParcela}
+            onTogglePago={togglePago}
+          />
+        ) : (
+          <>
+            <label className="flex items-center gap-2.5 text-sm font-medium text-text">
+              <input
+                type="checkbox"
+                checked={dividirEntreEmpresas}
+                onChange={(e) => setDividirEntreEmpresas(e.target.checked)}
+                className="size-4 rounded border-border accent-primary"
+              />
+              Dividir o valor realizado entre empresas (rateio)
+            </label>
 
-        {/* Cartões empilhados — telas menores que sm */}
-        <div className="flex flex-col gap-2 sm:hidden">
-          {TIPOS_CUSTO.map((t) => (
-            <div key={t.chave} className="rounded-[var(--radius)] border border-border bg-bg-card p-3">
-              <p className="mb-2 text-sm font-semibold text-text">{t.label}</p>
-              <div className="grid grid-cols-2 gap-2">
-                <div className={avulso ? "pointer-events-none opacity-30" : undefined}>
-                  <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-text-muted">Orçado</p>
-                  <CustoInput
-                    value={prop[t.chave]}
-                    onChange={(v) => setProp((p) => ({ ...p, [t.chave]: v }))}
-                    disabled={avulso}
-                  />
-                </div>
-                <div>
-                  <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-secondary">Realizado</p>
-                  <CustoInput value={real[t.chave]} onChange={(v) => setReal((p) => ({ ...p, [t.chave]: v }))} />
-                </div>
+            {dividirEntreEmpresas ? (
+              <div className="flex flex-col gap-2.5 rounded-[var(--radius)] border border-border bg-bg p-3">
+                <p className="text-sm font-medium text-text">Rateio entre empresas</p>
+                {rateio.map((linha, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      <EmpresaCampo
+                        value={linha.empresa}
+                        empresas={empresas}
+                        onChange={(nome) => atualizarRateio(i, { empresa: nome })}
+                      />
+                    </div>
+                    <div className="w-32 shrink-0">
+                      <CustoInput value={linha.valor} onChange={(v) => atualizarRateio(i, { valor: v })} />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setRateio((r) => r.filter((_, idx) => idx !== i))}
+                      disabled={rateio.length === 1}
+                      aria-label="Remover empresa do rateio"
+                      className="shrink-0 rounded-[var(--radius-sm)] p-1.5 text-text-muted hover:bg-danger/10 hover:text-danger disabled:pointer-events-none disabled:opacity-30"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="w-fit"
+                  onClick={() => setRateio((r) => [...r, { empresa: "", valor: 0 }])}
+                >
+                  <Plus className="size-3.5" />
+                  Adicionar empresa
+                </Button>
+                <p className={cn("text-xs", rateioBate ? "text-text-muted" : "font-semibold text-danger")}>
+                  Fatias somam {formatBRL(somaRateio)} de {formatBRL(totalRealizado)} realizado
+                  {!rateioBate && " — ajuste até bater."}
+                </p>
               </div>
+            ) : (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-text">Empresa pagadora</label>
+                <EmpresaCampo value={empresaPagadora} empresas={empresas} onChange={setEmpresaPagadora} />
+              </div>
+            )}
+
+            <label className="flex items-center gap-2.5 text-sm font-medium text-text">
+              <input
+                type="checkbox"
+                checked={avulso}
+                onChange={(e) => setAvulso(e.target.checked)}
+                className="size-4 rounded border-border accent-primary"
+              />
+              Lançamento avulso (não estava no orçamento previsto)
+            </label>
+
+            {/* Tabela lado a lado — telas sm e maiores */}
+            <div className="hidden overflow-hidden rounded-[var(--radius)] border border-border sm:block">
+              <div className="grid grid-cols-[1.3fr_1fr_1fr] gap-px bg-border text-xs font-bold uppercase tracking-wide text-text-muted">
+                <div className="bg-bg-card px-3 py-2">Tipo de custo</div>
+                <div className="bg-bg-card px-3 py-2 text-center">Orçado</div>
+                <div className="bg-bg-card px-3 py-2 text-center text-secondary">Realizado</div>
+              </div>
+              {TIPOS_CUSTO.map((t) => (
+                <div key={t.chave} className="grid grid-cols-[1.3fr_1fr_1fr] gap-px bg-border">
+                  <div className="flex items-center bg-bg-card px-3 py-2 text-sm font-medium text-text">{t.label}</div>
+                  <div className={cn("bg-bg-card px-2 py-1.5", avulso && "pointer-events-none opacity-30")}>
+                    <CustoInput
+                      value={prop[t.chave]}
+                      onChange={(v) => setProp((p) => ({ ...p, [t.chave]: v }))}
+                      disabled={avulso}
+                    />
+                  </div>
+                  <div className="bg-bg-card px-2 py-1.5">
+                    <CustoInput value={real[t.chave]} onChange={(v) => setReal((p) => ({ ...p, [t.chave]: v }))} />
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+
+            {/* Cartões empilhados — telas menores que sm */}
+            <div className="flex flex-col gap-2 sm:hidden">
+              {TIPOS_CUSTO.map((t) => (
+                <div key={t.chave} className="rounded-[var(--radius)] border border-border bg-bg-card p-3">
+                  <p className="mb-2 text-sm font-semibold text-text">{t.label}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className={avulso ? "pointer-events-none opacity-30" : undefined}>
+                      <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-text-muted">Orçado</p>
+                      <CustoInput
+                        value={prop[t.chave]}
+                        onChange={(v) => setProp((p) => ({ ...p, [t.chave]: v }))}
+                        disabled={avulso}
+                      />
+                    </div>
+                    <div>
+                      <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-secondary">Realizado</p>
+                      <CustoInput value={real[t.chave]} onChange={(v) => setReal((p) => ({ ...p, [t.chave]: v }))} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
         <div className="grid grid-cols-1 gap-3 rounded-[var(--radius)] border border-border bg-bg p-3 sm:grid-cols-3">
           <div>
@@ -316,6 +428,13 @@ export function NovaDespesaModal({
           />
         </div>
 
+        {despesa && (
+          <p className="text-xs text-text-muted">
+            Criado por {despesa.criadoPorNome || "—"}
+            {despesa.atualizadoPorNome && ` · última edição de ${despesa.atualizadoPorNome}`}
+          </p>
+        )}
+
         <div className="mt-1 flex justify-end gap-2">
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancelar
@@ -326,6 +445,85 @@ export function NovaDespesaModal({
         </div>
       </form>
     </Modal>
+  );
+}
+
+function ParcelasEditor({
+  orcadoAnual,
+  onOrcadoAnualChange,
+  onAplicarOrcado,
+  parcelas,
+  onAtualizarParcela,
+  onTogglePago,
+}: {
+  orcadoAnual: number;
+  onOrcadoAnualChange: (v: number) => void;
+  onAplicarOrcado: () => void;
+  parcelas: ParcelaDespesa[];
+  onAtualizarParcela: (i: number, patch: Partial<ParcelaDespesa>) => void;
+  onTogglePago: (i: number, pago: boolean) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-text">Orçado anual</label>
+          <CustoInput value={orcadoAnual} onChange={onOrcadoAnualChange} />
+        </div>
+        <Button type="button" variant="secondary" size="sm" onClick={onAplicarOrcado}>
+          Dividir em 12 parcelas iguais
+        </Button>
+      </div>
+
+      <div className="overflow-x-auto rounded-[var(--radius)] border border-border">
+        <div className="min-w-[560px]">
+          <div className="grid grid-cols-[56px_1fr_64px_1fr_1fr] gap-px bg-border text-[10px] font-bold uppercase tracking-wide text-text-muted">
+            <div className="bg-bg-card px-2 py-2">Mês</div>
+            <div className="bg-bg-card px-2 py-2 text-center">Previsto</div>
+            <div className="bg-bg-card px-2 py-2 text-center">Pago</div>
+            <div className="bg-bg-card px-2 py-2 text-center text-secondary">Valor pago</div>
+            <div className="bg-bg-card px-2 py-2 text-center">Data</div>
+          </div>
+          {parcelas.map((p, i) => (
+            <div key={p.mes} className="grid grid-cols-[56px_1fr_64px_1fr_1fr] gap-px bg-border">
+              <div className="flex items-center bg-bg-card px-2 py-1.5 text-xs font-semibold text-text">
+                {MESES[p.mes - 1]}
+              </div>
+              <div className="bg-bg-card px-1.5 py-1">
+                <CustoInput value={p.valorPrevisto} onChange={(v) => onAtualizarParcela(i, { valorPrevisto: v })} />
+              </div>
+              <div className="flex items-center justify-center bg-bg-card px-1.5 py-1">
+                <input
+                  type="checkbox"
+                  checked={p.pago}
+                  onChange={(e) => onTogglePago(i, e.target.checked)}
+                  className="size-4 rounded border-border accent-primary"
+                />
+              </div>
+              <div className={cn("bg-bg-card px-1.5 py-1", !p.pago && "pointer-events-none opacity-30")}>
+                <CustoInput
+                  value={p.valorPago}
+                  onChange={(v) => onAtualizarParcela(i, { valorPago: v })}
+                  disabled={!p.pago}
+                />
+              </div>
+              <div className={cn("flex items-center bg-bg-card px-1.5 py-1", !p.pago && "pointer-events-none opacity-30")}>
+                <input
+                  type="date"
+                  value={p.dataPagamento ?? ""}
+                  onChange={(e) => onAtualizarParcela(i, { dataPagamento: e.target.value })}
+                  disabled={!p.pago}
+                  className="h-8 w-full min-w-0 rounded-[var(--radius-sm)] border border-border bg-bg px-1.5 text-xs text-text outline-none"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <p className="text-xs text-text-muted">
+        Pago: {parcelas.filter((p) => p.pago).length} de {parcelas.length} meses.
+      </p>
+    </div>
   );
 }
 
