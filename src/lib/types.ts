@@ -131,8 +131,10 @@ export interface DespesaDoc {
   categoria: CategoriaDespesa;
   equipe: string;
   evento: string;
-  /** Empresa que efetuou o pagamento (texto livre, sem lista fixa). */
+  /** Empresa que efetuou o pagamento — só usado quando não há rateio. */
   empresaPagadora?: string;
+  /** Quando o valor realizado é dividido entre empresas, cada fatia soma totalRealizado. Tem precedência sobre empresaPagadora. */
+  rateio?: { empresa: string; valor: number }[];
   /** Lançamento não previsto no orçamento — quando true, não entra no "proposto". */
   avulso: boolean;
   /** Detalhamento do valor proposto por tipo de custo (soma vira totalProposto). */
@@ -153,6 +155,13 @@ export interface DespesaDoc {
   observacoes?: string;
   criadoEm: unknown;
   atualizadoEm?: unknown;
+}
+
+/** empresas_pagadoras/{id} — lista viva de empresas, cadastrada sob demanda ao lançar despesas. */
+export interface EmpresaPagadoraDoc {
+  id: string;
+  nome: string;
+  criadoEm: unknown;
 }
 
 export interface ComentarioAtletaDoc {

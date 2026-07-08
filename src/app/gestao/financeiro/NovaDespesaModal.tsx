@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { Plus, X } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useToast } from "@/components/ui/Toast";
 import { Modal } from "@/components/ui/Modal";
@@ -9,8 +10,9 @@ import { TextField } from "@/components/ui/TextField";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { formatBRL } from "@/lib/format";
+import { garantirEmpresaPagadora } from "@/lib/empresasPagadoras";
 import { cn } from "@/lib/cn";
-import type { CategoriaDespesa, DespesaDoc } from "@/lib/types";
+import type { CategoriaDespesa, DespesaDoc, EmpresaPagadoraDoc } from "@/lib/types";
 
 const CATEGORIAS: CategoriaDespesa[] = [
   "Provas / Inscrições",
@@ -28,22 +30,28 @@ const TIPOS_CUSTO = [
   { chave: "Demais", label: "Outros" },
 ] as const;
 
+const NOVA_EMPRESA = "__nova__";
+
 export function NovaDespesaModal({
   open,
   onClose,
   despesa,
-  empresasConhecidas = [],
+  empresas = [],
 }: {
   open: boolean;
   onClose: () => void;
   despesa?: DespesaDoc | null;
-  empresasConhecidas?: string[];
+  empresas?: EmpresaPagadoraDoc[];
 }) {
   const { show } = useToast();
   const [categoria, setCategoria] = useState<CategoriaDespesa>(despesa?.categoria ?? "Provas / Inscrições");
   const [equipe, setEquipe] = useState(despesa?.equipe ?? "Corrida e Bike");
   const [evento, setEvento] = useState(despesa?.evento ?? "");
   const [empresaPagadora, setEmpresaPagadora] = useState(despesa?.empresaPagadora ?? "");
+  const [dividirEntreEmpresas, setDividirEntreEmpresas] = useState(!!despesa?.rateio?.length);
+  const [rateio, setRateio] = useState<{ empresa: string; valor: number }[]>(
+    despesa?.rateio?.length ? despesa.rateio : [{ empresa: "", valor: 0 }],
+  );
   const [avulso, setAvulso] = useState(despesa?.avulso ?? false);
   const [observacoes, setObservacoes] = useState(despesa?.observacoes ?? "");
   const [prop, setProp] = useState<Record<string, number>>({
@@ -64,6 +72,12 @@ export function NovaDespesaModal({
 
   const totalProposto = avulso ? 0 : TIPOS_CUSTO.reduce((s, t) => s + prop[t.chave], 0);
   const totalRealizado = TIPOS_CUSTO.reduce((s, t) => s + real[t.chave], 0);
+  const somaRateio = rateio.reduce((s, r) => s + r.valor, 0);
+  const rateioBate = Math.abs(somaRateio - totalRealizado) < 0.01;
+
+  function atualizarRateio(i: number, patch: Partial<{ empresa: string; valor: number }>) {
+    setRateio((r) => r.map((linha, idx) => (idx === i ? { ...linha, ...patch } : linha)));
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -71,13 +85,25 @@ export function NovaDespesaModal({
       show("info", "Informe o título / evento relacionado.");
       return;
     }
+    if (dividirEntreEmpresas) {
+      const linhasValidas = rateio.filter((r) => r.empresa.trim());
+      if (linhasValidas.length === 0) {
+        show("info", "Adicione ao menos uma empresa no rateio.");
+        return;
+      }
+      if (!rateioBate) {
+        show("info", `As fatias somam ${formatBRL(somaRateio)}, mas o realizado é ${formatBRL(totalRealizado)}.`);
+        return;
+      }
+    }
     setLoading(true);
     try {
       const dados = {
         categoria,
         equipe,
         evento: evento.trim(),
-        empresaPagadora: empresaPagadora.trim(),
+        empresaPagadora: dividirEntreEmpresas ? "" : empresaPagadora.trim(),
+        rateio: dividirEntreEmpresas ? rateio.filter((r) => r.empresa.trim()) : [],
         avulso,
         ...(avulso
           ? {}
@@ -147,24 +173,63 @@ export function NovaDespesaModal({
           />
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-text">Empresa pagadora</label>
+        <label className="flex items-center gap-2.5 text-sm font-medium text-text">
           <input
-            list="empresas-pagadoras"
-            value={empresaPagadora}
-            onChange={(e) => setEmpresaPagadora(e.target.value)}
-            placeholder="Ex: Energisa, Comitê, patrocinador…"
-            className="h-11 w-full rounded-[var(--radius)] border border-border bg-bg px-3.5 text-sm text-text outline-none placeholder:text-text-muted transition-colors focus:border-primary focus:bg-bg-card focus:ring-2 focus:ring-primary/15"
+            type="checkbox"
+            checked={dividirEntreEmpresas}
+            onChange={(e) => setDividirEntreEmpresas(e.target.checked)}
+            className="size-4 rounded border-border accent-primary"
           />
-          <datalist id="empresas-pagadoras">
-            {empresasConhecidas.map((nome) => (
-              <option key={nome} value={nome} />
+          Dividir o valor realizado entre empresas (rateio)
+        </label>
+
+        {dividirEntreEmpresas ? (
+          <div className="flex flex-col gap-2.5 rounded-[var(--radius)] border border-border bg-bg p-3">
+            <p className="text-sm font-medium text-text">Rateio entre empresas</p>
+            {rateio.map((linha, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <EmpresaCampo
+                    value={linha.empresa}
+                    empresas={empresas}
+                    onChange={(nome) => atualizarRateio(i, { empresa: nome })}
+                  />
+                </div>
+                <div className="w-32 shrink-0">
+                  <CustoInput value={linha.valor} onChange={(v) => atualizarRateio(i, { valor: v })} />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setRateio((r) => r.filter((_, idx) => idx !== i))}
+                  disabled={rateio.length === 1}
+                  aria-label="Remover empresa do rateio"
+                  className="shrink-0 rounded-[var(--radius-sm)] p-1.5 text-text-muted hover:bg-danger/10 hover:text-danger disabled:pointer-events-none disabled:opacity-30"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
             ))}
-          </datalist>
-          <p className="text-xs text-text-muted">
-            Digite livremente — se for uma empresa nova, ela fica disponível pra sugestão nos próximos lançamentos.
-          </p>
-        </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="w-fit"
+              onClick={() => setRateio((r) => [...r, { empresa: "", valor: 0 }])}
+            >
+              <Plus className="size-3.5" />
+              Adicionar empresa
+            </Button>
+            <p className={cn("text-xs", rateioBate ? "text-text-muted" : "font-semibold text-danger")}>
+              Fatias somam {formatBRL(somaRateio)} de {formatBRL(totalRealizado)} realizado
+              {!rateioBate && " — ajuste até bater."}
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-text">Empresa pagadora</label>
+            <EmpresaCampo value={empresaPagadora} empresas={empresas} onChange={setEmpresaPagadora} />
+          </div>
+        )}
 
         <label className="flex items-center gap-2.5 text-sm font-medium text-text">
           <input
@@ -261,6 +326,83 @@ export function NovaDespesaModal({
         </div>
       </form>
     </Modal>
+  );
+}
+
+function EmpresaCampo({
+  value,
+  empresas,
+  onChange,
+}: {
+  value: string;
+  empresas: EmpresaPagadoraDoc[];
+  onChange: (nome: string) => void;
+}) {
+  const { show } = useToast();
+  const [criando, setCriando] = useState(false);
+  const [novoNome, setNovoNome] = useState("");
+  const [salvando, setSalvando] = useState(false);
+
+  async function handleConfirmarNova() {
+    if (!novoNome.trim()) return;
+    setSalvando(true);
+    try {
+      const nome = await garantirEmpresaPagadora(novoNome, empresas);
+      onChange(nome);
+      setCriando(false);
+    } catch {
+      show("error", "Não foi possível cadastrar a empresa agora. Tente novamente.");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  if (criando) {
+    return (
+      <div className="flex items-center gap-2">
+        <input
+          autoFocus
+          value={novoNome}
+          onChange={(e) => setNovoNome(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleConfirmarNova();
+            }
+          }}
+          placeholder="Nome da nova empresa"
+          className="h-11 min-w-0 flex-1 rounded-[var(--radius)] border border-primary bg-bg-card px-3.5 text-sm text-text outline-none ring-2 ring-primary/15"
+        />
+        <Button type="button" size="sm" loading={salvando} onClick={handleConfirmarNova}>
+          Salvar
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={() => setCriando(false)}>
+          Cancelar
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <Select
+      value={value}
+      placeholder="Selecione a empresa"
+      onChange={(e) => {
+        if (e.target.value === NOVA_EMPRESA) {
+          setNovoNome("");
+          setCriando(true);
+        } else {
+          onChange(e.target.value);
+        }
+      }}
+    >
+      {empresas.map((emp) => (
+        <option key={emp.id} value={emp.nome}>
+          {emp.nome}
+        </option>
+      ))}
+      <option value={NOVA_EMPRESA}>+ Nova empresa…</option>
+    </Select>
   );
 }
 

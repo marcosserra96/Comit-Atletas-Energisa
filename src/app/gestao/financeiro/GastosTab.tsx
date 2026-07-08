@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { collection, deleteDoc, doc, onSnapshot, orderBy, query } from "firebase/firestore";
 import { ChevronDown, FileSpreadsheet, Pencil, Plus, Trash2, Wallet } from "lucide-react";
 import { db } from "@/lib/firebase";
@@ -13,7 +13,7 @@ import { formatBRL } from "@/lib/format";
 import { exportToExcel } from "@/lib/excel";
 import { cn } from "@/lib/cn";
 import { NovaDespesaModal } from "./NovaDespesaModal";
-import type { DespesaDoc } from "@/lib/types";
+import type { DespesaDoc, EmpresaPagadoraDoc } from "@/lib/types";
 
 const TIPOS_CUSTO = [
   { propKey: "propInsc", realKey: "realInsc", label: "Inscrição" },
@@ -26,6 +26,7 @@ const TIPOS_CUSTO = [
 export function GastosTab() {
   const { show } = useToast();
   const [despesas, setDespesas] = useState<DespesaDoc[] | null>(null);
+  const [empresas, setEmpresas] = useState<EmpresaPagadoraDoc[]>([]);
   const [novaOpen, setNovaOpen] = useState(false);
   const [novaKey, setNovaKey] = useState(0);
   const [editando, setEditando] = useState<DespesaDoc | null>(null);
@@ -42,13 +43,14 @@ export function GastosTab() {
     return unsubscribe;
   }, []);
 
-  const empresasConhecidas = useMemo(
-    () =>
-      [...new Set((despesas ?? []).map((d) => d.empresaPagadora?.trim()).filter((v): v is string => !!v))].sort(
-        (a, b) => a.localeCompare(b),
-      ),
-    [despesas],
-  );
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      query(collection(db, "empresas_pagadoras"), orderBy("nome", "asc")),
+      (snap) => setEmpresas(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as EmpresaPagadoraDoc)),
+      () => setEmpresas([]),
+    );
+    return unsubscribe;
+  }, []);
 
   function handleNovaDespesa() {
     setNovaKey((k) => k + 1);
@@ -72,7 +74,9 @@ export function GastosTab() {
         Categoria: d.categoria,
         Evento: d.evento,
         Equipe: d.equipe,
-        "Empresa pagadora": d.empresaPagadora ?? "",
+        "Empresa pagadora": d.rateio?.length
+          ? d.rateio.map((r) => `${r.empresa} (${formatBRL(r.valor)})`).join("; ")
+          : (d.empresaPagadora ?? ""),
         Avulso: d.avulso ? "Sim" : "Não",
         "Inscrição (orçado)": d.propInsc ?? 0,
         "Inscrição (realizado)": d.realInsc ?? 0,
@@ -226,11 +230,18 @@ export function GastosTab() {
                               )}
                             </tbody>
                           </table>
-                          {d.empresaPagadora && (
-                            <p className="mt-3 text-xs text-text-light">
-                              <span className="font-semibold text-text-muted">Empresa pagadora:</span>{" "}
-                              {d.empresaPagadora}
-                            </p>
+                          {d.rateio && d.rateio.length > 0 ? (
+                            <div className="mt-3 text-xs text-text-light">
+                              <span className="font-semibold text-text-muted">Rateio entre empresas:</span>{" "}
+                              {d.rateio.map((r) => `${r.empresa} (${formatBRL(r.valor)})`).join(" · ")}
+                            </div>
+                          ) : (
+                            d.empresaPagadora && (
+                              <p className="mt-3 text-xs text-text-light">
+                                <span className="font-semibold text-text-muted">Empresa pagadora:</span>{" "}
+                                {d.empresaPagadora}
+                              </p>
+                            )
                           )}
                           {d.observacoes && (
                             <div className="mt-3 rounded-[var(--radius)] border border-border bg-bg-card p-3">
@@ -255,14 +266,14 @@ export function GastosTab() {
         key={`nova-${novaKey}`}
         open={novaOpen}
         onClose={() => setNovaOpen(false)}
-        empresasConhecidas={empresasConhecidas}
+        empresas={empresas}
       />
       <NovaDespesaModal
         key={editando?.id ?? "none"}
         open={!!editando}
         onClose={() => setEditando(null)}
         despesa={editando}
-        empresasConhecidas={empresasConhecidas}
+        empresas={empresas}
       />
     </div>
   );

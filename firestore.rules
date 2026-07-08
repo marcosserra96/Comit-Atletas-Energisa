@@ -119,6 +119,11 @@ service cloud.firestore {
       allow read, write: if isAdmin() || comitePode("financeiro");
     }
 
+    // Lista viva de empresas pagadoras, cadastrada sob demanda ao lançar despesas.
+    match /empresas_pagadoras/{id} {
+      allow read, write: if isAdmin() || comitePode("financeiro");
+    }
+
     // Comentários de atletas são usados tanto pela ficha (permissão "atletas")
     // quanto pela observação ao lançar pontos (permissão "registrar").
     match /comentarios_atletas/{id} {

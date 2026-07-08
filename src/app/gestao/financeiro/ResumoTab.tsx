@@ -50,11 +50,21 @@ export function ResumoTab() {
   const porEmpresa = useMemo(() => {
     const acc = new Map<string, { proposto: number; realizado: number }>();
     for (const d of despesas ?? []) {
-      const chave = d.empresaPagadora?.trim() || "Não informado";
-      const atual = acc.get(chave) ?? { proposto: 0, realizado: 0 };
-      atual.proposto += d.totalProposto;
-      atual.realizado += d.totalRealizado;
-      acc.set(chave, atual);
+      if (d.rateio && d.rateio.length > 0) {
+        // Rateio divide só o realizado — o orçado dessas despesas entra no total
+        // geral, mas não é atribuído a uma empresa específica nessa quebra.
+        for (const r of d.rateio) {
+          const atual = acc.get(r.empresa) ?? { proposto: 0, realizado: 0 };
+          atual.realizado += r.valor;
+          acc.set(r.empresa, atual);
+        }
+      } else {
+        const chave = d.empresaPagadora?.trim() || "Não informado";
+        const atual = acc.get(chave) ?? { proposto: 0, realizado: 0 };
+        atual.proposto += d.totalProposto;
+        atual.realizado += d.totalRealizado;
+        acc.set(chave, atual);
+      }
     }
     return [...acc.entries()]
       .map(([empresa, v]) => ({ empresa, ...v, desvio: v.proposto - v.realizado }))
