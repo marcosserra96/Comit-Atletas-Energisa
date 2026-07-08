@@ -8,7 +8,7 @@ import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { downloadTemplate, readExcelFile } from "@/lib/excel";
+import { baixarModeloImportacao, readExcelFile } from "@/lib/excel";
 import { logAudit } from "@/lib/audit";
 import type { Equipe } from "@/lib/types";
 
@@ -31,14 +31,58 @@ export function ImportarAtletasCard() {
   const [importando, setImportando] = useState(false);
 
   function handleBaixarModelo() {
-    downloadTemplate("modelo-atletas.xlsx", "Atletas", [], {
-      Nome: "Maria Silva",
-      Email: "maria@energisa.com.br",
-      Sexo: "F",
-      "Data Nascimento": "1995-04-12",
-      Localidade: "Sede",
-      "Ano Entrada": 2026,
-      Equipe: "corrida",
+    baixarModeloImportacao({
+      arquivo: "modelo-atletas.xlsx",
+      aba: "Atletas",
+      campos: [
+        {
+          coluna: "Nome",
+          largura: 26,
+          exemplo: "Maria Silva",
+          obrigatorio: true,
+          descricao: "Nome completo do atleta.",
+        },
+        {
+          coluna: "Email",
+          largura: 26,
+          exemplo: "maria@energisa.com.br",
+          descricao: "E-mail de contato (opcional — não precisa ser o e-mail de login).",
+        },
+        {
+          coluna: "Sexo",
+          largura: 12,
+          opcoes: ["M", "F", "Outro"],
+          exemplo: "F",
+          descricao: "Selecione uma opção da lista.",
+        },
+        {
+          coluna: "Data Nascimento",
+          largura: 16,
+          exemplo: new Date(1995, 3, 12),
+          descricao: "Use o seletor de data do Excel/Sheets (célula formatada como data).",
+        },
+        {
+          coluna: "Localidade",
+          largura: 18,
+          exemplo: "Sede",
+          descricao: "Cidade, polo ou unidade do atleta.",
+        },
+        {
+          coluna: "Ano Entrada",
+          largura: 14,
+          exemplo: 2026,
+          descricao: "Ano em que o atleta entrou no programa (somente números).",
+        },
+        {
+          coluna: "Equipe",
+          largura: 16,
+          opcoes: ["corrida", "bicicleta", "fila_corrida", "fila_bicicleta"],
+          exemplo: "corrida",
+          obrigatorio: true,
+          descricao:
+            "Selecione uma opção da lista — \"fila_corrida\"/\"fila_bicicleta\" cadastram o atleta na fila de espera.",
+        },
+      ],
     });
   }
 

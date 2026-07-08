@@ -15,7 +15,7 @@ import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { downloadTemplate, readExcelFile } from "@/lib/excel";
+import { baixarModeloImportacao, readExcelFile } from "@/lib/excel";
 import { modalidadeFromEquipe } from "@/lib/labels";
 import { logAudit } from "@/lib/audit";
 import type { AtletaDoc, RegraPontuacaoDoc, TipoLancamento } from "@/lib/types";
@@ -28,15 +28,71 @@ export function ImportarPontuacoesCard() {
   const { show } = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
   const [importando, setImportando] = useState(false);
+  const [baixandoModelo, setBaixandoModelo] = useState(false);
 
-  function handleBaixarModelo() {
-    downloadTemplate("modelo-pontuacoes.xlsx", "Pontuações", [], {
-      Atleta: "Bruno Costa",
-      Data: new Date().toISOString().slice(0, 10),
-      Tipo: "treino",
-      Regra: "Treino registrado no app",
-      KM: 10,
-    });
+  async function handleBaixarModelo() {
+    setBaixandoModelo(true);
+    try {
+      const [atletasSnap, regrasSnap] = await Promise.all([
+        getDocs(collection(db, "atletas")),
+        getDocs(collection(db, "regras_pontuacao")),
+      ]);
+      const nomesAtletas = atletasSnap.docs
+        .map((d) => (d.data() as AtletaDoc).nome)
+        .sort((a, b) => a.localeCompare(b, "pt-BR"));
+      const descricoesRegras = [
+        ...new Set(regrasSnap.docs.map((d) => (d.data() as RegraPontuacaoDoc).descricao)),
+      ].sort((a, b) => a.localeCompare(b, "pt-BR"));
+
+      await baixarModeloImportacao({
+        arquivo: "modelo-pontuacoes.xlsx",
+        aba: "Pontuações",
+        campos: [
+          {
+            coluna: "Atleta",
+            largura: 26,
+            opcoes: nomesAtletas,
+            exemplo: nomesAtletas[0] ?? "Bruno Costa",
+            obrigatorio: true,
+            descricao: "Nome exatamente igual ao cadastro do atleta.",
+          },
+          {
+            coluna: "Data",
+            largura: 14,
+            exemplo: new Date(),
+            obrigatorio: true,
+            descricao: "Data do treino/evento (célula formatada como data, não pode ser futura).",
+          },
+          {
+            coluna: "Tipo",
+            largura: 12,
+            opcoes: TIPOS_VALIDOS,
+            exemplo: "treino",
+            obrigatorio: true,
+            descricao: "Selecione uma opção da lista.",
+          },
+          {
+            coluna: "Regra",
+            largura: 30,
+            opcoes: descricoesRegras,
+            exemplo: descricoesRegras[0] ?? "Treino registrado no app",
+            obrigatorio: true,
+            descricao:
+              "Descrição exata do critério de pontuação (cadastrado em Configurar Portal → Critérios), compatível com a equipe e o tipo do atleta.",
+          },
+          {
+            coluna: "KM",
+            largura: 10,
+            exemplo: 10,
+            descricao: "Quilometragem percorrida (opcional, só para números maiores que zero).",
+          },
+        ],
+      });
+    } catch {
+      show("error", "Não foi possível gerar o modelo agora. Tente novamente.");
+    } finally {
+      setBaixandoModelo(false);
+    }
   }
 
   async function handleImportar(e: React.ChangeEvent<HTMLInputElement>) {
@@ -166,7 +222,7 @@ export function ImportarPontuacoesCard() {
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button variant="secondary" onClick={handleBaixarModelo}>
+        <Button variant="secondary" onClick={handleBaixarModelo} loading={baixandoModelo}>
           <FileSpreadsheet className="size-4" />
           Baixar modelo
         </Button>
