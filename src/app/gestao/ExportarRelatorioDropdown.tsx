@@ -158,13 +158,14 @@ export function ExportarRelatorioDropdown({
           </button>
           <button
             role="menuitem"
-            disabled
-            title="Em breve"
-            className="flex w-full cursor-not-allowed items-center gap-2.5 rounded-[calc(var(--radius)-2px)] px-2.5 py-2.5 text-left text-sm font-medium text-text-muted"
+            onClick={() => {
+              setOpen(false);
+              window.open("/apresentacao", "_blank");
+            }}
+            className="flex w-full items-center gap-2.5 rounded-[calc(var(--radius)-2px)] px-2.5 py-2.5 text-left text-sm font-medium text-text hover:bg-bg"
           >
-            <Presentation className="size-4" />
+            <Presentation className="size-4 text-primary" />
             Apresentação
-            <span className="ml-auto text-[10px] font-bold uppercase tracking-wide">em breve</span>
           </button>
         </div>
       )}
