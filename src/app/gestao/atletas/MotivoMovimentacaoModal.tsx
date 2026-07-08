@@ -27,7 +27,12 @@ export function MotivoMovimentacaoModal({ atleta, onClose }: { atleta: AtletaDoc
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!atleta || !texto.trim()) return;
+    if (!atleta) return;
+    // Motivo é opcional — sem texto, só fecha, sem gravar nada.
+    if (!texto.trim()) {
+      handleClose();
+      return;
+    }
     setSalvando(true);
     try {
       await addDoc(collection(db, "comentarios_atletas"), {
@@ -66,8 +71,8 @@ export function MotivoMovimentacaoModal({ atleta, onClose }: { atleta: AtletaDoc
           <Button type="button" variant="ghost" onClick={handleClose}>
             Cancelar
           </Button>
-          <Button type="submit" loading={salvando} disabled={!texto.trim()}>
-            Registrar motivo
+          <Button type="submit" loading={salvando}>
+            {texto.trim() ? "Registrar motivo" : "Fechar"}
           </Button>
         </div>
       </form>
