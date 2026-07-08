@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { collection, doc, onSnapshot, writeBatch } from "firebase/firestore";
-import { KeyRound, ShieldCheck, TestTube2 } from "lucide-react";
+import { collection, doc, onSnapshot, query, updateDoc, where, writeBatch } from "firebase/firestore";
+import { KeyRound, Link2, ShieldCheck, TestTube2 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
@@ -15,14 +15,17 @@ import { logAudit } from "@/lib/audit";
 import { roleLabel } from "@/lib/labels";
 import { GerenciarAcessosModal } from "./GerenciarAcessosModal";
 import { TestarPermissoesModal } from "./TestarPermissoesModal";
-import type { AtletaDoc, Role } from "@/lib/types";
+import { CorrigirVinculoModal } from "./CorrigirVinculoModal";
+import type { AtletaDoc, Equipe, Role } from "@/lib/types";
 
 export function UsuariosTab() {
   const { uid: adminUid, atleta: adminAtleta } = useActiveSession();
   const { show } = useToast();
   const [staff, setStaff] = useState<AtletaDoc[] | null>(null);
+  const [atletasSemVinculo, setAtletasSemVinculo] = useState<AtletaDoc[]>([]);
   const [gerenciandoAcessos, setGerenciandoAcessos] = useState<AtletaDoc | null>(null);
   const [testandoPermissoes, setTestandoPermissoes] = useState<AtletaDoc | null>(null);
+  const [corrigindoVinculo, setCorrigindoVinculo] = useState<AtletaDoc | null>(null);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "atletas"), (snap) => {
@@ -34,6 +37,36 @@ export function UsuariosTab() {
     });
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      query(collection(db, "atletas"), where("authUid", "==", null)),
+      (snap) => setAtletasSemVinculo(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)),
+    );
+    return unsubscribe;
+  }, []);
+
+  async function handleChangeEquipe(pessoa: AtletaDoc, novaEquipe: Equipe) {
+    try {
+      await updateDoc(doc(db, "atletas", pessoa.id), { equipe: novaEquipe });
+      await logAudit({
+        acao: "alterar_equipe_staff",
+        entidade: "atletas",
+        entidadeId: pessoa.id,
+        dados: { de: pessoa.equipe, para: novaEquipe },
+        criadoPor: adminUid,
+        criadoPorNome: adminAtleta.nome,
+      });
+      show(
+        "success",
+        novaEquipe === "comite"
+          ? `${pessoa.nome.split(" ")[0]} não compete mais no programa.`
+          : `${pessoa.nome.split(" ")[0]} agora também compete em ${novaEquipe === "bicicleta" ? "Bicicleta" : "Corrida"}.`,
+      );
+    } catch {
+      show("error", "Não foi possível atualizar agora. Tente novamente.");
+    }
+  }
 
   const totalAdministradores = useMemo(
     () => staff?.filter((s) => s.role === "administrador").length ?? 0,
@@ -108,6 +141,29 @@ export function UsuariosTab() {
                 <option value="comite">Comitê</option>
                 <option value="administrador">Administrador</option>
               </Select>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-text-light">Também é atleta?</label>
+                <Select
+                  value={pessoa.equipe === "bicicleta" || pessoa.equipe === "corrida" ? pessoa.equipe : "comite"}
+                  onChange={(e) => handleChangeEquipe(pessoa, e.target.value as Equipe)}
+                >
+                  <option value="comite">Comitê</option>
+                  <option value="bicicleta">Sim, Bicicleta</option>
+                  <option value="corrida">Sim, Corrida</option>
+                </Select>
+              </div>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setCorrigindoVinculo(pessoa)}
+                className="justify-center"
+              >
+                <Link2 className="size-3.5" />
+                Corrigir vínculo
+              </Button>
+
               {pessoa.role === "comite" && (
                 <div className="grid grid-cols-2 gap-2">
                   <Button
@@ -148,6 +204,12 @@ export function UsuariosTab() {
           setTestandoPermissoes(null);
           setGerenciandoAcessos(pessoa);
         }}
+      />
+      <CorrigirVinculoModal
+        key={`vinculo-${corrigindoVinculo?.id ?? "none"}`}
+        pessoa={corrigindoVinculo}
+        atletasSemVinculo={atletasSemVinculo}
+        onClose={() => setCorrigindoVinculo(null)}
       />
     </div>
   );
