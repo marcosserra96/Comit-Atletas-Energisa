@@ -32,6 +32,8 @@ async function main() {
   const ana = await criarUsuarioAuth("ana.corrida@energisa.com.br", "Ana Beatriz Lima");
   const bruno = await criarUsuarioAuth("bruno.bike@energisa.com.br", "Bruno Costa");
   const carla = await criarUsuarioAuth("carla.pendente@energisa.com.br", "Carla Pendente Souza");
+  // Comitê que também compete de fato (equipe "bicicleta") — usado para testar o toggle "Minha Área" / "Modo Comitê".
+  const paula = await criarUsuarioAuth("paula.comite.bike@energisa.com.br", "Paula Andrade");
 
   console.log("Gravando registros de atletas…");
   const now = Timestamp.now();
@@ -41,6 +43,7 @@ async function main() {
   const atletaAna = db.collection("atletas").doc("atleta-ana");
   const atletaBruno = db.collection("atletas").doc("atleta-bruno");
   const atletaDiego = db.collection("atletas").doc("atleta-diego"); // pré-cadastrado, sem login ainda
+  const atletaPaula = db.collection("atletas").doc("atleta-paula");
 
   await atletaAdmin.set({
     id: "atleta-admin",
@@ -109,6 +112,19 @@ async function main() {
     atualizadoEm: now,
   });
 
+  await atletaPaula.set({
+    id: "atleta-paula",
+    nome: "Paula Andrade",
+    email: "paula.comite.bike@energisa.com.br",
+    role: "comite",
+    equipe: "bicicleta",
+    ativo: true,
+    pontuacaoTotal: 12,
+    authUid: paula.uid,
+    criadoEm: now,
+    atualizadoEm: now,
+  });
+
   console.log("Gravando ponteiros usuarios/{uid}…");
   await db.collection("usuarios").doc(admin.uid).set({
     uid: admin.uid,
@@ -132,6 +148,12 @@ async function main() {
     uid: bruno.uid,
     role: "atleta",
     atletaId: "atleta-bruno",
+    criadoEm: now,
+  });
+  await db.collection("usuarios").doc(paula.uid).set({
+    uid: paula.uid,
+    role: "comite",
+    atletaId: "atleta-paula",
     criadoEm: now,
   });
   // Carla NÃO entra em "usuarios" — ela está pendente de aprovação.
@@ -301,6 +323,7 @@ async function main() {
   console.log("  comite        -> comite@energisa.com.br");
   console.log("  atleta (ana)  -> ana.corrida@energisa.com.br");
   console.log("  atleta (bruno)-> bruno.bike@energisa.com.br");
+  console.log("  comitê+atleta -> paula.comite.bike@energisa.com.br (também compete de bike)");
   console.log("  pendente      -> carla.pendente@energisa.com.br (aguardando aprovação)");
   console.log("  sem login     -> atleta-diego (cadastrado pelo comitê, pronto para vínculo)");
   process.exit(0);

@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, Menu, Moon, Search, Sun } from "lucide-react";
+import { Bike, Footprints, LogOut, Menu, Moon, Search, Sun } from "lucide-react";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { applyTheme, getStoredTheme, type Theme } from "@/lib/theme";
 import { roleLabel } from "@/lib/labels";
+import { souTambemAtleta } from "@/lib/session/dualRole";
 
 const titleByPath: Record<string, string> = {
   "/gestao": "Início",
@@ -26,6 +28,8 @@ export function StaffTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }
   const initial = atleta.nome.trim().charAt(0).toUpperCase();
   const [theme, setTheme] = useState<Theme>(() => getStoredTheme());
   const [busca, setBusca] = useState("");
+  const tambemAtleta = souTambemAtleta(usuario, atleta);
+  const IconModalidade = atleta.equipe === "bicicleta" ? Bike : Footprints;
 
   function toggleTheme() {
     const next = theme === "light" ? "dark" : "light";
@@ -62,6 +66,16 @@ export function StaffTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }
       </form>
 
       <div className="ml-auto flex items-center gap-2">
+        {tambemAtleta && (
+          <Link
+            href="/dashboard"
+            className="hidden items-center gap-1.5 rounded-full border border-secondary/30 bg-secondary/15 px-3 py-1.5 text-xs font-bold text-secondary transition-colors hover:bg-secondary/25 sm:flex"
+          >
+            <IconModalidade className="size-3.5" />
+            Minha Área
+          </Link>
+        )}
+
         <button
           onClick={toggleTheme}
           aria-label="Alternar tema"

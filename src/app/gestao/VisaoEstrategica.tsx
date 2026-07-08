@@ -8,15 +8,18 @@ import {
   AlertTriangle,
   Award,
   Bike,
+  CalendarClock,
   CalendarDays,
   Clock4,
   Crown,
   DollarSign,
   Footprints,
+  ListChecks,
   Route,
   Sparkles,
   TicketCheck,
   TrendingUp,
+  UserX,
   BarChart2,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
@@ -205,6 +208,23 @@ export function VisaoEstrategica() {
         </div>
       </div>
 
+      {!carregando && stats.analisesExecutivas.length > 0 && (
+        <div className="rounded-[var(--radius-lg)] border border-primary/20 bg-primary/[0.04] p-5 shadow-sm">
+          <h3 className="mb-3 flex items-center gap-1.5 text-[.95rem] font-bold text-text">
+            <Sparkles className="size-[15px] text-primary" />
+            Leitura do mês
+          </h3>
+          <div className="grid grid-cols-1 gap-x-6 gap-y-2 lg:grid-cols-2">
+            {stats.analisesExecutivas.map((texto, i) => (
+              <div key={i} className="flex items-start gap-2.5">
+                <span className="mt-[7px] size-1.5 shrink-0 rounded-full bg-primary" />
+                <p className="text-sm leading-snug text-text">{texto}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[1fr_300px]">
         <div className="flex min-w-0 flex-col gap-5">
           <div className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-5 shadow-sm">
@@ -319,9 +339,53 @@ export function VisaoEstrategica() {
                   <span className="font-semibold text-primary">Ver</span>
                 </Link>
               )}
-              {!carregando && (pendentes?.length ?? 0) === 0 && stats.filaAguardando === 0 && (
-                <p className="py-3 text-center text-sm text-text-muted">Tudo em ordem — nenhuma ação prioritária.</p>
+              {stats.eventosPendentesLancamento > 0 && (
+                <Link
+                  href="/gestao/pontuacao"
+                  className="flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-border bg-bg px-3 py-2.5 text-sm hover:bg-primary/[0.04]"
+                >
+                  <span className="flex items-center gap-2 text-text">
+                    <CalendarClock className="size-3.5 text-text-light" />
+                    {stats.eventosPendentesLancamento}{" "}
+                    {stats.eventosPendentesLancamento > 1 ? "eventos sem pontos lançados" : "evento sem pontos lançados"}
+                  </span>
+                  <span className="font-semibold text-primary">Ver</span>
+                </Link>
               )}
+              {stats.atletasSemAtividade > 0 && (
+                <Link
+                  href="/gestao/atletas?tab=ver"
+                  className="flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-border bg-bg px-3 py-2.5 text-sm hover:bg-primary/[0.04]"
+                >
+                  <span className="flex items-center gap-2 text-text">
+                    <UserX className="size-3.5 text-text-light" />
+                    {stats.atletasSemAtividade}{" "}
+                    {stats.atletasSemAtividade > 1 ? "atletas sem nenhuma participação" : "atleta sem nenhuma participação"}
+                  </span>
+                  <span className="font-semibold text-primary">Ver</span>
+                </Link>
+              )}
+              {isAdmin && stats.regrasSemUso > 0 && (
+                <Link
+                  href="/gestao/criterios"
+                  className="flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-border bg-bg px-3 py-2.5 text-sm hover:bg-primary/[0.04]"
+                >
+                  <span className="flex items-center gap-2 text-text">
+                    <ListChecks className="size-3.5 text-text-light" />
+                    {stats.regrasSemUso}{" "}
+                    {stats.regrasSemUso > 1 ? "critérios nunca usados" : "critério nunca usado"}
+                  </span>
+                  <span className="font-semibold text-primary">Ver</span>
+                </Link>
+              )}
+              {!carregando &&
+                (pendentes?.length ?? 0) === 0 &&
+                stats.filaAguardando === 0 &&
+                stats.eventosPendentesLancamento === 0 &&
+                stats.atletasSemAtividade === 0 &&
+                (!isAdmin || stats.regrasSemUso === 0) && (
+                  <p className="py-3 text-center text-sm text-text-muted">Tudo em ordem — nenhuma ação prioritária.</p>
+                )}
             </div>
           </div>
 

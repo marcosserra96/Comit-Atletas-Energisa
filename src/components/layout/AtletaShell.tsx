@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { RequireRole } from "@/components/session/RequireRole";
+import { RequireAtletaAccess } from "@/components/session/RequireAtletaAccess";
 import { AtletaSidebar } from "@/components/layout/AtletaSidebar";
 import { AtletaTopbar } from "@/components/layout/AtletaTopbar";
 
@@ -21,8 +21,8 @@ function AtletaShellInner({ children }: { children: React.ReactNode }) {
 
 export function AtletaShell({ children }: { children: React.ReactNode }) {
   return (
-    <RequireRole roles={["atleta"]}>
+    <RequireAtletaAccess>
       <AtletaShellInner>{children}</AtletaShellInner>
-    </RequireRole>
+    </RequireAtletaAccess>
   );
 }
