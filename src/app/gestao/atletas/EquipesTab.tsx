@@ -12,6 +12,7 @@ import { logAudit } from "@/lib/audit";
 import { GripVertical, MessageSquare, Users } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { FichaAtletaModal } from "./ficha/FichaAtletaModal";
+import { MotivoMovimentacaoModal } from "./MotivoMovimentacaoModal";
 import type { AtletaDoc, Equipe } from "@/lib/types";
 
 function useAtletasPorEquipe(equipe: Equipe, ordenarPorFila = false) {
@@ -145,7 +146,8 @@ export function EquipesTab() {
   const { uid, atleta: autor } = useActiveSession();
   const { show } = useToast();
   const [tab, setTab] = useState<SubTab>("fila");
-  const [comentandoAtleta, setComentandoAtleta] = useState<AtletaDoc | null>(null);
+  const [verificandoComentarios, setVerificandoComentarios] = useState<AtletaDoc | null>(null);
+  const [motivoAtleta, setMotivoAtleta] = useState<AtletaDoc | null>(null);
   const filaBike = useAtletasPorEquipe("fila_bicicleta", true);
   const filaCorrida = useAtletasPorEquipe("fila_corrida", true);
   const bike = useAtletasPorEquipe("bicicleta");
@@ -167,8 +169,8 @@ export function EquipesTab() {
         criadoPor: uid,
         criadoPorNome: autor.nome,
       });
-      // Abre o comentário direto na pessoa que foi movida, pra registrar o motivo na hora.
-      setComentandoAtleta(movido);
+      // Popup leve pra registrar o motivo da mudança — não é a ficha completa.
+      setMotivoAtleta(movido);
     } catch {
       show("error", "Não foi possível reordenar a fila agora. Tente novamente.");
     }
@@ -200,7 +202,7 @@ export function EquipesTab() {
                 atletas={filaBike}
                 vazio="Nenhum atleta aguardando vaga na Bicicleta."
                 onReordenar={handleReordenar}
-                onComentar={setComentandoAtleta}
+                onComentar={setVerificandoComentarios}
               />
             </Card>
           </div>
@@ -211,7 +213,7 @@ export function EquipesTab() {
                 atletas={filaCorrida}
                 vazio="Nenhum atleta aguardando vaga na Corrida."
                 onReordenar={handleReordenar}
-                onComentar={setComentandoAtleta}
+                onComentar={setVerificandoComentarios}
               />
             </Card>
           </div>
@@ -234,10 +236,11 @@ export function EquipesTab() {
       )}
 
       <FichaAtletaModal
-        atleta={comentandoAtleta}
+        atleta={verificandoComentarios}
         initialTab="comentarios"
-        onClose={() => setComentandoAtleta(null)}
+        onClose={() => setVerificandoComentarios(null)}
       />
+      <MotivoMovimentacaoModal atleta={motivoAtleta} onClose={() => setMotivoAtleta(null)} />
     </div>
   );
 }
