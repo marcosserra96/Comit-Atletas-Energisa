@@ -7,8 +7,9 @@ import { NotAuthorized } from "@/components/ui/NotAuthorized";
 import { temPermissao } from "@/lib/permissoes";
 import { LancarPontosTab } from "./LancarPontosTab";
 import { ExtratoTab } from "./ExtratoTab";
+import { ConsolidadoTab } from "./ConsolidadoTab";
 
-type Tab = "lancar" | "extrato";
+type Tab = "lancar" | "extrato" | "consolidado";
 
 export default function PontuacaoPage() {
   const { usuario } = useActiveSession();
@@ -32,6 +33,7 @@ export default function PontuacaoPage() {
           [
             { value: "lancar", label: "Lançar pontos" },
             { value: "extrato", label: "Extrato" },
+            { value: "consolidado", label: "Visão Consolidada" },
           ] as const
         ).map((opt) => (
           <button
@@ -47,7 +49,9 @@ export default function PontuacaoPage() {
         ))}
       </div>
 
-      {tab === "lancar" ? <LancarPontosTab /> : <ExtratoTab />}
+      {tab === "lancar" && <LancarPontosTab />}
+      {tab === "extrato" && <ExtratoTab />}
+      {tab === "consolidado" && <ConsolidadoTab />}
     </div>
   );
 }
