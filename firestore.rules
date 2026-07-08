@@ -95,7 +95,19 @@ service cloud.firestore {
 
     match /agenda_eventos/{id} {
       allow read: if signedIn();
-      allow write: if isAdmin() || comitePode("eventos");
+      allow create, delete: if isAdmin() || comitePode("eventos");
+      // Além do comitê/admin (dono de todo o evento), qualquer atleta pode se
+      // inscrever/desinscrever de um evento — mas só o campo "inscritos", e só
+      // adicionando ou removendo o próprio id (nunca em nome de outro atleta).
+      allow update: if isAdmin() || comitePode("eventos") ||
+        (signedIn() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(["inscritos"]) &&
+          (
+            (request.resource.data.inscritos.removeAll([meuAtletaId()]) == resource.data.get("inscritos", []) &&
+              request.resource.data.inscritos.hasAll([meuAtletaId()])) ||
+            (resource.data.get("inscritos", []).removeAll([meuAtletaId()]) == request.resource.data.inscritos)
+          )
+        );
     }
 
     match /noticias/{id} {

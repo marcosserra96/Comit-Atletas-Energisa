@@ -102,6 +102,8 @@ export interface EventoDoc {
   km?: number;
   criadoEm: unknown;
   criadoPor: string;
+  /** IDs de atletas confirmados. Cada atleta só pode adicionar/remover o próprio id. */
+  inscritos?: string[];
 }
 
 export interface NoticiaDoc {
