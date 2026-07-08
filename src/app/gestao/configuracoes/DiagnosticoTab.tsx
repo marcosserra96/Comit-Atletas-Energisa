@@ -9,7 +9,7 @@ import { useToast } from "@/components/ui/Toast";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { logAudit } from "@/lib/audit";
-import { ConfirmarPerigoModal } from "./ConfirmarPerigoModal";
+import { ConfirmarPerigoModal } from "@/components/ui/ConfirmarPerigoModal";
 
 type ZonaPerigo = "historico_pontos" | "agenda_eventos" | "regras_pontuacao" | "comentarios_atletas";
 
