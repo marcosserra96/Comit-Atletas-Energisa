@@ -294,7 +294,7 @@ async function main() {
   console.log("Gravando agenda de eventos…");
   const dataFutura1 = new Date(Date.now() + 12 * 86400_000).toISOString().slice(0, 10);
   const dataFutura2 = new Date(Date.now() + 26 * 86400_000).toISOString().slice(0, 10);
-  const evento1 = db.collection("agenda_eventos").doc();
+  const evento1 = db.collection("agenda_eventos").doc("evento-circuito-1");
   await evento1.set({
     id: evento1.id,
     titulo: "Circuito das Estações — Etapa 1",
@@ -305,7 +305,7 @@ async function main() {
     criadoEm: now,
     criadoPor: comite.uid,
   });
-  const evento2 = db.collection("agenda_eventos").doc();
+  const evento2 = db.collection("agenda_eventos").doc("evento-serra-verde");
   await evento2.set({
     id: evento2.id,
     titulo: "Desafio Serra Verde",
@@ -318,7 +318,7 @@ async function main() {
   });
 
   console.log("Gravando notícias…");
-  const noticia1 = db.collection("noticias").doc();
+  const noticia1 = db.collection("noticias").doc("noticia-inscricoes");
   await noticia1.set({
     id: noticia1.id,
     titulo: "Inscrições abertas para o Circuito das Estações",
@@ -329,7 +329,7 @@ async function main() {
     autorUid: comite.uid,
     criadoEm: now,
   });
-  const noticia2 = db.collection("noticias").doc();
+  const noticia2 = db.collection("noticias").doc("noticia-regulamento-2026");
   await noticia2.set({
     id: noticia2.id,
     titulo: "Novo regulamento de pontuação 2026",

@@ -9,8 +9,9 @@ import { Card } from "@/components/ui/Card";
 import { SubTabs } from "@/components/ui/SubTabs";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { logAudit } from "@/lib/audit";
-import { GripVertical, Users } from "lucide-react";
+import { GripVertical, MessageSquare, Users } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { FichaAtletaModal } from "./ficha/FichaAtletaModal";
 import type { AtletaDoc, Equipe } from "@/lib/types";
 
 function useAtletasPorEquipe(equipe: Equipe, ordenarPorFila = false) {
@@ -57,10 +58,12 @@ function FilaList({
   atletas,
   vazio,
   onReordenar,
+  onComentar,
 }: {
   atletas: AtletaDoc[] | null;
   vazio: string;
-  onReordenar: (novaOrdem: AtletaDoc[]) => void;
+  onReordenar: (novaOrdem: AtletaDoc[], movido: AtletaDoc) => void;
+  onComentar: (atleta: AtletaDoc) => void;
 }) {
   const [arrastandoId, setArrastandoId] = useState<string | null>(null);
   const [sobreId, setSobreId] = useState<string | null>(null);
@@ -86,7 +89,7 @@ function FilaList({
     const [movido] = lista.splice(origemIdx, 1);
     lista.splice(destinoIdx, 0, movido);
     setArrastandoId(null);
-    onReordenar(lista);
+    onReordenar(lista, movido);
   }
 
   return (
@@ -117,6 +120,19 @@ function FilaList({
             {i + 1}
           </span>
           <span className="min-w-0 flex-1 truncate text-sm font-medium text-text">{a.nome}</span>
+          <button
+            type="button"
+            draggable={false}
+            onDragStart={(e) => e.preventDefault()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onComentar(a);
+            }}
+            title="Ver ou adicionar comentário"
+            className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-[var(--radius-sm)] text-text-muted hover:bg-bg hover:text-primary"
+          >
+            <MessageSquare className="size-3.5" />
+          </button>
         </li>
       ))}
     </ul>
@@ -129,13 +145,14 @@ export function EquipesTab() {
   const { uid, atleta: autor } = useActiveSession();
   const { show } = useToast();
   const [tab, setTab] = useState<SubTab>("fila");
+  const [comentandoAtleta, setComentandoAtleta] = useState<AtletaDoc | null>(null);
   const filaBike = useAtletasPorEquipe("fila_bicicleta", true);
   const filaCorrida = useAtletasPorEquipe("fila_corrida", true);
   const bike = useAtletasPorEquipe("bicicleta");
   const corrida = useAtletasPorEquipe("corrida");
   const comite = useAtletasPorEquipe("comite");
 
-  async function handleReordenar(novaOrdem: AtletaDoc[]) {
+  async function handleReordenar(novaOrdem: AtletaDoc[], movido: AtletaDoc) {
     try {
       const batch = writeBatch(db);
       novaOrdem.forEach((a, i) => {
@@ -150,6 +167,8 @@ export function EquipesTab() {
         criadoPor: uid,
         criadoPorNome: autor.nome,
       });
+      // Abre o comentário direto na pessoa que foi movida, pra registrar o motivo na hora.
+      setComentandoAtleta(movido);
     } catch {
       show("error", "Não foi possível reordenar a fila agora. Tente novamente.");
     }
@@ -181,6 +200,7 @@ export function EquipesTab() {
                 atletas={filaBike}
                 vazio="Nenhum atleta aguardando vaga na Bicicleta."
                 onReordenar={handleReordenar}
+                onComentar={setComentandoAtleta}
               />
             </Card>
           </div>
@@ -191,6 +211,7 @@ export function EquipesTab() {
                 atletas={filaCorrida}
                 vazio="Nenhum atleta aguardando vaga na Corrida."
                 onReordenar={handleReordenar}
+                onComentar={setComentandoAtleta}
               />
             </Card>
           </div>
@@ -211,6 +232,12 @@ export function EquipesTab() {
           <ListaSimples atletas={comite} vazio="Nenhum membro do comitê cadastrado." />
         </Card>
       )}
+
+      <FichaAtletaModal
+        atleta={comentandoAtleta}
+        initialTab="comentarios"
+        onClose={() => setComentandoAtleta(null)}
+      />
     </div>
   );
 }
