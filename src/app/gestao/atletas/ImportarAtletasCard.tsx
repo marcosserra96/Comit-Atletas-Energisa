@@ -125,7 +125,9 @@ export function ImportarAtletasCard() {
           anoEntrada: Number.isFinite(anoEntrada) && anoEntrada > 0 ? anoEntrada : null,
           role: "atleta",
           equipe,
-          ativo: true,
+          // Na fila de espera o atleta ainda não entrou no programa de fato.
+          ativo: !equipe.startsWith("fila_"),
+          ordemFila: equipe.startsWith("fila_") ? Date.now() : null,
           pontuacaoTotal: 0,
           authUid: null,
           criadoEm: serverTimestamp(),

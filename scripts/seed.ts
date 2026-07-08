@@ -106,6 +106,48 @@ async function main() {
     role: null,
     equipe: "fila_corrida",
     ativo: false,
+    ordemFila: 1,
+    pontuacaoTotal: 0,
+    authUid: null,
+    criadoEm: now,
+    atualizadoEm: now,
+  });
+
+  // Mais gente na fila de espera, pra testar reordenar por drag-and-drop.
+  await db.collection("atletas").doc("atleta-elisa").set({
+    id: "atleta-elisa",
+    nome: "Elisa Rocha",
+    email: null,
+    role: null,
+    equipe: "fila_corrida",
+    ativo: false,
+    ordemFila: 2,
+    pontuacaoTotal: 0,
+    authUid: null,
+    criadoEm: now,
+    atualizadoEm: now,
+  });
+  await db.collection("atletas").doc("atleta-felipe").set({
+    id: "atleta-felipe",
+    nome: "Felipe Souza",
+    email: null,
+    role: null,
+    equipe: "fila_bicicleta",
+    ativo: false,
+    ordemFila: 1,
+    pontuacaoTotal: 0,
+    authUid: null,
+    criadoEm: now,
+    atualizadoEm: now,
+  });
+  await db.collection("atletas").doc("atleta-gabriela").set({
+    id: "atleta-gabriela",
+    nome: "Gabriela Nunes",
+    email: null,
+    role: null,
+    equipe: "fila_bicicleta",
+    ativo: false,
+    ordemFila: 2,
     pontuacaoTotal: 0,
     authUid: null,
     criadoEm: now,

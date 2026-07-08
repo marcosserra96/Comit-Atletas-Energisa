@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, orderBy, query, where } from "firebase/firestore";
+import { collection, limit, onSnapshot, orderBy, query, where } from "firebase/firestore";
 import { Bike, Footprints, Trophy } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useActiveSession } from "@/lib/session/SessionProvider";
@@ -51,13 +51,15 @@ function RankingList({
                 <span
                   className={cn(
                     "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold",
-                    index === 0
-                      ? "bg-accent/15 text-accent"
-                      : index === 1
-                        ? "bg-text-muted/15 text-text-light"
-                        : index === 2
-                          ? "bg-secondary/15 text-secondary"
-                          : "bg-bg text-text-muted",
+                    a.pontuacaoTotal === 0
+                      ? "bg-bg text-text-muted"
+                      : index === 0
+                        ? "bg-accent/15 text-accent"
+                        : index === 1
+                          ? "bg-text-muted/15 text-text-light"
+                          : index === 2
+                            ? "bg-secondary/15 text-secondary"
+                            : "bg-bg text-text-muted",
                   )}
                 >
                   {index + 1}
@@ -87,6 +89,7 @@ export default function RankingPage() {
         collection(db, "atletas"),
         where("equipe", "==", "corrida"),
         orderBy("pontuacaoTotal", "desc"),
+        limit(10),
       ),
       (snap) => setCorredores(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)),
       () => setCorredores([]),
@@ -100,6 +103,7 @@ export default function RankingPage() {
         collection(db, "atletas"),
         where("equipe", "==", "bicicleta"),
         orderBy("pontuacaoTotal", "desc"),
+        limit(10),
       ),
       (snap) => setCiclistas(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)),
       () => setCiclistas([]),

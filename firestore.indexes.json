@@ -9,6 +9,14 @@
       ]
     },
     {
+      "collectionGroup": "atletas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "equipe", "order": "ASCENDING" },
+        { "fieldPath": "ordemFila", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "historico_pontos",
       "queryScope": "COLLECTION",
       "fields": [

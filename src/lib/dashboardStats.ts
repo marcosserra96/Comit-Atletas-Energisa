@@ -61,7 +61,10 @@ export function calcularEstatisticasDashboard(params: {
   const iso30 = ha30dias.toISOString().slice(0, 10);
 
   const atletasProgram = atletas.filter((a) => a.role === "atleta");
-  const ativos = atletasProgram.filter((a) => a.ativo);
+  // Atleta na fila de espera ainda não entrou no programa — não conta como
+  // ativo em nenhuma estatística (engajamento, pódio, ranking, etc.), mesmo
+  // que o campo "ativo" esteja com valor incorreto para ele.
+  const ativos = atletasProgram.filter((a) => a.ativo && a.equipe !== "fila_bicicleta" && a.equipe !== "fila_corrida");
 
   const validos = lancamentos.filter((l) => !l.estornado);
   const lotesPorAtleta = new Map<string, Set<string>>();
@@ -102,7 +105,7 @@ export function calcularEstatisticasDashboard(params: {
     const participacoes = grupo.reduce((s, a) => s + (lotesPorAtleta.get(a.id)?.size ?? 0), 0);
     const pontos = grupo.reduce((s, a) => s + (pontosPorAtleta.get(a.id) ?? 0), 0);
     const km = grupo.reduce((s, a) => s + (kmPorAtleta.get(a.id) ?? 0), 0);
-    const top = [...grupo].sort((a, b) => b.pontuacaoTotal - a.pontuacaoTotal)[0];
+    const top = [...grupo].sort((a, b) => b.pontuacaoTotal - a.pontuacaoTotal).find((a) => a.pontuacaoTotal > 0);
     const inativos = grupo.filter((a) => {
       const ultimo = ultimoPorAtleta.get(a.id);
       return !ultimo || ultimo < iso30;
@@ -125,7 +128,10 @@ export function calcularEstatisticasDashboard(params: {
   const corrida = porModalidade("corrida");
 
   const podio = (mod: Modalidade) =>
-    [...ativos].filter((a) => a.equipe === mod).sort((a, b) => b.pontuacaoTotal - a.pontuacaoTotal).slice(0, 3);
+    [...ativos]
+      .filter((a) => a.equipe === mod && a.pontuacaoTotal > 0)
+      .sort((a, b) => b.pontuacaoTotal - a.pontuacaoTotal)
+      .slice(0, 3);
 
   const custoParticipacao = participacoesTotal > 0 ? investimentoTotal / participacoesTotal : 0;
   const custoKm = kmTotal > 0 ? investimentoTotal / kmTotal : 0;

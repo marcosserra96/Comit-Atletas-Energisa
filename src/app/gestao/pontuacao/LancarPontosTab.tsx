@@ -56,7 +56,11 @@ export function LancarPontosTab() {
     const unsubscribe = onSnapshot(
       query(collection(db, "atletas"), where("equipe", "==", modalidade)),
       (snap) => {
-        setAtletas(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc));
+        setAtletas(
+          snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)
+            .sort((a, b) => a.nome.localeCompare(b.nome)),
+        );
       },
       () => setAtletas([]),
     );

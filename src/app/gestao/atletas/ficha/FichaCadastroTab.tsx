@@ -32,6 +32,8 @@ export function FichaCadastroTab({ atleta, onSaved }: { atleta: AtletaDoc; onSav
     e.preventDefault();
     setLoading(true);
     try {
+      const entrouNaFilaAgora = equipe.startsWith("fila_") && !atleta.equipe.startsWith("fila_");
+      const saiuDaFilaAgora = !equipe.startsWith("fila_") && atleta.equipe.startsWith("fila_");
       await updateDoc(doc(db, "atletas", atleta.id), {
         nome,
         email: email || null,
@@ -40,6 +42,14 @@ export function FichaCadastroTab({ atleta, onSaved }: { atleta: AtletaDoc; onSav
         localidade: localidade || null,
         anoEntrada: anoEntrada ? Number(anoEntrada) : null,
         equipe,
+        // Só mexe em "ativo" quando a mudança de equipe realmente entra ou sai
+        // da fila — fora isso, respeita o status ligado/desligado manualmente
+        // na aba Resumo (não sobrescreve a cada salvamento do Cadastro).
+        ...(entrouNaFilaAgora ? { ativo: false } : {}),
+        ...(saiuDaFilaAgora ? { ativo: true } : {}),
+        // Só ganha uma nova posição (vai pro fim) se está entrando na fila agora;
+        // se já estava nessa mesma fila, mantém a ordem definida por drag-and-drop.
+        ...(entrouNaFilaAgora ? { ordemFila: Date.now() } : {}),
         atualizadoEm: serverTimestamp(),
       });
       await logAudit({

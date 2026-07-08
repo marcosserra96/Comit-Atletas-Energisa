@@ -42,7 +42,9 @@ export function CadastrarTab() {
         anoEntrada: anoEntrada ? Number(anoEntrada) : null,
         role: "atleta",
         equipe,
-        ativo: true,
+        // Na fila de espera o atleta ainda não entrou no programa de fato.
+        ativo: !equipe.startsWith("fila_"),
+        ordemFila: equipe.startsWith("fila_") ? Date.now() : null,
         pontuacaoTotal: 0,
         authUid: null,
         criadoEm: serverTimestamp(),

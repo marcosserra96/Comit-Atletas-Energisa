@@ -30,6 +30,8 @@ export interface AtletaDoc {
   criadoEm: unknown;
   atualizadoEm: unknown;
   criadoPor?: string;
+  /** Posição relativa na fila de espera (menor = mais perto de entrar). Só relevante quando equipe é fila_*. */
+  ordemFila?: number;
 }
 
 /** usuarios/{uid} — ponteiro auth -> atleta, escrito só por staff (nunca pelo próprio usuário). */
