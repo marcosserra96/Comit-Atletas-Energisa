@@ -22,11 +22,16 @@ import {
 import { db } from "@/lib/firebase";
 import { formatBRL, formatShortDate } from "@/lib/format";
 import { useActiveSession } from "@/lib/session/SessionProvider";
-import type { AtletaDoc, DespesaDoc, EventoDoc, HistoricoPontoDoc, Modalidade, SolicitacaoAcessoDoc } from "@/lib/types";
-
-const MESES = [
-  "jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez",
-];
+import { calcularEstatisticasDashboard } from "@/lib/dashboardStats";
+import { ExportarRelatorioDropdown } from "./ExportarRelatorioDropdown";
+import type {
+  AtletaDoc,
+  DespesaDoc,
+  EventoDoc,
+  HistoricoPontoDoc,
+  RegraPontuacaoDoc,
+  SolicitacaoAcessoDoc,
+} from "@/lib/types";
 
 export function VisaoEstrategica() {
   const { usuario } = useActiveSession();
@@ -36,6 +41,7 @@ export function VisaoEstrategica() {
   const [lancamentos, setLancamentos] = useState<HistoricoPontoDoc[] | null>(null);
   const [despesas, setDespesas] = useState<DespesaDoc[] | null>(null);
   const [eventos, setEventos] = useState<EventoDoc[] | null>(null);
+  const [regras, setRegras] = useState<RegraPontuacaoDoc[] | null>(null);
   const [pendentes, setPendentes] = useState<SolicitacaoAcessoDoc[] | null>(null);
 
   useEffect(() => {
@@ -80,112 +86,26 @@ export function VisaoEstrategica() {
     return unsubscribe;
   }, []);
 
-  const stats = useMemo(() => {
-    const hoje = new Date();
-    const ha30dias = new Date(hoje.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const iso30 = ha30dias.toISOString().slice(0, 10);
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, "regras_pontuacao"),
+      (snap) => setRegras(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as RegraPontuacaoDoc)),
+      () => setRegras([]),
+    );
+    return unsubscribe;
+  }, []);
 
-    const atletasProgram = (atletas ?? []).filter((a) => a.role === "atleta");
-    const ativos = atletasProgram.filter((a) => a.ativo);
-
-    const validos = (lancamentos ?? []).filter((l) => !l.estornado);
-    const lotesPorAtleta = new Map<string, Set<string>>();
-    const kmPorAtleta = new Map<string, number>();
-    const pontosPorAtleta = new Map<string, number>();
-    const ultimoPorAtleta = new Map<string, string>();
-
-    for (const l of validos) {
-      const lotes = lotesPorAtleta.get(l.atletaId) ?? new Set<string>();
-      if (!lotes.has(l.loteId)) {
-        lotes.add(l.loteId);
-        kmPorAtleta.set(l.atletaId, (kmPorAtleta.get(l.atletaId) ?? 0) + (l.kmPercorrido ?? 0));
-        pontosPorAtleta.set(l.atletaId, (pontosPorAtleta.get(l.atletaId) ?? 0) + l.pontos);
-      }
-      lotesPorAtleta.set(l.atletaId, lotes);
-      const atual = ultimoPorAtleta.get(l.atletaId);
-      if (!atual || l.dataTreino > atual) ultimoPorAtleta.set(l.atletaId, l.dataTreino);
-    }
-
-    const participacoesTotal = [...lotesPorAtleta.values()].reduce((s, set) => s + set.size, 0);
-    const kmTotal = [...kmPorAtleta.values()].reduce((s, v) => s + v, 0);
-    const investimentoTotal = (despesas ?? []).reduce((s, d) => s + d.totalRealizado, 0);
-
-    const ativosRecentes = ativos.filter((a) => {
-      const ultimo = ultimoPorAtleta.get(a.id);
-      return ultimo && ultimo >= iso30;
-    });
-    const engajamento30d = ativos.length > 0 ? Math.round((ativosRecentes.length / ativos.length) * 100) : 0;
-
-    function porModalidade(mod: Modalidade) {
-      const grupo = ativos.filter((a) => a.equipe === mod);
-      const recentes = grupo.filter((a) => {
-        const ultimo = ultimoPorAtleta.get(a.id);
-        return ultimo && ultimo >= iso30;
-      });
-      const participacoes = grupo.reduce((s, a) => s + (lotesPorAtleta.get(a.id)?.size ?? 0), 0);
-      const pontos = grupo.reduce((s, a) => s + (pontosPorAtleta.get(a.id) ?? 0), 0);
-      const km = grupo.reduce((s, a) => s + (kmPorAtleta.get(a.id) ?? 0), 0);
-      const top = [...grupo].sort((a, b) => b.pontuacaoTotal - a.pontuacaoTotal)[0];
-      const inativos = grupo.filter((a) => {
-        const ultimo = ultimoPorAtleta.get(a.id);
-        return !ultimo || ultimo < iso30;
-      });
-      return {
-        total: grupo.length,
-        engajamento: grupo.length > 0 ? Math.round((recentes.length / grupo.length) * 100) : 0,
-        ativos30d: recentes.length,
-        inativos: inativos.length,
-        participacoes,
-        pontos,
-        media: grupo.length > 0 ? Math.round(pontos / grupo.length) : 0,
-        km,
-        top,
-        inativosList: inativos,
-      };
-    }
-
-    const bike = porModalidade("bicicleta");
-    const corrida = porModalidade("corrida");
-
-    const podio = (mod: Modalidade) =>
-      [...ativos]
-        .filter((a) => a.equipe === mod)
-        .sort((a, b) => b.pontuacaoTotal - a.pontuacaoTotal)
-        .slice(0, 3);
-
-    const custoParticipacao = participacoesTotal > 0 ? investimentoTotal / participacoesTotal : 0;
-    const custoKm = kmTotal > 0 ? investimentoTotal / kmTotal : 0;
-    const custoPorAtleta = ativos.length > 0 ? investimentoTotal / ativos.length : 0;
-
-    const filaAguardando = atletasProgram.filter(
-      (a) => a.equipe === "fila_bicicleta" || a.equipe === "fila_corrida",
-    ).length;
-
-    const seriesMensal = Array.from({ length: 6 }, (_, i) => {
-      const ref = new Date(hoje.getFullYear(), hoje.getMonth() - (5 - i), 1);
-      const prefixo = `${ref.getFullYear()}-${String(ref.getMonth() + 1).padStart(2, "0")}`;
-      const count = validos.filter((l) => l.dataTreino.startsWith(prefixo)).length;
-      return { label: MESES[ref.getMonth()], count };
-    });
-
-    return {
-      ativosCount: ativos.length,
-      ativosRecentesCount: ativosRecentes.length,
-      engajamento30d,
-      participacoesTotal,
-      kmTotal,
-      investimentoTotal,
-      custoPorAtleta,
-      custoParticipacao,
-      custoKm,
-      bike,
-      corrida,
-      podioBike: podio("bicicleta"),
-      podioCorrida: podio("corrida"),
-      filaAguardando,
-      seriesMensal,
-    };
-  }, [atletas, lancamentos, despesas]);
+  const stats = useMemo(
+    () =>
+      calcularEstatisticasDashboard({
+        atletas: atletas ?? [],
+        lancamentos: lancamentos ?? [],
+        despesas: despesas ?? [],
+        eventos: eventos ?? [],
+        regras: regras ?? [],
+      }),
+    [atletas, lancamentos, despesas, eventos, regras],
+  );
 
   const proximosEventos = useMemo(
     () => (eventos ?? []).filter((e) => e.data >= new Date().toISOString().slice(0, 10)).slice(0, 5),
@@ -199,9 +119,14 @@ export function VisaoEstrategica() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <h2 className="text-2xl font-extrabold text-text">Visão Estratégica</h2>
-        <p className="text-sm text-text-light">Acompanhamento do programa.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-extrabold text-text">Visão Estratégica</h2>
+          <p className="text-sm text-text-light">Acompanhamento do programa.</p>
+        </div>
+        {isAdmin && !carregando && (
+          <ExportarRelatorioDropdown stats={stats} eventos={eventos ?? []} lancamentos={lancamentos ?? []} />
+        )}
       </div>
 
       <div className="flex items-center gap-2.5 rounded-[var(--radius)] border border-border bg-bg-card px-4 py-2.5 text-sm text-text-light shadow-sm">
