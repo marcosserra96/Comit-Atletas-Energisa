@@ -6,10 +6,11 @@ import { SubTabs } from "@/components/ui/SubTabs";
 import { NotAuthorized } from "@/components/ui/NotAuthorized";
 import { UsuariosTab } from "./UsuariosTab";
 import { IdentidadeVisualTab } from "./IdentidadeVisualTab";
+import { InformativoTab } from "./InformativoTab";
 import { DiagnosticoTab } from "./DiagnosticoTab";
 import { AuditoriaTab } from "./AuditoriaTab";
 
-type Tab = "usuarios" | "identidade" | "diagnostico" | "auditoria";
+type Tab = "usuarios" | "identidade" | "informativo" | "diagnostico" | "auditoria";
 
 export default function ConfigurarPortalPage() {
   const { usuario } = useActiveSession();
@@ -34,6 +35,7 @@ export default function ConfigurarPortalPage() {
         options={[
           { value: "usuarios", label: "Usuários e permissões" },
           { value: "identidade", label: "Identidade visual" },
+          { value: "informativo", label: "Informativo do ranking" },
           { value: "diagnostico", label: "Diagnóstico e dados" },
           { value: "auditoria", label: "Auditoria" },
         ]}
@@ -41,6 +43,7 @@ export default function ConfigurarPortalPage() {
 
       {tab === "usuarios" && <UsuariosTab />}
       {tab === "identidade" && <IdentidadeVisualTab />}
+      {tab === "informativo" && <InformativoTab />}
       {tab === "diagnostico" && <DiagnosticoTab />}
       {tab === "auditoria" && <AuditoriaTab />}
     </div>

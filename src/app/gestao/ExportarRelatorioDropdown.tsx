@@ -2,28 +2,35 @@
 
 import { useEffect, useRef, useState } from "react";
 import { pdf } from "@react-pdf/renderer";
+import { doc, getDoc } from "firebase/firestore";
 import { ChevronDown, Download, FileText, Presentation, Trophy } from "lucide-react";
+import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
 import { getStoredBranding } from "@/lib/branding";
 import { formatBRL } from "@/lib/format";
 import { agruparUltimosLancamentos, type EstatisticasDashboard } from "@/lib/dashboardStats";
+import { calcularResumoRankingMensal, diasUteisNoMes } from "@/lib/rankingMensal";
+import { normalizarInformativoConfig } from "@/lib/informativoConfig";
 import { ReportExecutivoDocument } from "@/lib/pdf/ReportExecutivoDocument";
-import type { EventoDoc, HistoricoPontoDoc } from "@/lib/types";
+import { InformativoRankingDocument } from "@/lib/pdf/InformativoRankingDocument";
+import type { AtletaDoc, EventoDoc, HistoricoPontoDoc, InformativoConfigDoc } from "@/lib/types";
 
 export function ExportarRelatorioDropdown({
   stats,
   eventos,
   lancamentos,
+  atletas,
 }: {
   stats: EstatisticasDashboard;
   eventos: EventoDoc[];
   lancamentos: HistoricoPontoDoc[];
+  atletas: AtletaDoc[];
 }) {
   const { show } = useToast();
   const [open, setOpen] = useState(false);
-  const [gerando, setGerando] = useState(false);
+  const [gerando, setGerando] = useState<"pdf" | "informativo" | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,7 +44,7 @@ export function ExportarRelatorioDropdown({
 
   async function handleExportarPdf() {
     setOpen(false);
-    setGerando(true);
+    setGerando("pdf");
     try {
       const branding = getStoredBranding();
       const logo = `${window.location.origin}/logos/logo-comite-colorida.png`;
@@ -64,13 +71,62 @@ export function ExportarRelatorioDropdown({
     } catch {
       show("error", "Não foi possível gerar o report agora. Tente novamente.");
     } finally {
-      setGerando(false);
+      setGerando(null);
+    }
+  }
+
+  async function handleExportarInformativo() {
+    setOpen(false);
+    setGerando("informativo");
+    try {
+      const snap = await getDoc(doc(db, "configuracoes", "informativo"));
+      const config: InformativoConfigDoc = normalizarInformativoConfig(
+        snap.exists() ? (snap.data() as Partial<InformativoConfigDoc>) : undefined,
+      );
+      const branding = getStoredBranding();
+      const logo = `${window.location.origin}/logos/logo-comite-colorida.png`;
+
+      const hoje = new Date();
+      const ano = hoje.getFullYear();
+      const mes = hoje.getMonth() + 1;
+      const mesLabel = hoje.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+
+      const resumo = calcularResumoRankingMensal({ atletas, lancamentos, ano, mes });
+      const bike = resumo.filter((a) => a.equipe === "bicicleta");
+      const corrida = resumo.filter((a) => a.equipe === "corrida");
+
+      const documento = (
+        <InformativoRankingDocument
+          bike={bike}
+          corrida={corrida}
+          mesLabel={mesLabel.replace(/^./, (c) => c.toUpperCase())}
+          diasUteis={diasUteisNoMes(ano, mes)}
+          modalidadeFiltro={config.modalidade}
+          paginasSeparadas={config.paginasSeparadas}
+          opcoes={config}
+          branding={branding}
+          logo={logo}
+        />
+      );
+      const blob = await pdf(documento).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const dataHoje = new Date().toISOString().slice(0, 10);
+      a.download = `informativo-ranking-atletas-${dataHoje}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      show("success", "Informativo do ranking gerado com sucesso.");
+    } catch {
+      show("error", "Não foi possível gerar o informativo agora. Tente novamente.");
+    } finally {
+      setGerando(null);
     }
   }
 
   return (
     <div ref={rootRef} className="relative">
-      <Button variant="secondary" onClick={() => setOpen((v) => !v)} loading={gerando}>
+      <Button variant="secondary" onClick={() => setOpen((v) => !v)} loading={gerando !== null}>
         <Download className="size-4" />
         Exportar
         <ChevronDown className={cn("size-3.5 transition-transform", open && "rotate-180")} />
@@ -94,13 +150,11 @@ export function ExportarRelatorioDropdown({
           </button>
           <button
             role="menuitem"
-            disabled
-            title="Em breve"
-            className="flex w-full cursor-not-allowed items-center gap-2.5 rounded-[calc(var(--radius)-2px)] px-2.5 py-2.5 text-left text-sm font-medium text-text-muted"
+            onClick={handleExportarInformativo}
+            className="flex w-full items-center gap-2.5 rounded-[calc(var(--radius)-2px)] px-2.5 py-2.5 text-left text-sm font-medium text-text hover:bg-bg"
           >
-            <Trophy className="size-4" />
+            <Trophy className="size-4 text-primary" />
             Informativo do ranking
-            <span className="ml-auto text-[10px] font-bold uppercase tracking-wide">em breve</span>
           </button>
           <button
             role="menuitem"

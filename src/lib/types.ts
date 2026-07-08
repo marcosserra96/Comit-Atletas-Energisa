@@ -173,6 +173,24 @@ export interface BrandingDoc {
   atualizadoPor?: string;
 }
 
+export type AlertaCriterio = "sem_treino_mes" | "sem_treino_30d" | "ate_x_treinos" | "ate_x_pontos";
+
+/** configuracoes/informativo — padrão do Informativo do Ranking, definido pelo Administrador. */
+export interface InformativoConfigDoc {
+  modalidade: "todos" | Modalidade;
+  limite: number;
+  paginasSeparadas: boolean;
+  mostrarKpis: boolean;
+  mostrarLegenda: boolean;
+  mostrarTop3: boolean;
+  mostrarAlertas: boolean;
+  mostrarDemais: boolean;
+  alertaCriterio: AlertaCriterio;
+  alertaValor: number;
+  atualizadoEm?: unknown;
+  atualizadoPor?: string;
+}
+
 export interface AuditoriaDoc {
   id: string;
   acao: string;

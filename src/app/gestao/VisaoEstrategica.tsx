@@ -125,7 +125,12 @@ export function VisaoEstrategica() {
           <p className="text-sm text-text-light">Acompanhamento do programa.</p>
         </div>
         {isAdmin && !carregando && (
-          <ExportarRelatorioDropdown stats={stats} eventos={eventos ?? []} lancamentos={lancamentos ?? []} />
+          <ExportarRelatorioDropdown
+            stats={stats}
+            eventos={eventos ?? []}
+            lancamentos={lancamentos ?? []}
+            atletas={atletas ?? []}
+          />
         )}
       </div>
 
