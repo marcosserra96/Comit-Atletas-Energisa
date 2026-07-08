@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot } from "firebase/firestore";
-import { Calculator, PieChart, Receipt, TrendingUp, Wallet } from "lucide-react";
+import { Building2, Calculator, PieChart, Receipt, TrendingUp, Wallet } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { Card } from "@/components/ui/Card";
 import { formatBRL } from "@/lib/format";
@@ -45,6 +45,20 @@ export function ResumoTab() {
       acc.set(d.equipe, atual);
     }
     return [...acc.entries()].map(([equipe, v]) => ({ equipe, ...v, desvio: v.proposto - v.realizado }));
+  }, [despesas]);
+
+  const porEmpresa = useMemo(() => {
+    const acc = new Map<string, { proposto: number; realizado: number }>();
+    for (const d of despesas ?? []) {
+      const chave = d.empresaPagadora?.trim() || "Não informado";
+      const atual = acc.get(chave) ?? { proposto: 0, realizado: 0 };
+      atual.proposto += d.totalProposto;
+      atual.realizado += d.totalRealizado;
+      acc.set(chave, atual);
+    }
+    return [...acc.entries()]
+      .map(([empresa, v]) => ({ empresa, ...v, desvio: v.proposto - v.realizado }))
+      .sort((a, b) => b.realizado - a.realizado);
   }, [despesas]);
 
   const porCategoria = useMemo(() => {
@@ -158,6 +172,41 @@ export function ResumoTab() {
           )}
         </Card>
       </div>
+
+      <Card>
+        <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-text">
+          <Building2 className="size-4 text-text-muted" />
+          Resumo por empresa pagadora
+        </h3>
+        {despesas === null ? (
+          <div className="h-24 animate-pulse rounded-[var(--radius)] bg-bg" />
+        ) : porEmpresa.length === 0 ? (
+          <p className="py-6 text-center text-sm text-text-muted">Nenhum dado financeiro registrado</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-xs uppercase text-text-muted">
+                <th className="py-2 font-semibold">Empresa</th>
+                <th className="py-2 text-right font-semibold">Orçado</th>
+                <th className="py-2 text-right font-semibold">Realizado</th>
+                <th className="py-2 text-right font-semibold">Desvio</th>
+              </tr>
+            </thead>
+            <tbody>
+              {porEmpresa.map((e) => (
+                <tr key={e.empresa} className="border-b border-border last:border-0">
+                  <td className="py-2.5 font-medium text-text">{e.empresa}</td>
+                  <td className="py-2.5 text-right text-text-light">{formatBRL(e.proposto)}</td>
+                  <td className="py-2.5 text-right text-text-light">{formatBRL(e.realizado)}</td>
+                  <td className={`py-2.5 text-right font-semibold ${e.desvio < 0 ? "text-danger" : "text-success"}`}>
+                    {formatBRL(e.desvio)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Card>
     </div>
   );
 }

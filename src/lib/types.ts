@@ -131,6 +131,8 @@ export interface DespesaDoc {
   categoria: CategoriaDespesa;
   equipe: string;
   evento: string;
+  /** Empresa que efetuou o pagamento (texto livre, sem lista fixa). */
+  empresaPagadora?: string;
   /** Lançamento não previsto no orçamento — quando true, não entra no "proposto". */
   avulso: boolean;
   /** Detalhamento do valor proposto por tipo de custo (soma vira totalProposto). */

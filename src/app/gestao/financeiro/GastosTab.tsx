@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { collection, deleteDoc, doc, onSnapshot, orderBy, query } from "firebase/firestore";
 import { ChevronDown, FileSpreadsheet, Pencil, Plus, Trash2, Wallet } from "lucide-react";
 import { db } from "@/lib/firebase";
@@ -27,6 +27,7 @@ export function GastosTab() {
   const { show } = useToast();
   const [despesas, setDespesas] = useState<DespesaDoc[] | null>(null);
   const [novaOpen, setNovaOpen] = useState(false);
+  const [novaKey, setNovaKey] = useState(0);
   const [editando, setEditando] = useState<DespesaDoc | null>(null);
   const [expandido, setExpandido] = useState<string | null>(null);
 
@@ -40,6 +41,19 @@ export function GastosTab() {
     );
     return unsubscribe;
   }, []);
+
+  const empresasConhecidas = useMemo(
+    () =>
+      [...new Set((despesas ?? []).map((d) => d.empresaPagadora?.trim()).filter((v): v is string => !!v))].sort(
+        (a, b) => a.localeCompare(b),
+      ),
+    [despesas],
+  );
+
+  function handleNovaDespesa() {
+    setNovaKey((k) => k + 1);
+    setNovaOpen(true);
+  }
 
   async function handleExcluir(d: DespesaDoc) {
     try {
@@ -58,6 +72,7 @@ export function GastosTab() {
         Categoria: d.categoria,
         Evento: d.evento,
         Equipe: d.equipe,
+        "Empresa pagadora": d.empresaPagadora ?? "",
         Avulso: d.avulso ? "Sim" : "Não",
         "Inscrição (orçado)": d.propInsc ?? 0,
         "Inscrição (realizado)": d.realInsc ?? 0,
@@ -84,7 +99,7 @@ export function GastosTab() {
           <FileSpreadsheet className="size-4" />
           Exportar Excel
         </Button>
-        <Button onClick={() => setNovaOpen(true)}>
+        <Button onClick={handleNovaDespesa}>
           <Plus className="size-4" />
           Nova despesa
         </Button>
@@ -211,6 +226,12 @@ export function GastosTab() {
                               )}
                             </tbody>
                           </table>
+                          {d.empresaPagadora && (
+                            <p className="mt-3 text-xs text-text-light">
+                              <span className="font-semibold text-text-muted">Empresa pagadora:</span>{" "}
+                              {d.empresaPagadora}
+                            </p>
+                          )}
                           {d.observacoes && (
                             <div className="mt-3 rounded-[var(--radius)] border border-border bg-bg-card p-3">
                               <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-text-muted">
@@ -230,12 +251,18 @@ export function GastosTab() {
         </Card>
       )}
 
-      <NovaDespesaModal open={novaOpen} onClose={() => setNovaOpen(false)} />
+      <NovaDespesaModal
+        key={`nova-${novaKey}`}
+        open={novaOpen}
+        onClose={() => setNovaOpen(false)}
+        empresasConhecidas={empresasConhecidas}
+      />
       <NovaDespesaModal
         key={editando?.id ?? "none"}
         open={!!editando}
         onClose={() => setEditando(null)}
         despesa={editando}
+        empresasConhecidas={empresasConhecidas}
       />
     </div>
   );

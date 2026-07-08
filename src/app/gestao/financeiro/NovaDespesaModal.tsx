@@ -32,36 +32,38 @@ export function NovaDespesaModal({
   open,
   onClose,
   despesa,
+  empresasConhecidas = [],
 }: {
   open: boolean;
   onClose: () => void;
   despesa?: DespesaDoc | null;
+  empresasConhecidas?: string[];
 }) {
   const { show } = useToast();
   const [categoria, setCategoria] = useState<CategoriaDespesa>(despesa?.categoria ?? "Provas / Inscrições");
   const [equipe, setEquipe] = useState(despesa?.equipe ?? "Corrida e Bike");
   const [evento, setEvento] = useState(despesa?.evento ?? "");
+  const [empresaPagadora, setEmpresaPagadora] = useState(despesa?.empresaPagadora ?? "");
   const [avulso, setAvulso] = useState(despesa?.avulso ?? false);
   const [observacoes, setObservacoes] = useState(despesa?.observacoes ?? "");
-  const [prop, setProp] = useState<Record<string, string>>({
-    Insc: despesa?.propInsc ? String(despesa.propInsc) : "",
-    Transp: despesa?.propTransp ? String(despesa.propTransp) : "",
-    Hosp: despesa?.propHosp ? String(despesa.propHosp) : "",
-    Alim: despesa?.propAlim ? String(despesa.propAlim) : "",
-    Demais: despesa?.propDemais ? String(despesa.propDemais) : "",
+  const [prop, setProp] = useState<Record<string, number>>({
+    Insc: despesa?.propInsc ?? 0,
+    Transp: despesa?.propTransp ?? 0,
+    Hosp: despesa?.propHosp ?? 0,
+    Alim: despesa?.propAlim ?? 0,
+    Demais: despesa?.propDemais ?? 0,
   });
-  const [real, setReal] = useState<Record<string, string>>({
-    Insc: despesa?.realInsc ? String(despesa.realInsc) : "",
-    Transp: despesa?.realTransp ? String(despesa.realTransp) : "",
-    Hosp: despesa?.realHosp ? String(despesa.realHosp) : "",
-    Alim: despesa?.realAlim ? String(despesa.realAlim) : "",
-    Demais: despesa?.realDemais ? String(despesa.realDemais) : "",
+  const [real, setReal] = useState<Record<string, number>>({
+    Insc: despesa?.realInsc ?? 0,
+    Transp: despesa?.realTransp ?? 0,
+    Hosp: despesa?.realHosp ?? 0,
+    Alim: despesa?.realAlim ?? 0,
+    Demais: despesa?.realDemais ?? 0,
   });
   const [loading, setLoading] = useState(false);
 
-  const n = (v: string) => Number(v.replace(",", ".")) || 0;
-  const totalProposto = avulso ? 0 : TIPOS_CUSTO.reduce((s, t) => s + n(prop[t.chave]), 0);
-  const totalRealizado = TIPOS_CUSTO.reduce((s, t) => s + n(real[t.chave]), 0);
+  const totalProposto = avulso ? 0 : TIPOS_CUSTO.reduce((s, t) => s + prop[t.chave], 0);
+  const totalRealizado = TIPOS_CUSTO.reduce((s, t) => s + real[t.chave], 0);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -75,21 +77,22 @@ export function NovaDespesaModal({
         categoria,
         equipe,
         evento: evento.trim(),
+        empresaPagadora: empresaPagadora.trim(),
         avulso,
         ...(avulso
           ? {}
           : {
-              propInsc: n(prop.Insc),
-              propTransp: n(prop.Transp),
-              propHosp: n(prop.Hosp),
-              propAlim: n(prop.Alim),
-              propDemais: n(prop.Demais),
+              propInsc: prop.Insc,
+              propTransp: prop.Transp,
+              propHosp: prop.Hosp,
+              propAlim: prop.Alim,
+              propDemais: prop.Demais,
             }),
-        realInsc: n(real.Insc),
-        realTransp: n(real.Transp),
-        realHosp: n(real.Hosp),
-        realAlim: n(real.Alim),
-        realDemais: n(real.Demais),
+        realInsc: real.Insc,
+        realTransp: real.Transp,
+        realHosp: real.Hosp,
+        realAlim: real.Alim,
+        realDemais: real.Demais,
         totalProposto,
         totalRealizado,
         observacoes: observacoes.trim(),
@@ -142,6 +145,25 @@ export function NovaDespesaModal({
             required
             autoFocus
           />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-text">Empresa pagadora</label>
+          <input
+            list="empresas-pagadoras"
+            value={empresaPagadora}
+            onChange={(e) => setEmpresaPagadora(e.target.value)}
+            placeholder="Ex: Energisa, Comitê, patrocinador…"
+            className="h-11 w-full rounded-[var(--radius)] border border-border bg-bg px-3.5 text-sm text-text outline-none placeholder:text-text-muted transition-colors focus:border-primary focus:bg-bg-card focus:ring-2 focus:ring-primary/15"
+          />
+          <datalist id="empresas-pagadoras">
+            {empresasConhecidas.map((nome) => (
+              <option key={nome} value={nome} />
+            ))}
+          </datalist>
+          <p className="text-xs text-text-muted">
+            Digite livremente — se for uma empresa nova, ela fica disponível pra sugestão nos próximos lançamentos.
+          </p>
         </div>
 
         <label className="flex items-center gap-2.5 text-sm font-medium text-text">
@@ -247,19 +269,28 @@ function CustoInput({
   onChange,
   disabled,
 }: {
-  value: string;
-  onChange: (v: string) => void;
+  value: number;
+  onChange: (v: number) => void;
   disabled?: boolean;
 }) {
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const digitos = e.target.value.replace(/\D/g, "");
+    const centavos = digitos ? parseInt(digitos, 10) : 0;
+    onChange(centavos / 100);
+  }
+
+  const exibicao = value > 0 ? value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
+
   return (
     <div className="flex items-center rounded-[var(--radius-sm)] border border-border bg-bg px-2 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
       <span className="text-xs text-text-muted">R$</span>
       <input
-        type="number"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+        type="text"
+        inputMode="decimal"
+        value={exibicao}
+        onChange={handleChange}
         disabled={disabled}
-        placeholder="0"
+        placeholder="0,00"
         className="h-9 w-full min-w-0 bg-transparent px-1.5 text-right text-sm text-text outline-none placeholder:text-text-muted"
       />
     </div>
