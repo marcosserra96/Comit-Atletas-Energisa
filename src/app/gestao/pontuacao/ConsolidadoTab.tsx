@@ -287,13 +287,13 @@ export function ConsolidadoTab() {
                       <>
                         <td
                           rowSpan={itensVisiveis.length}
-                          className="border-t-2 border-t-border px-4 py-3 align-top font-medium text-text"
+                          className="border-t-2 border-t-border px-4 py-3 align-middle font-medium text-text"
                         >
                           {atleta.nome}
                         </td>
                         <td
                           rowSpan={itensVisiveis.length}
-                          className="border-t-2 border-t-border px-3 py-3 align-top text-text-light"
+                          className="border-t-2 border-t-border px-3 py-3 align-middle text-text-light"
                         >
                           {equipeLabel[atleta.equipe]}
                         </td>

@@ -99,8 +99,10 @@ export async function baixarModeloImportacao(params: {
   arquivo: string;
   aba: string;
   campos: CampoModelo[];
+  /** Linhas reais já preenchidas (ex: uma por atleta da equipe escolhida) — substitui a linha de exemplo único. */
+  linhasPreenchidas?: Record<string, string | number>[];
 }) {
-  const { arquivo, aba, campos } = params;
+  const { arquivo, aba, campos, linhasPreenchidas } = params;
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet(aba);
   sheet.columns = campos.map((c) => ({
@@ -110,14 +112,20 @@ export async function baixarModeloImportacao(params: {
   }));
   estilizarCabecalho(sheet);
 
-  const linhaExemplo = sheet.addRow(
-    Object.fromEntries(campos.map((c) => [c.coluna, c.exemplo ?? ""])),
-  );
-  linhaExemplo.eachCell((cell) => {
-    cell.font = { italic: true, color: { argb: COR_EXEMPLO_TEXTO } };
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COR_EXEMPLO_BG } };
-    if (cell.value instanceof Date) cell.numFmt = "dd/mm/yyyy";
-  });
+  if (linhasPreenchidas && linhasPreenchidas.length > 0) {
+    linhasPreenchidas.forEach((linha) => {
+      sheet.addRow(Object.fromEntries(campos.map((c) => [c.coluna, linha[c.coluna] ?? ""])));
+    });
+  } else {
+    const linhaExemplo = sheet.addRow(
+      Object.fromEntries(campos.map((c) => [c.coluna, c.exemplo ?? ""])),
+    );
+    linhaExemplo.eachCell((cell) => {
+      cell.font = { italic: true, color: { argb: COR_EXEMPLO_TEXTO } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COR_EXEMPLO_BG } };
+      if (cell.value instanceof Date) cell.numFmt = "dd/mm/yyyy";
+    });
+  }
 
   // Listas curtas viram uma fórmula literal; listas longas (ex: nomes de
   // atletas) precisam de uma aba de referência, pois o Excel limita o
