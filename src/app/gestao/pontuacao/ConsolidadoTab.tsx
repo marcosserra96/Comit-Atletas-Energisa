@@ -75,7 +75,7 @@ export function ConsolidadoTab() {
           });
         return { atleta, porMes, total };
       })
-      .sort((a, b) => b.total - a.total);
+      .sort((a, b) => a.atleta.nome.localeCompare(b.atleta.nome, "pt-BR"));
   }, [atletas, historico, ano, equipeFiltro, meses]);
 
   function handleExportar() {
