@@ -1,7 +1,7 @@
 "use client";
 
 import { Children, isValidElement, useEffect, useRef, useState, type ReactNode } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Search } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 interface SelectOption {
@@ -51,6 +51,26 @@ function flattenOptions(entries: SelectEntry[]): SelectOption[] {
   return entries.flatMap((e) => (isGroup(e) ? e.options : [e]));
 }
 
+function textoDe(node: ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(textoDe).join("");
+  return "";
+}
+
+function filtrarEntradas(entries: SelectEntry[], busca: string): SelectEntry[] {
+  const alvo = busca.trim().toLowerCase();
+  if (!alvo) return entries;
+  return entries
+    .map((entry) =>
+      isGroup(entry)
+        ? { ...entry, options: entry.options.filter((o) => textoDe(o.label).toLowerCase().includes(alvo)) }
+        : entry,
+    )
+    .filter((entry) =>
+      isGroup(entry) ? entry.options.length > 0 : textoDe(entry.label).toLowerCase().includes(alvo),
+    );
+}
+
 interface SelectProps {
   value: string;
   onChange: (e: { target: { value: string } }) => void;
@@ -58,16 +78,31 @@ interface SelectProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  /** Mostra um campo de busca no topo da lista — útil quando há muitas opções. */
+  searchable?: boolean;
 }
 
-export function Select({ value, onChange, children, placeholder, disabled, className }: SelectProps) {
+export function Select({
+  value,
+  onChange,
+  children,
+  placeholder,
+  disabled,
+  className,
+  searchable,
+}: SelectProps) {
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
+  const [busca, setBusca] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
+  const buscaRef = useRef<HTMLInputElement>(null);
 
   const entries = parseChildren(children);
   const flat = flattenOptions(entries);
   const selected = flat.find((o) => o.value === value);
+
+  const entriesVisiveis = searchable ? filtrarEntradas(entries, busca) : entries;
+  const flatVisivel = searchable ? flattenOptions(entriesVisiveis) : flat;
 
   useEffect(() => {
     if (!open) return;
@@ -85,9 +120,14 @@ export function Select({ value, onChange, children, placeholder, disabled, class
     };
   }, [open]);
 
+  useEffect(() => {
+    if (open && searchable) buscaRef.current?.focus();
+  }, [open, searchable]);
+
   function openList() {
     const idx = flat.findIndex((o) => o.value === value);
     setHighlighted(idx >= 0 ? idx : 0);
+    setBusca("");
     setOpen(true);
   }
 
@@ -98,12 +138,12 @@ export function Select({ value, onChange, children, placeholder, disabled, class
   }
 
   function moveHighlight(direction: 1 | -1) {
-    if (flat.length === 0) return;
+    if (flatVisivel.length === 0) return;
     setHighlighted((h) => {
       let next = h;
-      for (let i = 0; i < flat.length; i++) {
-        next = (next + direction + flat.length) % flat.length;
-        if (!flat[next]?.disabled) break;
+      for (let i = 0; i < flatVisivel.length; i++) {
+        next = (next + direction + flatVisivel.length) % flatVisivel.length;
+        if (!flatVisivel[next]?.disabled) break;
       }
       return next;
     });
@@ -119,9 +159,10 @@ export function Select({ value, onChange, children, placeholder, disabled, class
       if (!open) openList();
       else moveHighlight(-1);
     } else if (e.key === "Enter" || e.key === " ") {
+      if (searchable && e.key === " ") return;
       e.preventDefault();
       if (open) {
-        const opt = flat[highlighted];
+        const opt = flatVisivel[highlighted];
         if (opt) selectOption(opt);
       } else {
         openList();
@@ -158,37 +199,59 @@ export function Select({ value, onChange, children, placeholder, disabled, class
       {open && (
         <div
           role="listbox"
-          className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 max-h-64 overflow-y-auto rounded-[var(--radius)] border border-border bg-bg-card p-1 shadow-lg"
+          className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 flex max-h-72 flex-col overflow-hidden rounded-[var(--radius)] border border-border bg-bg-card shadow-lg"
         >
-          {entries.length === 0 && (
-            <p className="px-3 py-2 text-sm text-text-muted">Nenhuma opção disponível.</p>
-          )}
-          {entries.map((entry, i) =>
-            isGroup(entry) ? (
-              <div key={`group-${i}`} className="mt-1 first:mt-0">
-                <p className="px-2.5 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wide text-text-muted">
-                  {entry.label}
-                </p>
-                {entry.options.map((opt) => (
-                  <OptionRow
-                    key={opt.value}
-                    opt={opt}
-                    active={flat.indexOf(opt) === highlighted}
-                    selected={opt.value === value}
-                    onSelect={() => selectOption(opt)}
-                  />
-                ))}
+          {searchable && (
+            <div className="shrink-0 border-b border-border p-1.5">
+              <div className="flex h-8 items-center gap-1.5 rounded-[var(--radius-sm)] border border-border bg-bg px-2">
+                <Search className="size-3.5 shrink-0 text-text-muted" />
+                <input
+                  ref={buscaRef}
+                  value={busca}
+                  onChange={(e) => {
+                    setBusca(e.target.value);
+                    setHighlighted(0);
+                  }}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Buscar…"
+                  className="h-full w-full bg-transparent text-sm text-text outline-none placeholder:text-text-muted"
+                />
               </div>
-            ) : (
-              <OptionRow
-                key={entry.value}
-                opt={entry}
-                active={flat.indexOf(entry) === highlighted}
-                selected={entry.value === value}
-                onSelect={() => selectOption(entry)}
-              />
-            ),
+            </div>
           )}
+          <div className="overflow-y-auto p-1">
+            {entriesVisiveis.length === 0 && (
+              <p className="px-3 py-2 text-sm text-text-muted">
+                {searchable ? "Nenhuma opção encontrada." : "Nenhuma opção disponível."}
+              </p>
+            )}
+            {entriesVisiveis.map((entry, i) =>
+              isGroup(entry) ? (
+                <div key={`group-${i}`} className="mt-1 first:mt-0">
+                  <p className="px-2.5 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wide text-text-muted">
+                    {entry.label}
+                  </p>
+                  {entry.options.map((opt) => (
+                    <OptionRow
+                      key={opt.value}
+                      opt={opt}
+                      active={flatVisivel.indexOf(opt) === highlighted}
+                      selected={opt.value === value}
+                      onSelect={() => selectOption(opt)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <OptionRow
+                  key={entry.value}
+                  opt={entry}
+                  active={flatVisivel.indexOf(entry) === highlighted}
+                  selected={entry.value === value}
+                  onSelect={() => selectOption(entry)}
+                />
+              ),
+            )}
+          </div>
         </div>
       )}
     </div>
