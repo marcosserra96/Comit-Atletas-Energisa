@@ -116,7 +116,13 @@ export function NovaDespesaModal({
   }
 
   function togglePago(i: number, pago: boolean) {
-    atualizarParcela(i, { pago, dataPagamento: pago ? parcelas[i].dataPagamento || hoje() : parcelas[i].dataPagamento });
+    const parcela = parcelas[i];
+    atualizarParcela(i, {
+      pago,
+      dataPagamento: pago ? parcela.dataPagamento || hoje() : parcela.dataPagamento,
+      // Sugere o valor previsto pra evitar redigitar o óbvio — continua editável se o pago vier diferente.
+      valorPago: pago && parcela.valorPago === 0 ? parcela.valorPrevisto : parcela.valorPago,
+    });
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -200,7 +206,7 @@ export function NovaDespesaModal({
   const desvio = totalProposto - totalRealizado;
 
   return (
-    <Modal open={open} onClose={onClose} title={despesa ? "Editar despesa" : "Nova despesa"} size="lg">
+    <Modal open={open} onClose={onClose} title={despesa ? "Editar despesa" : "Nova despesa"} size="xl">
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="flex flex-col gap-1.5">
@@ -236,7 +242,7 @@ export function NovaDespesaModal({
             <label className="text-sm font-medium text-text">Ano de referência</label>
             <Select value={String(anoReferencia)} onChange={(e) => setAnoReferencia(Number(e.target.value))}>
               {[anoAtual - 1, anoAtual, anoAtual + 1].map((ano) => (
-                <option key={ano} value={ano}>
+                <option key={ano} value={String(ano)}>
                   {ano}
                 </option>
               ))}
@@ -248,7 +254,7 @@ export function NovaDespesaModal({
               <Select value={String(mesReferencia)} onChange={(e) => setMesReferencia(Number(e.target.value))}>
                 <option value="0">Sem mês definido</option>
                 {MESES.map((m, i) => (
-                  <option key={m} value={i + 1}>
+                  <option key={m} value={String(i + 1)}>
                     {m}
                   </option>
                 ))}

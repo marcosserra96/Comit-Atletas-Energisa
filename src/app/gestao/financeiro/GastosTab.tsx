@@ -125,7 +125,7 @@ export function GastosTab() {
           <Select value={anoFiltro} onChange={(e) => setAnoFiltro(e.target.value)}>
             <option value={TODOS_OS_ANOS}>Todos os anos</option>
             {(anosDisponiveis.includes(anoAtual) ? anosDisponiveis : [anoAtual, ...anosDisponiveis]).map((ano) => (
-              <option key={ano} value={ano}>
+              <option key={ano} value={String(ano)}>
                 {ano}
               </option>
             ))}

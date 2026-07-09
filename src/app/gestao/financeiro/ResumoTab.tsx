@@ -118,7 +118,9 @@ export function ResumoTab() {
         acc[d.mesReferencia - 1].realizado += d.totalRealizado;
       }
     }
-    return acc.map((v, i) => ({ mes: MESES[i], ...v, desvio: v.proposto - v.realizado }));
+    return acc
+      .map((v, i) => ({ mes: MESES[i], ...v, desvio: v.proposto - v.realizado }))
+      .filter((m) => m.proposto > 0 || m.realizado > 0);
   }, [despesas]);
 
   const semMesDefinido = useMemo(
@@ -137,7 +139,7 @@ export function ResumoTab() {
           <Select value={anoFiltro} onChange={(e) => setAnoFiltro(e.target.value)}>
             <option value={TODOS_OS_ANOS}>Todos os anos</option>
             {(anosDisponiveis.includes(anoAtual) ? anosDisponiveis : [anoAtual, ...anosDisponiveis]).map((ano) => (
-              <option key={ano} value={ano}>
+              <option key={ano} value={String(ano)}>
                 {ano}
               </option>
             ))}
@@ -247,6 +249,10 @@ export function ResumoTab() {
         </p>
         {despesas === null ? (
           <div className="h-24 animate-pulse rounded-[var(--radius)] bg-bg" />
+        ) : porMes.length === 0 ? (
+          <p className="py-6 text-center text-sm text-text-muted">
+            Nenhum custo recorrente ou despesa com mês definido ainda.
+          </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-sm">
