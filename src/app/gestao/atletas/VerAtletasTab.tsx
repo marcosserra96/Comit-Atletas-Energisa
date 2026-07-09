@@ -131,9 +131,9 @@ export function VerAtletasTab() {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiCard icon={Route} color="var(--color-primary)" label="KM total" value={`${kmTotal} km`} desc="Soma coletiva dos atletas" />
-        <KpiCard icon={Bike} color="var(--color-accent)" label="Bicicleta" value={`${kmBike} km`} desc="Quilometragem acumulada" />
-        <KpiCard icon={Footprints} color="var(--color-secondary)" label="Corrida" value={`${kmCorrida} km`} desc="Quilometragem acumulada" />
+        <KpiCard icon={Route} color="var(--color-primary)" label="KM total" value={`${kmTotal.toFixed(1)} km`} desc="Soma coletiva dos atletas" />
+        <KpiCard icon={Bike} color="var(--color-accent)" label="Bicicleta" value={`${kmBike.toFixed(1)} km`} desc="Quilometragem acumulada" />
+        <KpiCard icon={Footprints} color="var(--color-secondary)" label="Corrida" value={`${kmCorrida.toFixed(1)} km`} desc="Quilometragem acumulada" />
         <KpiCard icon={Filter} color="#8b5cf6" label="Filtrados" value={String(filtrados.length)} desc={`${totalParticipacoes} participações`} />
       </div>
 

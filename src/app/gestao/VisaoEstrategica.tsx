@@ -202,7 +202,7 @@ export function VisaoEstrategica() {
 
         <div className="grid min-w-0 flex-1 grid-cols-2 gap-2.5 2xl:grid-cols-4">
           <HeroKpi icon={TicketCheck} color="var(--color-primary)" value={String(stats.participacoesTotal)} label="Participações" />
-          <HeroKpi icon={Route} color="var(--color-accent)" value={`${stats.kmTotal} km`} label="KM acumulado" />
+          <HeroKpi icon={Route} color="var(--color-accent)" value={`${stats.kmTotal.toFixed(1)} km`} label="KM acumulado" />
           <HeroKpi icon={DollarSign} color="var(--color-secondary)" value={formatBRL(stats.investimentoTotal)} label="Custo realizado" />
           <HeroKpi icon={TrendingUp} color="#8b5cf6" value={formatBRL(stats.custoPorAtleta)} label="Custo / atleta" />
         </div>
@@ -535,7 +535,7 @@ function ModalidadeCard({
         <ModStat label="Participações" value={stats.participacoes} />
         <ModStat label="Pontos" value={stats.pontos} />
         <ModStat label="Média pts" value={stats.media} />
-        <ModStat label="KM total" value={`${stats.km} km`} />
+        <ModStat label="KM total" value={`${stats.km.toFixed(1)} km`} />
       </div>
       <div
         className="flex items-center gap-2 rounded-[var(--radius-sm)] px-2.5 py-2 text-sm"

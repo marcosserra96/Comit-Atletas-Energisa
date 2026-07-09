@@ -79,7 +79,7 @@ export function FichaResumoTab({ atleta }: { atleta: AtletaDoc }) {
             KM percorridos
           </span>
           <h3 className="text-xl font-extrabold text-text">
-            {resumo === null ? "…" : `${resumo.km} km`}
+            {resumo === null ? "…" : `${resumo.km.toFixed(1)} km`}
           </h3>
         </div>
         <div className="rounded-[var(--radius)] border border-border bg-bg p-4">
