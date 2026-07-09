@@ -200,7 +200,7 @@ export function VisaoEstrategica() {
 
         <div className="hidden self-stretch border-l border-border sm:block" />
 
-        <div className="grid flex-1 grid-cols-2 gap-2.5 2xl:grid-cols-4">
+        <div className="grid min-w-0 flex-1 grid-cols-2 gap-2.5 2xl:grid-cols-4">
           <HeroKpi icon={TicketCheck} color="var(--color-primary)" value={String(stats.participacoesTotal)} label="Participações" />
           <HeroKpi icon={Route} color="var(--color-accent)" value={`${stats.kmTotal} km`} label="KM acumulado" />
           <HeroKpi icon={DollarSign} color="var(--color-secondary)" value={formatBRL(stats.investimentoTotal)} label="Custo realizado" />
@@ -463,10 +463,12 @@ function HeroKpi({
         <Icon className="size-[15px]" />
       </span>
       <div className="min-w-0">
-        <strong className="block text-[.95rem] leading-tight font-extrabold text-text sm:text-base">
+        <strong className="block truncate text-[.95rem] leading-tight font-extrabold text-text sm:text-base">
           {value}
         </strong>
-        <span className="text-[.65rem] font-bold uppercase tracking-wide text-text-light">{label}</span>
+        <span className="block truncate text-[.65rem] font-bold uppercase tracking-wide text-text-light">
+          {label}
+        </span>
       </div>
     </div>
   );

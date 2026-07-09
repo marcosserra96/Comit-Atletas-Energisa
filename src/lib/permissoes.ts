@@ -50,3 +50,21 @@ export function temPermissao(
   if (usuario.role === "administrador") return true;
   return (usuario.permissoes ?? PERMISSOES_PADRAO).includes(chave);
 }
+
+const ROTA_POR_PERMISSAO: Record<PermissaoChave, string> = {
+  inicio: "/gestao",
+  atletas: "/gestao/atletas",
+  regras: "/gestao/criterios",
+  registrar: "/gestao/pontuacao",
+  eventos: "/gestao/eventos",
+  noticias: "/gestao/noticias",
+  financeiro: "/gestao/financeiro",
+};
+
+/** Primeira rota que esse usuário realmente tem permissão de ver, na ordem do menu. Null se não tiver nenhuma. */
+export function primeiraRotaPermitida(usuario: { role: Role; permissoes?: string[] }): string | null {
+  for (const chave of PERMISSAO_ORDEM) {
+    if (temPermissao(usuario, chave)) return ROTA_POR_PERMISSAO[chave];
+  }
+  return null;
+}
