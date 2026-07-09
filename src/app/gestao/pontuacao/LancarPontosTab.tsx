@@ -59,6 +59,7 @@ export function LancarPontosTab() {
         setAtletas(
           snap.docs
             .map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)
+            .filter((a) => a.ativo)
             .sort((a, b) => a.nome.localeCompare(b.nome)),
         );
       },
