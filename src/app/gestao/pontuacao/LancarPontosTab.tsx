@@ -128,13 +128,17 @@ export function LancarPontosTab() {
     setKmPorAtleta({});
   }
 
-  /** Limpa o formulário inteiro após salvar, pra evitar reaproveitar por engano descrição/KM/data de um lançamento anterior. */
+  /**
+   * Limpa o formulário inteiro após salvar, incluindo a data — ela não volta pra "hoje"
+   * sozinha pra obrigar quem está lançando a escolher de novo e evitar lançar em lote
+   * na data errada por distração.
+   */
   function resetFormulario() {
     resetSelecao();
     setDescricaoLote("");
     setEventoId("");
     setKmLote("");
-    setDataTreino(new Date().toISOString().slice(0, 10));
+    setDataTreino("");
   }
 
   function handleTipoChange(novoTipo: TipoLancamento) {
@@ -144,7 +148,7 @@ export function LancarPontosTab() {
     setDescricaoLote("");
     if (novoTipo === "treino") {
       setKmLote("");
-      setDataTreino(new Date().toISOString().slice(0, 10));
+      setDataTreino("");
     }
   }
 
@@ -219,6 +223,10 @@ export function LancarPontosTab() {
 
   async function handleSalvar() {
     if (!atletas) return;
+    if (!dataTreino) {
+      show("info", "Selecione a data do lançamento antes de salvar.");
+      return;
+    }
     if (dataTreino > new Date().toISOString().slice(0, 10)) {
       show("error", "A data não pode ser no futuro.");
       return;

@@ -65,3 +65,16 @@ body {
   color: var(--color-text);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
+
+/* Remove as setinhas nativas de incremento/decremento em todo input numérico do app. */
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+}

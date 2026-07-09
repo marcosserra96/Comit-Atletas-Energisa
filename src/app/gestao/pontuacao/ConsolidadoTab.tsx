@@ -29,6 +29,12 @@ function acumuladoVazio(): Acumulado {
   return { pontos: 0, treinos: 0, km: 0 };
 }
 
+const ITENS: { chave: keyof Acumulado; label: string; formatar: (v: number) => string }[] = [
+  { chave: "pontos", label: "Pontuação", formatar: (v) => String(v) },
+  { chave: "treinos", label: "Treinos", formatar: (v) => String(v) },
+  { chave: "km", label: "Quilometragem", formatar: (v) => `${v.toFixed(1)} km` },
+];
+
 export function ConsolidadoTab() {
   const [atletas, setAtletas] = useState<AtletaDoc[] | null>(null);
   const [historico, setHistorico] = useState<HistoricoPontoDoc[] | null>(null);
@@ -250,11 +256,12 @@ export function ConsolidadoTab() {
         </Card>
       ) : (
         <Card className="overflow-x-auto p-0">
-          <table className="w-full min-w-[640px] text-sm">
+          <table className="w-full min-w-[720px] text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs uppercase text-text-muted">
                 <th className="px-4 py-3 font-semibold">Atleta</th>
                 <th className="px-3 py-3 font-semibold">Equipe</th>
+                <th className="px-3 py-3 font-semibold">Item</th>
                 {meses.map((m) => (
                   <th key={m} className="px-3 py-3 text-center font-semibold">
                     {MESES[m - 1]}
@@ -264,50 +271,69 @@ export function ConsolidadoTab() {
               </tr>
             </thead>
             <tbody>
-              {linhas.map(({ atleta, porMes, total }) => (
-                <tr key={atleta.id} className="border-b border-border last:border-0">
-                  <td className="px-4 py-3 font-medium text-text">{atleta.nome}</td>
-                  <td className="px-3 py-3 text-text-light">{equipeLabel[atleta.equipe]}</td>
-                  {meses.map((m) => {
-                    const acumulado = porMes[m] ?? acumuladoVazio();
-                    return (
-                      <td key={m} className="px-3 py-3 text-center">
-                        <span
+              {linhas.map(({ atleta, porMes, total }, atletaIdx) => {
+                const itensVisiveis = ITENS.filter(
+                  (item) => item.chave === "pontos" || metricasExtras.has(item.chave as Metrica),
+                );
+                return itensVisiveis.map((item, itemIdx) => (
+                  <tr
+                    key={`${atleta.id}-${item.chave}`}
+                    className={cn(
+                      "border-b border-border last:border-0",
+                      atletaIdx % 2 === 1 && "bg-bg/60",
+                    )}
+                  >
+                    {itemIdx === 0 && (
+                      <>
+                        <td
+                          rowSpan={itensVisiveis.length}
+                          className="border-t-2 border-t-border px-4 py-3 align-top font-medium text-text"
+                        >
+                          {atleta.nome}
+                        </td>
+                        <td
+                          rowSpan={itensVisiveis.length}
+                          className="border-t-2 border-t-border px-3 py-3 align-top text-text-light"
+                        >
+                          {equipeLabel[atleta.equipe]}
+                        </td>
+                      </>
+                    )}
+                    <td
+                      className={cn(
+                        "px-3 py-3 text-xs font-bold uppercase tracking-wide text-text-light",
+                        itemIdx === 0 && "border-t-2 border-t-border",
+                      )}
+                    >
+                      {item.label}
+                    </td>
+                    {meses.map((m) => {
+                      const valor = (porMes[m] ?? acumuladoVazio())[item.chave];
+                      return (
+                        <td
+                          key={m}
                           className={cn(
-                            "font-semibold",
-                            acumulado.pontos > 0 ? "text-secondary" : "text-text-muted",
+                            "px-3 py-3 text-center font-semibold",
+                            valor > 0 ? "text-secondary" : "text-text-muted",
+                            itemIdx === 0 && "border-t-2 border-t-border",
                           )}
                         >
-                          {acumulado.pontos}
-                        </span>
-                        {metricasExtras.has("treinos") && (
-                          <span className="block text-[.65rem] text-text-muted">
-                            {acumulado.treinos} treino{acumulado.treinos === 1 ? "" : "s"}
-                          </span>
-                        )}
-                        {metricasExtras.has("km") && (
-                          <span className="block text-[.65rem] text-text-muted">
-                            {acumulado.km.toFixed(1)} km
-                          </span>
-                        )}
-                      </td>
-                    );
-                  })}
-                  <td className="px-4 py-3 text-right">
-                    <span className="font-bold text-primary">{total.pontos}</span>
-                    {metricasExtras.has("treinos") && (
-                      <span className="block text-[.65rem] text-text-muted">
-                        {total.treinos} treino{total.treinos === 1 ? "" : "s"}
-                      </span>
-                    )}
-                    {metricasExtras.has("km") && (
-                      <span className="block text-[.65rem] text-text-muted">
-                        {total.km.toFixed(1)} km
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                          {item.formatar(valor)}
+                        </td>
+                      );
+                    })}
+                    <td
+                      className={cn(
+                        "px-4 py-3 text-right font-bold",
+                        item.chave === "pontos" ? "text-primary" : "text-text",
+                        itemIdx === 0 && "border-t-2 border-t-border",
+                      )}
+                    >
+                      {item.formatar(total[item.chave])}
+                    </td>
+                  </tr>
+                ));
+              })}
             </tbody>
           </table>
         </Card>
