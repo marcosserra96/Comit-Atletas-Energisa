@@ -30,6 +30,8 @@ function estilizarCabecalho(sheet: ExcelJS.Worksheet) {
   sheet.views = [{ state: "frozen", ySplit: 1 }];
 }
 
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 function letraColuna(n: number): string {
   let s = "";
   while (n > 0) {
@@ -54,7 +56,19 @@ export async function exportToExcel(
       key: h,
       width: Math.max(12, h.length + 4),
     }));
-    rows.forEach((r) => sheet.addRow(r));
+    rows.forEach((r) => {
+      const row = sheet.addRow(r);
+      // Datas em texto ISO (YYYY-MM-DD) viram Date reais com formato brasileiro fixo,
+      // pra não depender do locale do Excel de quem abre o arquivo (senão vira m/d/aaaa).
+      headers.forEach((h, i) => {
+        const valor = r[h];
+        if (typeof valor === "string" && ISO_DATE_RE.test(valor)) {
+          const cell = row.getCell(i + 1);
+          cell.value = new Date(`${valor}T00:00:00`);
+          cell.numFmt = "dd/mm/yyyy";
+        }
+      });
+    });
     estilizarCabecalho(sheet);
     sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: headers.length } };
     sheet.columns.forEach((col) => {
@@ -102,7 +116,7 @@ export async function baixarModeloImportacao(params: {
   linhaExemplo.eachCell((cell) => {
     cell.font = { italic: true, color: { argb: COR_EXEMPLO_TEXTO } };
     cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COR_EXEMPLO_BG } };
-    if (cell.value instanceof Date) cell.numFmt = "yyyy-mm-dd";
+    if (cell.value instanceof Date) cell.numFmt = "dd/mm/yyyy";
   });
 
   // Listas curtas viram uma fórmula literal; listas longas (ex: nomes de

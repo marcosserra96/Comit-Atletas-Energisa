@@ -17,6 +17,17 @@ const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "O
 const TODOS_MESES = new Set(Array.from({ length: 12 }, (_, i) => i + 1));
 
 type EquipeFiltro = "" | "corrida" | "bicicleta";
+type Metrica = "treinos" | "km";
+
+interface Acumulado {
+  pontos: number;
+  treinos: number;
+  km: number;
+}
+
+function acumuladoVazio(): Acumulado {
+  return { pontos: 0, treinos: 0, km: 0 };
+}
 
 export function ConsolidadoTab() {
   const [atletas, setAtletas] = useState<AtletaDoc[] | null>(null);
@@ -24,6 +35,7 @@ export function ConsolidadoTab() {
   const [ano, setAno] = useState(() => String(new Date().getFullYear()));
   const [equipeFiltro, setEquipeFiltro] = useState<EquipeFiltro>("");
   const [mesesSelecionados, setMesesSelecionados] = useState<Set<number>>(() => new Set(TODOS_MESES));
+  const [metricasExtras, setMetricasExtras] = useState<Set<Metrica>>(new Set());
 
   useEffect(() => {
     Promise.all([getDocs(collection(db, "atletas")), getDocs(collection(db, "historico_pontos"))]).then(
@@ -47,6 +59,15 @@ export function ConsolidadoTab() {
     setMesesSelecionados((prev) => (prev.size === 12 ? new Set() : new Set(TODOS_MESES)));
   }
 
+  function toggleMetrica(m: Metrica) {
+    setMetricasExtras((prev) => {
+      const next = new Set(prev);
+      if (next.has(m)) next.delete(m);
+      else next.add(m);
+      return next;
+    });
+  }
+
   const meses = useMemo(() => [...mesesSelecionados].sort((a, b) => a - b), [mesesSelecionados]);
 
   const linhas = useMemo(() => {
@@ -63,15 +84,29 @@ export function ConsolidadoTab() {
 
     return elegiveis
       .map((atleta) => {
-        const porMes: Record<number, number> = {};
-        let total = 0;
+        const porMes: Record<number, Acumulado> = {};
+        const lotesPorMes: Record<number, Set<string>> = {};
+        const total = acumuladoVazio();
         historicoAno
           .filter((h) => h.atletaId === atleta.id)
           .forEach((h) => {
             const mes = Number(h.dataTreino.split("-")[1]);
             if (!meses.includes(mes)) return;
-            porMes[mes] = (porMes[mes] ?? 0) + h.pontos;
-            total += h.pontos;
+            const atual = porMes[mes] ?? acumuladoVazio();
+            atual.pontos += h.pontos;
+            atual.km += h.kmPercorrido ?? 0;
+            total.pontos += h.pontos;
+            total.km += h.kmPercorrido ?? 0;
+            if (h.regraId !== "falta_justificada") {
+              const lotes = lotesPorMes[mes] ?? new Set<string>();
+              if (!lotes.has(h.loteId)) {
+                lotes.add(h.loteId);
+                atual.treinos += 1;
+                total.treinos += 1;
+              }
+              lotesPorMes[mes] = lotes;
+            }
+            porMes[mes] = atual;
           });
         return { atleta, porMes, total };
       })
@@ -85,8 +120,8 @@ export function ConsolidadoTab() {
       linhas.map(({ atleta, porMes, total }) => ({
         Atleta: atleta.nome,
         Equipe: equipeLabel[atleta.equipe],
-        ...Object.fromEntries(meses.map((m) => [MESES[m - 1], porMes[m] ?? 0])),
-        Total: total,
+        ...Object.fromEntries(meses.map((m) => [MESES[m - 1], porMes[m]?.pontos ?? 0])),
+        Total: total.pontos,
       })),
     );
   }
@@ -163,6 +198,36 @@ export function ConsolidadoTab() {
             })}
           </div>
         </div>
+
+        <div className="border-t border-border pt-3.5">
+          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-text-light">
+            Exibir também
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {(
+              [
+                { value: "treinos", label: "Qtd. de treinos" },
+                { value: "km", label: "Quilometragem" },
+              ] as const
+            ).map(({ value, label }) => {
+              const ativo = metricasExtras.has(value);
+              return (
+                <button
+                  key={value}
+                  onClick={() => toggleMetrica(value)}
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
+                    ativo
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-text-light hover:text-text",
+                  )}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </Card>
 
       {carregando ? (
@@ -203,18 +268,44 @@ export function ConsolidadoTab() {
                 <tr key={atleta.id} className="border-b border-border last:border-0">
                   <td className="px-4 py-3 font-medium text-text">{atleta.nome}</td>
                   <td className="px-3 py-3 text-text-light">{equipeLabel[atleta.equipe]}</td>
-                  {meses.map((m) => (
-                    <td
-                      key={m}
-                      className={cn(
-                        "px-3 py-3 text-center font-semibold",
-                        (porMes[m] ?? 0) > 0 ? "text-secondary" : "text-text-muted",
-                      )}
-                    >
-                      {porMes[m] ?? 0}
-                    </td>
-                  ))}
-                  <td className="px-4 py-3 text-right font-bold text-primary">{total}</td>
+                  {meses.map((m) => {
+                    const acumulado = porMes[m] ?? acumuladoVazio();
+                    return (
+                      <td key={m} className="px-3 py-3 text-center">
+                        <span
+                          className={cn(
+                            "font-semibold",
+                            acumulado.pontos > 0 ? "text-secondary" : "text-text-muted",
+                          )}
+                        >
+                          {acumulado.pontos}
+                        </span>
+                        {metricasExtras.has("treinos") && (
+                          <span className="block text-[.65rem] text-text-muted">
+                            {acumulado.treinos} treino{acumulado.treinos === 1 ? "" : "s"}
+                          </span>
+                        )}
+                        {metricasExtras.has("km") && (
+                          <span className="block text-[.65rem] text-text-muted">
+                            {acumulado.km.toFixed(1)} km
+                          </span>
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td className="px-4 py-3 text-right">
+                    <span className="font-bold text-primary">{total.pontos}</span>
+                    {metricasExtras.has("treinos") && (
+                      <span className="block text-[.65rem] text-text-muted">
+                        {total.treinos} treino{total.treinos === 1 ? "" : "s"}
+                      </span>
+                    )}
+                    {metricasExtras.has("km") && (
+                      <span className="block text-[.65rem] text-text-muted">
+                        {total.km.toFixed(1)} km
+                      </span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

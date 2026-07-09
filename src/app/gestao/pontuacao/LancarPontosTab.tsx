@@ -50,6 +50,7 @@ export function LancarPontosTab() {
   const [marcados, setMarcados] = useState<Record<string, Set<string>>>({});
   const [faltosos, setFaltosos] = useState<Set<string>>(new Set());
   const [observacoes, setObservacoes] = useState<Record<string, string>>({});
+  const [kmPorAtleta, setKmPorAtleta] = useState<Record<string, string>>({});
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
@@ -124,6 +125,16 @@ export function LancarPontosTab() {
     setMarcados({});
     setFaltosos(new Set());
     setObservacoes({});
+    setKmPorAtleta({});
+  }
+
+  /** Limpa o formulário inteiro após salvar, pra evitar reaproveitar por engano descrição/KM/data de um lançamento anterior. */
+  function resetFormulario() {
+    resetSelecao();
+    setDescricaoLote("");
+    setEventoId("");
+    setKmLote("");
+    setDataTreino(new Date().toISOString().slice(0, 10));
   }
 
   function handleTipoChange(novoTipo: TipoLancamento) {
@@ -225,7 +236,7 @@ export function LancarPontosTab() {
     try {
       const loteId = doc(collection(db, "historico_pontos")).id;
       const batch = writeBatch(db);
-      const kmPercorrido = Number(kmLote.replace(",", ".")) || 0;
+      const kmLoteNum = Number(kmLote.replace(",", ".")) || 0;
       const dadosLote = {
         dataTreino,
         loteId,
@@ -245,6 +256,8 @@ export function LancarPontosTab() {
         if (!isFalta && !temPontos) continue;
 
         let totalAtleta = 0;
+        const kmOverride = kmPorAtleta[atletaDoc.id]?.trim();
+        const kmPercorrido = kmOverride ? Number(kmOverride.replace(",", ".")) || 0 : kmLoteNum;
 
         if (isFalta) {
           batch.set(doc(collection(db, "historico_pontos")), {
@@ -303,9 +316,7 @@ export function LancarPontosTab() {
       }
 
       show("success", `Lançamento registrado para ${totalAtletasEnvolvidos} atleta(s).`);
-      setMarcados({});
-      setFaltosos(new Set());
-      setObservacoes({});
+      resetFormulario();
     } catch {
       show("error", "Não foi possível salvar o lançamento agora. Tente novamente.");
     } finally {
@@ -395,7 +406,7 @@ export function LancarPontosTab() {
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-text-light">KM percorridos por atleta</label>
+            <label className="text-xs font-semibold text-text-light">KM padrão (todos marcados)</label>
             <input
               type="number"
               min={0}
@@ -405,6 +416,9 @@ export function LancarPontosTab() {
               placeholder="Opcional"
               className="h-10 w-36 rounded-[var(--radius)] border border-border bg-bg-card px-3 text-sm text-text outline-none placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/15"
             />
+            <p className="text-xs text-text-muted">
+              Usado pra quem não tiver um KM individual na tabela abaixo.
+            </p>
           </div>
         </div>
       </Card>
@@ -429,7 +443,7 @@ export function LancarPontosTab() {
         </Card>
       ) : (
         <Card className="overflow-x-auto p-0">
-          <table className="w-full min-w-[760px] text-sm">
+          <table className="w-full min-w-[860px] text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs uppercase text-text-muted">
                 <th className="sticky left-0 z-[1] bg-bg-card px-4 py-3 font-semibold">Atleta</th>
@@ -441,6 +455,10 @@ export function LancarPontosTab() {
                     </span>
                   </th>
                 ))}
+                <th className="w-[110px] border-l border-border px-3 py-3 text-center font-semibold">
+                  KM
+                  <span className="block font-normal normal-case text-text-muted">individual</span>
+                </th>
                 <th className="border-l border-border px-3 py-3 text-center font-semibold text-accent">
                   Falta justificada
                   <label className="mt-1 flex items-center justify-center gap-1.5 font-normal normal-case text-text-muted">
@@ -479,6 +497,23 @@ export function LancarPontosTab() {
                         />
                       </td>
                     ))}
+                    <td className="border-l border-border px-2 py-3 text-center">
+                      {temMarcacao && !isFalta ? (
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={kmPorAtleta[a.id] ?? ""}
+                          onChange={(e) =>
+                            setKmPorAtleta((prev) => ({ ...prev, [a.id]: e.target.value }))
+                          }
+                          placeholder={kmLote || "—"}
+                          className="h-8 w-full rounded-[var(--radius-sm)] border border-border bg-bg px-2 text-center text-xs text-text outline-none placeholder:text-text-muted focus:border-primary"
+                        />
+                      ) : (
+                        <div className="h-8" />
+                      )}
+                    </td>
                     <td className="border-l border-border px-3 py-3 text-center">
                       <input
                         type="checkbox"
