@@ -3,6 +3,7 @@
 import { ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
+import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 
 const SIZES = {
   sm: "max-w-sm",
@@ -22,6 +23,8 @@ interface ModalProps {
 }
 
 export function Modal({ open, onClose, title, description, children, footer, size = "sm" }: ModalProps) {
+  useLockBodyScroll(open);
+
   return (
     <AnimatePresence>
       {open && (

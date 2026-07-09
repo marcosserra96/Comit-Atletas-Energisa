@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { LayoutDashboard, History, IdCard, MessageSquare, ShieldCheck, X } from "lucide-react";
 import { equipeLabel } from "@/lib/labels";
+import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { FichaResumoTab } from "./FichaResumoTab";
 import { FichaLancamentosTab } from "./FichaLancamentosTab";
 import { FichaCadastroTab } from "./FichaCadastroTab";
@@ -31,6 +32,7 @@ export function FichaAtletaModal({
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<FichaTab>(initialTab);
+  useLockBodyScroll(atleta !== null);
 
   return (
     <AnimatePresence>

@@ -76,6 +76,11 @@ export function ConsolidadoTab() {
 
   const meses = useMemo(() => [...mesesSelecionados].sort((a, b) => a - b), [mesesSelecionados]);
 
+  const itensVisiveis = useMemo(
+    () => ITENS.filter((item) => item.chave === "pontos" || metricasExtras.has(item.chave as Metrica)),
+    [metricasExtras],
+  );
+
   const linhas = useMemo(() => {
     if (!atletas || !historico) return [];
     const elegiveis = atletas.filter(
@@ -120,16 +125,16 @@ export function ConsolidadoTab() {
   }, [atletas, historico, ano, equipeFiltro, meses]);
 
   function handleExportar() {
-    exportToExcel(
-      `relatorio-consolidado-${ano}.xlsx`,
-      "Consolidado",
-      linhas.map(({ atleta, porMes, total }) => ({
+    const linhasExportadas = linhas.flatMap(({ atleta, porMes, total }) =>
+      itensVisiveis.map((item) => ({
         Atleta: atleta.nome,
         Equipe: equipeLabel[atleta.equipe],
-        ...Object.fromEntries(meses.map((m) => [MESES[m - 1], porMes[m]?.pontos ?? 0])),
-        Total: total.pontos,
+        Item: item.label,
+        ...Object.fromEntries(meses.map((m) => [MESES[m - 1], (porMes[m] ?? acumuladoVazio())[item.chave]])),
+        [`Total (${meses.length}m)`]: total[item.chave],
       })),
     );
+    exportToExcel(`relatorio-consolidado-${ano}.xlsx`, "Consolidado", linhasExportadas);
   }
 
   const carregando = atletas === null || historico === null;
@@ -272,9 +277,6 @@ export function ConsolidadoTab() {
             </thead>
             <tbody>
               {linhas.map(({ atleta, porMes, total }, atletaIdx) => {
-                const itensVisiveis = ITENS.filter(
-                  (item) => item.chave === "pontos" || metricasExtras.has(item.chave as Metrica),
-                );
                 return itensVisiveis.map((item, itemIdx) => (
                   <tr
                     key={`${atleta.id}-${item.chave}`}
