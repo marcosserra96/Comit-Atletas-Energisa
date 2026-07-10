@@ -5,6 +5,7 @@ import { AlertTriangle, CheckCircle2, Copy, XCircle } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { formatShortDate } from "@/lib/format";
+import { cn } from "@/lib/cn";
 
 export interface LinhaImportacao {
   numeroLinha: number;
@@ -110,12 +111,17 @@ export function RevisarImportacaoModal({
 
         {duplicadas.length > 0 && (
           <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <p className="flex items-center gap-1.5 text-sm font-bold text-text">
-                <AlertTriangle className="size-4 text-warning" />
-                Possíveis duplicatas — desmarcadas por padrão
-              </p>
-              <div className="flex gap-1.5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="flex items-center gap-1.5 text-sm font-bold text-text">
+                  <AlertTriangle className="size-4 text-warning" />
+                  Possíveis duplicatas
+                </p>
+                <p className="text-xs text-text-light">
+                  Por padrão, nenhuma duplicata é importada. Marque só as que você quer importar mesmo assim.
+                </p>
+              </div>
+              <div className="flex shrink-0 gap-1.5 whitespace-nowrap">
                 <button
                   onClick={() => marcarTodas(true)}
                   className="text-xs font-semibold text-primary hover:underline"
@@ -132,25 +138,38 @@ export function RevisarImportacaoModal({
               </div>
             </div>
             <div className="max-h-56 overflow-y-auto rounded-[var(--radius)] border border-border">
-              {duplicadas.map((d) => (
-                <label
-                  key={d.numeroLinha}
-                  className="flex cursor-pointer items-start gap-2.5 border-b border-border p-3 text-sm last:border-0 hover:bg-bg"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selecionadas.has(d.numeroLinha)}
-                    onChange={() => toggle(d.numeroLinha)}
-                    className="mt-0.5 size-4 shrink-0 rounded border-border accent-primary"
-                  />
-                  <div className="min-w-0">
-                    <p className="font-semibold text-text">
-                      {d.atletaNome} · {formatShortDate(d.data)} · {d.regraDesc}
-                    </p>
-                    <p className="text-xs text-text-muted">{d.motivo}</p>
-                  </div>
-                </label>
-              ))}
+              {duplicadas.map((d) => {
+                const marcada = selecionadas.has(d.numeroLinha);
+                return (
+                  <label
+                    key={d.numeroLinha}
+                    className="flex cursor-pointer items-start justify-between gap-2.5 border-b border-border p-3 text-sm last:border-0 hover:bg-bg"
+                  >
+                    <div className="flex min-w-0 items-start gap-2.5">
+                      <input
+                        type="checkbox"
+                        checked={marcada}
+                        onChange={() => toggle(d.numeroLinha)}
+                        className="mt-0.5 size-4 shrink-0 rounded border-border accent-primary"
+                      />
+                      <div className="min-w-0">
+                        <p className="font-semibold text-text">
+                          {d.atletaNome} · {formatShortDate(d.data)} · {d.regraDesc}
+                        </p>
+                        <p className="text-xs text-text-muted">{d.motivo}</p>
+                      </div>
+                    </div>
+                    <span
+                      className={cn(
+                        "shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold",
+                        marcada ? "bg-success/10 text-success" : "bg-bg text-text-muted",
+                      )}
+                    >
+                      {marcada ? "Será importada" : "Será ignorada"}
+                    </span>
+                  </label>
+                );
+              })}
             </div>
           </div>
         )}
