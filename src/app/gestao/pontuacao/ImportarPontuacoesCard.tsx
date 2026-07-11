@@ -227,7 +227,10 @@ export function ImportarPontuacoesCard() {
       }
 
       if (duplicadas.length === 0 && erros.length === 0) {
-        await confirmarGravacao(validas, []);
+        // Passa o mapa direto em vez de depender do estado — setLinhasParaGravar acima
+        // ainda não foi aplicado nesse ponto (setState é assíncrono), então ler o estado
+        // aqui pegaria o Map antigo (vazio) e "importaria" 0 linhas por engano.
+        await confirmarGravacao(validas, [], paraGravar);
         return;
       }
 
@@ -239,11 +242,15 @@ export function ImportarPontuacoesCard() {
     }
   }
 
-  async function confirmarGravacao(validas: LinhaImportacao[], duplicadasSelecionadas: LinhaDuplicada[]) {
+  async function confirmarGravacao(
+    validas: LinhaImportacao[],
+    duplicadasSelecionadas: LinhaDuplicada[],
+    mapaGravar: Map<number, LinhaParaGravar> = linhasParaGravar,
+  ) {
     setConfirmando(true);
     try {
       const linhas = [...validas, ...duplicadasSelecionadas]
-        .map((v) => linhasParaGravar.get(v.numeroLinha))
+        .map((v) => mapaGravar.get(v.numeroLinha))
         .filter((v): v is LinhaParaGravar => !!v);
 
       const loteId = doc(collection(db, "historico_pontos")).id;

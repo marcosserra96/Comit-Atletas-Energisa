@@ -193,9 +193,11 @@ export async function baixarModeloImportacao(params: {
 function celulaParaTexto(value: ExcelJS.CellValue): string {
   if (value === null || value === undefined) return "";
   if (value instanceof Date) {
-    const ano = value.getFullYear();
-    const mes = String(value.getMonth() + 1).padStart(2, "0");
-    const dia = String(value.getDate()).padStart(2, "0");
+    // Datas de célula do Excel chegam como meia-noite UTC — usar getters locais
+    // jogaria a data um dia pra trás em fusos negativos (ex: Brasil).
+    const ano = value.getUTCFullYear();
+    const mes = String(value.getUTCMonth() + 1).padStart(2, "0");
+    const dia = String(value.getUTCDate()).padStart(2, "0");
     return `${ano}-${mes}-${dia}`;
   }
   if (typeof value === "object") {
