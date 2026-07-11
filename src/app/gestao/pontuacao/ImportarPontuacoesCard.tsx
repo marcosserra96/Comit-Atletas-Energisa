@@ -28,7 +28,8 @@ import {
 import type { AtletaDoc, HistoricoPontoDoc, Modalidade, RegraPontuacaoDoc, TipoLancamento } from "@/lib/types";
 
 const TIPOS_VALIDOS: TipoLancamento[] = ["treino", "evento", "avulso"];
-const DATA_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const DATA_ISO_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const DATA_BR_REGEX = /^(\d{2})\/(\d{2})\/(\d{4})$/;
 const TAMANHO_LOTE = 400;
 
 type EquipeModelo = "" | Modalidade;
@@ -42,6 +43,16 @@ interface LinhaParaGravar extends LinhaImportacao {
 
 function chaveDuplicidade(atletaId: string, data: string, regraId: string) {
   return `${atletaId}|${data}|${regraId}`;
+}
+
+/** Aceita célula já lida como data (AAAA-MM-DD) ou digitada como texto no formato brasileiro (DD/MM/AAAA). */
+function normalizarData(valor: string): string | null {
+  if (DATA_ISO_REGEX.test(valor)) return valor;
+  const match = valor.match(DATA_BR_REGEX);
+  if (!match) return null;
+  const [, dia, mes, ano] = match;
+  const data = `${ano}-${mes}-${dia}`;
+  return DATA_ISO_REGEX.test(data) ? data : null;
 }
 
 export function ImportarPontuacoesCard() {
@@ -89,7 +100,7 @@ export function ImportarPontuacoesCard() {
             largura: 14,
             exemplo: new Date(),
             obrigatorio: true,
-            descricao: "Data do treino/evento (célula formatada como data, não pode ser futura).",
+            descricao: "Data do treino/evento — célula formatada como data ou texto no formato DD/MM/AAAA (não pode ser futura).",
           },
           {
             coluna: "Tipo",
@@ -166,9 +177,9 @@ export function ImportarPontuacoesCard() {
           erros.push({ numeroLinha, motivo: `atleta "${nome}" não encontrado` });
           return;
         }
-        const data = linha["data"];
-        if (!DATA_REGEX.test(data)) {
-          erros.push({ numeroLinha, motivo: `data "${data}" inválida (use AAAA-MM-DD)` });
+        const data = normalizarData(linha["data"] ?? "");
+        if (!data) {
+          erros.push({ numeroLinha, motivo: `data "${linha["data"]}" inválida (use DD/MM/AAAA ou célula formatada como data)` });
           return;
         }
         if (data > new Date().toISOString().slice(0, 10)) {
