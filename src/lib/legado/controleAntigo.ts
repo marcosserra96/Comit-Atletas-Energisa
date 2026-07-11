@@ -80,6 +80,23 @@ function textoDeCelula(v: ExcelJS.CellValue): string {
 }
 
 /**
+ * Extrai o dia do mês de uma célula que pode vir como número puro (10) ou como
+ * texto composto (ex: "7 - M" pra quarta de manhã, "7 - N" pra quarta à noite).
+ * Também devolve um sufixo de desambiguação ("(manhã)"/"(noite)") quando aplicável.
+ */
+function extrairDia(valor: ExcelJS.CellValue): { dia: number; sufixo: string } | null {
+  if (typeof valor === "number") return { dia: valor, sufixo: "" };
+  const texto = textoDeCelula(valor).trim();
+  const match = texto.match(/(\d+)\s*-?\s*([A-Za-z]*)/);
+  if (!match) return null;
+  const dia = Number(match[1]);
+  if (!Number.isFinite(dia)) return null;
+  const letra = match[2]?.trim().toUpperCase();
+  const sufixo = letra === "M" ? " (manhã)" : letra === "N" ? " (noite)" : "";
+  return { dia, sufixo };
+}
+
+/**
  * Extrai as marcações de presença/pontos de uma aba no formato grade semanal
  * (uma linha por atleta, pares de colunas [dia-do-mês, "PTN"] por dia da semana).
  */
@@ -104,13 +121,18 @@ export function parsearAba(workbook: ExcelJS.Workbook, nomeAba: string): Entrada
 
   const headerRow = sheet.getRow(linhaCabecalho);
   const diaSemanaRow = sheet.getRow(linhaCabecalho - 1);
-  const paresDia: { colPtn: number; dia: number; diaSemana: string }[] = [];
+  const paresDia: { colDia: number; colPtn: number; dia: number; diaSemana: string }[] = [];
   for (let c = 1; c <= sheet.columnCount; c++) {
     if (textoDeCelula(headerRow.getCell(c).value).trim() !== "PTN") continue;
-    const dia = headerRow.getCell(c - 1).value;
-    if (typeof dia !== "number") continue;
-    const diaSemana = textoDeCelula(diaSemanaRow.getCell(c - 1).value).trim() || `col${c}`;
-    paresDia.push({ colPtn: c, dia, diaSemana });
+    const colDia = c - 1;
+    const extraido = extrairDia(headerRow.getCell(colDia).value);
+    if (!extraido) continue;
+    const rotuloSemana = textoDeCelula(diaSemanaRow.getCell(colDia).value).trim() || `col${c}`;
+    // Quando o rótulo já vem específico (ex: "Qua (manhã)") não duplica o sufixo.
+    const diaSemana = rotuloSemana.toLowerCase().includes("manhã") || rotuloSemana.toLowerCase().includes("noite")
+      ? rotuloSemana
+      : `${rotuloSemana}${extraido.sufixo}`;
+    paresDia.push({ colDia, colPtn: c, dia: extraido.dia, diaSemana });
   }
   if (paresDia.length === 0) return [];
 
@@ -133,9 +155,19 @@ export function parsearAba(workbook: ExcelJS.Workbook, nomeAba: string): Entrada
     nome = nome.replace(/\s*\([^)]*\)\s*/g, "").trim();
     if (!nome) continue;
 
-    for (const { colPtn, dia, diaSemana } of paresDia) {
-      const pontos = row.getCell(colPtn).value;
-      if (typeof pontos === "number" && pontos > 0) {
+    for (const { colDia, colPtn, dia, diaSemana } of paresDia) {
+      // Em algumas abas o valor de pontos fica na coluna "PTN"; em outras (ex: meses
+      // mais antigos) só a coluna do dia é marcada com 1, sem detalhar pontuação —
+      // nesse caso considera presença = 1 ponto.
+      const valorPtn = row.getCell(colPtn).value;
+      const valorDia = row.getCell(colDia).value;
+      const pontos =
+        typeof valorPtn === "number" && valorPtn > 0
+          ? valorPtn
+          : typeof valorDia === "number" && valorDia > 0
+            ? 1
+            : null;
+      if (pontos !== null) {
         entradas.push({ atletaNomeBruto: nome, dia, diaSemana, pontos });
       }
     }
