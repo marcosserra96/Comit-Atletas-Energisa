@@ -18,7 +18,7 @@ import { useToast } from "@/components/ui/Toast";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { logAudit } from "@/lib/audit";
-import { formatShortDate } from "@/lib/format";
+import { formatDataTreino } from "@/lib/format";
 import { EstornarModal } from "../../pontuacao/EstornarModal";
 import type { AtletaDoc, HistoricoPontoDoc } from "@/lib/types";
 
@@ -96,7 +96,7 @@ export function FichaLancamentosTab({ atleta }: { atleta: AtletaDoc }) {
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-text">{l.regraDesc}</p>
               <p className="text-xs text-text-muted">
-                {formatShortDate(l.dataTreino)}
+                {formatDataTreino(l.dataTreino, l.dataAproximada)}
                 {l.kmPercorrido ? ` · ${l.kmPercorrido} km` : ""}
               </p>
             </div>

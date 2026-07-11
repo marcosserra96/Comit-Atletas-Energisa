@@ -15,8 +15,10 @@ import {
   carregarWorkbook,
   listarAbas,
   parsearAba,
+  parsearTreinosExtras,
   type AbaDetectada,
   type ComboPendente,
+  type EntradaExtra,
 } from "@/lib/legado/controleAntigo";
 import { analisarDuplicidade, gravarLancamentos, type LinhaParaGravar } from "@/lib/pontuacaoImportacao";
 import { RevisarImportacaoModal, type LinhaDuplicada, type LinhaImportacao, type ResultadoAnalise } from "./RevisarImportacaoModal";
@@ -41,6 +43,9 @@ export function ImportarControleAntigoModal({ open, onClose }: { open: boolean; 
   const [mapeamento, setMapeamento] = useState<Record<string, string>>({});
   const [regras, setRegras] = useState<RegraPontuacaoDoc[] | null>(null);
   const [analisando, setAnalisando] = useState(false);
+  const [extras, setExtras] = useState<EntradaExtra[]>([]);
+  const [importarExtras, setImportarExtras] = useState(false);
+  const [regraExtra, setRegraExtra] = useState("");
 
   const [resultado, setResultado] = useState<ResultadoAnalise | null>(null);
   const [linhasParaGravar, setLinhasParaGravar] = useState<Map<number, LinhaParaGravar>>(new Map());
@@ -55,6 +60,9 @@ export function ImportarControleAntigoModal({ open, onClose }: { open: boolean; 
     setEntradasCount(0);
     setMapeamento({});
     setRegras(null);
+    setExtras([]);
+    setImportarExtras(false);
+    setRegraExtra("");
   }
 
   function handleClose() {
@@ -98,6 +106,9 @@ export function ImportarControleAntigoModal({ open, onClose }: { open: boolean; 
     setCombos(agruparCombos(entradas));
     setEntradasCount(entradas.length);
     setMapeamento({});
+    setExtras(parsearTreinosExtras(workbook, aba.nome));
+    setImportarExtras(false);
+    setRegraExtra("");
     setPasso("mapeamento");
   }
 
@@ -173,6 +184,36 @@ export function ImportarControleAntigoModal({ open, onClose }: { open: boolean; 
           tipo: regraDoc.tiposLancamento[0] ?? "treino",
           data,
         });
+      }
+
+      if (importarExtras && regraExtra && extras.length > 0) {
+        const regraDocExtra = (regras ?? []).find((r) => r.id === regraExtra);
+        if (regraDocExtra) {
+          const dataAproximada = `${ano}-${abaEscolhida.mesNumero}-01`;
+          for (const extra of extras) {
+            const atletaDoc = atletaPorNome.get(extra.atletaNomeBruto.toLowerCase());
+            if (!atletaDoc) {
+              numeroLinha += 1;
+              erros.push({ numeroLinha, motivo: `atleta "${extra.atletaNomeBruto}" não encontrado (treinos extras)` });
+              continue;
+            }
+            for (let i = 0; i < extra.quantidade; i++) {
+              numeroLinha += 1;
+              candidatas.push({
+                numeroLinha,
+                atletaId: atletaDoc.id,
+                atletaNome: atletaDoc.nome,
+                equipe: atletaDoc.equipe,
+                regraId: regraDocExtra.id,
+                regraDesc: regraDocExtra.descricao,
+                pontos: regraDocExtra.pontos,
+                tipo: regraDocExtra.tiposLancamento[0] ?? "avulso",
+                data: dataAproximada,
+                dataAproximada: true,
+              });
+            }
+          }
+        }
       }
 
       const { validas, duplicadas, paraGravar } = analisarDuplicidade(candidatas, chavesExistentes);
@@ -353,6 +394,38 @@ export function ImportarControleAntigoModal({ open, onClose }: { open: boolean; 
                 title="Nenhuma regra cadastrada"
                 description="Cadastre critérios de pontuação em Configurar Portal → Critérios antes de importar."
               />
+            )}
+
+            {extras.length > 0 && (
+              <div className="flex flex-col gap-2.5 rounded-[var(--radius)] border border-border bg-bg p-3.5">
+                <label className="flex cursor-pointer items-start gap-2.5">
+                  <input
+                    type="checkbox"
+                    checked={importarExtras}
+                    onChange={(e) => setImportarExtras(e.target.checked)}
+                    className="mt-0.5 size-4 shrink-0 rounded border-border accent-primary"
+                  />
+                  <div>
+                    <p className="text-sm font-semibold text-text">
+                      {extras.reduce((s, e) => s + e.quantidade, 0)} treino(s) extra(s) encontrado(s) para{" "}
+                      {extras.length} atleta(s) — sem dia específico dentro do mês
+                    </p>
+                    <p className="text-xs text-text-muted">
+                      Cada um vira um lançamento marcado como aproximado (mês certo, dia 01 por convenção).
+                    </p>
+                  </div>
+                </label>
+                {importarExtras && (
+                  <Select className="w-full" searchable value={regraExtra} onChange={(e) => setRegraExtra(e.target.value)}>
+                    <option value="">Escolha a regra pros treinos extras</option>
+                    {(regras ?? []).map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.descricao} ({r.pontos} pts)
+                      </option>
+                    ))}
+                  </Select>
+                )}
+              </div>
             )}
           </div>
         )}

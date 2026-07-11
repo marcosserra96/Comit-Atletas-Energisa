@@ -70,6 +70,8 @@ export interface HistoricoPontoDoc {
   kmPercorrido?: number;
   tipoLancamento: TipoLancamento;
   dataTreino: string;
+  /** Quando true, dataTreino usa o dia 01 só como convenção — a data real do treino não é conhecida (ex: migração de controle antigo). */
+  dataAproximada?: boolean;
   loteId: string;
   /** Rótulo livre do lote (ex: "Treino de sábado"), preenchido manualmente ou a partir do evento vinculado. */
   descricaoLote?: string;

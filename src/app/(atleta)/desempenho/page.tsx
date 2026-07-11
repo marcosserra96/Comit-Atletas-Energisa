@@ -8,7 +8,7 @@ import { useActiveSession } from "@/lib/session/SessionProvider";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { formatShortDate } from "@/lib/format";
+import { formatDataTreino } from "@/lib/format";
 import type { HistoricoPontoDoc } from "@/lib/types";
 
 const tipoLabel: Record<string, string> = {
@@ -102,7 +102,7 @@ export default function DesempenhoPage() {
                   <td className="px-3 py-3">
                     <Badge tone="neutral">{tipoLabel[l.tipoLancamento]}</Badge>
                   </td>
-                  <td className="px-3 py-3 text-text-light">{formatShortDate(l.dataTreino)}</td>
+                  <td className="px-3 py-3 text-text-light">{formatDataTreino(l.dataTreino, l.dataAproximada)}</td>
                   <td className="px-5 py-3 text-right font-semibold">
                     {l.estornado ? (
                       <span className="text-text-muted line-through">+{l.pontos}</span>

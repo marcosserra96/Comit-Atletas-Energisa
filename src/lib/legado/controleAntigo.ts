@@ -49,6 +49,11 @@ export interface ComboPendente {
   quantidade: number;
 }
 
+export interface EntradaExtra {
+  atletaNomeBruto: string;
+  quantidade: number;
+}
+
 export async function carregarWorkbook(file: File): Promise<ExcelJS.Workbook> {
   const buffer = await file.arrayBuffer();
   const workbook = new ExcelJS.Workbook();
@@ -96,13 +101,18 @@ function extrairDia(valor: ExcelJS.CellValue): { dia: number; sufixo: string } |
   return { dia, sufixo };
 }
 
-/**
- * Extrai as marcações de presença/pontos de uma aba no formato grade semanal
- * (uma linha por atleta, pares de colunas [dia-do-mês, "PTN"] por dia da semana).
- */
-export function parsearAba(workbook: ExcelJS.Workbook, nomeAba: string): EntradaBruta[] {
+interface CabecalhoGrade {
+  sheet: ExcelJS.Worksheet;
+  linhaCabecalho: number;
+  headerRow: ExcelJS.Row;
+  diaSemanaRow: ExcelJS.Row;
+  colNome: number;
+}
+
+/** Localiza a linha de cabeçalho (com rótulos "PTN") e a coluna do nome do atleta numa aba. */
+function localizarCabecalho(workbook: ExcelJS.Workbook, nomeAba: string): CabecalhoGrade | null {
   const sheet = workbook.getWorksheet(nomeAba);
-  if (!sheet) return [];
+  if (!sheet) return null;
 
   // A linha com os rótulos "PTN" varia um pouco de aba pra aba — procura a primeira
   // linha nas primeiras 10 que tenha ao menos uma célula "PTN".
@@ -117,10 +127,32 @@ export function parsearAba(workbook: ExcelJS.Workbook, nomeAba: string): Entrada
     }
     if (linhaCabecalho > 0) break;
   }
-  if (linhaCabecalho < 0) return [];
+  if (linhaCabecalho < 0) return null;
 
   const headerRow = sheet.getRow(linhaCabecalho);
-  const diaSemanaRow = sheet.getRow(linhaCabecalho - 1);
+
+  // Nome do atleta fica sempre na mesma coluna do cabeçalho ("Atletas Energisa - ...").
+  let colNome = 4;
+  for (let c = 1; c <= sheet.columnCount; c++) {
+    const v = textoDeCelula(headerRow.getCell(c).value);
+    if (v.toLowerCase().startsWith("atletas energisa")) {
+      colNome = c;
+      break;
+    }
+  }
+
+  return { sheet, linhaCabecalho, headerRow, diaSemanaRow: sheet.getRow(linhaCabecalho - 1), colNome };
+}
+
+/**
+ * Extrai as marcações de presença/pontos de uma aba no formato grade semanal
+ * (uma linha por atleta, pares de colunas [dia-do-mês, "PTN"] por dia da semana).
+ */
+export function parsearAba(workbook: ExcelJS.Workbook, nomeAba: string): EntradaBruta[] {
+  const cab = localizarCabecalho(workbook, nomeAba);
+  if (!cab) return [];
+  const { sheet, linhaCabecalho, headerRow, diaSemanaRow, colNome } = cab;
+
   const paresDia: { colDia: number; colPtn: number; dia: number; diaSemana: string }[] = [];
   for (let c = 1; c <= sheet.columnCount; c++) {
     if (textoDeCelula(headerRow.getCell(c).value).trim() !== "PTN") continue;
@@ -135,16 +167,6 @@ export function parsearAba(workbook: ExcelJS.Workbook, nomeAba: string): Entrada
     paresDia.push({ colDia, colPtn: c, dia: extraido.dia, diaSemana });
   }
   if (paresDia.length === 0) return [];
-
-  // Nome do atleta fica sempre na mesma coluna do cabeçalho ("Atletas Energisa - ...").
-  let colNome = 4;
-  for (let c = 1; c <= sheet.columnCount; c++) {
-    const v = textoDeCelula(headerRow.getCell(c).value);
-    if (v.toLowerCase().startsWith("atletas energisa")) {
-      colNome = c;
-      break;
-    }
-  }
 
   const entradas: EntradaBruta[] = [];
   for (let r = linhaCabecalho + 1; r <= sheet.rowCount; r++) {
@@ -173,6 +195,43 @@ export function parsearAba(workbook: ExcelJS.Workbook, nomeAba: string): Entrada
     }
   }
   return entradas;
+}
+
+/**
+ * Extrai a coluna "Treinos Extras" (uma por bloco de semana, sem dia específico
+ * associado) e soma por atleta o total do mês inteiro.
+ */
+export function parsearTreinosExtras(workbook: ExcelJS.Workbook, nomeAba: string): EntradaExtra[] {
+  const cab = localizarCabecalho(workbook, nomeAba);
+  if (!cab) return [];
+  const { sheet, linhaCabecalho, headerRow, colNome } = cab;
+
+  const colunasExtras: number[] = [];
+  for (let c = 1; c <= sheet.columnCount; c++) {
+    if (textoDeCelula(headerRow.getCell(c).value).trim().toLowerCase() === "treinos extras") {
+      colunasExtras.push(c);
+    }
+  }
+  if (colunasExtras.length === 0) return [];
+
+  const totalPorAtleta = new Map<string, number>();
+  for (let r = linhaCabecalho + 1; r <= sheet.rowCount; r++) {
+    const row = sheet.getRow(r);
+    let nome = textoDeCelula(row.getCell(colNome).value).trim();
+    if (nome.toLowerCase() === "justificativas") break;
+    if (!nome) continue;
+    nome = nome.replace(/\s*\([^)]*\)\s*/g, "").trim();
+    if (!nome) continue;
+
+    for (const c of colunasExtras) {
+      const valor = row.getCell(c).value;
+      if (typeof valor === "number" && valor > 0) {
+        totalPorAtleta.set(nome, (totalPorAtleta.get(nome) ?? 0) + valor);
+      }
+    }
+  }
+
+  return [...totalPorAtleta.entries()].map(([atletaNomeBruto, quantidade]) => ({ atletaNomeBruto, quantidade }));
 }
 
 /** Agrupa as entradas por (dia da semana + pontos), pra montar a tela de vínculo com regras. */

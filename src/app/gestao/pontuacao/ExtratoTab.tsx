@@ -24,7 +24,7 @@ import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmarPerigoModal } from "@/components/ui/ConfirmarPerigoModal";
 import { logAudit } from "@/lib/audit";
-import { formatShortDate, formatDateTime } from "@/lib/format";
+import { formatDataTreino, formatDateTime } from "@/lib/format";
 import { EstornarModal } from "./EstornarModal";
 import type { AtletaDoc, HistoricoPontoDoc } from "@/lib/types";
 
@@ -286,7 +286,7 @@ export function ExtratoTab() {
                     )}
                     <td className="px-4 py-3 font-medium text-text">{l.atletaNome}</td>
                     <td className="px-3 py-3 text-text-light">{l.regraDesc}</td>
-                    <td className="px-3 py-3 text-text-light">{formatShortDate(l.dataTreino)}</td>
+                    <td className="px-3 py-3 text-text-light">{formatDataTreino(l.dataTreino, l.dataAproximada)}</td>
                     <td className="px-3 py-3 text-right font-semibold text-text">
                       {l.estornado ? (
                         <span className="text-text-muted line-through">+{l.pontos}</span>

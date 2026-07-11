@@ -16,6 +16,15 @@ export function formatShortDate(value: string | Date) {
   return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(date);
 }
 
+/** Mostra a data normal, ou "mês/ano (aproximado)" quando o dia exato não é conhecido (ex: migração de dados antigos). */
+export function formatDataTreino(dataTreino: string, dataAproximada?: boolean) {
+  if (!dataAproximada) return formatShortDate(dataTreino);
+  const date = new Date(`${dataTreino}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return "—";
+  const mesAno = new Intl.DateTimeFormat("pt-BR", { month: "short", year: "numeric" }).format(date);
+  return `${mesAno} (aproximado)`;
+}
+
 function toDate(value: unknown): Date | null {
   if (!value) return null;
   if (value instanceof Date) return value;

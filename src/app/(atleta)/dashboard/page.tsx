@@ -35,7 +35,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { isWaitlisted, modalidadeFromEquipe } from "@/lib/labels";
-import { formatLongDate, formatShortDate } from "@/lib/format";
+import { formatDataTreino, formatLongDate, formatShortDate } from "@/lib/format";
 import { calcularInsightsAtleta } from "@/lib/athleteStats";
 import type { AtletaDoc, EventoDoc, HistoricoPontoDoc, NoticiaDoc } from "@/lib/types";
 
@@ -285,7 +285,7 @@ export default function DashboardPage() {
               <li key={item.id} className="flex items-center justify-between py-3 text-sm">
                 <div>
                   <span className="text-text">{item.regraDesc}</span>
-                  <span className="ml-2 text-xs text-text-light">{formatShortDate(item.dataTreino)}</span>
+                  <span className="ml-2 text-xs text-text-light">{formatDataTreino(item.dataTreino, item.dataAproximada)}</span>
                 </div>
                 <span className={item.estornado ? "text-text-muted line-through" : "font-bold text-success"}>
                   +{item.pontos} pts
