@@ -42,6 +42,7 @@ export function ExtratoTab() {
   const [alvo, setAlvo] = useState<HistoricoPontoDoc | null>(null);
   const [alvoExclusao, setAlvoExclusao] = useState<HistoricoPontoDoc[] | null>(null);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [ultimoIndice, setUltimoIndice] = useState<number | null>(null);
 
   useEffect(() => {
     getDocs(collection(db, "atletas")).then((snap) => {
@@ -71,19 +72,32 @@ export function ExtratoTab() {
     return unsubscribe;
   }, [atletaFiltro]);
 
-  function toggleSelecionado(id: string) {
+  function toggleSelecionado(id: string, indice: number, shiftKey: boolean) {
     setSelecionados((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (shiftKey && ultimoIndice !== null && lancamentos) {
+        const inicio = Math.min(ultimoIndice, indice);
+        const fim = Math.max(ultimoIndice, indice);
+        const marcar = !prev.has(id);
+        for (let i = inicio; i <= fim; i++) {
+          if (marcar) next.add(lancamentos[i].id);
+          else next.delete(lancamentos[i].id);
+        }
+      } else if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
+    setUltimoIndice(indice);
   }
 
   function toggleSelecionarTodos() {
     if (!lancamentos) return;
     const todosMarcados = lancamentos.every((l) => selecionados.has(l.id));
     setSelecionados(todosMarcados ? new Set() : new Set(lancamentos.map((l) => l.id)));
+    setUltimoIndice(null);
   }
 
   async function handleEstornar(motivo: string) {
@@ -272,14 +286,15 @@ export function ExtratoTab() {
                 </tr>
               </thead>
               <tbody>
-                {lancamentos.map((l) => (
+                {lancamentos.map((l, indice) => (
                   <tr key={l.id} className="border-b border-border last:border-0">
                     {isAdmin && (
                       <td className="px-4 py-3">
                         <input
                           type="checkbox"
                           checked={selecionados.has(l.id)}
-                          onChange={() => toggleSelecionado(l.id)}
+                          onChange={(e) => toggleSelecionado(l.id, indice, (e.nativeEvent as MouseEvent).shiftKey)}
+                          title="Dica: segure Shift e clique pra selecionar um intervalo"
                           className="size-4 rounded border-border accent-danger"
                         />
                       </td>
