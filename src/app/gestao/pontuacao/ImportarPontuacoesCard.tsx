@@ -1,14 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import {
-  collection,
-  doc,
-  getDocs,
-  increment,
-  serverTimestamp,
-  writeBatch,
-} from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import { FileSpreadsheet, Upload } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useActiveSession } from "@/lib/session/SessionProvider";
@@ -18,32 +11,26 @@ import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { baixarModeloImportacao, readExcelFile } from "@/lib/excel";
 import { modalidadeFromEquipe } from "@/lib/labels";
-import { logAudit } from "@/lib/audit";
+import {
+  analisarDuplicidade,
+  chaveDuplicidade,
+  gravarLancamentos,
+  type LinhaParaGravar,
+} from "@/lib/pontuacaoImportacao";
 import {
   RevisarImportacaoModal,
   type LinhaDuplicada,
   type LinhaImportacao,
   type ResultadoAnalise,
 } from "./RevisarImportacaoModal";
+import { BotaoImportarControleAntigo } from "./ImportarControleAntigoModal";
 import type { AtletaDoc, HistoricoPontoDoc, Modalidade, RegraPontuacaoDoc, TipoLancamento } from "@/lib/types";
 
 const TIPOS_VALIDOS: TipoLancamento[] = ["treino", "evento", "avulso"];
 const DATA_ISO_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const DATA_BR_REGEX = /^(\d{2})\/(\d{2})\/(\d{4})$/;
-const TAMANHO_LOTE = 400;
 
 type EquipeModelo = "" | Modalidade;
-
-interface LinhaParaGravar extends LinhaImportacao {
-  equipe: AtletaDoc["equipe"];
-  regraId: string;
-  tipo: TipoLancamento;
-  km?: number;
-}
-
-function chaveDuplicidade(atletaId: string, data: string, regraId: string) {
-  return `${atletaId}|${data}|${regraId}`;
-}
 
 /** Aceita célula já lida como data (AAAA-MM-DD) ou digitada como texto no formato brasileiro (DD/MM/AAAA). */
 function normalizarData(valor: string): string | null {
@@ -159,11 +146,8 @@ export function ImportarPontuacoesCard() {
           .map((h) => chaveDuplicidade(h.atletaId, h.dataTreino, h.regraId)),
       );
 
-      const validas: LinhaImportacao[] = [];
-      const duplicadas: LinhaDuplicada[] = [];
+      const candidatas: LinhaParaGravar[] = [];
       const erros: { numeroLinha: number; motivo: string }[] = [];
-      const paraGravar = new Map<number, LinhaParaGravar>();
-      const chavesVistasNaPlanilha = new Map<string, number>();
 
       linhas.forEach((linha, i) => {
         const numeroLinha = i + 2;
@@ -204,7 +188,7 @@ export function ImportarPontuacoesCard() {
         }
         const km = Number(linha["km"]);
 
-        const item: LinhaParaGravar = {
+        candidatas.push({
           numeroLinha,
           atletaId: atletaDoc.id,
           atletaNome: atletaDoc.nome,
@@ -215,21 +199,10 @@ export function ImportarPontuacoesCard() {
           tipo,
           data,
           ...(Number.isFinite(km) && km > 0 ? { km } : {}),
-        };
-        paraGravar.set(numeroLinha, item);
-
-        const chave = chaveDuplicidade(atletaDoc.id, data, regraDoc.id);
-        const linhaAnterior = chavesVistasNaPlanilha.get(chave);
-        if (chavesExistentes.has(chave)) {
-          duplicadas.push({ ...item, motivo: `Já existe um lançamento igual em ${data.split("-").reverse().join("/")}` });
-        } else if (linhaAnterior) {
-          duplicadas.push({ ...item, motivo: `Repetida na própria planilha (linha ${linhaAnterior})` });
-        } else {
-          validas.push(item);
-        }
-        chavesVistasNaPlanilha.set(chave, numeroLinha);
+        });
       });
 
+      const { validas, duplicadas, paraGravar } = analisarDuplicidade(candidatas, chavesExistentes);
       setLinhasParaGravar(paraGravar);
 
       if (validas.length === 0 && duplicadas.length === 0) {
@@ -264,59 +237,13 @@ export function ImportarPontuacoesCard() {
         .map((v) => mapaGravar.get(v.numeroLinha))
         .filter((v): v is LinhaParaGravar => !!v);
 
-      const loteId = doc(collection(db, "historico_pontos")).id;
-      const incrementoPorAtleta = new Map<string, number>();
-
-      for (let i = 0; i < linhas.length; i += TAMANHO_LOTE) {
-        const grupo = linhas.slice(i, i + TAMANHO_LOTE);
-        const batch = writeBatch(db);
-        grupo.forEach((linha) => {
-          const ref = doc(collection(db, "historico_pontos"));
-          batch.set(ref, {
-            id: ref.id,
-            atletaId: linha.atletaId,
-            atletaNome: linha.atletaNome,
-            equipe: linha.equipe,
-            regraId: linha.regraId,
-            regraDesc: linha.regraDesc,
-            pontos: linha.pontos,
-            ...(linha.km ? { kmPercorrido: linha.km } : {}),
-            tipoLancamento: linha.tipo,
-            dataTreino: linha.data,
-            loteId,
-            criadoPor: uid,
-            criadoPorNome: autor.nome,
-            criadoEm: serverTimestamp(),
-            estornado: false,
-          });
-          incrementoPorAtleta.set(linha.atletaId, (incrementoPorAtleta.get(linha.atletaId) ?? 0) + linha.pontos);
-        });
-        await batch.commit();
-      }
-
-      const atletaIds = [...incrementoPorAtleta.entries()];
-      for (let i = 0; i < atletaIds.length; i += TAMANHO_LOTE) {
-        const grupo = atletaIds.slice(i, i + TAMANHO_LOTE);
-        const batch = writeBatch(db);
-        grupo.forEach(([atletaId, pontos]) => {
-          batch.update(doc(db, "atletas", atletaId), {
-            pontuacaoTotal: increment(pontos),
-            atualizadoEm: serverTimestamp(),
-          });
-        });
-        await batch.commit();
-      }
-
-      if (linhas.length > 0) {
-        await logAudit({
-          acao: "importar_pontuacoes",
-          entidade: "historico_pontos",
-          entidadeId: loteId,
-          dados: { criados: linhas.length, duplicadasIncluidas: duplicadasSelecionadas.length },
-          criadoPor: uid,
-          criadoPorNome: autor.nome,
-        });
-      }
+      await gravarLancamentos({
+        linhas,
+        uid,
+        autorNome: autor.nome,
+        acaoAudit: "importar_pontuacoes",
+        dadosAudit: { duplicadasIncluidas: duplicadasSelecionadas.length },
+      });
 
       show("success", `${linhas.length} lançamento(s) importado(s) com sucesso.`);
       setResultado(null);
@@ -366,6 +293,7 @@ export function ImportarPontuacoesCard() {
           className="hidden"
           onChange={handleImportar}
         />
+        <BotaoImportarControleAntigo />
       </div>
 
       <RevisarImportacaoModal
