@@ -237,10 +237,11 @@ export function VisaoEstrategica() {
                 <p className="mt-0.5 text-[.8rem] text-text-light">Participações registradas por mês</p>
               </div>
             </div>
-            <div className="mt-3.5 flex h-[180px] items-end gap-3 sm:gap-5">
+            <div className="mt-3.5 flex items-end gap-3 sm:gap-5">
               {stats.seriesMensal.map((s) => (
-                <div key={s.label} className="flex flex-1 flex-col items-center gap-2">
-                  <div className="flex h-full w-full items-end">
+                <div key={s.label} className="flex flex-1 flex-col items-center gap-1.5">
+                  <span className="text-[.7rem] font-bold text-text-light">{s.count}</span>
+                  <div className="flex h-[180px] w-full items-end">
                     <div
                       className="w-full rounded-t-[var(--radius-sm)] bg-primary/15 transition-all"
                       style={{
