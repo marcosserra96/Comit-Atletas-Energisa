@@ -36,6 +36,20 @@ import type {
   SolicitacaoAcessoDoc,
 } from "@/lib/types";
 
+/** Arredonda o teto do eixo Y pra um número "redondo" (1/2/5 × potência de 10) e devolve os ticks de 0 até ele. */
+function calcularTicksGrafico(valorMaximo: number, alvoTicks = 4): number[] {
+  const maximo = Math.max(1, valorMaximo);
+  const bruto = maximo / Math.max(1, alvoTicks - 1);
+  // Contagens são sempre inteiras — nunca vale a pena um passo menor que 1.
+  const potencia = Math.max(1, Math.pow(10, Math.floor(Math.log10(bruto))));
+  const fracao = bruto / potencia;
+  const passo = (fracao < 1.5 ? 1 : fracao < 3 ? 2 : fracao < 7 ? 5 : 10) * potencia;
+  const teto = Math.ceil(maximo / passo) * passo;
+  const ticks: number[] = [];
+  for (let v = 0; v <= teto + passo * 0.001; v += passo) ticks.push(Math.round(v));
+  return ticks;
+}
+
 export function VisaoEstrategica() {
   const { usuario } = useActiveSession();
   const isAdmin = usuario.role === "administrador";
@@ -46,6 +60,7 @@ export function VisaoEstrategica() {
   const [eventos, setEventos] = useState<EventoDoc[] | null>(null);
   const [regras, setRegras] = useState<RegraPontuacaoDoc[] | null>(null);
   const [pendentes, setPendentes] = useState<SolicitacaoAcessoDoc[] | null>(null);
+  const [mesHover, setMesHover] = useState<number | null>(null);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -118,7 +133,9 @@ export function VisaoEstrategica() {
   const carregando = atletas === null || lancamentos === null || despesas === null;
   const ringCircumference = 2 * Math.PI * 40;
   const ringOffset = ringCircumference - (stats.engajamento30d / 100) * ringCircumference;
-  const maxSerie = Math.max(1, ...stats.seriesMensal.map((s) => s.count));
+  const ticksGrafico = calcularTicksGrafico(Math.max(...stats.seriesMensal.map((s) => s.count)));
+  const tetoGrafico = ticksGrafico[ticksGrafico.length - 1];
+  const mesAtualIdx = stats.seriesMensal.length - 1;
 
   return (
     <div className="flex flex-col gap-5">
@@ -234,26 +251,89 @@ export function VisaoEstrategica() {
                   <Activity className="size-[15px] text-primary" />
                   Evolução mensal
                 </h3>
-                <p className="mt-0.5 text-[.8rem] text-text-light">Participações registradas por mês</p>
+                <p className="mt-0.5 text-[.8rem] text-text-light">
+                  Participações registradas por mês · passe o mouse numa barra
+                </p>
               </div>
             </div>
-            <div className="mt-3.5 flex items-end gap-3 sm:gap-5">
-              {stats.seriesMensal.map((s) => (
-                <div key={s.label} className="flex flex-1 flex-col items-center gap-1.5">
-                  <span className="text-[.7rem] font-bold text-text-light">{s.count}</span>
-                  <div className="flex h-[180px] w-full items-end">
-                    <div
-                      className="w-full rounded-t-[var(--radius-sm)] bg-primary/15 transition-all"
-                      style={{
-                        height: `${Math.max(4, (s.count / maxSerie) * 100)}%`,
-                        backgroundColor: s.count > 0 ? "var(--color-primary)" : "var(--color-border)",
-                      }}
-                      title={`${s.count} participações`}
-                    />
-                  </div>
-                  <span className="text-[.7rem] font-semibold uppercase text-text-light">{s.label}</span>
+
+            <div className="mt-4 flex gap-2">
+              <div className="relative h-[176px] w-6 shrink-0">
+                {ticksGrafico.map((t) => (
+                  <span
+                    key={t}
+                    className="absolute right-1.5 -translate-y-1/2 text-[10px] tabular-nums text-text-muted"
+                    style={{ bottom: `${(t / tetoGrafico) * 100}%` }}
+                  >
+                    {t}
+                  </span>
+                ))}
+              </div>
+              <div className="relative h-[176px] flex-1">
+                {ticksGrafico.map((t) => (
+                  <div
+                    key={t}
+                    className="pointer-events-none absolute inset-x-0 border-t border-border"
+                    style={{ bottom: `${(t / tetoGrafico) * 100}%` }}
+                  />
+                ))}
+                <div className="relative flex h-full items-end gap-3 sm:gap-5">
+                  {stats.seriesMensal.map((s, i) => {
+                    const isAtual = i === mesAtualIdx;
+                    const pct = s.count === 0 ? 3 : Math.max(6, (s.count / tetoGrafico) * 100);
+                    return (
+                      <div
+                        key={s.label}
+                        className="group relative flex h-full flex-1 flex-col items-center justify-end"
+                        onMouseEnter={() => setMesHover(i)}
+                        onMouseLeave={() => setMesHover((atual) => (atual === i ? null : atual))}
+                      >
+                        {isAtual && (
+                          <span className="absolute -top-5 whitespace-nowrap text-xs font-extrabold tabular-nums text-text">
+                            {s.count} {s.count === 1 ? "participação" : "participações"}
+                          </span>
+                        )}
+                        {!isAtual && mesHover === i && (
+                          <div
+                            className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-text px-2.5 py-1.5 text-[11.5px] font-semibold text-bg-card shadow-lg"
+                            style={{ bottom: `calc(${pct}% + 10px)` }}
+                          >
+                            {s.label.toUpperCase()} · <span className="tabular-nums">{s.count}</span>{" "}
+                            {s.count === 1 ? "participação" : "participações"}
+                            <span className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-text" />
+                          </div>
+                        )}
+                        <div
+                          className="w-full max-w-6 rounded-t-[var(--radius-sm)] transition-[filter] duration-150 group-hover:brightness-110"
+                          style={{
+                            height: `${pct}%`,
+                            backgroundColor:
+                              s.count > 0
+                                ? "var(--color-primary)"
+                                : "color-mix(in srgb, var(--color-primary) 22%, var(--color-bg-card))",
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
+              </div>
+            </div>
+
+            <div className="mt-2 flex gap-2">
+              <div className="w-6 shrink-0" />
+              <div className="flex flex-1 gap-3 sm:gap-5">
+                {stats.seriesMensal.map((s, i) => (
+                  <span
+                    key={s.label}
+                    className={`flex-1 text-center text-[.7rem] font-semibold uppercase ${
+                      i === mesAtualIdx ? "text-primary" : "text-text-light"
+                    }`}
+                  >
+                    {s.label}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
 
