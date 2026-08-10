@@ -1,281 +1,330 @@
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
-import type { AlertaCriterio, BrandingDoc, Modalidade } from "@/lib/types";
-import { atletaEstaEmAlerta, type ResumoAtletaMensal } from "@/lib/rankingMensal";
+import type { Modalidade } from "@/lib/types";
+import type { ResumoAtletaMensal } from "@/lib/rankingMensal";
+import type { CampoId, CampoLayout } from "@/lib/informativoLayout";
 
-const NAVY = "#07192d";
-const BORDER = "#e2e8f0";
-const TEXT = "#1a202c";
-const TEXT_LIGHT = "#64748b";
-const TEXT_MUTED = "#94a3b8";
-const BG = "#f8fafc";
-const GREEN = "#00b37e";
-const ORANGE = "#f37021";
-
-const ALERTA_LABEL: Record<AlertaCriterio, (valor: number) => string> = {
-  sem_treino_mes: () => "sem treino no mês",
-  sem_treino_30d: (v) => `sem treino há mais de ${v} dias`,
-  ate_x_treinos: (v) => `até ${v} treino(s) no mês`,
-  ate_x_pontos: (v) => `até ${v} ponto(s) no mês`,
-};
-
-const styles = StyleSheet.create({
-  page: {
-    paddingTop: 36,
-    paddingBottom: 44,
-    paddingHorizontal: 36,
-    fontSize: 9,
-    fontFamily: "Helvetica",
-    color: TEXT,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 14,
-    paddingBottom: 10,
-    borderBottomWidth: 2,
-    borderBottomColor: NAVY,
-  },
-  headerLogo: { width: 84, height: 28, objectFit: "contain" },
-  headerTitleBlock: { flex: 1, marginLeft: 14 },
-  headerTitle: { fontSize: 15, fontFamily: "Helvetica-Bold", color: NAVY },
-  headerSub: { fontSize: 8.5, color: TEXT_LIGHT, marginTop: 2 },
-  footer: {
-    position: "absolute",
-    bottom: 22,
-    left: 36,
-    right: 36,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    fontSize: 7,
-    color: TEXT_MUTED,
-    paddingTop: 6,
-    borderTopWidth: 1,
-    borderTopColor: BORDER,
-  },
-  legendRow: { flexDirection: "row", gap: 14, marginBottom: 14 },
-  legendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
-  legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendText: { fontSize: 7.5, color: TEXT_LIGHT },
-  kpiRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
-  kpiCard: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: BORDER,
-    borderRadius: 4,
-    padding: 8,
-    backgroundColor: BG,
-  },
-  kpiLabel: { fontSize: 6.5, fontFamily: "Helvetica-Bold", color: TEXT_LIGHT, textTransform: "uppercase" },
-  kpiValue: { fontSize: 13, fontFamily: "Helvetica-Bold", color: TEXT, marginTop: 3 },
-  sectionTitle: {
-    fontSize: 11,
-    fontFamily: "Helvetica-Bold",
-    color: NAVY,
-    marginBottom: 8,
-  },
-});
-
-function PageHeader({ modalidadeLabel, mesLabel, diasUteis, logo }: {
-  modalidadeLabel: string;
-  mesLabel: string;
-  diasUteis: number;
-  logo?: string;
-}) {
-  return (
-    <View style={styles.header} fixed>
-      {logo ? (
-        // eslint-disable-next-line jsx-a11y/alt-text -- Image aqui é do @react-pdf/renderer, não um <img> HTML.
-        <Image src={logo} style={styles.headerLogo} />
-      ) : (
-        <Text style={{ fontSize: 12, fontFamily: "Helvetica-Bold", color: NAVY }}>Atletas Energisa</Text>
-      )}
-      <View style={styles.headerTitleBlock}>
-        <Text style={styles.headerTitle}>Ranking de Pontos do Time de Atletas Energisa</Text>
-        <Text style={styles.headerSub}>
-          {modalidadeLabel} · {mesLabel} · {diasUteis} dias úteis
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-function PageFooter({ dataHoje }: { dataHoje: string }) {
-  return (
-    <View style={styles.footer} fixed>
-      <Text>Informativo gerado pelo Portal Atletas Energisa</Text>
-      <Text>{dataHoje}</Text>
-    </View>
-  );
-}
-
-function Legenda({ corPrimaria }: { corPrimaria: string }) {
-  return (
-    <View style={styles.legendRow}>
-      <View style={styles.legendItem}>
-        <View style={[styles.legendDot, { backgroundColor: GREEN }]} />
-        <Text style={styles.legendText}>Top 3 do ranking</Text>
-      </View>
-      <View style={styles.legendItem}>
-        <View style={[styles.legendDot, { backgroundColor: ORANGE }]} />
-        <Text style={styles.legendText}>Atletas em alerta</Text>
-      </View>
-      <View style={styles.legendItem}>
-        <View style={[styles.legendDot, { backgroundColor: corPrimaria }]} />
-        <Text style={styles.legendText}>Demais atletas</Text>
-      </View>
-    </View>
-  );
-}
-
-function KpiCard({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.kpiCard}>
-      <Text style={styles.kpiLabel}>{label}</Text>
-      <Text style={styles.kpiValue}>{value}</Text>
-    </View>
-  );
-}
+const PAGE_W = 1672;
+const PAGE_H = 941;
+const BG = "#010a17";
+const WHITE = "#ffffff";
+const GOLD = "#eab308";
+const SILVER = "#c4ccd6";
+const BRONZE = "#f37021";
 
 function formatarNumero(valor: number, casas = 0) {
   return valor.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas });
 }
 
-function TabelaRanking({
-  titulo,
-  lista,
-  opcoes,
+function abs(top: number, left: number, width: number, extra: object = {}) {
+  return { position: "absolute" as const, top, left, width, ...extra };
+}
+
+/** Centraliza o texto verticalmente num ponto Y medido (ex: o centro real de um ícone), via flexbox — não depende de tentar adivinhar métricas de fonte. */
+function centeredAt(centerY: number, left: number, width: number, height = 32, extra: object = {}) {
+  return {
+    position: "absolute" as const,
+    top: centerY - height / 2,
+    left,
+    width,
+    height,
+    justifyContent: "center" as const,
+    ...extra,
+  };
+}
+
+const styles = StyleSheet.create({
+  page: { fontFamily: "Helvetica" },
+  bg: { position: "absolute", top: 0, left: 0, width: PAGE_W, height: PAGE_H },
+});
+
+// ---------- Pódio ----------
+
+interface PodiumSlot {
+  colX: number;
+  colW: number;
+  nomeTop: number;
+  nomeH: number;
+  campos: [CampoId, CampoId, CampoId]; // pts, treinos, km
+  cor: string;
+}
+
+// colX/colW/nomeTop/nomeH são estruturais (posição fixa dos cards no fundo); a posição
+// de pontos/treinos/km vem do layout configurável (ver src/lib/informativoLayout.ts).
+const PODIUM: Record<1 | 2 | 3, PodiumSlot> = {
+  2: { colX: 18, colW: 172, nomeTop: 392, nomeH: 42, campos: ["podio2Pts", "podio2Treinos", "podio2Km"], cor: SILVER },
+  1: { colX: 202, colW: 178, nomeTop: 380, nomeH: 40, campos: ["podio1Pts", "podio1Treinos", "podio1Km"], cor: GOLD },
+  3: { colX: 395, colW: 170, nomeTop: 410, nomeH: 42, campos: ["podio3Pts", "podio3Treinos", "podio3Km"], cor: BRONZE },
+};
+
+function PodiumSlotView({
+  posicao,
+  atleta,
+  layout,
 }: {
-  titulo: string;
-  lista: ResumoAtletaMensal[];
-  opcoes: { limite: number; mostrarTop3: boolean; mostrarAlertas: boolean; mostrarDemais: boolean; alertaCriterio: AlertaCriterio; alertaValor: number };
+  posicao: 1 | 2 | 3;
+  atleta: ResumoAtletaMensal | undefined;
+  layout: Record<CampoId, CampoLayout>;
 }) {
-  const filtrada = lista
-    .filter((a, idx) => {
-      const ehTop3 = idx < 3;
-      const ehAlerta = atletaEstaEmAlerta(a, opcoes.alertaCriterio, opcoes.alertaValor);
-      if (ehTop3) return opcoes.mostrarTop3;
-      if (ehAlerta) return opcoes.mostrarAlertas;
-      return opcoes.mostrarDemais;
-    })
-    .slice(0, opcoes.limite);
-
-  const colunas = [
-    { chave: "pos", label: "#", largura: 0.4, alinhar: "center" as const },
-    { chave: "nome", label: titulo, largura: 2.6 },
-    { chave: "pontos", label: "Pontos", largura: 0.8, alinhar: "right" as const },
-    { chave: "treinos", label: "Treinos", largura: 0.8, alinhar: "right" as const },
-    { chave: "km", label: "KM", largura: 0.8, alinhar: "right" as const },
-  ];
-
+  const slot = PODIUM[posicao];
+  if (!atleta) {
+    // cobre a coluna inteira (card + base) com a cor de fundo, já que não há atleta pra essa posição.
+    return <View style={abs(200, slot.colX - 4, slot.colW + 8, { height: 470, backgroundColor: BG })} />;
+  }
+  const dividerY = slot.nomeTop + slot.nomeH;
+  const dividerW = 56;
+  const [ptsCampo, treinosCampo, kmCampo] = slot.campos;
+  const ptsL = layout[ptsCampo];
+  const treinosL = layout[treinosCampo];
+  const kmL = layout[kmCampo];
   return (
-    <View style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 4, overflow: "hidden", marginBottom: 14 }}>
-      <View style={{ flexDirection: "row", backgroundColor: NAVY }}>
-        {colunas.map((c) => (
-          <Text
-            key={c.chave}
-            style={{
-              flex: c.largura,
-              fontSize: 7,
-              fontFamily: "Helvetica-Bold",
-              color: "#fff",
-              textTransform: "uppercase",
-              padding: 6,
-              textAlign: c.alinhar ?? "left",
-            }}
-          >
-            {c.label}
-          </Text>
-        ))}
+    <>
+      <Text
+        style={abs(slot.nomeTop, slot.colX, slot.colW, {
+          height: slot.nomeH,
+          fontSize: 12.5,
+          fontFamily: "Helvetica-Bold",
+          color: WHITE,
+          textAlign: "center",
+        })}
+      >
+        {atleta.nome}
+      </Text>
+      <View
+        style={abs(dividerY, slot.colX + (slot.colW - dividerW) / 2, dividerW, {
+          height: 1.6,
+          backgroundColor: slot.cor,
+        })}
+      />
+      <View style={centeredAt(ptsL.y, ptsL.x, 90)}>
+        <Text style={{ fontSize: ptsL.fontSize, fontFamily: "Helvetica-Bold", color: WHITE }}>
+          {formatarNumero(atleta.pontosMes)} pts
+        </Text>
       </View>
-      {filtrada.length === 0 && (
-        <View style={{ padding: 16 }}>
-          <Text style={{ fontSize: 8.5, color: TEXT_LIGHT, textAlign: "center" }}>
-            Nenhum atleta encontrado para os filtros escolhidos.
-          </Text>
-        </View>
-      )}
-      {filtrada.map((a) => {
-        const posicaoReal = lista.findIndex((item) => item.id === a.id) + 1;
-        const emAlerta = atletaEstaEmAlerta(a, opcoes.alertaCriterio, opcoes.alertaValor);
-        const cor = posicaoReal <= 3 ? GREEN : emAlerta ? ORANGE : undefined;
+      <View style={centeredAt(treinosL.y, treinosL.x, 90)}>
+        <Text style={{ fontSize: treinosL.fontSize, fontFamily: "Helvetica-Bold", color: WHITE }}>
+          {formatarNumero(atleta.treinosMes)} treinos
+        </Text>
+      </View>
+      <View style={centeredAt(kmL.y, kmL.x, 90)}>
+        <Text style={{ fontSize: kmL.fontSize, fontFamily: "Helvetica-Bold", color: WHITE }}>
+          {formatarNumero(atleta.kmMes, 2)} km
+        </Text>
+      </View>
+    </>
+  );
+}
+
+// ---------- Ranking geral (duas colunas) ----------
+
+const RANKING_ROW1_Y = 251;
+const RANKING_ROW_H = 23.15;
+const RANKING_ROWS_POR_COLUNA = 19;
+
+interface RankingColSpec {
+  posX: number;
+  nomeX: number;
+  nomeW: number;
+  pontosX: number;
+  treinosX: number;
+  kmX: number;
+  colX: number;
+  colW: number;
+}
+
+const RANKING_COLS: [RankingColSpec, RankingColSpec] = [
+  { colX: 578, colW: 497, posX: 578, nomeX: 672, nomeW: 188, pontosX: 862, treinosX: 927, kmX: 1006 },
+  { colX: 1097, colW: 563, posX: 1097, nomeX: 1198, nomeW: 190, pontosX: 1390, treinosX: 1455, kmX: 1540 },
+];
+
+function RankingColuna({ lista, offset, spec }: { lista: ResumoAtletaMensal[]; offset: number; spec: RankingColSpec }) {
+  return (
+    <>
+      {Array.from({ length: RANKING_ROWS_POR_COLUNA }, (_, i) => {
+        const y = RANKING_ROW1_Y + i * RANKING_ROW_H;
+        const atleta = lista[i];
+        if (!atleta) {
+          return <View key={i} style={abs(y - 2, spec.colX, spec.colW, { height: RANKING_ROW_H, backgroundColor: BG })} />;
+        }
         return (
-          <View
-            key={a.id}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              borderTopWidth: 1,
-              borderTopColor: BORDER,
-              backgroundColor: cor ? `${cor}14` : "#fff",
-              borderLeftWidth: cor ? 2.5 : 0,
-              borderLeftColor: cor,
-            }}
-          >
-            <Text style={{ flex: colunas[0].largura, fontSize: 8.5, padding: 6, textAlign: "center", fontFamily: "Helvetica-Bold" }}>
-              {posicaoReal}
+          <View key={i}>
+            <Text style={abs(y, spec.nomeX, spec.nomeW, { fontSize: 9, fontFamily: "Helvetica-Bold", color: WHITE })}>
+              {atleta.nome}
             </Text>
-            <Text style={{ flex: colunas[1].largura, fontSize: 8.5, padding: 6 }}>{a.nome}</Text>
-            <Text style={{ flex: colunas[2].largura, fontSize: 8.5, padding: 6, textAlign: "right" }}>
-              {formatarNumero(a.pontosMes)}
+            <Text style={abs(y, spec.pontosX, 55, { fontSize: 9, color: WHITE, textAlign: "center" })}>
+              {formatarNumero(atleta.pontosMes)}
             </Text>
-            <Text style={{ flex: colunas[3].largura, fontSize: 8.5, padding: 6, textAlign: "right" }}>
-              {formatarNumero(a.treinosMes)}
+            <Text style={abs(y, spec.treinosX, 65, { fontSize: 9, color: WHITE, textAlign: "center" })}>
+              {formatarNumero(atleta.treinosMes)}
             </Text>
-            <Text style={{ flex: colunas[4].largura, fontSize: 8.5, padding: 6, textAlign: "right" }}>
-              {formatarNumero(a.kmMes, 1)}
+            <Text style={abs(y, spec.kmX, 70, { fontSize: 9, color: WHITE, textAlign: "center" })}>
+              {formatarNumero(atleta.kmMes, 2)}
             </Text>
           </View>
         );
       })}
-    </View>
+      {/* posição "offset+i+1" já vem impressa no fundo — cobre as sobrando quando a lista é menor que 19 */}
+    </>
   );
 }
 
-function ConteudoPagina({
-  titulo,
-  grupos,
-  opcoes,
-  branding,
-}: {
-  titulo: string;
-  grupos: { titulo: string; dados: ResumoAtletaMensal[] }[];
-  opcoes: {
-    limite: number;
-    mostrarKpis: boolean;
-    mostrarLegenda: boolean;
-    mostrarTop3: boolean;
-    mostrarAlertas: boolean;
-    mostrarDemais: boolean;
-    alertaCriterio: AlertaCriterio;
-    alertaValor: number;
-  };
-  branding: BrandingDoc;
-}) {
-  const todos = grupos.flatMap((g) => g.dados);
-  const totalPontos = todos.reduce((s, a) => s + a.pontosMes, 0);
-  const totalKm = todos.reduce((s, a) => s + a.kmMes, 0);
-  const totalTreinos = todos.reduce((s, a) => s + a.treinosMes, 0);
-  const totalAlertas = todos.filter((a) => atletaEstaEmAlerta(a, opcoes.alertaCriterio, opcoes.alertaValor)).length;
+// ---------- Destaques do mês ----------
 
+interface DestaqueSpec {
+  x: number;
+  w: number;
+  tituloY: number;
+  linha1Y: number;
+  linhaGap: number;
+}
+
+const DESTAQUES: [DestaqueSpec, DestaqueSpec, DestaqueSpec] = [
+  { x: 155, w: 350, tituloY: 745, linha1Y: 781, linhaGap: 30 },
+  { x: 682, w: 372, tituloY: 745, linha1Y: 781, linhaGap: 30 },
+  { x: 1207, w: 435, tituloY: 745, linha1Y: 781, linhaGap: 30 },
+];
+
+function DestaqueCard({
+  spec,
+  titulo,
+  lista,
+  formatar,
+}: {
+  spec: DestaqueSpec;
+  titulo: string;
+  lista: ResumoAtletaMensal[];
+  formatar: (a: ResumoAtletaMensal) => string;
+}) {
   return (
     <>
-      {opcoes.mostrarLegenda && <Legenda corPrimaria={branding.primary} />}
-
-      {opcoes.mostrarKpis && (
-        <View style={styles.kpiRow}>
-          <KpiCard label="Pontos totais" value={`${formatarNumero(totalPontos)} pts`} />
-          <KpiCard label="KM acumulados" value={`${formatarNumero(totalKm, 1)} km`} />
-          <KpiCard label="Treinos" value={formatarNumero(totalTreinos)} />
-          <KpiCard label="Atletas no ranking" value={formatarNumero(todos.length)} />
-          <KpiCard label="Em alerta" value={formatarNumero(totalAlertas)} />
+      <Text style={abs(spec.tituloY, spec.x, spec.w, { fontSize: 11.5, fontFamily: "Helvetica-Bold", color: WHITE, textTransform: "uppercase" })}>
+        {titulo}
+      </Text>
+      {lista.map((a, i) => (
+        <View key={a.id} style={abs(spec.linha1Y + i * spec.linhaGap, spec.x, spec.w, { flexDirection: "row", justifyContent: "space-between" })}>
+          <Text style={{ fontSize: 10, color: WHITE, width: spec.w - 90 }}>
+            {i + 1}º {a.nome}
+          </Text>
+          <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: WHITE, width: 80, textAlign: "right" }}>
+            {formatar(a)}
+          </Text>
         </View>
-      )}
-
-      <Text style={styles.sectionTitle}>{titulo}</Text>
-      {grupos.map((g) => (
-        <TabelaRanking key={g.titulo} titulo={g.titulo} lista={g.dados} opcoes={opcoes} />
       ))}
     </>
+  );
+}
+
+// ---------- KPIs ----------
+
+interface KpiSpec {
+  labelX: number;
+  labelW: number;
+  campo: CampoId;
+  valueW: number;
+}
+
+// labelX/labelW são estruturais (posição fixa das caixas no fundo); a posição do valor vem do layout configurável.
+const KPIS: [KpiSpec, KpiSpec, KpiSpec, KpiSpec] = [
+  { labelX: 745, labelW: 210, campo: "kpi1", valueW: 138 },
+  { labelX: 975, labelW: 208, campo: "kpi2", valueW: 138 },
+  { labelX: 1197, labelW: 208, campo: "kpi3", valueW: 138 },
+  { labelX: 1422, labelW: 238, campo: "kpi4", valueW: 158 },
+];
+
+function KpiOverlay({
+  spec,
+  label,
+  value,
+  layout,
+}: {
+  spec: KpiSpec;
+  label: string;
+  value: string;
+  layout: Record<CampoId, CampoLayout>;
+}) {
+  const l = layout[spec.campo];
+  return (
+    <>
+      <Text style={abs(94, spec.labelX, spec.labelW, { fontSize: 8, fontFamily: "Helvetica-Bold", color: "#7fa8c9", textTransform: "uppercase" })}>
+        {label}
+      </Text>
+      <View style={centeredAt(l.y, l.x, spec.valueW, 30)}>
+        <Text style={{ fontSize: l.fontSize, fontFamily: "Helvetica-Bold", color: WHITE }}>{value}</Text>
+      </View>
+    </>
+  );
+}
+
+// ---------- Página por modalidade ----------
+
+function PaginaModalidade({
+  fundo,
+  modalidade,
+  dados,
+  mesLabel,
+  limite,
+  layout,
+}: {
+  fundo: string;
+  modalidade: Modalidade;
+  dados: ResumoAtletaMensal[];
+  mesLabel: string;
+  limite: number;
+  layout: Record<CampoId, CampoLayout>;
+}) {
+  const lista = dados.slice(0, Math.max(limite, 41));
+  const totalPontos = lista.reduce((s, a) => s + a.pontosMes, 0);
+  const totalTreinos = lista.reduce((s, a) => s + a.treinosMes, 0);
+  const totalKm = lista.reduce((s, a) => s + a.kmMes, 0);
+
+  const [primeiro, segundo, terceiro] = lista;
+  const resto = lista.slice(3);
+  const colEsquerda = resto.slice(0, RANKING_ROWS_POR_COLUNA);
+  const colDireita = resto.slice(RANKING_ROWS_POR_COLUNA, RANKING_ROWS_POR_COLUNA * 2);
+
+  const maiorKm = [...lista].sort((a, b) => b.kmMes - a.kmMes).slice(0, 3);
+  const maisTreinos = [...lista].sort((a, b) => b.treinosMes - a.treinosMes).slice(0, 3);
+  const maiorPontuacao = lista.slice(0, 3);
+
+  return (
+    <Page size={{ width: PAGE_W, height: PAGE_H }} style={styles.page}>
+      {/* eslint-disable-next-line jsx-a11y/alt-text -- Image aqui é do @react-pdf/renderer. */}
+      <Image src={fundo} style={styles.bg} />
+
+      <View style={centeredAt(layout.mesLabel.y, layout.mesLabel.x, 260, 20)}>
+        <Text style={{ fontSize: layout.mesLabel.fontSize, color: "#cfe3f2" }}>{mesLabel}</Text>
+      </View>
+
+      <KpiOverlay spec={KPIS[0]} label="Pontos totais do mês" value={`${formatarNumero(totalPontos)} pts`} layout={layout} />
+      <KpiOverlay spec={KPIS[1]} label="Quantidade de treinos" value={formatarNumero(totalTreinos)} layout={layout} />
+      <KpiOverlay spec={KPIS[2]} label="KM acumulados" value={`${formatarNumero(totalKm, 2)} km`} layout={layout} />
+      <KpiOverlay spec={KPIS[3]} label="Atletas no ranking" value={formatarNumero(lista.length)} layout={layout} />
+
+      <PodiumSlotView posicao={2} atleta={segundo} layout={layout} />
+      <PodiumSlotView posicao={1} atleta={primeiro} layout={layout} />
+      <PodiumSlotView posicao={3} atleta={terceiro} layout={layout} />
+
+      <RankingColuna lista={colEsquerda} offset={3} spec={RANKING_COLS[0]} />
+      <RankingColuna lista={colDireita} offset={3 + RANKING_ROWS_POR_COLUNA} spec={RANKING_COLS[1]} />
+
+      <DestaqueCard
+        spec={DESTAQUES[0]}
+        titulo="Maior quilometragem"
+        lista={maiorKm}
+        formatar={(a) => `${formatarNumero(a.kmMes, 2)} km`}
+      />
+      <DestaqueCard
+        spec={DESTAQUES[1]}
+        titulo="Mais treinos"
+        lista={maisTreinos}
+        formatar={(a) => `${formatarNumero(a.treinosMes)} treinos`}
+      />
+      <DestaqueCard
+        spec={DESTAQUES[2]}
+        titulo="Maior pontuação"
+        lista={maiorPontuacao}
+        formatar={(a) => `${formatarNumero(a.pontosMes)} pts`}
+      />
+    </Page>
   );
 }
 
@@ -283,66 +332,48 @@ export function InformativoRankingDocument({
   bike,
   corrida,
   mesLabel,
-  diasUteis,
   modalidadeFiltro,
-  paginasSeparadas,
-  opcoes,
-  branding,
-  logo,
+  limite,
+  fundoBike,
+  fundoCorrida,
+  layout,
 }: {
   bike: ResumoAtletaMensal[];
   corrida: ResumoAtletaMensal[];
   mesLabel: string;
-  diasUteis: number;
   modalidadeFiltro: "todos" | Modalidade;
-  paginasSeparadas: boolean;
-  opcoes: {
-    limite: number;
-    mostrarKpis: boolean;
-    mostrarLegenda: boolean;
-    mostrarTop3: boolean;
-    mostrarAlertas: boolean;
-    mostrarDemais: boolean;
-    alertaCriterio: AlertaCriterio;
-    alertaValor: number;
-  };
-  branding: BrandingDoc;
-  logo?: string;
+  limite: number;
+  fundoBike: string;
+  fundoCorrida: string;
+  layout: Record<CampoId, CampoLayout>;
 }) {
   const dataHoje = new Date().toLocaleDateString("pt-BR");
-  const alertaLabel = ALERTA_LABEL[opcoes.alertaCriterio](opcoes.alertaValor);
-
   const usarBike = modalidadeFiltro !== "corrida";
   const usarCorrida = modalidadeFiltro !== "bicicleta";
-  const modalidadeLabel = usarBike && usarCorrida ? "Bike e Corrida" : usarBike ? "Bike" : "Corrida";
-
-  const paginas: { titulo: string; label: string; grupos: { titulo: string; dados: ResumoAtletaMensal[] }[] }[] = [];
-  if (paginasSeparadas && usarBike && usarCorrida) {
-    paginas.push({ titulo: "RANKING DO MÊS - BIKE", label: "Bike", grupos: [{ titulo: "Bike", dados: bike }] });
-    paginas.push({ titulo: "RANKING DO MÊS - CORRIDA", label: "Corrida", grupos: [{ titulo: "Corrida", dados: corrida }] });
-  } else {
-    const grupos = [];
-    if (usarBike) grupos.push({ titulo: "Bike", dados: bike });
-    if (usarCorrida) grupos.push({ titulo: "Corrida", dados: corrida });
-    paginas.push({
-      titulo: usarBike && usarCorrida ? "RANKING DO MÊS" : `RANKING DO MÊS - ${modalidadeLabel.toUpperCase()}`,
-      label: modalidadeLabel,
-      grupos,
-    });
-  }
+  const mesFormatado = mesLabel.replace(/^./, (c) => c.toUpperCase());
 
   return (
     <Document title={`Informativo do Ranking - Atletas Energisa - ${dataHoje}`}>
-      {paginas.map((pagina) => (
-        <Page key={pagina.titulo} size="A4" style={styles.page}>
-          <PageHeader modalidadeLabel={pagina.label} mesLabel={mesLabel} diasUteis={diasUteis} logo={logo} />
-          <ConteudoPagina titulo={pagina.titulo} grupos={pagina.grupos} opcoes={opcoes} branding={branding} />
-          <Text style={{ fontSize: 7, color: TEXT_MUTED, marginTop: 2 }}>
-            Alerta por: {alertaLabel}.
-          </Text>
-          <PageFooter dataHoje={dataHoje} />
-        </Page>
-      ))}
+      {usarCorrida && (
+        <PaginaModalidade
+          fundo={fundoCorrida}
+          modalidade="corrida"
+          dados={corrida}
+          mesLabel={mesFormatado}
+          limite={limite}
+          layout={layout}
+        />
+      )}
+      {usarBike && (
+        <PaginaModalidade
+          fundo={fundoBike}
+          modalidade="bicicleta"
+          dados={bike}
+          mesLabel={mesFormatado}
+          limite={limite}
+          layout={layout}
+        />
+      )}
     </Document>
   );
 }

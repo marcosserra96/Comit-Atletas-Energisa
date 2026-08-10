@@ -11,8 +11,9 @@ import { cn } from "@/lib/cn";
 import { getStoredBranding } from "@/lib/branding";
 import { formatBRL } from "@/lib/format";
 import { agruparUltimosLancamentos, type EstatisticasDashboard } from "@/lib/dashboardStats";
-import { calcularResumoRankingMensal, diasUteisNoMes } from "@/lib/rankingMensal";
+import { calcularResumoRankingMensal } from "@/lib/rankingMensal";
 import { normalizarInformativoConfig } from "@/lib/informativoConfig";
+import { carregarLayoutInformativo } from "@/lib/informativoLayout";
 import { ReportExecutivoDocument } from "@/lib/pdf/ReportExecutivoDocument";
 import { InformativoRankingDocument } from "@/lib/pdf/InformativoRankingDocument";
 import type { AtletaDoc, EventoDoc, HistoricoPontoDoc, InformativoConfigDoc } from "@/lib/types";
@@ -83,8 +84,9 @@ export function ExportarRelatorioDropdown({
       const config: InformativoConfigDoc = normalizarInformativoConfig(
         snap.exists() ? (snap.data() as Partial<InformativoConfigDoc>) : undefined,
       );
-      const branding = getStoredBranding();
-      const logo = `${window.location.origin}/logos/logo-comite-colorida.png`;
+      const layout = await carregarLayoutInformativo();
+      const fundoCorrida = `${window.location.origin}/informativo-fundo-corrida.png`;
+      const fundoBike = `${window.location.origin}/informativo-fundo-bike.png`;
 
       const hoje = new Date();
       const ano = hoje.getFullYear();
@@ -100,12 +102,11 @@ export function ExportarRelatorioDropdown({
           bike={bike}
           corrida={corrida}
           mesLabel={mesLabel.replace(/^./, (c) => c.toUpperCase())}
-          diasUteis={diasUteisNoMes(ano, mes)}
           modalidadeFiltro={config.modalidade}
-          paginasSeparadas={config.paginasSeparadas}
-          opcoes={config}
-          branding={branding}
-          logo={logo}
+          limite={config.limite}
+          fundoBike={fundoBike}
+          fundoCorrida={fundoCorrida}
+          layout={layout}
         />
       );
       const blob = await pdf(documento).toBlob();

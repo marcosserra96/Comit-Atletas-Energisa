@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
-import { AlertTriangle, ListFilter, Save, Trophy } from "lucide-react";
+import { AlertTriangle, ListFilter, Save } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
@@ -19,15 +19,6 @@ const CRITERIOS: { value: AlertaCriterio; label: string }[] = [
   { value: "sem_treino_30d", label: "Sem treino há mais de X dias" },
   { value: "ate_x_treinos", label: "Até X treinos no mês" },
   { value: "ate_x_pontos", label: "Até X pontos no mês" },
-];
-
-const TOGGLES: { chave: keyof Pick<InformativoConfigDoc, "mostrarKpis" | "mostrarLegenda" | "mostrarTop3" | "mostrarAlertas" | "mostrarDemais" | "paginasSeparadas">; label: string }[] = [
-  { chave: "mostrarKpis", label: "Mostrar KPIs (pontos, km, treinos)" },
-  { chave: "mostrarLegenda", label: "Mostrar legenda de cores" },
-  { chave: "mostrarTop3", label: "Mostrar top 3 do ranking" },
-  { chave: "mostrarAlertas", label: "Mostrar atletas em alerta" },
-  { chave: "mostrarDemais", label: "Mostrar demais atletas" },
-  { chave: "paginasSeparadas", label: "Bike e Corrida em páginas separadas" },
 ];
 
 export function InformativoTab() {
@@ -83,10 +74,12 @@ export function InformativoTab() {
             Filtros e conteúdo
           </h3>
           <p className="mb-4 text-xs text-text-light">
-            Define o que aparece por padrão no Informativo do Ranking exportado.
+            Define quais páginas saem no Informativo do Ranking exportado (o visual de cada página —
+            pódio, ranking geral e destaques — fica em{" "}
+            <span className="font-semibold text-text">Layout do informativo</span>).
           </p>
 
-          <div className="mb-4 grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-text">Modalidade</label>
               <Select
@@ -106,20 +99,6 @@ export function InformativoTab() {
               onChange={(e) => update({ limite: Math.max(1, Number(e.target.value) || 1) })}
             />
           </div>
-
-          <div className="flex flex-col gap-2">
-            {TOGGLES.map((t) => (
-              <label key={t.chave} className="flex items-center gap-2 text-sm text-text">
-                <input
-                  type="checkbox"
-                  checked={config[t.chave]}
-                  onChange={(e) => update({ [t.chave]: e.target.checked })}
-                  className="size-4 rounded border-border accent-primary"
-                />
-                {t.label}
-              </label>
-            ))}
-          </div>
         </Card>
 
         <Card>
@@ -128,7 +107,8 @@ export function InformativoTab() {
             Critério de alerta
           </h3>
           <p className="mb-4 text-xs text-text-light">
-            Define quem entra na faixa &quot;em alerta&quot; (destacado em laranja) do informativo.
+            Define quem entra na faixa &quot;em alerta&quot; no slide de alertas da{" "}
+            <span className="font-semibold text-text">Apresentação</span>.
           </p>
 
           <div className="mb-4 grid grid-cols-2 gap-3">
@@ -156,10 +136,10 @@ export function InformativoTab() {
           </div>
 
           <div className="flex items-start gap-2.5 rounded-[var(--radius)] bg-accent/10 p-3 text-xs text-accent">
-            <Trophy className="mt-0.5 size-3.5 shrink-0" />
+            <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
             <span>
-              Top 3 do ranking aparecem em verde; demais atletas em alerta pelo critério acima aparecem em
-              laranja no PDF exportado.
+              Atletas nessa faixa aparecem destacados no slide &quot;Alertas&quot; quando alguém abre a
+              Apresentação (menu Exportar → Apresentação).
             </span>
           </div>
         </Card>

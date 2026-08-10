@@ -9,11 +9,12 @@ import { TabPanel } from "@/components/ui/TabPanel";
 import { UsuariosTab } from "./UsuariosTab";
 import { IdentidadeVisualTab } from "./IdentidadeVisualTab";
 import { InformativoTab } from "./InformativoTab";
+import { InformativoLayoutTab } from "./InformativoLayoutTab";
 import { ConsistenciaTab } from "./ConsistenciaTab";
 import { DiagnosticoTab } from "./DiagnosticoTab";
 import { AuditoriaTab } from "./AuditoriaTab";
 
-type Tab = "usuarios" | "identidade" | "informativo" | "consistencia" | "diagnostico" | "auditoria";
+type Tab = "usuarios" | "identidade" | "informativo" | "informativo_layout" | "consistencia" | "diagnostico" | "auditoria";
 
 export default function ConfigurarPortalPage() {
   const { usuario } = useActiveSession();
@@ -39,6 +40,7 @@ export default function ConfigurarPortalPage() {
           { value: "usuarios", label: "Usuários e permissões" },
           { value: "identidade", label: "Identidade visual" },
           { value: "informativo", label: "Informativo do ranking" },
+          { value: "informativo_layout", label: "Layout do informativo" },
           { value: "consistencia", label: "Consistência" },
           { value: "diagnostico", label: "Diagnóstico e dados" },
           { value: "auditoria", label: "Auditoria" },
@@ -59,6 +61,11 @@ export default function ConfigurarPortalPage() {
         {tab === "informativo" && (
           <TabPanel key="informativo">
             <InformativoTab />
+          </TabPanel>
+        )}
+        {tab === "informativo_layout" && (
+          <TabPanel key="informativo_layout">
+            <InformativoLayoutTab />
           </TabPanel>
         )}
         {tab === "consistencia" && (
