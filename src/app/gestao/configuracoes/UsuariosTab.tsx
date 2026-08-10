@@ -26,6 +26,7 @@ export function UsuariosTab() {
   const [gerenciandoAcessos, setGerenciandoAcessos] = useState<AtletaDoc | null>(null);
   const [testandoPermissoes, setTestandoPermissoes] = useState<AtletaDoc | null>(null);
   const [corrigindoVinculo, setCorrigindoVinculo] = useState<AtletaDoc | null>(null);
+  const [salvandoIds, setSalvandoIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "atletas"), (snap) => {
@@ -47,6 +48,7 @@ export function UsuariosTab() {
   }, []);
 
   async function handleChangeEquipe(pessoa: AtletaDoc, novaEquipe: Equipe) {
+    setSalvandoIds((prev) => new Set(prev).add(pessoa.id));
     try {
       await updateDoc(doc(db, "atletas", pessoa.id), { equipe: novaEquipe });
       await logAudit({
@@ -65,6 +67,12 @@ export function UsuariosTab() {
       );
     } catch {
       show("error", "Não foi possível atualizar agora. Tente novamente.");
+    } finally {
+      setSalvandoIds((prev) => {
+        const next = new Set(prev);
+        next.delete(pessoa.id);
+        return next;
+      });
     }
   }
 
@@ -78,6 +86,7 @@ export function UsuariosTab() {
       show("error", "Não é possível remover o último administrador do programa.");
       return;
     }
+    setSalvandoIds((prev) => new Set(prev).add(pessoa.id));
     try {
       const batch = writeBatch(db);
       batch.update(doc(db, "atletas", pessoa.id), { role: novaRole });
@@ -96,6 +105,12 @@ export function UsuariosTab() {
       show("success", `Perfil de ${pessoa.nome.split(" ")[0]} atualizado para ${roleLabel[novaRole]}.`);
     } catch {
       show("error", "Não foi possível atualizar agora. Tente novamente.");
+    } finally {
+      setSalvandoIds((prev) => {
+        const next = new Set(prev);
+        next.delete(pessoa.id);
+        return next;
+      });
     }
   }
 
@@ -135,7 +150,7 @@ export function UsuariosTab() {
               </div>
               <Select
                 value={pessoa.role ?? ""}
-                disabled={pessoa.id === adminAtleta.id}
+                disabled={pessoa.id === adminAtleta.id || salvandoIds.has(pessoa.id)}
                 onChange={(e) => handleChangeRole(pessoa, e.target.value as Role)}
               >
                 <option value="comite">Comitê</option>
@@ -146,6 +161,7 @@ export function UsuariosTab() {
                 <label className="text-xs font-semibold text-text-light">Também é atleta?</label>
                 <Select
                   value={pessoa.equipe === "bicicleta" || pessoa.equipe === "corrida" ? pessoa.equipe : "comite"}
+                  disabled={salvandoIds.has(pessoa.id)}
                   onChange={(e) => handleChangeEquipe(pessoa, e.target.value as Equipe)}
                 >
                   <option value="comite">Comitê</option>

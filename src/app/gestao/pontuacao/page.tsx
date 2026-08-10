@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { NotAuthorized } from "@/components/ui/NotAuthorized";
+import { TabPanel } from "@/components/ui/TabPanel";
 import { temPermissao } from "@/lib/permissoes";
 import { LancarPontosTab } from "./LancarPontosTab";
 import { ExtratoTab } from "./ExtratoTab";
@@ -49,9 +51,23 @@ export default function PontuacaoPage() {
         ))}
       </div>
 
-      {tab === "lancar" && <LancarPontosTab />}
-      {tab === "extrato" && <ExtratoTab />}
-      {tab === "consolidado" && <ConsolidadoTab />}
+      <AnimatePresence mode="wait">
+        {tab === "lancar" && (
+          <TabPanel key="lancar">
+            <LancarPontosTab />
+          </TabPanel>
+        )}
+        {tab === "extrato" && (
+          <TabPanel key="extrato">
+            <ExtratoTab />
+          </TabPanel>
+        )}
+        {tab === "consolidado" && (
+          <TabPanel key="consolidado">
+            <ConsolidadoTab />
+          </TabPanel>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

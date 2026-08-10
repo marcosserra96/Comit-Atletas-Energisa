@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { AnimatePresence } from "framer-motion";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { SubTabs } from "@/components/ui/SubTabs";
 import { NotAuthorized } from "@/components/ui/NotAuthorized";
+import { TabPanel } from "@/components/ui/TabPanel";
 import { temPermissao } from "@/lib/permissoes";
 import { VerAtletasTab } from "./VerAtletasTab";
 import { CadastrarTab } from "./CadastrarTab";
@@ -56,10 +58,28 @@ export default function AtletasPage() {
         ]}
       />
 
-      {tab === "ver" && <VerAtletasTab key={q ?? "none"} />}
-      {tab === "cadastrar" && <CadastrarTab />}
-      {tab === "equipes" && <EquipesTab />}
-      {tab === "pendentes" && isAdmin && <PendentesTab />}
+      <AnimatePresence mode="wait">
+        {tab === "ver" && (
+          <TabPanel key="ver">
+            <VerAtletasTab key={q ?? "none"} />
+          </TabPanel>
+        )}
+        {tab === "cadastrar" && (
+          <TabPanel key="cadastrar">
+            <CadastrarTab />
+          </TabPanel>
+        )}
+        {tab === "equipes" && (
+          <TabPanel key="equipes">
+            <EquipesTab />
+          </TabPanel>
+        )}
+        {tab === "pendentes" && isAdmin && (
+          <TabPanel key="pendentes">
+            <PendentesTab />
+          </TabPanel>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

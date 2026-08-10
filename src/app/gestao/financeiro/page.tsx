@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { SubTabs } from "@/components/ui/SubTabs";
 import { NotAuthorized } from "@/components/ui/NotAuthorized";
+import { TabPanel } from "@/components/ui/TabPanel";
 import { temPermissao } from "@/lib/permissoes";
 import { ResumoTab } from "./ResumoTab";
 import { GastosTab } from "./GastosTab";
@@ -36,7 +38,17 @@ export default function FinanceiroPage() {
         ]}
       />
 
-      {tab === "resumo" ? <ResumoTab /> : <GastosTab />}
+      <AnimatePresence mode="wait">
+        {tab === "resumo" ? (
+          <TabPanel key="resumo">
+            <ResumoTab />
+          </TabPanel>
+        ) : (
+          <TabPanel key="gastos">
+            <GastosTab />
+          </TabPanel>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
