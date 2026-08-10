@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { equipeLabel } from "@/lib/labels";
+import { equipeLabel, competeAtivamente } from "@/lib/labels";
 import { exportToExcel } from "@/lib/excel";
 import { cn } from "@/lib/cn";
 import type { AtletaDoc, HistoricoPontoDoc } from "@/lib/types";
@@ -84,12 +84,7 @@ export function ConsolidadoTab() {
   const linhas = useMemo(() => {
     if (!atletas || !historico) return [];
     const elegiveis = atletas.filter(
-      (a) =>
-        a.role === "atleta" &&
-        a.equipe !== "fila_corrida" &&
-        a.equipe !== "fila_bicicleta" &&
-        a.equipe !== "nenhuma" &&
-        (!equipeFiltro || a.equipe === equipeFiltro),
+      (a) => competeAtivamente(a.equipe) && (!equipeFiltro || a.equipe === equipeFiltro),
     );
     const historicoAno = historico.filter((h) => !h.estornado && h.dataTreino.startsWith(ano));
 

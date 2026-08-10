@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { equipeLabel, isWaitlisted } from "@/lib/labels";
+import { equipeLabel, isWaitlisted, ehMembroDoElenco } from "@/lib/labels";
 import { formatShortDate } from "@/lib/format";
 import { exportToExcel } from "@/lib/excel";
 import { cn } from "@/lib/cn";
@@ -55,7 +55,7 @@ export function VerAtletasTab() {
         setAtletas(
           snap.docs
             .map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)
-            .filter((a) => a.role === "atleta"),
+            .filter((a) => ehMembroDoElenco(a.equipe)),
         );
       },
       () => setAtletas([]),

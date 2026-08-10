@@ -1,3 +1,4 @@
+import { ehMembroDoElenco } from "@/lib/labels";
 import type {
   AtletaDoc,
   DespesaDoc,
@@ -60,7 +61,7 @@ export function calcularEstatisticasDashboard(params: {
   const ha30dias = new Date(hoje.getTime() - 30 * 24 * 60 * 60 * 1000);
   const iso30 = ha30dias.toISOString().slice(0, 10);
 
-  const atletasProgram = atletas.filter((a) => a.role === "atleta");
+  const atletasProgram = atletas.filter((a) => ehMembroDoElenco(a.equipe));
   // Atleta na fila de espera ainda não entrou no programa — não conta como
   // ativo em nenhuma estatística (engajamento, pódio, ranking, etc.), mesmo
   // que o campo "ativo" esteja com valor incorreto para ele.
