@@ -1,16 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { SubTabs } from "@/components/ui/SubTabs";
 import { NotAuthorized } from "@/components/ui/NotAuthorized";
+import { TabPanel } from "@/components/ui/TabPanel";
 import { UsuariosTab } from "./UsuariosTab";
 import { IdentidadeVisualTab } from "./IdentidadeVisualTab";
 import { InformativoTab } from "./InformativoTab";
+import { ConsistenciaTab } from "./ConsistenciaTab";
 import { DiagnosticoTab } from "./DiagnosticoTab";
 import { AuditoriaTab } from "./AuditoriaTab";
 
-type Tab = "usuarios" | "identidade" | "informativo" | "diagnostico" | "auditoria";
+type Tab = "usuarios" | "identidade" | "informativo" | "consistencia" | "diagnostico" | "auditoria";
 
 export default function ConfigurarPortalPage() {
   const { usuario } = useActiveSession();
@@ -36,16 +39,44 @@ export default function ConfigurarPortalPage() {
           { value: "usuarios", label: "Usuários e permissões" },
           { value: "identidade", label: "Identidade visual" },
           { value: "informativo", label: "Informativo do ranking" },
+          { value: "consistencia", label: "Consistência" },
           { value: "diagnostico", label: "Diagnóstico e dados" },
           { value: "auditoria", label: "Auditoria" },
         ]}
       />
 
-      {tab === "usuarios" && <UsuariosTab />}
-      {tab === "identidade" && <IdentidadeVisualTab />}
-      {tab === "informativo" && <InformativoTab />}
-      {tab === "diagnostico" && <DiagnosticoTab />}
-      {tab === "auditoria" && <AuditoriaTab />}
+      <AnimatePresence mode="wait">
+        {tab === "usuarios" && (
+          <TabPanel key="usuarios">
+            <UsuariosTab />
+          </TabPanel>
+        )}
+        {tab === "identidade" && (
+          <TabPanel key="identidade">
+            <IdentidadeVisualTab />
+          </TabPanel>
+        )}
+        {tab === "informativo" && (
+          <TabPanel key="informativo">
+            <InformativoTab />
+          </TabPanel>
+        )}
+        {tab === "consistencia" && (
+          <TabPanel key="consistencia">
+            <ConsistenciaTab />
+          </TabPanel>
+        )}
+        {tab === "diagnostico" && (
+          <TabPanel key="diagnostico">
+            <DiagnosticoTab />
+          </TabPanel>
+        )}
+        {tab === "auditoria" && (
+          <TabPanel key="auditoria">
+            <AuditoriaTab />
+          </TabPanel>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

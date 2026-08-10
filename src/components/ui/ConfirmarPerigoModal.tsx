@@ -9,6 +9,7 @@ export function ConfirmarPerigoModal({
   titulo,
   descricao,
   palavraChave,
+  confirmarLabel = "Confirmar exclusão",
   onClose,
   onConfirm,
 }: {
@@ -16,6 +17,7 @@ export function ConfirmarPerigoModal({
   titulo: string;
   descricao: string;
   palavraChave: string;
+  confirmarLabel?: string;
   onClose: () => void;
   onConfirm: () => Promise<void>;
 }) {
@@ -53,7 +55,7 @@ export function ConfirmarPerigoModal({
             Cancelar
           </Button>
           <Button type="submit" variant="danger" loading={loading} disabled={valor !== palavraChave}>
-            Confirmar exclusão
+            {confirmarLabel}
           </Button>
         </div>
       </form>
