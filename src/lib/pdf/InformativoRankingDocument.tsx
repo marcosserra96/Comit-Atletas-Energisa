@@ -13,9 +13,6 @@ const PAGE_W = 1672;
 const PAGE_H = 941;
 const BG = "#010a17";
 const WHITE = "#ffffff";
-const GOLD = "#eab308";
-const SILVER = "#c4ccd6";
-const BRONZE = "#f37021";
 
 function formatarNumero(valor: number, casas = 0) {
   return valor.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas });
@@ -67,14 +64,18 @@ function Campo({
 }) {
   const l = layout.campos[campo];
   const info = CAMPOS_INFO[campo];
+  // Sem quebra: prende numa linha e corta com reticências se não couber na largura.
+  const limiteDeLinha = l.quebraLinha ? {} : { maxLines: 1, textOverflow: "ellipsis" as const };
   return (
-    <View style={caixa(l.y + offsetY, l.x, info.boxW, l.fontSize * 2)}>
+    <View style={caixa(l.y + offsetY, l.x, l.boxW, l.fontSize * 2.4)}>
       <Text
         style={{
           fontSize: l.fontSize,
           fontFamily: bold ? "Helvetica-Bold" : "Helvetica",
           color: cor,
           textAlign: info.align,
+          lineHeight: 1.15,
+          ...limiteDeLinha,
           ...(uppercase ? { textTransform: "uppercase" as const } : {}),
         }}
       >
@@ -87,20 +88,28 @@ function Campo({
 // ---------- Pódio ----------
 
 interface PodiumSlot {
-  colX: number;
-  colW: number;
-  nomeTop: number;
-  nomeH: number;
-  campos: [CampoId, CampoId, CampoId]; // pts, treinos, km
-  cor: string;
+  /** Área a cobrir com a cor do fundo quando não existe atleta pra essa posição (esconde o card inteiro). */
+  coverX: number;
+  coverW: number;
+  campos: { nome: CampoId; pts: CampoId; treinos: CampoId; km: CampoId };
 }
 
-// colX/colW/nomeTop/nomeH são estruturais (posição fixa dos cards no fundo);
-// pontos/treinos/km vêm do layout configurável.
 const PODIUM: Record<1 | 2 | 3, PodiumSlot> = {
-  2: { colX: 18, colW: 172, nomeTop: 392, nomeH: 42, campos: ["podio2Pts", "podio2Treinos", "podio2Km"], cor: SILVER },
-  1: { colX: 202, colW: 178, nomeTop: 380, nomeH: 40, campos: ["podio1Pts", "podio1Treinos", "podio1Km"], cor: GOLD },
-  3: { colX: 395, colW: 170, nomeTop: 410, nomeH: 42, campos: ["podio3Pts", "podio3Treinos", "podio3Km"], cor: BRONZE },
+  2: {
+    coverX: 14,
+    coverW: 180,
+    campos: { nome: "podio2Nome", pts: "podio2Pts", treinos: "podio2Treinos", km: "podio2Km" },
+  },
+  1: {
+    coverX: 198,
+    coverW: 186,
+    campos: { nome: "podio1Nome", pts: "podio1Pts", treinos: "podio1Treinos", km: "podio1Km" },
+  },
+  3: {
+    coverX: 391,
+    coverW: 178,
+    campos: { nome: "podio3Nome", pts: "podio3Pts", treinos: "podio3Treinos", km: "podio3Km" },
+  },
 };
 
 function PodiumSlotView({
@@ -115,37 +124,20 @@ function PodiumSlotView({
   const slot = PODIUM[posicao];
   if (!atleta) {
     // cobre a coluna inteira (card + base) com a cor de fundo, já que não há atleta pra essa posição.
-    return <View style={abs(200, slot.colX - 4, slot.colW + 8, { height: 470, backgroundColor: BG })} />;
+    return <View style={abs(200, slot.coverX, slot.coverW, { height: 470, backgroundColor: BG })} />;
   }
-  const dividerY = slot.nomeTop + slot.nomeH;
-  const dividerW = 56;
-  const [ptsCampo, treinosCampo, kmCampo] = slot.campos;
   return (
     <>
-      <Text
-        style={abs(slot.nomeTop, slot.colX, slot.colW, {
-          height: slot.nomeH,
-          fontSize: 12.5,
-          fontFamily: "Helvetica-Bold",
-          color: WHITE,
-          textAlign: "center",
-        })}
-      >
+      <Campo campo={slot.campos.nome} layout={layout}>
         {atleta.nome}
-      </Text>
-      <View
-        style={abs(dividerY, slot.colX + (slot.colW - dividerW) / 2, dividerW, {
-          height: 1.6,
-          backgroundColor: slot.cor,
-        })}
-      />
-      <Campo campo={ptsCampo} layout={layout}>
+      </Campo>
+      <Campo campo={slot.campos.pts} layout={layout}>
         {formatarNumero(atleta.pontosMes)} pts
       </Campo>
-      <Campo campo={treinosCampo} layout={layout}>
+      <Campo campo={slot.campos.treinos} layout={layout}>
         {formatarNumero(atleta.treinosMes)} treinos
       </Campo>
-      <Campo campo={kmCampo} layout={layout}>
+      <Campo campo={slot.campos.km} layout={layout}>
         {formatarNumero(atleta.kmMes, 2)} km
       </Campo>
     </>
@@ -240,7 +232,6 @@ function DestaqueCard({
   layout: LayoutInformativo;
 }) {
   const l = layout.campos[linhaCampo];
-  const info = CAMPOS_INFO[linhaCampo];
   const gap = layout.extras.destaqueLinhaGap;
   return (
     <>
@@ -250,13 +241,21 @@ function DestaqueCard({
       {lista.map((a, i) => (
         <View
           key={a.id}
-          style={caixa(l.y + i * gap, l.x, info.boxW, l.fontSize * 2, {
+          style={caixa(l.y + i * gap, l.x, l.boxW, l.fontSize * 2.4, {
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
           })}
         >
-          <Text style={{ fontSize: l.fontSize, color: WHITE, width: info.boxW - 95 }}>
+          <Text
+            style={{
+              fontSize: l.fontSize,
+              color: WHITE,
+              width: l.boxW - 95,
+              maxLines: 1,
+              textOverflow: "ellipsis",
+            }}
+          >
             {i + 1}º {a.nome}
           </Text>
           <Text
@@ -301,16 +300,17 @@ function PaginaModalidade({
   limite: number;
   layout: LayoutInformativo;
 }) {
-  const maxNaPagina = 3 + RANKING_ROWS_POR_COLUNA * 2;
+  const maxNaPagina = RANKING_ROWS_POR_COLUNA * 2;
   const lista = dados.slice(0, Math.min(limite, maxNaPagina));
   const totalPontos = lista.reduce((s, a) => s + a.pontosMes, 0);
   const totalTreinos = lista.reduce((s, a) => s + a.treinosMes, 0);
   const totalKm = lista.reduce((s, a) => s + a.kmMes, 0);
 
+  // O pódio é um destaque, não um recorte: o top 3 aparece nele E como 1º/2º/3º
+  // do Ranking geral — é assim que a numeração já impressa na arte fecha.
   const [primeiro, segundo, terceiro] = lista;
-  const resto = lista.slice(3);
-  const colEsquerda = resto.slice(0, RANKING_ROWS_POR_COLUNA);
-  const colDireita = resto.slice(RANKING_ROWS_POR_COLUNA, RANKING_ROWS_POR_COLUNA * 2);
+  const colEsquerda = lista.slice(0, RANKING_ROWS_POR_COLUNA);
+  const colDireita = lista.slice(RANKING_ROWS_POR_COLUNA, RANKING_ROWS_POR_COLUNA * 2);
 
   const maiorKm = [...lista].sort((a, b) => b.kmMes - a.kmMes).slice(0, 3);
   const maisTreinos = [...lista].sort((a, b) => b.treinosMes - a.treinosMes).slice(0, 3);

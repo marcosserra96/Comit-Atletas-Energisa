@@ -40,6 +40,10 @@ const AMOSTRA: Record<CampoId, string> = {
   kpi2: "289",
   kpi3: "2.739,80 km",
   kpi4: "38",
+  // nomes longos de propósito — é o caso que mais precisa de ajuste de largura/quebra
+  podio1Nome: "Weslei Louzado Diana",
+  podio2Nome: "Wagner Luis Porfirio Rezende",
+  podio3Nome: "Erique Rangel Fortes",
   podio2Pts: "26 pts",
   podio2Treinos: "15 treinos",
   podio2Km: "131,60 km",
@@ -204,6 +208,24 @@ export function InformativoLayoutTab() {
     });
   }
 
+  function ajustarLargura(delta: number) {
+    setLayout((prev) => {
+      const campos = { ...prev.campos };
+      for (const id of selecionados) {
+        campos[id] = { ...prev.campos[id], boxW: Math.max(20, Math.round(prev.campos[id].boxW + delta)) };
+      }
+      return { ...prev, campos };
+    });
+  }
+
+  function definirQuebra(valor: boolean) {
+    setLayout((prev) => {
+      const campos = { ...prev.campos };
+      for (const id of selecionados) campos[id] = { ...prev.campos[id], quebraLinha: valor };
+      return { ...prev, campos };
+    });
+  }
+
   /** Deixa todos os selecionados com a fonte do primeiro (a referência). */
   function igualarFonte() {
     setLayout((prev) => {
@@ -240,11 +262,18 @@ export function InformativoLayoutTab() {
     });
   }
 
-  /** Tamanho de fonte da seleção: o número quando todos batem, senão "—". */
-  const fonteDaSelecao = (() => {
+  /** Valor comum da seleção pra um campo numérico: o número quando todos batem, senão "—". */
+  function valorComum(pegar: (l: CampoLayout) => number): number | string {
     if (selecionados.length === 0) return 0;
-    const tamanhos = new Set(selecionados.map((id) => layout.campos[id].fontSize));
-    return tamanhos.size === 1 ? [...tamanhos][0] : "—";
+    const valores = new Set(selecionados.map((id) => pegar(layout.campos[id])));
+    return valores.size === 1 ? [...valores][0] : "—";
+  }
+
+  const fonteDaSelecao = valorComum((l) => l.fontSize);
+  const larguraDaSelecao = valorComum((l) => l.boxW);
+  const quebraDaSelecao = (() => {
+    const valores = new Set(selecionados.map((id) => layout.campos[id].quebraLinha));
+    return valores.size === 1 ? [...valores][0] : null;
   })();
 
   function updateExtra(chave: keyof InformativoLayoutExtras, delta: number) {
@@ -312,10 +341,15 @@ export function InformativoLayoutTab() {
     return {
       left: `${(campo.x / PAGE_W) * 100}%`,
       top: `${((yDeExibicao(id) + offsetY) / PAGE_H) * 100}%`,
-      width: `${(info.boxW / PAGE_W) * 100}%`,
+      width: `${(campo.boxW / PAGE_W) * 100}%`,
       fontSize: `${(campo.fontSize / PAGE_W) * 100}cqw`,
+      lineHeight: 1.15,
       textAlign: info.align,
       transform: "translateY(-50%)",
+      // espelha o PDF: sem quebra vira uma linha só, cortando com reticências
+      whiteSpace: campo.quebraLinha ? "normal" : "nowrap",
+      overflow: campo.quebraLinha ? undefined : "hidden",
+      textOverflow: campo.quebraLinha ? undefined : "ellipsis",
     } as React.CSSProperties;
   }
 
@@ -370,16 +404,16 @@ export function InformativoLayoutTab() {
               const offsetY = (i + 1) * layout.extras.rankingRowHeight;
               return (
                 <div key={`${col.nome}-${i}`} className="pointer-events-none">
-                  <div className="absolute whitespace-nowrap font-bold text-white/45" style={estiloCampo(col.nome, offsetY)}>
+                  <div className="absolute font-bold text-white/45" style={estiloCampo(col.nome, offsetY)}>
                     {AMOSTRA_LINHAS[i % AMOSTRA_LINHAS.length]}
                   </div>
-                  <div className="absolute whitespace-nowrap text-white/45" style={estiloCampo(col.pontos, offsetY)}>
+                  <div className="absolute text-white/45" style={estiloCampo(col.pontos, offsetY)}>
                     {AMOSTRA[col.pontos]}
                   </div>
-                  <div className="absolute whitespace-nowrap text-white/45" style={estiloCampo(col.treinos, offsetY)}>
+                  <div className="absolute text-white/45" style={estiloCampo(col.treinos, offsetY)}>
                     {AMOSTRA[col.treinos]}
                   </div>
-                  <div className="absolute whitespace-nowrap text-white/45" style={estiloCampo(col.km, offsetY)}>
+                  <div className="absolute text-white/45" style={estiloCampo(col.km, offsetY)}>
                     {AMOSTRA[col.km]}
                   </div>
                 </div>
@@ -392,7 +426,7 @@ export function InformativoLayoutTab() {
             [1, 2].map((i) => (
               <div
                 key={`${id}-${i}`}
-                className="pointer-events-none absolute flex items-center justify-between whitespace-nowrap text-white/45"
+                className="pointer-events-none absolute flex items-center justify-between text-white/45"
                 style={estiloCampo(id, i * layout.extras.destaqueLinhaGap)}
               >
                 <span>
@@ -413,7 +447,7 @@ export function InformativoLayoutTab() {
                 key={id}
                 onPointerDown={(e) => handlePointerDown(e, id)}
                 title={CAMPOS_INFO[id].label}
-                className={`absolute cursor-move whitespace-nowrap rounded font-bold text-white ${
+                className={`absolute cursor-move rounded font-bold text-white ${
                   valorDireita ? "flex items-center justify-between" : ""
                 } ${
                   ehReferencia
@@ -461,6 +495,27 @@ export function InformativoLayoutTab() {
                   onMais={() => ajustarFonte(0.5)}
                 />
               </div>
+
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-text-light">Largura da caixa</span>
+                <Stepper valor={larguraDaSelecao} onMenos={() => ajustarLargura(-10)} onMais={() => ajustarLargura(10)} />
+              </div>
+
+              <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-text-light">
+                <input
+                  type="checkbox"
+                  checked={quebraDaSelecao === true}
+                  ref={(el) => {
+                    if (el) el.indeterminate = quebraDaSelecao === null;
+                  }}
+                  onChange={(e) => definirQuebra(e.target.checked)}
+                  className="size-4 rounded border-border accent-primary"
+                />
+                Quebrar em várias linhas
+              </label>
+              <p className="-mt-1 text-[11px] text-text-muted">
+                Sem quebra, o texto fica numa linha só e o que passar da largura vira &quot;…&quot;.
+              </p>
 
               {selecionados.length > 1 && (
                 <div className="flex flex-col gap-2 border-t border-border pt-3">

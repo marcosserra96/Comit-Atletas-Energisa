@@ -18,7 +18,24 @@ export function calcularResumoRankingMensal(params: {
   mes: number;
 }): ResumoAtletaMensal[] {
   const { atletas, lancamentos, ano, mes } = params;
-  const prefixoMes = `${ano}-${String(mes).padStart(2, "0")}`;
+  const competencia = `${ano}-${String(mes).padStart(2, "0")}`;
+  return calcularResumoRankingPeriodo({ atletas, lancamentos, de: competencia, ate: competencia });
+}
+
+/**
+ * Ranking acumulado de um período de meses (inclusive nas duas pontas).
+ * `de` e `ate` no formato "YYYY-MM" — os campos do resumo continuam com sufixo
+ * "Mes" por compatibilidade, mas representam o total do período pedido.
+ */
+export function calcularResumoRankingPeriodo(params: {
+  atletas: AtletaDoc[];
+  lancamentos: HistoricoPontoDoc[];
+  de: string;
+  ate: string;
+}): ResumoAtletaMensal[] {
+  const { atletas, lancamentos } = params;
+  const de = params.de <= params.ate ? params.de : params.ate;
+  const ate = params.de <= params.ate ? params.ate : params.de;
 
   const porAtleta = new Map<string, ResumoAtletaMensal>();
   for (const a of atletas) {
@@ -34,7 +51,8 @@ export function calcularResumoRankingMensal(params: {
     const item = porAtleta.get(l.atletaId);
     if (!item) continue;
     if (l.dataTreino && l.dataTreino > item.ultimaData) item.ultimaData = l.dataTreino;
-    if (!l.dataTreino.startsWith(prefixoMes)) continue;
+    const competencia = l.dataTreino.slice(0, 7);
+    if (competencia < de || competencia > ate) continue;
 
     item.pontosMes += l.pontos;
 

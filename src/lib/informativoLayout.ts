@@ -1,12 +1,16 @@
 /**
- * Posição e tamanho de fonte de um campo do informativo, no espaço de
+ * Posição, tamanho e comportamento de um campo do informativo, no espaço de
  * coordenadas do fundo (1672x941). Convenção — a mesma no PDF e no editor:
- * `x` é a borda esquerda da caixa do campo e `y` é o centro vertical do texto.
+ * `x` é a borda esquerda da caixa e `y` é o centro vertical do texto.
  */
 export interface CampoLayout {
   x: number;
   y: number;
   fontSize: number;
+  /** Largura da caixa. O texto é alinhado dentro dela e, se quebrar, quebra nessa largura. */
+  boxW: number;
+  /** Quando falso, o texto fica numa linha só (corta com "…" se não couber). */
+  quebraLinha: boolean;
 }
 
 export type CampoId =
@@ -15,12 +19,15 @@ export type CampoId =
   | "kpi2"
   | "kpi3"
   | "kpi4"
+  | "podio2Nome"
   | "podio2Pts"
   | "podio2Treinos"
   | "podio2Km"
+  | "podio1Nome"
   | "podio1Pts"
   | "podio1Treinos"
   | "podio1Km"
+  | "podio3Nome"
   | "podio3Pts"
   | "podio3Treinos"
   | "podio3Km"
@@ -47,8 +54,6 @@ export interface CampoInfo {
   label: string;
   grupo: string;
   eixo: Eixo;
-  /** Largura da caixa do campo (o texto é alinhado dentro dela). */
-  boxW: number;
   align: "left" | "center" | "right";
 }
 
@@ -58,12 +63,15 @@ export const CAMPOS_ORDEM: CampoId[] = [
   "kpi2",
   "kpi3",
   "kpi4",
-  "podio2Pts",
-  "podio2Treinos",
-  "podio2Km",
+  "podio1Nome",
   "podio1Pts",
   "podio1Treinos",
   "podio1Km",
+  "podio2Nome",
+  "podio2Pts",
+  "podio2Treinos",
+  "podio2Km",
+  "podio3Nome",
   "podio3Pts",
   "podio3Treinos",
   "podio3Km",
@@ -85,38 +93,41 @@ export const CAMPOS_ORDEM: CampoId[] = [
 ];
 
 export const CAMPOS_INFO: Record<CampoId, CampoInfo> = {
-  mesLabel: { label: "Mês (ex: Junho de 2026)", grupo: "Cabeçalho", eixo: "xy", boxW: 260, align: "left" },
-  kpi1: { label: "Pontos totais do mês", grupo: "KPIs", eixo: "xy", boxW: 138, align: "left" },
-  kpi2: { label: "Quantidade de treinos", grupo: "KPIs", eixo: "xy", boxW: 138, align: "left" },
-  kpi3: { label: "KM acumulados", grupo: "KPIs", eixo: "xy", boxW: 138, align: "left" },
-  kpi4: { label: "Atletas no ranking", grupo: "KPIs", eixo: "xy", boxW: 158, align: "left" },
+  mesLabel: { label: "Mês / período", grupo: "Cabeçalho", eixo: "xy", align: "left" },
+  kpi1: { label: "Pontos totais", grupo: "KPIs", eixo: "xy", align: "left" },
+  kpi2: { label: "Quantidade de treinos", grupo: "KPIs", eixo: "xy", align: "left" },
+  kpi3: { label: "KM acumulados", grupo: "KPIs", eixo: "xy", align: "left" },
+  kpi4: { label: "Atletas no ranking", grupo: "KPIs", eixo: "xy", align: "left" },
 
-  podio2Pts: { label: "2º lugar — pontos", grupo: "Pódio", eixo: "xy", boxW: 90, align: "left" },
-  podio2Treinos: { label: "2º lugar — treinos", grupo: "Pódio", eixo: "xy", boxW: 90, align: "left" },
-  podio2Km: { label: "2º lugar — km", grupo: "Pódio", eixo: "xy", boxW: 90, align: "left" },
-  podio1Pts: { label: "1º lugar — pontos", grupo: "Pódio", eixo: "xy", boxW: 90, align: "left" },
-  podio1Treinos: { label: "1º lugar — treinos", grupo: "Pódio", eixo: "xy", boxW: 90, align: "left" },
-  podio1Km: { label: "1º lugar — km", grupo: "Pódio", eixo: "xy", boxW: 90, align: "left" },
-  podio3Pts: { label: "3º lugar — pontos", grupo: "Pódio", eixo: "xy", boxW: 90, align: "left" },
-  podio3Treinos: { label: "3º lugar — treinos", grupo: "Pódio", eixo: "xy", boxW: 90, align: "left" },
-  podio3Km: { label: "3º lugar — km", grupo: "Pódio", eixo: "xy", boxW: 90, align: "left" },
+  podio1Nome: { label: "1º lugar — nome", grupo: "Pódio", eixo: "xy", align: "center" },
+  podio1Pts: { label: "1º lugar — pontos", grupo: "Pódio", eixo: "xy", align: "left" },
+  podio1Treinos: { label: "1º lugar — treinos", grupo: "Pódio", eixo: "xy", align: "left" },
+  podio1Km: { label: "1º lugar — km", grupo: "Pódio", eixo: "xy", align: "left" },
+  podio2Nome: { label: "2º lugar — nome", grupo: "Pódio", eixo: "xy", align: "center" },
+  podio2Pts: { label: "2º lugar — pontos", grupo: "Pódio", eixo: "xy", align: "left" },
+  podio2Treinos: { label: "2º lugar — treinos", grupo: "Pódio", eixo: "xy", align: "left" },
+  podio2Km: { label: "2º lugar — km", grupo: "Pódio", eixo: "xy", align: "left" },
+  podio3Nome: { label: "3º lugar — nome", grupo: "Pódio", eixo: "xy", align: "center" },
+  podio3Pts: { label: "3º lugar — pontos", grupo: "Pódio", eixo: "xy", align: "left" },
+  podio3Treinos: { label: "3º lugar — treinos", grupo: "Pódio", eixo: "xy", align: "left" },
+  podio3Km: { label: "3º lugar — km", grupo: "Pódio", eixo: "xy", align: "left" },
 
-  rankRow1: { label: "Altura da 1ª linha", grupo: "Ranking geral", eixo: "y", boxW: 78, align: "center" },
-  rankEsqNome: { label: "Esquerda — atleta", grupo: "Ranking geral", eixo: "x", boxW: 195, align: "left" },
-  rankEsqPontos: { label: "Esquerda — pontos", grupo: "Ranking geral", eixo: "x", boxW: 73, align: "center" },
-  rankEsqTreinos: { label: "Esquerda — treinos", grupo: "Ranking geral", eixo: "x", boxW: 72, align: "center" },
-  rankEsqKm: { label: "Esquerda — km", grupo: "Ranking geral", eixo: "x", boxW: 70, align: "center" },
-  rankDirNome: { label: "Direita — atleta", grupo: "Ranking geral", eixo: "x", boxW: 223, align: "left" },
-  rankDirPontos: { label: "Direita — pontos", grupo: "Ranking geral", eixo: "x", boxW: 78, align: "center" },
-  rankDirTreinos: { label: "Direita — treinos", grupo: "Ranking geral", eixo: "x", boxW: 78, align: "center" },
-  rankDirKm: { label: "Direita — km", grupo: "Ranking geral", eixo: "x", boxW: 86, align: "center" },
+  rankRow1: { label: "Altura da 1ª linha", grupo: "Ranking geral", eixo: "y", align: "center" },
+  rankEsqNome: { label: "Esquerda — atleta", grupo: "Ranking geral", eixo: "x", align: "left" },
+  rankEsqPontos: { label: "Esquerda — pontos", grupo: "Ranking geral", eixo: "x", align: "center" },
+  rankEsqTreinos: { label: "Esquerda — treinos", grupo: "Ranking geral", eixo: "x", align: "center" },
+  rankEsqKm: { label: "Esquerda — km", grupo: "Ranking geral", eixo: "x", align: "center" },
+  rankDirNome: { label: "Direita — atleta", grupo: "Ranking geral", eixo: "x", align: "left" },
+  rankDirPontos: { label: "Direita — pontos", grupo: "Ranking geral", eixo: "x", align: "center" },
+  rankDirTreinos: { label: "Direita — treinos", grupo: "Ranking geral", eixo: "x", align: "center" },
+  rankDirKm: { label: "Direita — km", grupo: "Ranking geral", eixo: "x", align: "center" },
 
-  destaque1Titulo: { label: "Maior quilometragem — título", grupo: "Destaques", eixo: "xy", boxW: 355, align: "left" },
-  destaque1Linha1: { label: "Maior quilometragem — 1ª linha", grupo: "Destaques", eixo: "xy", boxW: 355, align: "left" },
-  destaque2Titulo: { label: "Mais treinos — título", grupo: "Destaques", eixo: "xy", boxW: 382, align: "left" },
-  destaque2Linha1: { label: "Mais treinos — 1ª linha", grupo: "Destaques", eixo: "xy", boxW: 382, align: "left" },
-  destaque3Titulo: { label: "Maior pontuação — título", grupo: "Destaques", eixo: "xy", boxW: 411, align: "left" },
-  destaque3Linha1: { label: "Maior pontuação — 1ª linha", grupo: "Destaques", eixo: "xy", boxW: 411, align: "left" },
+  destaque1Titulo: { label: "Maior quilometragem — título", grupo: "Destaques", eixo: "xy", align: "left" },
+  destaque1Linha1: { label: "Maior quilometragem — 1ª linha", grupo: "Destaques", eixo: "xy", align: "left" },
+  destaque2Titulo: { label: "Mais treinos — título", grupo: "Destaques", eixo: "xy", align: "left" },
+  destaque2Linha1: { label: "Mais treinos — 1ª linha", grupo: "Destaques", eixo: "xy", align: "left" },
+  destaque3Titulo: { label: "Maior pontuação — título", grupo: "Destaques", eixo: "xy", align: "left" },
+  destaque3Linha1: { label: "Maior pontuação — 1ª linha", grupo: "Destaques", eixo: "xy", align: "left" },
 };
 
 /**
@@ -124,38 +135,41 @@ export const CAMPOS_INFO: Record<CampoId, CampoInfo> = {
  * (centro dos ícones, linhas e colunas da tabela, cards de destaque).
  */
 export const INFORMATIVO_LAYOUT_PADRAO: Record<CampoId, CampoLayout> = {
-  mesLabel: { x: 525, y: 137, fontSize: 15 },
-  kpi1: { x: 831, y: 138.5, fontSize: 21 },
-  kpi2: { x: 1051, y: 138, fontSize: 21 },
-  kpi3: { x: 1266, y: 136, fontSize: 21 },
-  kpi4: { x: 1517, y: 137.5, fontSize: 21 },
+  mesLabel: { x: 525, y: 137, fontSize: 15, boxW: 260, quebraLinha: false },
+  kpi1: { x: 831, y: 138.5, fontSize: 21, boxW: 138, quebraLinha: false },
+  kpi2: { x: 1051, y: 138, fontSize: 21, boxW: 138, quebraLinha: false },
+  kpi3: { x: 1266, y: 136, fontSize: 21, boxW: 138, quebraLinha: false },
+  kpi4: { x: 1517, y: 137.5, fontSize: 21, boxW: 158, quebraLinha: false },
 
-  podio2Pts: { x: 90, y: 448, fontSize: 12 },
-  podio2Treinos: { x: 90, y: 494.5, fontSize: 12 },
-  podio2Km: { x: 90, y: 539.5, fontSize: 12 },
-  podio1Pts: { x: 274, y: 444.5, fontSize: 12 },
-  podio1Treinos: { x: 274, y: 470.5, fontSize: 12 },
-  podio1Km: { x: 274, y: 509.5, fontSize: 12 },
-  podio3Pts: { x: 464, y: 471, fontSize: 12 },
-  podio3Treinos: { x: 464, y: 508.5, fontSize: 12 },
-  podio3Km: { x: 464, y: 550, fontSize: 12 },
+  podio1Nome: { x: 202, y: 400, fontSize: 12.5, boxW: 178, quebraLinha: true },
+  podio1Pts: { x: 274, y: 444.5, fontSize: 12, boxW: 90, quebraLinha: false },
+  podio1Treinos: { x: 274, y: 470.5, fontSize: 12, boxW: 90, quebraLinha: false },
+  podio1Km: { x: 274, y: 509.5, fontSize: 12, boxW: 90, quebraLinha: false },
+  podio2Nome: { x: 18, y: 413, fontSize: 12.5, boxW: 172, quebraLinha: true },
+  podio2Pts: { x: 90, y: 448, fontSize: 12, boxW: 90, quebraLinha: false },
+  podio2Treinos: { x: 90, y: 494.5, fontSize: 12, boxW: 90, quebraLinha: false },
+  podio2Km: { x: 90, y: 539.5, fontSize: 12, boxW: 90, quebraLinha: false },
+  podio3Nome: { x: 395, y: 431, fontSize: 12.5, boxW: 170, quebraLinha: true },
+  podio3Pts: { x: 464, y: 471, fontSize: 12, boxW: 90, quebraLinha: false },
+  podio3Treinos: { x: 464, y: 508.5, fontSize: 12, boxW: 90, quebraLinha: false },
+  podio3Km: { x: 464, y: 550, fontSize: 12, boxW: 90, quebraLinha: false },
 
-  rankRow1: { x: 576, y: 259.5, fontSize: 9 },
-  rankEsqNome: { x: 662, y: 259.5, fontSize: 9 },
-  rankEsqPontos: { x: 857, y: 259.5, fontSize: 9 },
-  rankEsqTreinos: { x: 930, y: 259.5, fontSize: 9 },
-  rankEsqKm: { x: 1002, y: 259.5, fontSize: 9 },
-  rankDirNome: { x: 1179, y: 259.5, fontSize: 9 },
-  rankDirPontos: { x: 1402, y: 259.5, fontSize: 9 },
-  rankDirTreinos: { x: 1480, y: 259.5, fontSize: 9 },
-  rankDirKm: { x: 1558, y: 259.5, fontSize: 9 },
+  rankRow1: { x: 576, y: 259.5, fontSize: 9, boxW: 78, quebraLinha: false },
+  rankEsqNome: { x: 662, y: 259.5, fontSize: 9, boxW: 195, quebraLinha: false },
+  rankEsqPontos: { x: 857, y: 259.5, fontSize: 9, boxW: 73, quebraLinha: false },
+  rankEsqTreinos: { x: 930, y: 259.5, fontSize: 9, boxW: 72, quebraLinha: false },
+  rankEsqKm: { x: 1002, y: 259.5, fontSize: 9, boxW: 70, quebraLinha: false },
+  rankDirNome: { x: 1179, y: 259.5, fontSize: 9, boxW: 223, quebraLinha: false },
+  rankDirPontos: { x: 1402, y: 259.5, fontSize: 9, boxW: 78, quebraLinha: false },
+  rankDirTreinos: { x: 1480, y: 259.5, fontSize: 9, boxW: 78, quebraLinha: false },
+  rankDirKm: { x: 1558, y: 259.5, fontSize: 9, boxW: 86, quebraLinha: false },
 
-  destaque1Titulo: { x: 160, y: 753, fontSize: 11.5 },
-  destaque1Linha1: { x: 160, y: 788, fontSize: 10 },
-  destaque2Titulo: { x: 682, y: 753, fontSize: 11.5 },
-  destaque2Linha1: { x: 682, y: 788, fontSize: 10 },
-  destaque3Titulo: { x: 1225, y: 753, fontSize: 11.5 },
-  destaque3Linha1: { x: 1225, y: 788, fontSize: 10 },
+  destaque1Titulo: { x: 160, y: 753, fontSize: 11.5, boxW: 355, quebraLinha: false },
+  destaque1Linha1: { x: 160, y: 788, fontSize: 10, boxW: 355, quebraLinha: false },
+  destaque2Titulo: { x: 682, y: 753, fontSize: 11.5, boxW: 382, quebraLinha: false },
+  destaque2Linha1: { x: 682, y: 788, fontSize: 10, boxW: 382, quebraLinha: false },
+  destaque3Titulo: { x: 1225, y: 753, fontSize: 11.5, boxW: 411, quebraLinha: false },
+  destaque3Linha1: { x: 1225, y: 788, fontSize: 10, boxW: 411, quebraLinha: false },
 };
 
 /** Espaçamentos repetidos — não são um ponto arrastável, só uma distância entre linhas. */

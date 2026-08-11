@@ -11,10 +11,15 @@ import { cn } from "@/lib/cn";
 import { getStoredBranding } from "@/lib/branding";
 import { formatBRL } from "@/lib/format";
 import { agruparUltimosLancamentos, type EstatisticasDashboard } from "@/lib/dashboardStats";
-import { calcularResumoRankingMensal } from "@/lib/rankingMensal";
+import { calcularResumoRankingPeriodo } from "@/lib/rankingMensal";
 import { normalizarInformativoConfig } from "@/lib/informativoConfig";
 import { carregarLayoutInformativo } from "@/lib/informativoLayoutStore";
-import { GerarInformativoModal, labelMes } from "./GerarInformativoModal";
+import {
+  GerarInformativoModal,
+  labelPeriodo,
+  sufixoArquivo,
+  type PeriodoInformativo,
+} from "./GerarInformativoModal";
 import { ReportExecutivoDocument } from "@/lib/pdf/ReportExecutivoDocument";
 import { InformativoRankingDocument } from "@/lib/pdf/InformativoRankingDocument";
 import type { AtletaDoc, EventoDoc, HistoricoPontoDoc, InformativoConfigDoc } from "@/lib/types";
@@ -78,7 +83,7 @@ export function ExportarRelatorioDropdown({
     }
   }
 
-  async function handleExportarInformativo(ano: number, mes: number) {
+  async function handleExportarInformativo(periodo: PeriodoInformativo) {
     setGerando("informativo");
     try {
       const snap = await getDoc(doc(db, "configuracoes", "informativo"));
@@ -89,7 +94,12 @@ export function ExportarRelatorioDropdown({
       const fundoCorrida = `${window.location.origin}/informativo-fundo-corrida.png`;
       const fundoBike = `${window.location.origin}/informativo-fundo-bike.png`;
 
-      const resumo = calcularResumoRankingMensal({ atletas, lancamentos, ano, mes });
+      const resumo = calcularResumoRankingPeriodo({
+        atletas,
+        lancamentos,
+        de: periodo.de,
+        ate: periodo.ate,
+      });
       const bike = resumo.filter((a) => a.equipe === "bicicleta");
       const corrida = resumo.filter((a) => a.equipe === "corrida");
 
@@ -97,7 +107,7 @@ export function ExportarRelatorioDropdown({
         <InformativoRankingDocument
           bike={bike}
           corrida={corrida}
-          mesLabel={labelMes(ano, mes)}
+          mesLabel={labelPeriodo(periodo)}
           modalidadeFiltro={config.modalidade}
           limite={config.limite}
           fundoBike={fundoBike}
@@ -109,16 +119,16 @@ export function ExportarRelatorioDropdown({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `informativo-ranking-${ano}-${String(mes).padStart(2, "0")}.pdf`;
+      a.download = `informativo-ranking-${sufixoArquivo(periodo)}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       setEscolhendoMes(false);
 
-      const totalNoMes = resumo.reduce((s, r) => s + r.treinosMes, 0);
-      if (totalNoMes === 0) {
-        show("info", `Informativo gerado, mas não há nenhum treino lançado em ${labelMes(ano, mes)}.`);
+      const totalNoPeriodo = resumo.reduce((s, r) => s + r.treinosMes, 0);
+      if (totalNoPeriodo === 0) {
+        show("info", `Informativo gerado, mas não há nenhum treino lançado em ${labelPeriodo(periodo)}.`);
       } else {
-        show("success", `Informativo de ${labelMes(ano, mes)} gerado com sucesso.`);
+        show("success", `Informativo de ${labelPeriodo(periodo)} gerado com sucesso.`);
       }
     } catch {
       show("error", "Não foi possível gerar o informativo agora. Tente novamente.");
