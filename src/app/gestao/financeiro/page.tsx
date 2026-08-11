@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { AnimatePresence } from "framer-motion";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { SubTabs } from "@/components/ui/SubTabs";
 import { NotAuthorized } from "@/components/ui/NotAuthorized";
@@ -25,7 +24,8 @@ export default function FinanceiroPage() {
       <div>
         <h2 className="text-2xl font-extrabold text-text">Financeiro</h2>
         <p className="text-sm text-text-light">
-          Acompanhe o orçamento do programa, veja o que foi gasto e o que está previsto.
+          Acompanhe o orçamento do programa, veja o que foi gasto e o que está
+          previsto.
         </p>
       </div>
 
@@ -38,17 +38,15 @@ export default function FinanceiroPage() {
         ]}
       />
 
-      <AnimatePresence mode="wait">
-        {tab === "resumo" ? (
-          <TabPanel key="resumo">
-            <ResumoTab />
-          </TabPanel>
-        ) : (
-          <TabPanel key="gastos">
-            <GastosTab />
-          </TabPanel>
-        )}
-      </AnimatePresence>
+      {tab === "resumo" ? (
+        <TabPanel key="resumo">
+          <ResumoTab />
+        </TabPanel>
+      ) : (
+        <TabPanel key="gastos">
+          <GastosTab />
+        </TabPanel>
+      )}
     </div>
   );
 }

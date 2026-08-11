@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { NotAuthorized } from "@/components/ui/NotAuthorized";
@@ -24,7 +23,9 @@ export default function PontuacaoPage() {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-2xl font-extrabold text-text">Lançamento de pontos</h2>
+        <h2 className="text-2xl font-extrabold text-text">
+          Lançamento de pontos
+        </h2>
         <p className="text-sm text-text-light">
           Registre pontuação por treino, evento ou lançamento avulso.
         </p>
@@ -43,7 +44,9 @@ export default function PontuacaoPage() {
             onClick={() => setTab(opt.value)}
             className={cn(
               "rounded-[calc(var(--radius)-2px)] px-4 py-2 text-sm font-semibold transition-colors",
-              tab === opt.value ? "bg-primary text-white" : "text-text-light hover:text-text",
+              tab === opt.value
+                ? "bg-primary text-white"
+                : "text-text-light hover:text-text",
             )}
           >
             {opt.label}
@@ -51,23 +54,15 @@ export default function PontuacaoPage() {
         ))}
       </div>
 
-      <AnimatePresence mode="wait">
-        {tab === "lancar" && (
-          <TabPanel key="lancar">
-            <LancarPontosTab />
-          </TabPanel>
+      <TabPanel key={tab}>
+        {tab === "lancar" ? (
+          <LancarPontosTab />
+        ) : tab === "extrato" ? (
+          <ExtratoTab />
+        ) : (
+          <ConsolidadoTab />
         )}
-        {tab === "extrato" && (
-          <TabPanel key="extrato">
-            <ExtratoTab />
-          </TabPanel>
-        )}
-        {tab === "consolidado" && (
-          <TabPanel key="consolidado">
-            <ConsolidadoTab />
-          </TabPanel>
-        )}
-      </AnimatePresence>
+      </TabPanel>
     </div>
   );
 }

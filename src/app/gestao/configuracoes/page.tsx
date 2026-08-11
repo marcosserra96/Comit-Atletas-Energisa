@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { AnimatePresence } from "framer-motion";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { SubTabs } from "@/components/ui/SubTabs";
 import { NotAuthorized } from "@/components/ui/NotAuthorized";
@@ -14,7 +13,34 @@ import { ConsistenciaTab } from "./ConsistenciaTab";
 import { DiagnosticoTab } from "./DiagnosticoTab";
 import { AuditoriaTab } from "./AuditoriaTab";
 
-type Tab = "usuarios" | "identidade" | "informativo" | "informativo_layout" | "consistencia" | "diagnostico" | "auditoria";
+type Tab =
+  | "usuarios"
+  | "identidade"
+  | "informativo"
+  | "informativo_layout"
+  | "consistencia"
+  | "diagnostico"
+  | "auditoria";
+
+/** Conteúdo de cada aba. O TabPanel usa `key={tab}` pra remontar e animar a entrada. */
+function conteudoDaAba(tab: Tab) {
+  switch (tab) {
+    case "usuarios":
+      return <UsuariosTab />;
+    case "identidade":
+      return <IdentidadeVisualTab />;
+    case "informativo":
+      return <InformativoTab />;
+    case "informativo_layout":
+      return <InformativoLayoutTab />;
+    case "consistencia":
+      return <ConsistenciaTab />;
+    case "diagnostico":
+      return <DiagnosticoTab />;
+    case "auditoria":
+      return <AuditoriaTab />;
+  }
+}
 
 export default function ConfigurarPortalPage() {
   const { usuario } = useActiveSession();
@@ -47,43 +73,7 @@ export default function ConfigurarPortalPage() {
         ]}
       />
 
-      <AnimatePresence mode="wait">
-        {tab === "usuarios" && (
-          <TabPanel key="usuarios">
-            <UsuariosTab />
-          </TabPanel>
-        )}
-        {tab === "identidade" && (
-          <TabPanel key="identidade">
-            <IdentidadeVisualTab />
-          </TabPanel>
-        )}
-        {tab === "informativo" && (
-          <TabPanel key="informativo">
-            <InformativoTab />
-          </TabPanel>
-        )}
-        {tab === "informativo_layout" && (
-          <TabPanel key="informativo_layout">
-            <InformativoLayoutTab />
-          </TabPanel>
-        )}
-        {tab === "consistencia" && (
-          <TabPanel key="consistencia">
-            <ConsistenciaTab />
-          </TabPanel>
-        )}
-        {tab === "diagnostico" && (
-          <TabPanel key="diagnostico">
-            <DiagnosticoTab />
-          </TabPanel>
-        )}
-        {tab === "auditoria" && (
-          <TabPanel key="auditoria">
-            <AuditoriaTab />
-          </TabPanel>
-        )}
-      </AnimatePresence>
+      <TabPanel key={tab}>{conteudoDaAba(tab)}</TabPanel>
     </div>
   );
 }

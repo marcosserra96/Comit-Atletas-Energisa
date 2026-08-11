@@ -1,7 +1,13 @@
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
+import type { ReactNode } from "react";
 import type { Modalidade } from "@/lib/types";
 import type { ResumoAtletaMensal } from "@/lib/rankingMensal";
-import type { CampoId, CampoLayout } from "@/lib/informativoLayout";
+import {
+  CAMPOS_INFO,
+  type CampoId,
+  RANKING_ROWS_POR_COLUNA,
+  type LayoutInformativo,
+} from "@/lib/informativoLayout";
 
 const PAGE_W = 1672;
 const PAGE_H = 941;
@@ -19,8 +25,8 @@ function abs(top: number, left: number, width: number, extra: object = {}) {
   return { position: "absolute" as const, top, left, width, ...extra };
 }
 
-/** Centraliza o texto verticalmente num ponto Y medido (ex: o centro real de um ícone), via flexbox — não depende de tentar adivinhar métricas de fonte. */
-function centeredAt(centerY: number, left: number, width: number, height = 32, extra: object = {}) {
+/** Caixa com o conteúdo centralizado verticalmente em `centerY`. Mesma convenção do editor: x = borda esquerda, y = centro. */
+function caixa(centerY: number, left: number, width: number, height: number, extra: object = {}) {
   return {
     position: "absolute" as const,
     top: centerY - height / 2,
@@ -37,6 +43,47 @@ const styles = StyleSheet.create({
   bg: { position: "absolute", top: 0, left: 0, width: PAGE_W, height: PAGE_H },
 });
 
+/**
+ * Renderiza um campo configurável. Posição, tamanho de fonte, largura da caixa e
+ * alinhamento vêm todos de informativoLayout.ts — é o que garante que o editor
+ * de layout e o PDF final mostrem exatamente a mesma coisa.
+ */
+function Campo({
+  campo,
+  layout,
+  children,
+  offsetY = 0,
+  cor = WHITE,
+  bold = true,
+  uppercase = false,
+}: {
+  campo: CampoId;
+  layout: LayoutInformativo;
+  children: ReactNode;
+  offsetY?: number;
+  cor?: string;
+  bold?: boolean;
+  uppercase?: boolean;
+}) {
+  const l = layout.campos[campo];
+  const info = CAMPOS_INFO[campo];
+  return (
+    <View style={caixa(l.y + offsetY, l.x, info.boxW, l.fontSize * 2)}>
+      <Text
+        style={{
+          fontSize: l.fontSize,
+          fontFamily: bold ? "Helvetica-Bold" : "Helvetica",
+          color: cor,
+          textAlign: info.align,
+          ...(uppercase ? { textTransform: "uppercase" as const } : {}),
+        }}
+      >
+        {children}
+      </Text>
+    </View>
+  );
+}
+
 // ---------- Pódio ----------
 
 interface PodiumSlot {
@@ -48,8 +95,8 @@ interface PodiumSlot {
   cor: string;
 }
 
-// colX/colW/nomeTop/nomeH são estruturais (posição fixa dos cards no fundo); a posição
-// de pontos/treinos/km vem do layout configurável (ver src/lib/informativoLayout.ts).
+// colX/colW/nomeTop/nomeH são estruturais (posição fixa dos cards no fundo);
+// pontos/treinos/km vêm do layout configurável.
 const PODIUM: Record<1 | 2 | 3, PodiumSlot> = {
   2: { colX: 18, colW: 172, nomeTop: 392, nomeH: 42, campos: ["podio2Pts", "podio2Treinos", "podio2Km"], cor: SILVER },
   1: { colX: 202, colW: 178, nomeTop: 380, nomeH: 40, campos: ["podio1Pts", "podio1Treinos", "podio1Km"], cor: GOLD },
@@ -63,7 +110,7 @@ function PodiumSlotView({
 }: {
   posicao: 1 | 2 | 3;
   atleta: ResumoAtletaMensal | undefined;
-  layout: Record<CampoId, CampoLayout>;
+  layout: LayoutInformativo;
 }) {
   const slot = PODIUM[posicao];
   if (!atleta) {
@@ -73,9 +120,6 @@ function PodiumSlotView({
   const dividerY = slot.nomeTop + slot.nomeH;
   const dividerW = 56;
   const [ptsCampo, treinosCampo, kmCampo] = slot.campos;
-  const ptsL = layout[ptsCampo];
-  const treinosL = layout[treinosCampo];
-  const kmL = layout[kmCampo];
   return (
     <>
       <Text
@@ -95,116 +139,135 @@ function PodiumSlotView({
           backgroundColor: slot.cor,
         })}
       />
-      <View style={centeredAt(ptsL.y, ptsL.x, 90)}>
-        <Text style={{ fontSize: ptsL.fontSize, fontFamily: "Helvetica-Bold", color: WHITE }}>
-          {formatarNumero(atleta.pontosMes)} pts
-        </Text>
-      </View>
-      <View style={centeredAt(treinosL.y, treinosL.x, 90)}>
-        <Text style={{ fontSize: treinosL.fontSize, fontFamily: "Helvetica-Bold", color: WHITE }}>
-          {formatarNumero(atleta.treinosMes)} treinos
-        </Text>
-      </View>
-      <View style={centeredAt(kmL.y, kmL.x, 90)}>
-        <Text style={{ fontSize: kmL.fontSize, fontFamily: "Helvetica-Bold", color: WHITE }}>
-          {formatarNumero(atleta.kmMes, 2)} km
-        </Text>
-      </View>
+      <Campo campo={ptsCampo} layout={layout}>
+        {formatarNumero(atleta.pontosMes)} pts
+      </Campo>
+      <Campo campo={treinosCampo} layout={layout}>
+        {formatarNumero(atleta.treinosMes)} treinos
+      </Campo>
+      <Campo campo={kmCampo} layout={layout}>
+        {formatarNumero(atleta.kmMes, 2)} km
+      </Campo>
     </>
   );
 }
 
-// ---------- Ranking geral (duas colunas) ----------
-
-const RANKING_ROW1_Y = 251;
-const RANKING_ROW_H = 23.15;
-const RANKING_ROWS_POR_COLUNA = 19;
+// ---------- Ranking geral (duas colunas de 19 linhas) ----------
 
 interface RankingColSpec {
-  posX: number;
-  nomeX: number;
-  nomeW: number;
-  pontosX: number;
-  treinosX: number;
-  kmX: number;
-  colX: number;
-  colW: number;
+  /** Área a pintar de volta com a cor do fundo quando a linha não tem atleta (esconde o "20º" já impresso na arte). */
+  coverX: number;
+  coverW: number;
+  campos: { nome: CampoId; pontos: CampoId; treinos: CampoId; km: CampoId };
 }
 
 const RANKING_COLS: [RankingColSpec, RankingColSpec] = [
-  { colX: 578, colW: 497, posX: 578, nomeX: 672, nomeW: 188, pontosX: 862, treinosX: 927, kmX: 1006 },
-  { colX: 1097, colW: 563, posX: 1097, nomeX: 1198, nomeW: 190, pontosX: 1390, treinosX: 1455, kmX: 1540 },
+  {
+    coverX: 578,
+    coverW: 492,
+    campos: { nome: "rankEsqNome", pontos: "rankEsqPontos", treinos: "rankEsqTreinos", km: "rankEsqKm" },
+  },
+  {
+    coverX: 1094,
+    coverW: 548,
+    campos: { nome: "rankDirNome", pontos: "rankDirPontos", treinos: "rankDirTreinos", km: "rankDirKm" },
+  },
 ];
 
-function RankingColuna({ lista, offset, spec }: { lista: ResumoAtletaMensal[]; offset: number; spec: RankingColSpec }) {
+function RankingColuna({
+  lista,
+  spec,
+  layout,
+}: {
+  lista: ResumoAtletaMensal[];
+  spec: RankingColSpec;
+  layout: LayoutInformativo;
+}) {
+  const row1Y = layout.campos.rankRow1.y;
+  const rowH = layout.extras.rankingRowHeight;
   return (
     <>
       {Array.from({ length: RANKING_ROWS_POR_COLUNA }, (_, i) => {
-        const y = RANKING_ROW1_Y + i * RANKING_ROW_H;
+        const offsetY = i * rowH;
         const atleta = lista[i];
         if (!atleta) {
-          return <View key={i} style={abs(y - 2, spec.colX, spec.colW, { height: RANKING_ROW_H, backgroundColor: BG })} />;
+          return (
+            <View
+              key={i}
+              style={abs(row1Y + offsetY - rowH / 2, spec.coverX, spec.coverW, {
+                height: rowH,
+                backgroundColor: BG,
+              })}
+            />
+          );
         }
         return (
           <View key={i}>
-            <Text style={abs(y, spec.nomeX, spec.nomeW, { fontSize: 9, fontFamily: "Helvetica-Bold", color: WHITE })}>
+            <Campo campo={spec.campos.nome} layout={layout} offsetY={offsetY}>
               {atleta.nome}
-            </Text>
-            <Text style={abs(y, spec.pontosX, 55, { fontSize: 9, color: WHITE, textAlign: "center" })}>
+            </Campo>
+            <Campo campo={spec.campos.pontos} layout={layout} offsetY={offsetY} bold={false}>
               {formatarNumero(atleta.pontosMes)}
-            </Text>
-            <Text style={abs(y, spec.treinosX, 65, { fontSize: 9, color: WHITE, textAlign: "center" })}>
+            </Campo>
+            <Campo campo={spec.campos.treinos} layout={layout} offsetY={offsetY} bold={false}>
               {formatarNumero(atleta.treinosMes)}
-            </Text>
-            <Text style={abs(y, spec.kmX, 70, { fontSize: 9, color: WHITE, textAlign: "center" })}>
+            </Campo>
+            <Campo campo={spec.campos.km} layout={layout} offsetY={offsetY} bold={false}>
               {formatarNumero(atleta.kmMes, 2)}
-            </Text>
+            </Campo>
           </View>
         );
       })}
-      {/* posição "offset+i+1" já vem impressa no fundo — cobre as sobrando quando a lista é menor que 19 */}
     </>
   );
 }
 
 // ---------- Destaques do mês ----------
 
-interface DestaqueSpec {
-  x: number;
-  w: number;
-  tituloY: number;
-  linha1Y: number;
-  linhaGap: number;
-}
-
-const DESTAQUES: [DestaqueSpec, DestaqueSpec, DestaqueSpec] = [
-  { x: 155, w: 350, tituloY: 745, linha1Y: 781, linhaGap: 30 },
-  { x: 682, w: 372, tituloY: 745, linha1Y: 781, linhaGap: 30 },
-  { x: 1207, w: 435, tituloY: 745, linha1Y: 781, linhaGap: 30 },
-];
-
 function DestaqueCard({
-  spec,
+  tituloCampo,
+  linhaCampo,
   titulo,
   lista,
   formatar,
+  layout,
 }: {
-  spec: DestaqueSpec;
+  tituloCampo: CampoId;
+  linhaCampo: CampoId;
   titulo: string;
   lista: ResumoAtletaMensal[];
   formatar: (a: ResumoAtletaMensal) => string;
+  layout: LayoutInformativo;
 }) {
+  const l = layout.campos[linhaCampo];
+  const info = CAMPOS_INFO[linhaCampo];
+  const gap = layout.extras.destaqueLinhaGap;
   return (
     <>
-      <Text style={abs(spec.tituloY, spec.x, spec.w, { fontSize: 11.5, fontFamily: "Helvetica-Bold", color: WHITE, textTransform: "uppercase" })}>
+      <Campo campo={tituloCampo} layout={layout} uppercase>
         {titulo}
-      </Text>
+      </Campo>
       {lista.map((a, i) => (
-        <View key={a.id} style={abs(spec.linha1Y + i * spec.linhaGap, spec.x, spec.w, { flexDirection: "row", justifyContent: "space-between" })}>
-          <Text style={{ fontSize: 10, color: WHITE, width: spec.w - 90 }}>
+        <View
+          key={a.id}
+          style={caixa(l.y + i * gap, l.x, info.boxW, l.fontSize * 2, {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          })}
+        >
+          <Text style={{ fontSize: l.fontSize, color: WHITE, width: info.boxW - 95 }}>
             {i + 1}º {a.nome}
           </Text>
-          <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: WHITE, width: 80, textAlign: "right" }}>
+          <Text
+            style={{
+              fontSize: l.fontSize,
+              fontFamily: "Helvetica-Bold",
+              color: WHITE,
+              width: 90,
+              textAlign: "right",
+            }}
+          >
             {formatar(a)}
           </Text>
         </View>
@@ -215,63 +278,31 @@ function DestaqueCard({
 
 // ---------- KPIs ----------
 
-interface KpiSpec {
-  labelX: number;
-  labelW: number;
-  campo: CampoId;
-  valueW: number;
-}
-
-// labelX/labelW são estruturais (posição fixa das caixas no fundo); a posição do valor vem do layout configurável.
-const KPIS: [KpiSpec, KpiSpec, KpiSpec, KpiSpec] = [
-  { labelX: 745, labelW: 210, campo: "kpi1", valueW: 138 },
-  { labelX: 975, labelW: 208, campo: "kpi2", valueW: 138 },
-  { labelX: 1197, labelW: 208, campo: "kpi3", valueW: 138 },
-  { labelX: 1422, labelW: 238, campo: "kpi4", valueW: 158 },
+// Os rótulos ("PONTOS TOTAIS DO MÊS") são estruturais — ficam na posição fixa da caixa no fundo.
+const KPI_LABELS: { x: number; w: number; campo: CampoId; texto: string }[] = [
+  { x: 745, w: 210, campo: "kpi1", texto: "Pontos totais do mês" },
+  { x: 975, w: 208, campo: "kpi2", texto: "Quantidade de treinos" },
+  { x: 1197, w: 208, campo: "kpi3", texto: "KM acumulados" },
+  { x: 1422, w: 238, campo: "kpi4", texto: "Atletas no ranking" },
 ];
-
-function KpiOverlay({
-  spec,
-  label,
-  value,
-  layout,
-}: {
-  spec: KpiSpec;
-  label: string;
-  value: string;
-  layout: Record<CampoId, CampoLayout>;
-}) {
-  const l = layout[spec.campo];
-  return (
-    <>
-      <Text style={abs(94, spec.labelX, spec.labelW, { fontSize: 8, fontFamily: "Helvetica-Bold", color: "#7fa8c9", textTransform: "uppercase" })}>
-        {label}
-      </Text>
-      <View style={centeredAt(l.y, l.x, spec.valueW, 30)}>
-        <Text style={{ fontSize: l.fontSize, fontFamily: "Helvetica-Bold", color: WHITE }}>{value}</Text>
-      </View>
-    </>
-  );
-}
 
 // ---------- Página por modalidade ----------
 
 function PaginaModalidade({
   fundo,
-  modalidade,
   dados,
   mesLabel,
   limite,
   layout,
 }: {
   fundo: string;
-  modalidade: Modalidade;
   dados: ResumoAtletaMensal[];
   mesLabel: string;
   limite: number;
-  layout: Record<CampoId, CampoLayout>;
+  layout: LayoutInformativo;
 }) {
-  const lista = dados.slice(0, Math.max(limite, 41));
+  const maxNaPagina = 3 + RANKING_ROWS_POR_COLUNA * 2;
+  const lista = dados.slice(0, Math.min(limite, maxNaPagina));
   const totalPontos = lista.reduce((s, a) => s + a.pontosMes, 0);
   const totalTreinos = lista.reduce((s, a) => s + a.treinosMes, 0);
   const totalKm = lista.reduce((s, a) => s + a.kmMes, 0);
@@ -290,39 +321,58 @@ function PaginaModalidade({
       {/* eslint-disable-next-line jsx-a11y/alt-text -- Image aqui é do @react-pdf/renderer. */}
       <Image src={fundo} style={styles.bg} />
 
-      <View style={centeredAt(layout.mesLabel.y, layout.mesLabel.x, 260, 20)}>
-        <Text style={{ fontSize: layout.mesLabel.fontSize, color: "#cfe3f2" }}>{mesLabel}</Text>
-      </View>
+      <Campo campo="mesLabel" layout={layout} cor="#cfe3f2" bold={false}>
+        {mesLabel}
+      </Campo>
 
-      <KpiOverlay spec={KPIS[0]} label="Pontos totais do mês" value={`${formatarNumero(totalPontos)} pts`} layout={layout} />
-      <KpiOverlay spec={KPIS[1]} label="Quantidade de treinos" value={formatarNumero(totalTreinos)} layout={layout} />
-      <KpiOverlay spec={KPIS[2]} label="KM acumulados" value={`${formatarNumero(totalKm, 2)} km`} layout={layout} />
-      <KpiOverlay spec={KPIS[3]} label="Atletas no ranking" value={formatarNumero(lista.length)} layout={layout} />
+      {KPI_LABELS.map((k) => (
+        <Text
+          key={k.campo}
+          style={abs(94, k.x, k.w, {
+            fontSize: 8,
+            fontFamily: "Helvetica-Bold",
+            color: "#7fa8c9",
+            textTransform: "uppercase",
+          })}
+        >
+          {k.texto}
+        </Text>
+      ))}
+      <Campo campo="kpi1" layout={layout}>{`${formatarNumero(totalPontos)} pts`}</Campo>
+      <Campo campo="kpi2" layout={layout}>{formatarNumero(totalTreinos)}</Campo>
+      <Campo campo="kpi3" layout={layout}>{`${formatarNumero(totalKm, 2)} km`}</Campo>
+      <Campo campo="kpi4" layout={layout}>{formatarNumero(lista.length)}</Campo>
 
       <PodiumSlotView posicao={2} atleta={segundo} layout={layout} />
       <PodiumSlotView posicao={1} atleta={primeiro} layout={layout} />
       <PodiumSlotView posicao={3} atleta={terceiro} layout={layout} />
 
-      <RankingColuna lista={colEsquerda} offset={3} spec={RANKING_COLS[0]} />
-      <RankingColuna lista={colDireita} offset={3 + RANKING_ROWS_POR_COLUNA} spec={RANKING_COLS[1]} />
+      <RankingColuna lista={colEsquerda} spec={RANKING_COLS[0]} layout={layout} />
+      <RankingColuna lista={colDireita} spec={RANKING_COLS[1]} layout={layout} />
 
       <DestaqueCard
-        spec={DESTAQUES[0]}
+        tituloCampo="destaque1Titulo"
+        linhaCampo="destaque1Linha1"
         titulo="Maior quilometragem"
         lista={maiorKm}
         formatar={(a) => `${formatarNumero(a.kmMes, 2)} km`}
+        layout={layout}
       />
       <DestaqueCard
-        spec={DESTAQUES[1]}
+        tituloCampo="destaque2Titulo"
+        linhaCampo="destaque2Linha1"
         titulo="Mais treinos"
         lista={maisTreinos}
         formatar={(a) => `${formatarNumero(a.treinosMes)} treinos`}
+        layout={layout}
       />
       <DestaqueCard
-        spec={DESTAQUES[2]}
+        tituloCampo="destaque3Titulo"
+        linhaCampo="destaque3Linha1"
         titulo="Maior pontuação"
         lista={maiorPontuacao}
         formatar={(a) => `${formatarNumero(a.pontosMes)} pts`}
+        layout={layout}
       />
     </Page>
   );
@@ -345,7 +395,7 @@ export function InformativoRankingDocument({
   limite: number;
   fundoBike: string;
   fundoCorrida: string;
-  layout: Record<CampoId, CampoLayout>;
+  layout: LayoutInformativo;
 }) {
   const dataHoje = new Date().toLocaleDateString("pt-BR");
   const usarBike = modalidadeFiltro !== "corrida";
@@ -353,11 +403,10 @@ export function InformativoRankingDocument({
   const mesFormatado = mesLabel.replace(/^./, (c) => c.toUpperCase());
 
   return (
-    <Document title={`Informativo do Ranking - Atletas Energisa - ${dataHoje}`}>
+    <Document title={`Informativo do Ranking - Atletas Energisa - ${mesFormatado} (gerado em ${dataHoje})`}>
       {usarCorrida && (
         <PaginaModalidade
           fundo={fundoCorrida}
-          modalidade="corrida"
           dados={corrida}
           mesLabel={mesFormatado}
           limite={limite}
@@ -365,14 +414,7 @@ export function InformativoRankingDocument({
         />
       )}
       {usarBike && (
-        <PaginaModalidade
-          fundo={fundoBike}
-          modalidade="bicicleta"
-          dados={bike}
-          mesLabel={mesFormatado}
-          limite={limite}
-          layout={layout}
-        />
+        <PaginaModalidade fundo={fundoBike} dados={bike} mesLabel={mesFormatado} limite={limite} layout={layout} />
       )}
     </Document>
   );

@@ -13,7 +13,8 @@ import { formatBRL } from "@/lib/format";
 import { agruparUltimosLancamentos, type EstatisticasDashboard } from "@/lib/dashboardStats";
 import { calcularResumoRankingMensal } from "@/lib/rankingMensal";
 import { normalizarInformativoConfig } from "@/lib/informativoConfig";
-import { carregarLayoutInformativo } from "@/lib/informativoLayout";
+import { carregarLayoutInformativo } from "@/lib/informativoLayoutStore";
+import { GerarInformativoModal, labelMes } from "./GerarInformativoModal";
 import { ReportExecutivoDocument } from "@/lib/pdf/ReportExecutivoDocument";
 import { InformativoRankingDocument } from "@/lib/pdf/InformativoRankingDocument";
 import type { AtletaDoc, EventoDoc, HistoricoPontoDoc, InformativoConfigDoc } from "@/lib/types";
@@ -32,6 +33,7 @@ export function ExportarRelatorioDropdown({
   const { show } = useToast();
   const [open, setOpen] = useState(false);
   const [gerando, setGerando] = useState<"pdf" | "informativo" | null>(null);
+  const [escolhendoMes, setEscolhendoMes] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -76,8 +78,7 @@ export function ExportarRelatorioDropdown({
     }
   }
 
-  async function handleExportarInformativo() {
-    setOpen(false);
+  async function handleExportarInformativo(ano: number, mes: number) {
     setGerando("informativo");
     try {
       const snap = await getDoc(doc(db, "configuracoes", "informativo"));
@@ -88,11 +89,6 @@ export function ExportarRelatorioDropdown({
       const fundoCorrida = `${window.location.origin}/informativo-fundo-corrida.png`;
       const fundoBike = `${window.location.origin}/informativo-fundo-bike.png`;
 
-      const hoje = new Date();
-      const ano = hoje.getFullYear();
-      const mes = hoje.getMonth() + 1;
-      const mesLabel = hoje.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-
       const resumo = calcularResumoRankingMensal({ atletas, lancamentos, ano, mes });
       const bike = resumo.filter((a) => a.equipe === "bicicleta");
       const corrida = resumo.filter((a) => a.equipe === "corrida");
@@ -101,7 +97,7 @@ export function ExportarRelatorioDropdown({
         <InformativoRankingDocument
           bike={bike}
           corrida={corrida}
-          mesLabel={mesLabel.replace(/^./, (c) => c.toUpperCase())}
+          mesLabel={labelMes(ano, mes)}
           modalidadeFiltro={config.modalidade}
           limite={config.limite}
           fundoBike={fundoBike}
@@ -113,11 +109,17 @@ export function ExportarRelatorioDropdown({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      const dataHoje = new Date().toISOString().slice(0, 10);
-      a.download = `informativo-ranking-atletas-${dataHoje}.pdf`;
+      a.download = `informativo-ranking-${ano}-${String(mes).padStart(2, "0")}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
-      show("success", "Informativo do ranking gerado com sucesso.");
+      setEscolhendoMes(false);
+
+      const totalNoMes = resumo.reduce((s, r) => s + r.treinosMes, 0);
+      if (totalNoMes === 0) {
+        show("info", `Informativo gerado, mas não há nenhum treino lançado em ${labelMes(ano, mes)}.`);
+      } else {
+        show("success", `Informativo de ${labelMes(ano, mes)} gerado com sucesso.`);
+      }
     } catch {
       show("error", "Não foi possível gerar o informativo agora. Tente novamente.");
     } finally {
@@ -151,7 +153,10 @@ export function ExportarRelatorioDropdown({
           </button>
           <button
             role="menuitem"
-            onClick={handleExportarInformativo}
+            onClick={() => {
+              setOpen(false);
+              setEscolhendoMes(true);
+            }}
             className="flex w-full items-center gap-2.5 rounded-[calc(var(--radius)-2px)] px-2.5 py-2.5 text-left text-sm font-medium text-text hover:bg-bg"
           >
             <Trophy className="size-4 text-primary" />
@@ -170,6 +175,13 @@ export function ExportarRelatorioDropdown({
           </button>
         </div>
       )}
+
+      <GerarInformativoModal
+        open={escolhendoMes}
+        gerando={gerando === "informativo"}
+        onClose={() => setEscolhendoMes(false)}
+        onGerar={handleExportarInformativo}
+      />
     </div>
   );
 }
