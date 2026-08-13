@@ -19,6 +19,10 @@ export type CampoId =
   | "kpi2"
   | "kpi3"
   | "kpi4"
+  | "kpi1Label"
+  | "kpi2Label"
+  | "kpi3Label"
+  | "kpi4Label"
   | "podio2Nome"
   | "podio2Pts"
   | "podio2Treinos"
@@ -32,6 +36,8 @@ export type CampoId =
   | "podio3Treinos"
   | "podio3Km"
   | "rankRow1"
+  | "rankEsqPos"
+  | "rankDirPos"
   | "rankEsqNome"
   | "rankEsqPontos"
   | "rankEsqTreinos"
@@ -63,6 +69,10 @@ export const CAMPOS_ORDEM: CampoId[] = [
   "kpi2",
   "kpi3",
   "kpi4",
+  "kpi1Label",
+  "kpi2Label",
+  "kpi3Label",
+  "kpi4Label",
   "podio1Nome",
   "podio1Pts",
   "podio1Treinos",
@@ -76,10 +86,12 @@ export const CAMPOS_ORDEM: CampoId[] = [
   "podio3Treinos",
   "podio3Km",
   "rankRow1",
+  "rankEsqPos",
   "rankEsqNome",
   "rankEsqPontos",
   "rankEsqTreinos",
   "rankEsqKm",
+  "rankDirPos",
   "rankDirNome",
   "rankDirPontos",
   "rankDirTreinos",
@@ -98,6 +110,10 @@ export const CAMPOS_INFO: Record<CampoId, CampoInfo> = {
   kpi2: { label: "Quantidade de treinos", grupo: "KPIs", eixo: "xy", align: "left" },
   kpi3: { label: "KM acumulados", grupo: "KPIs", eixo: "xy", align: "left" },
   kpi4: { label: "Atletas no ranking", grupo: "KPIs", eixo: "xy", align: "left" },
+  kpi1Label: { label: "Rótulo — pontos totais", grupo: "KPIs", eixo: "xy", align: "left" },
+  kpi2Label: { label: "Rótulo — quantidade de treinos", grupo: "KPIs", eixo: "xy", align: "left" },
+  kpi3Label: { label: "Rótulo — KM acumulados", grupo: "KPIs", eixo: "xy", align: "left" },
+  kpi4Label: { label: "Rótulo — atletas no ranking", grupo: "KPIs", eixo: "xy", align: "left" },
 
   podio1Nome: { label: "1º lugar — nome", grupo: "Pódio", eixo: "xy", align: "center" },
   podio1Pts: { label: "1º lugar — pontos", grupo: "Pódio", eixo: "xy", align: "left" },
@@ -113,10 +129,12 @@ export const CAMPOS_INFO: Record<CampoId, CampoInfo> = {
   podio3Km: { label: "3º lugar — km", grupo: "Pódio", eixo: "xy", align: "left" },
 
   rankRow1: { label: "Altura da 1ª linha", grupo: "Ranking geral", eixo: "y", align: "center" },
+  rankEsqPos: { label: "Esquerda — posição", grupo: "Ranking geral", eixo: "x", align: "center" },
   rankEsqNome: { label: "Esquerda — atleta", grupo: "Ranking geral", eixo: "x", align: "left" },
   rankEsqPontos: { label: "Esquerda — pontos", grupo: "Ranking geral", eixo: "x", align: "center" },
   rankEsqTreinos: { label: "Esquerda — treinos", grupo: "Ranking geral", eixo: "x", align: "center" },
   rankEsqKm: { label: "Esquerda — km", grupo: "Ranking geral", eixo: "x", align: "center" },
+  rankDirPos: { label: "Direita — posição", grupo: "Ranking geral", eixo: "x", align: "center" },
   rankDirNome: { label: "Direita — atleta", grupo: "Ranking geral", eixo: "x", align: "left" },
   rankDirPontos: { label: "Direita — pontos", grupo: "Ranking geral", eixo: "x", align: "center" },
   rankDirTreinos: { label: "Direita — treinos", grupo: "Ranking geral", eixo: "x", align: "center" },
@@ -140,6 +158,10 @@ export const INFORMATIVO_LAYOUT_PADRAO: Record<CampoId, CampoLayout> = {
   kpi2: { x: 1051, y: 138, fontSize: 21, boxW: 138, quebraLinha: false },
   kpi3: { x: 1266, y: 136, fontSize: 21, boxW: 138, quebraLinha: false },
   kpi4: { x: 1517, y: 137.5, fontSize: 21, boxW: 158, quebraLinha: false },
+  kpi1Label: { x: 745, y: 100, fontSize: 8, boxW: 210, quebraLinha: false },
+  kpi2Label: { x: 975, y: 100, fontSize: 8, boxW: 208, quebraLinha: false },
+  kpi3Label: { x: 1197, y: 100, fontSize: 8, boxW: 208, quebraLinha: false },
+  kpi4Label: { x: 1422, y: 100, fontSize: 8, boxW: 238, quebraLinha: false },
 
   podio1Nome: { x: 202, y: 400, fontSize: 12.5, boxW: 178, quebraLinha: true },
   podio1Pts: { x: 274, y: 444.5, fontSize: 12, boxW: 90, quebraLinha: false },
@@ -155,10 +177,12 @@ export const INFORMATIVO_LAYOUT_PADRAO: Record<CampoId, CampoLayout> = {
   podio3Km: { x: 464, y: 550, fontSize: 12, boxW: 90, quebraLinha: false },
 
   rankRow1: { x: 576, y: 259.5, fontSize: 9, boxW: 78, quebraLinha: false },
+  rankEsqPos: { x: 578, y: 259.5, fontSize: 11, boxW: 74, quebraLinha: false },
   rankEsqNome: { x: 662, y: 259.5, fontSize: 9, boxW: 195, quebraLinha: false },
   rankEsqPontos: { x: 857, y: 259.5, fontSize: 9, boxW: 73, quebraLinha: false },
   rankEsqTreinos: { x: 930, y: 259.5, fontSize: 9, boxW: 72, quebraLinha: false },
   rankEsqKm: { x: 1002, y: 259.5, fontSize: 9, boxW: 70, quebraLinha: false },
+  rankDirPos: { x: 1094, y: 259.5, fontSize: 11, boxW: 75, quebraLinha: false },
   rankDirNome: { x: 1179, y: 259.5, fontSize: 9, boxW: 223, quebraLinha: false },
   rankDirPontos: { x: 1402, y: 259.5, fontSize: 9, boxW: 78, quebraLinha: false },
   rankDirTreinos: { x: 1480, y: 259.5, fontSize: 9, boxW: 78, quebraLinha: false },
@@ -197,3 +221,9 @@ export const LAYOUT_INFORMATIVO_PADRAO: LayoutInformativo = {
 
 /** Quantas linhas de atleta cada uma das duas colunas do "Ranking geral" comporta na arte. */
 export const RANKING_ROWS_POR_COLUNA = 19;
+
+/** Quantos atletas cabem no Ranking geral da arte (as duas colunas somadas). */
+export const CAPACIDADE_RANKING = RANKING_ROWS_POR_COLUNA * 2;
+
+/** Amarelo dos números de posição, amostrado da própria arte — usado só quando precisamos redesenhá-los. */
+export const COR_POSICAO = "#ffff03";

@@ -99,6 +99,22 @@ export function InformativoTab() {
               onChange={(e) => update({ limite: Math.max(1, Number(e.target.value) || 1) })}
             />
           </div>
+
+          <label className="mt-4 flex cursor-pointer items-start gap-2 text-sm text-text">
+            <input
+              type="checkbox"
+              checked={config.ocultarTop3NoRanking ?? false}
+              onChange={(e) => update({ ocultarTop3NoRanking: e.target.checked })}
+              className="mt-0.5 size-4 rounded border-border accent-primary"
+            />
+            <span>
+              Não repetir o top 3 no Ranking geral
+              <span className="block text-xs text-text-light">
+                Eles já aparecem no pódio. Com isso a tabela começa no 4º e sobram 3 vagas pra quem
+                ficaria de fora.
+              </span>
+            </span>
+          </label>
         </Card>
 
         <Card>

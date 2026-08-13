@@ -9,6 +9,7 @@ export const INFORMATIVO_PADRAO: InformativoConfigDoc = {
   mostrarTop3: true,
   mostrarAlertas: true,
   mostrarDemais: true,
+  ocultarTop3NoRanking: false,
   alertaCriterio: "sem_treino_mes",
   alertaValor: 30,
 };

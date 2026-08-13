@@ -16,34 +16,42 @@ const nomes = [
   "Jaqueline Zenobio", "Acrisio Rafael Maximiano Mendonça", "Paloma Bernardes",
   "Bruno Alves", "Marileia Santos da Costa Silva", "Gabriel Dias Eduardo Martins",
   "Luciano José Silva e Cunha", "Viviane Muniz Evangelista", "Ronald Freitas Magalhaes",
-  "Edgar Belina", "Ingrid Portela Venturini Torres",
+  "Edgar Belina", "Ingrid Portela Venturini Torres", "Extra Um", "Extra Dois", "Extra Tres",
 ];
 
 const corrida: ResumoAtletaMensal[] = nomes.map((nome, i) => ({
   id: `c${i}`,
   nome,
   equipe: "corrida",
-  pontosMes: Math.max(0, 26 - Math.round(i * 0.72) + (i % 3)),
-  treinosMes: Math.max(0, 15 - Math.round(i * 0.4)),
-  kmMes: Math.max(0, 135 - i * 3.4),
+  pontosMes: Math.max(0, 26 - Math.round(i * 0.6) + (i % 3)),
+  treinosMes: Math.max(0, 15 - Math.round(i * 0.35)),
+  kmMes: Math.max(0, 135 - i * 3.2),
   ultimaData: "2026-06-28",
 }));
 
-async function main() {
+const base = "/private/tmp/claude-501/-Users-marcos-Desktop-Atletas/c6d35eb5-3033-4c0d-a3be-4d1ba2168556/scratchpad";
+
+async function gerar(ocultarTop3: boolean, arquivo: string) {
   await renderToFile(
     <InformativoRankingDocument
       bike={[]}
       corrida={corrida}
       mesLabel="Junho a Agosto de 2026"
       modalidadeFiltro="corrida"
-      limite={38}
+      limite={100}
       fundoCorrida="/Users/marcos/Desktop/Atletas/atletas-energisa-portal/public/informativo-fundo-corrida.png"
       fundoBike="/Users/marcos/Desktop/Atletas/atletas-energisa-portal/public/informativo-fundo-bike.png"
       layout={LAYOUT_INFORMATIVO_PADRAO}
+      ocultarTop3={ocultarTop3}
     />,
-    "/private/tmp/claude-501/-Users-marcos-Desktop-Atletas/c6d35eb5-3033-4c0d-a3be-4d1ba2168556/scratchpad/informativo-teste.pdf",
+    `${base}/${arquivo}`,
   );
-  console.log("PDF gerado.");
+  console.log("gerado:", arquivo);
+}
+
+async function main() {
+  await gerar(false, "info-normal.pdf");
+  await gerar(true, "info-sem-top3.pdf");
 }
 
 main();

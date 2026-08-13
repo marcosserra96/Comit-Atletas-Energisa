@@ -225,6 +225,8 @@ export interface InformativoConfigDoc {
   mostrarTop3: boolean;
   mostrarAlertas: boolean;
   mostrarDemais: boolean;
+  /** Esconde o top 3 do Ranking geral (eles já aparecem no pódio) — a tabela passa a começar no 4º. */
+  ocultarTop3NoRanking?: boolean;
   alertaCriterio: AlertaCriterio;
   alertaValor: number;
   atualizadoEm?: unknown;

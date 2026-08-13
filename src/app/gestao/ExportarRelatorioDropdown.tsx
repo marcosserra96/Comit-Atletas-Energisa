@@ -13,6 +13,7 @@ import { formatBRL } from "@/lib/format";
 import { agruparUltimosLancamentos, type EstatisticasDashboard } from "@/lib/dashboardStats";
 import { calcularResumoRankingPeriodo } from "@/lib/rankingMensal";
 import { normalizarInformativoConfig } from "@/lib/informativoConfig";
+import { CAPACIDADE_RANKING } from "@/lib/informativoLayout";
 import { carregarLayoutInformativo } from "@/lib/informativoLayoutStore";
 import {
   GerarInformativoModal,
@@ -113,6 +114,7 @@ export function ExportarRelatorioDropdown({
           fundoBike={fundoBike}
           fundoCorrida={fundoCorrida}
           layout={layout}
+          ocultarTop3={config.ocultarTop3NoRanking ?? false}
         />
       );
       const blob = await pdf(documento).toBlob();
@@ -125,8 +127,19 @@ export function ExportarRelatorioDropdown({
       setEscolhendoMes(false);
 
       const totalNoPeriodo = resumo.reduce((s, r) => s + r.treinosMes, 0);
+      // A arte tem um número fixo de linhas — avisa em vez de cortar em silêncio.
+      const cabem = CAPACIDADE_RANKING + (config.ocultarTop3NoRanking ? 3 : 0);
+      const sobrando =
+        (config.modalidade !== "corrida" ? Math.max(0, bike.length - cabem) : 0) +
+        (config.modalidade !== "bicicleta" ? Math.max(0, corrida.length - cabem) : 0);
+
       if (totalNoPeriodo === 0) {
         show("info", `Informativo gerado, mas não há nenhum treino lançado em ${labelPeriodo(periodo)}.`);
+      } else if (sobrando > 0) {
+        show(
+          "info",
+          `Informativo gerado. ${sobrando} atleta(s) ficaram de fora: só cabem ${cabem} por modalidade na arte — a lista completa está em Registrar › Visão Consolidada.`,
+        );
       } else {
         show("success", `Informativo de ${labelPeriodo(periodo)} gerado com sucesso.`);
       }

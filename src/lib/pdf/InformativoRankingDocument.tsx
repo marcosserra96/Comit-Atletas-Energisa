@@ -4,8 +4,9 @@ import type { Modalidade } from "@/lib/types";
 import type { ResumoAtletaMensal } from "@/lib/rankingMensal";
 import {
   CAMPOS_INFO,
-  type CampoId,
+  COR_POSICAO,
   RANKING_ROWS_POR_COLUNA,
+  type CampoId,
   type LayoutInformativo,
 } from "@/lib/informativoLayout";
 
@@ -150,19 +151,42 @@ interface RankingColSpec {
   /** Área a pintar de volta com a cor do fundo quando a linha não tem atleta (esconde o "20º" já impresso na arte). */
   coverX: number;
   coverW: number;
-  campos: { nome: CampoId; pontos: CampoId; treinos: CampoId; km: CampoId };
+  /** Só a célula de posição — usada quando é preciso reescrever a colocação por cima da impressa. */
+  posCoverX: number;
+  posCoverW: number;
+  /** Colocação que a arte já traz na 1ª linha desta coluna. */
+  posicaoImpressa: number;
+  campos: { posicao: CampoId; nome: CampoId; pontos: CampoId; treinos: CampoId; km: CampoId };
 }
 
 const RANKING_COLS: [RankingColSpec, RankingColSpec] = [
   {
     coverX: 578,
     coverW: 492,
-    campos: { nome: "rankEsqNome", pontos: "rankEsqPontos", treinos: "rankEsqTreinos", km: "rankEsqKm" },
+    posCoverX: 578,
+    posCoverW: 74,
+    posicaoImpressa: 1,
+    campos: {
+      posicao: "rankEsqPos",
+      nome: "rankEsqNome",
+      pontos: "rankEsqPontos",
+      treinos: "rankEsqTreinos",
+      km: "rankEsqKm",
+    },
   },
   {
     coverX: 1094,
     coverW: 548,
-    campos: { nome: "rankDirNome", pontos: "rankDirPontos", treinos: "rankDirTreinos", km: "rankDirKm" },
+    posCoverX: 1094,
+    posCoverW: 75,
+    posicaoImpressa: 1 + RANKING_ROWS_POR_COLUNA,
+    campos: {
+      posicao: "rankDirPos",
+      nome: "rankDirNome",
+      pontos: "rankDirPontos",
+      treinos: "rankDirTreinos",
+      km: "rankDirKm",
+    },
   },
 ];
 
@@ -170,13 +194,17 @@ function RankingColuna({
   lista,
   spec,
   layout,
+  primeiraPosicao,
 }: {
   lista: ResumoAtletaMensal[];
   spec: RankingColSpec;
   layout: LayoutInformativo;
+  /** Colocação do primeiro item desta coluna. Quando não bate com o número já impresso na arte, redesenhamos a coluna de posição. */
+  primeiraPosicao: number;
 }) {
   const row1Y = layout.campos.rankRow1.y;
   const rowH = layout.extras.rankingRowHeight;
+  const renumerar = primeiraPosicao !== spec.posicaoImpressa;
   return (
     <>
       {Array.from({ length: RANKING_ROWS_POR_COLUNA }, (_, i) => {
@@ -195,6 +223,20 @@ function RankingColuna({
         }
         return (
           <View key={i}>
+            {renumerar && (
+              <>
+                {/* tampa só a célula de posição (sem encostar nas linhas divisórias) e escreve a colocação certa */}
+                <View
+                  style={abs(row1Y + offsetY - rowH / 2, spec.posCoverX, spec.posCoverW, {
+                    height: rowH,
+                    backgroundColor: BG,
+                  })}
+                />
+                <Campo campo={spec.campos.posicao} layout={layout} offsetY={offsetY} cor={COR_POSICAO}>
+                  {primeiraPosicao + i}º
+                </Campo>
+              </>
+            )}
             <Campo campo={spec.campos.nome} layout={layout} offsetY={offsetY}>
               {atleta.nome}
             </Campo>
@@ -277,12 +319,11 @@ function DestaqueCard({
 
 // ---------- KPIs ----------
 
-// Os rótulos ("PONTOS TOTAIS DO MÊS") são estruturais — ficam na posição fixa da caixa no fundo.
-const KPI_LABELS: { x: number; w: number; campo: CampoId; texto: string }[] = [
-  { x: 745, w: 210, campo: "kpi1", texto: "Pontos totais do mês" },
-  { x: 975, w: 208, campo: "kpi2", texto: "Quantidade de treinos" },
-  { x: 1197, w: 208, campo: "kpi3", texto: "KM acumulados" },
-  { x: 1422, w: 238, campo: "kpi4", texto: "Atletas no ranking" },
+const KPI_LABELS: { rotulo: CampoId; valor: CampoId; texto: string }[] = [
+  { rotulo: "kpi1Label", valor: "kpi1", texto: "Pontos totais do mês" },
+  { rotulo: "kpi2Label", valor: "kpi2", texto: "Quantidade de treinos" },
+  { rotulo: "kpi3Label", valor: "kpi3", texto: "KM acumulados" },
+  { rotulo: "kpi4Label", valor: "kpi4", texto: "Atletas no ranking" },
 ];
 
 // ---------- Página por modalidade ----------
@@ -293,24 +334,30 @@ function PaginaModalidade({
   mesLabel,
   limite,
   layout,
+  ocultarTop3,
 }: {
   fundo: string;
   dados: ResumoAtletaMensal[];
   mesLabel: string;
   limite: number;
   layout: LayoutInformativo;
+  ocultarTop3: boolean;
 }) {
-  const maxNaPagina = RANKING_ROWS_POR_COLUNA * 2;
-  const lista = dados.slice(0, Math.min(limite, maxNaPagina));
+  // Os KPIs e os destaques consideram o time todo; o corte só afeta quantos entram na tabela.
+  const lista = dados.slice(0, limite);
   const totalPontos = lista.reduce((s, a) => s + a.pontosMes, 0);
   const totalTreinos = lista.reduce((s, a) => s + a.treinosMes, 0);
   const totalKm = lista.reduce((s, a) => s + a.kmMes, 0);
 
-  // O pódio é um destaque, não um recorte: o top 3 aparece nele E como 1º/2º/3º
-  // do Ranking geral — é assim que a numeração já impressa na arte fecha.
   const [primeiro, segundo, terceiro] = lista;
-  const colEsquerda = lista.slice(0, RANKING_ROWS_POR_COLUNA);
-  const colDireita = lista.slice(RANKING_ROWS_POR_COLUNA, RANKING_ROWS_POR_COLUNA * 2);
+
+  // Por padrão o pódio é destaque, não recorte: o top 3 aparece nele E como 1º/2º/3º
+  // da tabela, que é como a numeração já impressa na arte fecha. Com "ocultarTop3"
+  // a tabela começa no 4º e a coluna de posição é reescrita por cima da impressa.
+  const primeiraPosicao = ocultarTop3 ? 4 : 1;
+  const paraTabela = (ocultarTop3 ? lista.slice(3) : lista).slice(0, RANKING_ROWS_POR_COLUNA * 2);
+  const colEsquerda = paraTabela.slice(0, RANKING_ROWS_POR_COLUNA);
+  const colDireita = paraTabela.slice(RANKING_ROWS_POR_COLUNA, RANKING_ROWS_POR_COLUNA * 2);
 
   const maiorKm = [...lista].sort((a, b) => b.kmMes - a.kmMes).slice(0, 3);
   const maisTreinos = [...lista].sort((a, b) => b.treinosMes - a.treinosMes).slice(0, 3);
@@ -326,17 +373,9 @@ function PaginaModalidade({
       </Campo>
 
       {KPI_LABELS.map((k) => (
-        <Text
-          key={k.campo}
-          style={abs(94, k.x, k.w, {
-            fontSize: 8,
-            fontFamily: "Helvetica-Bold",
-            color: "#7fa8c9",
-            textTransform: "uppercase",
-          })}
-        >
+        <Campo key={k.rotulo} campo={k.rotulo} layout={layout} cor="#7fa8c9" uppercase>
           {k.texto}
-        </Text>
+        </Campo>
       ))}
       <Campo campo="kpi1" layout={layout}>{`${formatarNumero(totalPontos)} pts`}</Campo>
       <Campo campo="kpi2" layout={layout}>{formatarNumero(totalTreinos)}</Campo>
@@ -347,8 +386,18 @@ function PaginaModalidade({
       <PodiumSlotView posicao={1} atleta={primeiro} layout={layout} />
       <PodiumSlotView posicao={3} atleta={terceiro} layout={layout} />
 
-      <RankingColuna lista={colEsquerda} spec={RANKING_COLS[0]} layout={layout} />
-      <RankingColuna lista={colDireita} spec={RANKING_COLS[1]} layout={layout} />
+      <RankingColuna
+        lista={colEsquerda}
+        spec={RANKING_COLS[0]}
+        layout={layout}
+        primeiraPosicao={primeiraPosicao}
+      />
+      <RankingColuna
+        lista={colDireita}
+        spec={RANKING_COLS[1]}
+        layout={layout}
+        primeiraPosicao={primeiraPosicao + RANKING_ROWS_POR_COLUNA}
+      />
 
       <DestaqueCard
         tituloCampo="destaque1Titulo"
@@ -387,6 +436,7 @@ export function InformativoRankingDocument({
   fundoBike,
   fundoCorrida,
   layout,
+  ocultarTop3,
 }: {
   bike: ResumoAtletaMensal[];
   corrida: ResumoAtletaMensal[];
@@ -396,6 +446,7 @@ export function InformativoRankingDocument({
   fundoBike: string;
   fundoCorrida: string;
   layout: LayoutInformativo;
+  ocultarTop3: boolean;
 }) {
   const dataHoje = new Date().toLocaleDateString("pt-BR");
   const usarBike = modalidadeFiltro !== "corrida";
@@ -411,10 +462,18 @@ export function InformativoRankingDocument({
           mesLabel={mesFormatado}
           limite={limite}
           layout={layout}
+          ocultarTop3={ocultarTop3}
         />
       )}
       {usarBike && (
-        <PaginaModalidade fundo={fundoBike} dados={bike} mesLabel={mesFormatado} limite={limite} layout={layout} />
+        <PaginaModalidade
+          fundo={fundoBike}
+          dados={bike}
+          mesLabel={mesFormatado}
+          limite={limite}
+          layout={layout}
+          ocultarTop3={ocultarTop3}
+        />
       )}
     </Document>
   );
