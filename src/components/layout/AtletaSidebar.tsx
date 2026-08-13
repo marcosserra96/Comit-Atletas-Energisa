@@ -45,10 +45,10 @@ export function AtletaSidebar({
       )}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex h-screen w-60 shrink-0 flex-col bg-navy transition-transform duration-200",
+          "fixed inset-y-0 left-0 z-40 flex h-screen w-64 shrink-0 flex-col bg-navy transition-transform duration-200",
           "lg:sticky lg:top-0 lg:z-auto lg:translate-x-0 lg:transition-[width]",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
-          collapsed ? "lg:w-[72px]" : "lg:w-60",
+          collapsed ? "lg:w-[72px]" : "lg:w-64",
         )}
       >
         <div className="flex h-16 items-center px-4">
@@ -67,7 +67,7 @@ export function AtletaSidebar({
           )}
         </div>
 
-        <nav className="mt-2 flex flex-1 flex-col gap-1 px-3">
+        <nav className="mt-2 flex flex-1 flex-col gap-1 px-3" aria-label="Menu do atleta">
           {navItems.map(({ href, label, icon: Icon }) => {
             const active = pathname === href;
             return (
@@ -75,6 +75,7 @@ export function AtletaSidebar({
                 key={href}
                 href={href}
                 onClick={onCloseMobile}
+                aria-current={active ? "page" : undefined}
                 className={cn(
                   "flex items-center gap-3 rounded-[var(--radius)] px-3 py-2.5 text-sm font-medium text-white/70 transition-colors",
                   "hover:bg-white/5 hover:text-white",
@@ -93,7 +94,7 @@ export function AtletaSidebar({
         <button
           onClick={() => setCollapsed((c) => !c)}
           className={cn(
-            "hidden items-center gap-2 border-t border-white/10 px-4 py-4 text-xs font-medium text-white/50 hover:text-white/80 lg:flex",
+            "hidden items-center gap-2 border-t border-white/10 px-4 py-4 text-xs font-medium text-white/50 hover:text-white/80 lg:flex cursor-pointer",
             collapsed && "justify-center px-0",
           )}
         >

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { pdf } from "@react-pdf/renderer";
 import { doc, getDoc } from "firebase/firestore";
-import { ChevronDown, Download, FileText, Presentation, Trophy } from "lucide-react";
+import { ChevronDown, Download, FileText, Presentation, Trophy, Users } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
@@ -11,7 +11,7 @@ import { cn } from "@/lib/cn";
 import { getStoredBranding } from "@/lib/branding";
 import { formatBRL } from "@/lib/format";
 import { agruparUltimosLancamentos, type EstatisticasDashboard } from "@/lib/dashboardStats";
-import { calcularResumoRankingPeriodo } from "@/lib/rankingMensal";
+import { calcularResumoRankingPeriodo, diasUteisNoMes } from "@/lib/rankingMensal";
 import { normalizarInformativoConfig } from "@/lib/informativoConfig";
 import { CAPACIDADE_RANKING } from "@/lib/informativoLayout";
 import { carregarLayoutInformativo } from "@/lib/informativoLayoutStore";
@@ -23,6 +23,7 @@ import {
 } from "./GerarInformativoModal";
 import { ReportExecutivoDocument } from "@/lib/pdf/ReportExecutivoDocument";
 import { InformativoRankingDocument } from "@/lib/pdf/InformativoRankingDocument";
+import { ReportTimeDocument } from "@/lib/pdf/ReportTimeDocument";
 import type { AtletaDoc, EventoDoc, HistoricoPontoDoc, InformativoConfigDoc } from "@/lib/types";
 
 export function ExportarRelatorioDropdown({
@@ -38,7 +39,7 @@ export function ExportarRelatorioDropdown({
 }) {
   const { show } = useToast();
   const [open, setOpen] = useState(false);
-  const [gerando, setGerando] = useState<"pdf" | "informativo" | null>(null);
+  const [gerando, setGerando] = useState<"pdf" | "informativo" | "time" | null>(null);
   const [escolhendoMes, setEscolhendoMes] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -79,6 +80,58 @@ export function ExportarRelatorioDropdown({
       show("success", "Report executivo gerado com sucesso.");
     } catch {
       show("error", "Não foi possível gerar o report agora. Tente novamente.");
+    } finally {
+      setGerando(null);
+    }
+  }
+
+  async function handleExportarTime() {
+    setOpen(false);
+    setGerando("time");
+    try {
+      const snap = await getDoc(doc(db, "configuracoes", "informativo"));
+      const config: InformativoConfigDoc = normalizarInformativoConfig(
+        snap.exists() ? (snap.data() as Partial<InformativoConfigDoc>) : undefined,
+      );
+      const branding = getStoredBranding();
+      const logo = `${window.location.origin}/logos/logo-comite-branca-trim.png`;
+
+      const hoje = new Date();
+      const ano = hoje.getFullYear();
+      const mes = hoje.getMonth() + 1;
+      const mesLabel = hoje.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+
+      const de = `${ano}-${String(mes).padStart(2, "0")}-01`;
+      const ultimoDia = new Date(ano, mes, 0).getDate();
+      const ate = `${ano}-${String(mes).padStart(2, "0")}-${String(ultimoDia).padStart(2, "0")}`;
+
+      const resumo = calcularResumoRankingPeriodo({ atletas, lancamentos, de, ate });
+      const bike = resumo.filter((a) => a.equipe === "bicicleta");
+      const corrida = resumo.filter((a) => a.equipe === "corrida");
+
+      const documento = (
+        <ReportTimeDocument
+          bike={bike}
+          corrida={corrida}
+          mesLabel={mesLabel.replace(/^./, (c) => c.toUpperCase())}
+          diasUteis={diasUteisNoMes(ano, mes)}
+          branding={branding}
+          logo={logo}
+          alertaCriterio={config.alertaCriterio}
+          alertaValor={config.alertaValor}
+        />
+      );
+      const blob = await pdf(documento).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const dataHoje = new Date().toISOString().slice(0, 10);
+      a.download = `report-por-time-atletas-${dataHoje}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      show("success", "Report por time gerado com sucesso.");
+    } catch {
+      show("error", "Não foi possível gerar o report por time agora. Tente novamente.");
     } finally {
       setGerando(null);
     }
@@ -184,6 +237,14 @@ export function ExportarRelatorioDropdown({
           >
             <Trophy className="size-4 text-primary" />
             Informativo do ranking
+          </button>
+          <button
+            role="menuitem"
+            onClick={handleExportarTime}
+            className="flex w-full items-center gap-2.5 rounded-[calc(var(--radius)-2px)] px-2.5 py-2.5 text-left text-sm font-medium text-text hover:bg-bg"
+          >
+            <Users className="size-4 text-primary" />
+            Report por time
           </button>
           <button
             role="menuitem"

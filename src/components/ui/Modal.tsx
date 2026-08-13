@@ -40,12 +40,13 @@ export function Modal({ open, onClose, title, description, children, footer, siz
               role="dialog"
               aria-modal="true"
               aria-labelledby="modal-title"
+              aria-describedby={description ? "modal-description" : undefined}
               onClick={(e) => e.stopPropagation()}
               initial={{ opacity: 0, y: 12, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 8, scale: 0.97 }}
               transition={{ duration: 0.18 }}
-              className={`w-full ${SIZES[size]} rounded-[var(--radius-lg)] bg-bg-card border border-border shadow-lg p-6`}
+              className={`w-full ${SIZES[size]} rounded-[var(--radius-lg)] bg-bg-card border border-border shadow-[var(--shadow-modal)] p-4 sm:p-6`}
             >
               <div className="flex items-start justify-between gap-3 mb-1">
                 <h2 id="modal-title" className="text-lg font-bold text-text">
@@ -54,12 +55,12 @@ export function Modal({ open, onClose, title, description, children, footer, siz
                 <button
                   onClick={onClose}
                   aria-label="Fechar"
-                  className="text-text-muted hover:text-text-light shrink-0"
+                  className="text-text-muted hover:text-text-light shrink-0 p-2 -mr-2 -mt-2 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-full"
                 >
                   <X className="size-5" />
                 </button>
               </div>
-              {description && <p className="text-sm text-text-light mb-4">{description}</p>}
+              {description && <p id="modal-description" className="text-sm text-text-light mb-4">{description}</p>}
               {children}
               {footer && <div className="mt-5 flex justify-end gap-2">{footer}</div>}
             </motion.div>

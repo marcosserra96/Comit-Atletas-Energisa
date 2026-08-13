@@ -49,7 +49,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ show }}>
       {children}
-      <div className="pointer-events-none fixed inset-x-0 top-4 z-[100] flex flex-col items-center gap-2 px-4">
+      <div
+        aria-live="polite"
+        role="status"
+        className="pointer-events-none fixed inset-x-0 top-4 z-[100] flex flex-col items-center gap-2 px-4"
+      >
         <AnimatePresence>
           {toasts.map((toast) => {
             const Icon = iconByKind[toast.kind];
@@ -61,7 +65,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 exit={{ opacity: 0, y: -12, scale: 0.96 }}
                 transition={{ duration: 0.18 }}
                 className={cn(
-                  "pointer-events-auto flex items-center gap-2.5 rounded-[var(--radius)] border bg-bg-card px-4 py-3 shadow-lg",
+                  "pointer-events-auto flex items-center gap-2.5 rounded-[var(--radius)] border bg-bg-card px-4 py-3 shadow-[var(--shadow-elevated)]",
                   "max-w-sm w-full",
                   colorByKind[toast.kind],
                 )}

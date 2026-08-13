@@ -154,7 +154,7 @@ export function VisaoEstrategica() {
         )}
       </div>
 
-      <div className="flex items-center gap-2.5 rounded-[var(--radius)] border border-border bg-bg-card px-4 py-2.5 text-sm text-text-light shadow-sm">
+      <div className="flex items-center gap-2.5 rounded-[var(--radius)] border border-border bg-bg-card px-4 py-2.5 text-sm text-text-light shadow-[var(--shadow-card)]">
         <span
           className="size-2 shrink-0 rounded-full"
           style={{
@@ -163,7 +163,7 @@ export function VisaoEstrategica() {
               : stats.ativosCount === 0
                 ? "var(--color-accent)"
                 : "var(--color-secondary)",
-            boxShadow: !carregando && stats.ativosCount > 0 ? "0 0 0 3px rgba(0,179,126,.2)" : undefined,
+            boxShadow: !carregando && stats.ativosCount > 0 ? "var(--ring-primary)" : undefined,
           }}
         />
         <span>
@@ -181,7 +181,7 @@ export function VisaoEstrategica() {
         </span>
       </div>
 
-      <div className="relative flex flex-wrap items-center gap-7 overflow-hidden rounded-[var(--radius-xl)] border border-border bg-bg-card p-6 shadow-sm sm:p-7">
+      <div className="relative flex flex-wrap items-center gap-7 overflow-hidden rounded-[var(--radius-xl)] border border-border bg-bg-card p-6 shadow-[var(--shadow-card)] sm:p-7">
         <div className="flex shrink-0 items-center gap-4.5">
           <div className="relative size-[90px] shrink-0">
             <svg viewBox="0 0 100 100" className="size-full -rotate-90">
@@ -221,12 +221,12 @@ export function VisaoEstrategica() {
           <HeroKpi icon={TicketCheck} color="var(--color-primary)" value={String(stats.participacoesTotal)} label="Participações" />
           <HeroKpi icon={Route} color="var(--color-accent)" value={`${stats.kmTotal.toFixed(1)} km`} label="KM acumulado" />
           <HeroKpi icon={DollarSign} color="var(--color-secondary)" value={formatBRL(stats.investimentoTotal)} label="Custo realizado" />
-          <HeroKpi icon={TrendingUp} color="#8b5cf6" value={formatBRL(stats.custoPorAtleta)} label="Custo / atleta" />
+          <HeroKpi icon={TrendingUp} color="var(--color-info)" value={formatBRL(stats.custoPorAtleta)} label="Custo / atleta" />
         </div>
       </div>
 
       {!carregando && stats.analisesExecutivas.length > 0 && (
-        <div className="rounded-[var(--radius-lg)] border border-primary/20 bg-primary/[0.04] p-5 shadow-sm">
+        <div className="rounded-[var(--radius-lg)] border border-primary/20 bg-primary/[0.04] p-5 shadow-[var(--shadow-card)]">
           <h3 className="mb-3 flex items-center gap-1.5 text-[.95rem] font-bold text-text">
             <Sparkles className="size-[15px] text-primary" />
             Leitura do mês
@@ -244,7 +244,7 @@ export function VisaoEstrategica() {
 
       <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[1fr_300px]">
         <div className="flex min-w-0 flex-col gap-5">
-          <div className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-5 shadow-sm">
+          <div className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-5 shadow-[var(--shadow-card)]">
             <div className="mb-1 flex items-start justify-between gap-3">
               <div>
                 <h3 className="flex items-center gap-1.5 text-[.95rem] font-bold text-text">
@@ -353,7 +353,7 @@ export function VisaoEstrategica() {
           </div>
 
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            <div className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-5 shadow-sm">
+            <div className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-5 shadow-[var(--shadow-card)]">
               <h3 className="flex items-center gap-1.5 text-[.95rem] font-bold text-text">
                 <Award className="size-[15px] text-primary" />
                 Pódio Top 3
@@ -365,7 +365,7 @@ export function VisaoEstrategica() {
               </div>
             </div>
 
-            <div className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-5 shadow-sm">
+            <div className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-5 shadow-[var(--shadow-card)]">
               <h3 className="flex items-center gap-1.5 text-[.95rem] font-bold text-text">
                 <AlertTriangle className="size-[15px] text-primary" />
                 Radar de Inatividade
@@ -380,7 +380,7 @@ export function VisaoEstrategica() {
         </div>
 
         <div className="flex flex-col gap-5">
-          <div className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-5 shadow-sm">
+          <div className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-5 shadow-[var(--shadow-card)]">
             <div className="mb-1 flex items-start justify-between gap-3">
               <h3 className="flex items-center gap-1.5 text-[.95rem] font-bold text-text">
                 <Sparkles className="size-[15px] text-primary" />
@@ -470,7 +470,7 @@ export function VisaoEstrategica() {
             </div>
           </div>
 
-          <div className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-5 shadow-sm">
+          <div className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-5 shadow-[var(--shadow-card)]">
             <h3 className="flex items-center gap-1.5 text-[.95rem] font-bold text-text">
               <CalendarDays className="size-[15px] text-primary" />
               Próximos eventos
@@ -491,7 +491,7 @@ export function VisaoEstrategica() {
             </div>
           </div>
 
-          <div className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-5 shadow-sm">
+          <div className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-5 shadow-[var(--shadow-card)]">
             <h3 className="mb-3.5 flex items-center gap-1.5 text-[.95rem] font-bold text-text">
               <BarChart2 className="size-[15px] text-primary" />
               Eficiência financeira
@@ -534,7 +534,7 @@ function HeroKpi({
 }) {
   return (
     <div
-      className="flex items-center gap-2.5 rounded-[var(--radius)] border border-border bg-bg-card p-3 transition-transform hover:-translate-y-0.5 hover:shadow"
+      className="flex items-center gap-2.5 rounded-[var(--radius)] border border-border bg-bg-card p-3 shadow-[var(--shadow-card)] transition-transform hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
       style={{ borderTop: `3px solid ${color}` }}
     >
       <span
@@ -580,7 +580,7 @@ function ModalidadeCard({
 }) {
   return (
     <div
-      className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-5 shadow-sm"
+      className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-5 shadow-[var(--shadow-card)]"
       style={{ borderTop: `3px solid ${corVar}` }}
     >
       <div className="mb-3.5 flex items-center justify-between">
@@ -654,9 +654,9 @@ function PodiumColumn({
   atletas: AtletaDoc[];
 }) {
   const medalStyles = [
-    { bg: "#fef9c3", border: "#eab308", color: "#a16207" },
-    { bg: "#f1f5f9", border: "#94a3b8", color: "#475569" },
-    { bg: "#fef3ea", border: "#f37021", color: "#c2510e" },
+    { bg: "var(--color-ranking-gold-bg)", border: "var(--color-ranking-gold)", color: "var(--color-ranking-gold-text)" },
+    { bg: "var(--color-ranking-silver-bg)", border: "var(--color-ranking-silver)", color: "var(--color-ranking-silver-text)" },
+    { bg: "var(--color-ranking-bronze-bg)", border: "var(--color-ranking-bronze)", color: "var(--color-ranking-bronze-text)" },
   ];
   return (
     <div>

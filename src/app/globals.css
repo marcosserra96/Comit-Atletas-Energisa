@@ -1,65 +1,268 @@
 @import "tailwindcss";
 
+/* ═══════════════════════════════════════════════════════════
+   DESIGN SYSTEM — Atletas Energisa
+   Tokens semânticos para uma plataforma esportiva corporativa.
+   ═══════════════════════════════════════════════════════════ */
+
 :root {
+  /* ── Brand ── */
   --color-primary: #009bc1;
   --color-primary-hover: #0080a4;
+  --color-primary-subtle: rgba(0, 155, 193, 0.08);
   --color-secondary: #00b37e;
+  --color-secondary-hover: #009a6c;
+  --color-secondary-subtle: rgba(0, 179, 126, 0.08);
   --color-accent: #f37021;
-  --color-danger: #e63946;
-  --color-warning: #f1c40f;
-  --color-success: #22c55e;
+  --color-accent-hover: #e0601a;
+  --color-accent-subtle: rgba(243, 112, 33, 0.08);
 
+  /* ── Semantic Status ── */
+  --color-danger: #e63946;
+  --color-danger-hover: #d42f3c;
+  --color-danger-subtle: rgba(230, 57, 70, 0.08);
+  --color-warning: #f1c40f;
+  --color-warning-subtle: rgba(241, 196, 15, 0.1);
+  --color-success: #22c55e;
+  --color-success-subtle: rgba(34, 197, 94, 0.08);
+  --color-info: #3b82f6;
+  --color-info-subtle: rgba(59, 130, 246, 0.08);
+
+  /* ── Navy / Deep ── */
   --color-navy: #07192d;
   --color-navy-light: #0e2a47;
 
+  /* ── Surfaces ── */
   --color-bg: #f0f4f8;
   --color-bg-card: #ffffff;
-  --color-border: #e2e8f0;
+  --color-bg-elevated: #ffffff;
+  --color-bg-subtle: #f8fafc;
+  --color-bg-inset: #edf2f7;
 
+  /* ── Borders ── */
+  --color-border: #e2e8f0;
+  --color-border-subtle: #f1f5f9;
+  --color-border-strong: #cbd5e1;
+
+  /* ── Text ── */
   --color-text: #1a202c;
+  --color-text-secondary: #475569;
   --color-text-light: #64748b;
   --color-text-muted: #94a3b8;
+  --color-text-inverse: #ffffff;
 
+  /* ── Sport Modalities ── */
+  --color-sport-running: #00b37e;
+  --color-sport-running-subtle: rgba(0, 179, 126, 0.1);
+  --color-sport-cycling: #009bc1;
+  --color-sport-cycling-subtle: rgba(0, 155, 193, 0.1);
+
+  /* ── Ranking ── */
+  --color-ranking-gold: #eab308;
+  --color-ranking-gold-bg: #fef9c3;
+  --color-ranking-gold-text: #a16207;
+  --color-ranking-silver: #94a3b8;
+  --color-ranking-silver-bg: #f1f5f9;
+  --color-ranking-silver-text: #475569;
+  --color-ranking-bronze: #f37021;
+  --color-ranking-bronze-bg: #fff1e6;
+  --color-ranking-bronze-text: #c2510e;
+
+  /* ── Radii ── */
+  --radius-xs: 4px;
   --radius-sm: 6px;
   --radius: 10px;
   --radius-lg: 14px;
   --radius-xl: 20px;
+  --radius-2xl: 28px;
+  --radius-full: 9999px;
 
+  /* ── Spacing Scale (4px base) ── */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 20px;
+  --space-2xl: 24px;
+  --space-3xl: 32px;
+  --space-4xl: 40px;
+  --space-5xl: 48px;
+  --space-6xl: 64px;
+
+  /* ── Typography Scale ── */
+  --text-xs: 0.75rem;     /* 12px */
+  --text-sm: 0.8125rem;   /* 13px */
+  --text-base: 0.875rem;  /* 14px */
+  --text-md: 0.9375rem;   /* 15px */
+  --text-lg: 1.0625rem;   /* 17px */
+  --text-xl: 1.25rem;     /* 20px */
+  --text-2xl: 1.5rem;     /* 24px */
+  --text-3xl: 1.875rem;   /* 30px */
+  --text-4xl: 2.25rem;    /* 36px */
+  --leading-tight: 1.15;
+  --leading-snug: 1.3;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  /* ── Shadows ── */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-modal: 0 12px 40px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-primary-glow: 0 8px 24px rgba(0, 155, 193, 0.2);
+  --shadow-none: 0 0 0 transparent;
+
+  /* ── Transitions ── */
+  --transition-fast: 150ms ease;
+  --transition-normal: 200ms ease;
+  --transition-slow: 350ms ease;
+  --transition-spring: 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ── Focus Ring ── */
+  --ring-primary: 0 0 0 3px rgba(0, 155, 193, 0.3);
+  --ring-danger: 0 0 0 3px rgba(230, 57, 70, 0.3);
+
+  /* ── Login ── */
   --login-bg: linear-gradient(155deg, #07192d 0%, #00836e 100%);
 }
 
+/* ═══════════════════════════════════════════════════════════
+   DARK THEME
+   Superfícies escalonadas — nunca preto absoluto (#000).
+   ═══════════════════════════════════════════════════════════ */
 [data-theme="dark"] {
-  --color-bg: #0f1117;
-  --color-bg-card: #1a1d27;
-  --color-border: #2d3148;
+  /* ── Surfaces — escalas de cinza-azulado ── */
+  --color-bg: #0c0e14;
+  --color-bg-card: #161921;
+  --color-bg-elevated: #1e212b;
+  --color-bg-subtle: #121520;
+  --color-bg-inset: #0f1118;
+
+  /* ── Borders ── */
+  --color-border: #2a2e3d;
+  --color-border-subtle: #1e212b;
+  --color-border-strong: #3a3f52;
+
+  /* ── Text ── */
   --color-text: #e8eaf0;
+  --color-text-secondary: #b0b8cc;
   --color-text-light: #a0a8c0;
   --color-text-muted: #6b7290;
+
+  /* ── Adjusted subtles for dark mode ── */
+  --color-primary-subtle: rgba(0, 155, 193, 0.12);
+  --color-secondary-subtle: rgba(0, 179, 126, 0.12);
+  --color-accent-subtle: rgba(243, 112, 33, 0.12);
+  --color-danger-subtle: rgba(230, 57, 70, 0.12);
+  --color-warning-subtle: rgba(241, 196, 15, 0.14);
+  --color-success-subtle: rgba(34, 197, 94, 0.12);
+  --color-info-subtle: rgba(59, 130, 246, 0.12);
+
+  /* ── Sport tokens are universal ── */
+  --color-sport-running-subtle: rgba(0, 179, 126, 0.15);
+  --color-sport-cycling-subtle: rgba(0, 155, 193, 0.15);
+
+  /* ── Ranking — high contrast for dark ── */
+  --color-ranking-gold-bg: rgba(234, 179, 8, 0.12);
+  --color-ranking-gold-text: #facc15;
+  --color-ranking-silver-bg: rgba(148, 163, 184, 0.12);
+  --color-ranking-silver-text: #cbd5e1;
+  --color-ranking-bronze-bg: rgba(243, 112, 33, 0.12);
+  --color-ranking-bronze-text: #fb923c;
+
+  /* ── Shadows — softer in dark mode ── */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.15);
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.12);
+  --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.15);
+  --shadow-modal: 0 12px 40px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.2);
+  --shadow-primary-glow: 0 8px 24px rgba(0, 155, 193, 0.15);
 }
 
+/* ═══════════════════════════════════════════════════════════
+   TAILWIND CSS v4 THEME BRIDGE
+   Maps CSS variables → Tailwind utility classes.
+   ═══════════════════════════════════════════════════════════ */
 @theme inline {
+  /* Brand */
   --color-primary: var(--color-primary);
   --color-primary-hover: var(--color-primary-hover);
+  --color-primary-subtle: var(--color-primary-subtle);
   --color-secondary: var(--color-secondary);
+  --color-secondary-hover: var(--color-secondary-hover);
+  --color-secondary-subtle: var(--color-secondary-subtle);
   --color-accent: var(--color-accent);
+  --color-accent-hover: var(--color-accent-hover);
+  --color-accent-subtle: var(--color-accent-subtle);
+
+  /* Status */
   --color-danger: var(--color-danger);
+  --color-danger-hover: var(--color-danger-hover);
+  --color-danger-subtle: var(--color-danger-subtle);
   --color-warning: var(--color-warning);
+  --color-warning-subtle: var(--color-warning-subtle);
   --color-success: var(--color-success);
+  --color-success-subtle: var(--color-success-subtle);
+  --color-info: var(--color-info);
+  --color-info-subtle: var(--color-info-subtle);
+
+  /* Navy */
   --color-navy: var(--color-navy);
   --color-navy-light: var(--color-navy-light);
+
+  /* Surfaces */
   --color-bg: var(--color-bg);
   --color-bg-card: var(--color-bg-card);
+  --color-bg-elevated: var(--color-bg-elevated);
+  --color-bg-subtle: var(--color-bg-subtle);
+  --color-bg-inset: var(--color-bg-inset);
+
+  /* Borders */
   --color-border: var(--color-border);
+  --color-border-subtle: var(--color-border-subtle);
+  --color-border-strong: var(--color-border-strong);
+
+  /* Text */
   --color-text: var(--color-text);
+  --color-text-secondary: var(--color-text-secondary);
   --color-text-light: var(--color-text-light);
   --color-text-muted: var(--color-text-muted);
-  --font-sans: var(--font-inter);
+  --color-text-inverse: var(--color-text-inverse);
+
+  /* Sport */
+  --color-sport-running: var(--color-sport-running);
+  --color-sport-running-subtle: var(--color-sport-running-subtle);
+  --color-sport-cycling: var(--color-sport-cycling);
+  --color-sport-cycling-subtle: var(--color-sport-cycling-subtle);
+
+  /* Ranking */
+  --color-ranking-gold: var(--color-ranking-gold);
+  --color-ranking-gold-bg: var(--color-ranking-gold-bg);
+  --color-ranking-gold-text: var(--color-ranking-gold-text);
+  --color-ranking-silver: var(--color-ranking-silver);
+  --color-ranking-silver-bg: var(--color-ranking-silver-bg);
+  --color-ranking-silver-text: var(--color-ranking-silver-text);
+  --color-ranking-bronze: var(--color-ranking-bronze);
+  --color-ranking-bronze-bg: var(--color-ranking-bronze-bg);
+  --color-ranking-bronze-text: var(--color-ranking-bronze-text);
+
+  /* Radii */
+  --radius-xs: var(--radius-xs);
   --radius-sm: var(--radius-sm);
   --radius: var(--radius);
   --radius-lg: var(--radius-lg);
   --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
+  --radius-full: var(--radius-full);
+
+  /* Font */
+  --font-sans: var(--font-inter);
 }
 
+/* ═══════════════════════════════════════════════════════════
+   BASE STYLES
+   ═══════════════════════════════════════════════════════════ */
 body {
   background: var(--color-bg);
   color: var(--color-text);
@@ -77,4 +280,37 @@ input[type="number"]::-webkit-inner-spin-button {
   appearance: none;
   -webkit-appearance: none;
   margin: 0;
+}
+
+/* ── Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Focus Visible — apenas para navegação por teclado ── */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* ── Scrollbar sutil ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
 }

@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
+import { TextField } from "@/components/ui/TextField";
 
 export function ConfirmarPerigoModal({
   open,
@@ -43,10 +44,9 @@ export function ConfirmarPerigoModal({
           <label className="text-sm font-medium text-text">
             Digite <span className="font-bold text-danger">{palavraChave}</span> para confirmar
           </label>
-          <input
+          <TextField
             value={valor}
             onChange={(e) => setValor(e.target.value)}
-            className="h-11 rounded-[var(--radius)] border border-border bg-bg px-3.5 text-sm text-text outline-none focus:border-danger focus:bg-bg-card focus:ring-2 focus:ring-danger/15"
             autoFocus
           />
         </div>

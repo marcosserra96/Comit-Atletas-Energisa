@@ -139,7 +139,7 @@ export default function LoginPage() {
       </div>
 
       {/* PAINEL DIREITO — Formulário */}
-      <div className="flex flex-1 items-center justify-center bg-white px-6 py-12">
+      <div className="flex flex-1 items-center justify-center bg-bg px-6 py-12">
         <div className="w-full max-w-[400px] rounded-3xl border border-border/60 bg-bg-card p-9 shadow-2xl">
           <div className="mb-8 flex justify-center lg:hidden">
             <Image

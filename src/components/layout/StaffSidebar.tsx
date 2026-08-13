@@ -96,7 +96,7 @@ export function StaffSidebar({
           </span>
         )}
 
-        <nav className="mt-2 flex flex-1 flex-col gap-1 px-3">
+        <nav className="mt-2 flex flex-1 flex-col gap-1 px-3" aria-label="Menu de gestão">
           {items.map(({ href, label, icon: Icon }) => {
             const active = pathname === href;
             return (
@@ -104,6 +104,7 @@ export function StaffSidebar({
                 key={href}
                 href={href}
                 onClick={onCloseMobile}
+                aria-current={active ? "page" : undefined}
                 className={cn(
                   "flex items-center gap-3 rounded-[var(--radius)] px-3 py-2.5 text-sm font-medium text-white/70 transition-colors",
                   "hover:bg-white/5 hover:text-white",
@@ -122,7 +123,7 @@ export function StaffSidebar({
         <button
           onClick={() => setCollapsed((c) => !c)}
           className={cn(
-            "hidden items-center gap-2 border-t border-white/10 px-4 py-4 text-xs font-medium text-white/50 hover:text-white/80 lg:flex",
+            "hidden items-center gap-2 border-t border-white/10 px-4 py-4 text-xs font-medium text-white/50 hover:text-white/80 lg:flex cursor-pointer",
             collapsed && "justify-center px-0",
           )}
         >

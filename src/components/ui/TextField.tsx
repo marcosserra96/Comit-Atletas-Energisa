@@ -3,7 +3,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
-  label: string;
+  label?: string;
   icon?: ReactNode;
   error?: string;
   action?: ReactNode;
@@ -19,12 +19,14 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
 
     return (
       <div className="flex flex-col gap-1.5">
+        {(label || action) && (
         <div className="flex items-center justify-between">
-          <label htmlFor={inputId} className="text-sm font-medium text-text">
+          {label && <label htmlFor={inputId} className="text-sm font-medium text-text">
             {label}
-          </label>
+          </label>}
           {action}
         </div>
+        )}
         <div
           className={cn(
             "group flex items-center gap-2 rounded-[var(--radius)] border border-border bg-bg px-3.5",
