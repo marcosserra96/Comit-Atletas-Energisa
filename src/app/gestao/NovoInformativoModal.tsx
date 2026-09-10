@@ -40,9 +40,7 @@ export function NovoInformativoModal({
   const [anoFim, setAnoFim] = useState(referencia.ano);
   const [mesFim, setMesFim] = useState(referencia.mes);
   const [busca, setBusca] = useState("");
-  const [selecionados, setSelecionados] = useState<Set<string>>(
-    () => new Set(atletas.filter((a) => a.ativo && a.equipe === "corrida").map((a) => a.id)),
-  );
+  const [selecionados, setSelecionados] = useState<Set<string> | null>(null);
 
   const atletasDaModalidade = useMemo(
     () =>
@@ -50,6 +48,11 @@ export function NovoInformativoModal({
         .filter((a) => a.ativo && a.equipe === modalidade)
         .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
     [atletas, modalidade],
+  );
+
+  const idsSelecionados = useMemo(
+    () => selecionados ?? new Set(atletasDaModalidade.map((a) => a.id)),
+    [selecionados, atletasDaModalidade],
   );
 
   const periodo: PeriodoInformativo = useMemo(() => {
@@ -66,8 +69,8 @@ export function NovoInformativoModal({
   }, [atletasDaModalidade, busca]);
 
   const atletasConsiderados = useMemo(
-    () => atletasDaModalidade.filter((a) => selecionados.has(a.id)),
-    [atletasDaModalidade, selecionados],
+    () => atletasDaModalidade.filter((a) => idsSelecionados.has(a.id)),
+    [atletasDaModalidade, idsSelecionados],
   );
 
   const ranking = useMemo(
@@ -88,15 +91,13 @@ export function NovoInformativoModal({
 
   function trocarModalidade(novaModalidade: Modalidade) {
     setModalidade(novaModalidade);
-    setSelecionados(
-      new Set(atletas.filter((a) => a.ativo && a.equipe === novaModalidade).map((a) => a.id)),
-    );
+    setSelecionados(null);
     setBusca("");
   }
 
   function alternarAtleta(id: string) {
     setSelecionados((atual) => {
-      const proximo = new Set(atual);
+      const proximo = new Set(atual ?? atletasDaModalidade.map((a) => a.id));
       if (proximo.has(id)) proximo.delete(id);
       else proximo.add(id);
       return proximo;
@@ -205,7 +206,7 @@ export function NovoInformativoModal({
             <div className="max-h-48 overflow-y-auto rounded-xl border border-border bg-bg-card p-2">
               <div className="grid gap-1 sm:grid-cols-2">
                 {atletasFiltrados.map((a) => {
-                  const marcado = selecionados.has(a.id);
+                  const marcado = idsSelecionados.has(a.id);
                   return (
                     <button
                       key={a.id}
@@ -223,7 +224,7 @@ export function NovoInformativoModal({
               </div>
             </div>
             <div className="mt-2 flex items-center justify-between text-xs text-text-light">
-              <span>{selecionados.size} de {atletasDaModalidade.length} selecionados</span>
+              <span>{idsSelecionados.size} de {atletasDaModalidade.length} selecionados</span>
               <span>{modalidade === "corrida" ? <Footprints className="inline size-3.5" /> : <Bike className="inline size-3.5" />} {modalidade === "corrida" ? "Corrida" : "Bicicleta"}</span>
             </div>
           </div>
