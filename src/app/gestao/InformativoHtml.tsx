@@ -76,13 +76,11 @@ function Ranking({ dados, formato }: { dados: ResumoAtletaMensal[]; formato: For
   const horizontal = formato === "horizontal";
   const qtdColunas = horizontal ? (dados.length > 24 ? 3 : 2) : 1;
   const colunas = dividir(dados, qtdColunas);
-  let offset = 0;
 
   return (
     <div className={`grid ${horizontal ? "gap-2" : "gap-3"} ${qtdColunas === 3 ? "grid-cols-3" : qtdColunas === 2 ? "grid-cols-2" : "grid-cols-1"}`}>
       {colunas.map((grupo, indiceColuna) => {
-        const inicio = offset;
-        offset += grupo.length;
+        const inicio = colunas.slice(0, indiceColuna).reduce((soma, coluna) => soma + coluna.length, 0);
         return (
           <div key={indiceColuna} className="overflow-hidden rounded-xl border border-[#DCEBF0] bg-white/[.92]">
             <div className={`grid grid-cols-[32px_minmax(0,1fr)_62px_54px_64px] gap-1.5 bg-[#F1F8FA] px-2.5 font-bold uppercase tracking-wide text-[#6E8990] ${horizontal ? "py-1 text-[8px]" : "py-2 text-[9px]"}`}>
