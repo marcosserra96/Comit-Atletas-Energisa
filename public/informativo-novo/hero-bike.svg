@@ -1,0 +1,40 @@
+<svg width="1200" height="360" viewBox="0 0 1200 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#EAF9FC"/>
+      <stop offset="0.55" stop-color="#C7EDF4"/>
+      <stop offset="1" stop-color="#FFE5CB"/>
+    </linearGradient>
+    <linearGradient id="jersey" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#00A7C7"/>
+      <stop offset="1" stop-color="#006E87"/>
+    </linearGradient>
+    <filter id="blur"><feGaussianBlur stdDeviation="18"/></filter>
+  </defs>
+  <rect width="1200" height="360" rx="32" fill="url(#sky)"/>
+  <circle cx="1015" cy="72" r="58" fill="#FFD5A2"/>
+  <circle cx="1015" cy="72" r="94" fill="#FFD5A2" opacity=".18" filter="url(#blur)"/>
+  <path d="M0 242C124 211 230 212 356 246C520 291 658 291 797 247C929 206 1066 204 1200 235V360H0V242Z" fill="#fff" opacity=".58"/>
+  <path d="M0 272C150 238 267 240 405 273C555 309 683 306 832 268C978 230 1088 232 1200 250V360H0V272Z" fill="#009FC2" opacity=".1"/>
+  <path d="M52 83C169 31 278 31 387 74" stroke="#00A7C7" stroke-width="10" stroke-linecap="round" opacity=".18"/>
+  <path d="M75 106C186 61 284 62 377 96" stroke="#F37021" stroke-width="5" stroke-linecap="round" opacity=".68"/>
+  <g transform="translate(760 55)">
+    <ellipse cx="178" cy="279" rx="152" ry="22" fill="#005061" opacity=".08"/>
+    <circle cx="103" cy="225" r="70" stroke="#173B45" stroke-width="13"/>
+    <circle cx="267" cy="225" r="70" stroke="#173B45" stroke-width="13"/>
+    <path d="M103 225L158 156L204 225L103 225ZM158 156L229 157L267 225L204 225L229 157" stroke="#007E9B" stroke-width="11" stroke-linejoin="round"/>
+    <path d="M157 156L146 129" stroke="#173B45" stroke-width="9" stroke-linecap="round"/>
+    <path d="M224 156L244 132" stroke="#173B45" stroke-width="9" stroke-linecap="round"/>
+    <circle cx="187" cy="54" r="28" fill="#173B45"/>
+    <path d="M160 61C192 51 221 63 236 88L263 132L214 148L171 126L151 92C142 78 147 66 160 61Z" fill="url(#jersey)"/>
+    <path d="M169 124L157 156" stroke="#173B45" stroke-width="22" stroke-linecap="round"/>
+    <path d="M215 145L203 190" stroke="#173B45" stroke-width="22" stroke-linecap="round"/>
+    <path d="M199 190L225 219" stroke="#173B45" stroke-width="18" stroke-linecap="round"/>
+    <path d="M163 87L133 116" stroke="#F0B88E" stroke-width="16" stroke-linecap="round"/>
+    <path d="M227 89L247 118" stroke="#F0B88E" stroke-width="16" stroke-linecap="round"/>
+    <path d="M132 116L114 133" stroke="#173B45" stroke-width="8" stroke-linecap="round"/>
+    <path d="M247 118L263 132" stroke="#173B45" stroke-width="8" stroke-linecap="round"/>
+    <path d="M161 35C176 18 205 18 221 35" stroke="#005061" stroke-width="12" stroke-linecap="round"/>
+    <rect x="180" y="82" width="31" height="7" rx="3.5" fill="#F37021"/>
+  </g>
+</svg>
