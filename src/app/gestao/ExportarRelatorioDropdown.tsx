@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { pdf } from "@react-pdf/renderer";
 import { doc, getDoc } from "firebase/firestore";
-import { ChevronDown, Download, FileText, Presentation, Trophy, Users } from "lucide-react";
+import { ChevronDown, Download, FileText, Presentation, Sparkles, Trophy, Users } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
@@ -21,6 +21,7 @@ import {
   sufixoArquivo,
   type PeriodoInformativo,
 } from "./GerarInformativoModal";
+import { NovoInformativoModal } from "./NovoInformativoModal";
 import { ReportExecutivoDocument } from "@/lib/pdf/ReportExecutivoDocument";
 import { InformativoRankingDocument } from "@/lib/pdf/InformativoRankingDocument";
 import { ReportTimeDocument } from "@/lib/pdf/ReportTimeDocument";
@@ -41,6 +42,7 @@ export function ExportarRelatorioDropdown({
   const [open, setOpen] = useState(false);
   const [gerando, setGerando] = useState<"pdf" | "informativo" | "time" | null>(null);
   const [escolhendoMes, setEscolhendoMes] = useState(false);
+  const [novoInformativoOpen, setNovoInformativoOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -180,7 +182,6 @@ export function ExportarRelatorioDropdown({
       setEscolhendoMes(false);
 
       const totalNoPeriodo = resumo.reduce((s, r) => s + r.treinosMes, 0);
-      // A arte tem um número fixo de linhas — avisa em vez de cortar em silêncio.
       const cabem = CAPACIDADE_RANKING + (config.ocultarTop3NoRanking ? 3 : 0);
       const sobrando =
         (config.modalidade !== "corrida" ? Math.max(0, bike.length - cabem) : 0) +
@@ -231,12 +232,23 @@ export function ExportarRelatorioDropdown({
             role="menuitem"
             onClick={() => {
               setOpen(false);
+              setNovoInformativoOpen(true);
+            }}
+            className="flex w-full items-center gap-2.5 rounded-[calc(var(--radius)-2px)] px-2.5 py-2.5 text-left text-sm font-semibold text-text hover:bg-bg"
+          >
+            <Sparkles className="size-4 text-[#F37021]" />
+            Novo informativo
+          </button>
+          <button
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
               setEscolhendoMes(true);
             }}
             className="flex w-full items-center gap-2.5 rounded-[calc(var(--radius)-2px)] px-2.5 py-2.5 text-left text-sm font-medium text-text hover:bg-bg"
           >
             <Trophy className="size-4 text-primary" />
-            Informativo do ranking
+            Informativo atual
           </button>
           <button
             role="menuitem"
@@ -259,6 +271,13 @@ export function ExportarRelatorioDropdown({
           </button>
         </div>
       )}
+
+      <NovoInformativoModal
+        open={novoInformativoOpen}
+        onClose={() => setNovoInformativoOpen(false)}
+        atletas={atletas}
+        lancamentos={lancamentos}
+      />
 
       <GerarInformativoModal
         open={escolhendoMes}
