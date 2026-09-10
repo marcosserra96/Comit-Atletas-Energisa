@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Bike, Check, Footprints, ImageDown, Printer, Search, UsersRound } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -40,7 +40,9 @@ export function NovoInformativoModal({
   const [anoFim, setAnoFim] = useState(referencia.ano);
   const [mesFim, setMesFim] = useState(referencia.mes);
   const [busca, setBusca] = useState("");
-  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [selecionados, setSelecionados] = useState<Set<string>>(
+    () => new Set(atletas.filter((a) => a.ativo && a.equipe === "corrida").map((a) => a.id)),
+  );
 
   const atletasDaModalidade = useMemo(
     () =>
@@ -49,12 +51,6 @@ export function NovoInformativoModal({
         .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
     [atletas, modalidade],
   );
-
-  useEffect(() => {
-    if (!open) return;
-    setSelecionados(new Set(atletasDaModalidade.map((a) => a.id)));
-    setBusca("");
-  }, [open, modalidade, atletasDaModalidade]);
 
   const periodo: PeriodoInformativo = useMemo(() => {
     const inicio = competencia(ano, mes);
@@ -90,6 +86,14 @@ export function NovoInformativoModal({
   const escala = formato === "horizontal" ? 0.66 : 0.78;
   const alturaPreviewOriginal = formato === "horizontal" ? 675 : Math.max(996, 820 + ranking.length * 38);
 
+  function trocarModalidade(novaModalidade: Modalidade) {
+    setModalidade(novaModalidade);
+    setSelecionados(
+      new Set(atletas.filter((a) => a.ativo && a.equipe === novaModalidade).map((a) => a.id)),
+    );
+    setBusca("");
+  }
+
   function alternarAtleta(id: string) {
     setSelecionados((atual) => {
       const proximo = new Set(atual);
@@ -118,7 +122,7 @@ export function NovoInformativoModal({
               <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-text-light">Time</label>
               <SegmentedControl
                 value={modalidade}
-                onChange={setModalidade}
+                onChange={trocarModalidade}
                 options={[
                   { value: "corrida", label: "Corrida" },
                   { value: "bicicleta", label: "Bicicleta" },
@@ -245,7 +249,10 @@ export function NovoInformativoModal({
               style={{ height: Math.min(650, alturaPreviewOriginal * escala + 32) }}
             >
               {ranking.length ? (
-                <div style={{ transform: `scale(${escala})`, transformOrigin: "top left", width: formato === "horizontal" ? 1200 : 560 }}>
+                <div
+                  id="novo-informativo-scale"
+                  style={{ transform: `scale(${escala})`, transformOrigin: "top left", width: formato === "horizontal" ? 1200 : 560 }}
+                >
                   <InformativoHtml
                     dados={ranking}
                     periodoLabel={labelPeriodo(periodo)}
@@ -264,8 +271,11 @@ export function NovoInformativoModal({
       </Modal>
 
       <style jsx global>{`
+        @page { size: ${formato === "horizontal" ? "landscape" : "portrait"}; margin: 0; }
         @media print {
+          html, body { margin: 0 !important; padding: 0 !important; }
           body * { visibility: hidden !important; }
+          #novo-informativo-scale { transform: none !important; width: max-content !important; }
           #novo-informativo-preview, #novo-informativo-preview * { visibility: visible !important; }
           #novo-informativo-preview {
             position: absolute !important;
