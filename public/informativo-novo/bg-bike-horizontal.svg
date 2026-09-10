@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1600" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8FCFD"/>
+      <stop offset="1" stop-color="#EEF8FB"/>
+    </linearGradient>
+    <linearGradient id="wave" x1="860" y1="40" x2="1540" y2="450" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#009FC2" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#009FC2" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" rx="42" fill="url(#bg)"/>
+  <circle cx="1400" cy="150" r="255" fill="#009FC2" opacity=".055"/>
+  <path d="M860 0C1120 130 1330 40 1600 85V360C1370 300 1110 390 860 260Z" fill="url(#wave)"/>
+  <path d="M0 792C250 720 450 846 725 790C1000 735 1260 748 1600 825V900H0Z" fill="#009FC2" opacity=".06"/>
+  <path d="M0 842C280 770 500 875 780 830C1055 785 1295 782 1600 860" stroke="#F37021" stroke-width="10" stroke-linecap="round" opacity=".18"/>
+  <g transform="translate(1220 115)" stroke="#005061" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" opacity=".10">
+    <circle cx="75" cy="220" r="72"/>
+    <circle cx="280" cy="220" r="72"/>
+    <path d="M75 220L150 120L220 220H75Z"/>
+    <path d="M150 120L205 90L245 90"/>
+    <path d="M150 120L125 78"/>
+    <circle cx="150" cy="45" r="25" fill="#005061" stroke="none"/>
+    <path d="M154 76L193 118L240 135"/>
+    <path d="M193 118L220 220"/>
+  </g>
+  <path d="M1160 108H1515" stroke="#F37021" stroke-width="8" stroke-linecap="round" opacity=".55"/>
+</svg>
