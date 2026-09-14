@@ -27,9 +27,11 @@ export function PwaInstallPrompt() {
       /iphone|ipad|ipod/i.test(navigator.userAgent) ||
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
-    setIsStandalone(standalone);
-    setIsIos(ios);
-    setDismissed(sessionStorage.getItem("pwa-install-dismissed") === "1");
+    const animationFrame = window.requestAnimationFrame(() => {
+      setIsStandalone(standalone);
+      setIsIos(ios);
+      setDismissed(sessionStorage.getItem("pwa-install-dismissed") === "1");
+    });
 
     function handleBeforeInstallPrompt(event: Event) {
       event.preventDefault();
@@ -45,6 +47,7 @@ export function PwaInstallPrompt() {
     window.addEventListener("appinstalled", handleInstalled);
 
     return () => {
+      window.cancelAnimationFrame(animationFrame);
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
       window.removeEventListener("appinstalled", handleInstalled);
     };

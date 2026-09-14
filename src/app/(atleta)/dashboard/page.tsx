@@ -14,7 +14,6 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
-import type { LucideIcon } from "lucide-react";
 import {
   Trophy,
   Bike,

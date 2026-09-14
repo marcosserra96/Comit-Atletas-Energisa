@@ -184,7 +184,6 @@ export default function DesempenhoPage() {
   const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>("todos");
 
   useEffect(() => {
-    setErroCarregamento(false);
     const unsubscribe = onSnapshot(
       query(collection(db, "historico_pontos"), where("atletaId", "==", atleta.id)),
       (snap) => {

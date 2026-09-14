@@ -12,7 +12,6 @@ export interface TrendIndicatorProps {
 export function TrendIndicator({ value, label, inverted = false, className }: TrendIndicatorProps) {
   const isPositive = value > 0;
   const isNegative = value < 0;
-  const isZero = value === 0;
 
   // If inverted, negative is good (success) and positive is bad (danger)
   let textColorClass = "text-[var(--color-text-muted)]";

@@ -26,39 +26,44 @@ export function AthleteViewProvider({
 }) {
   const { usuario, atleta: sessionAtleta } = useActiveSession();
   const isPreview = usuario.role === "administrador" && Boolean(previewAtletaId);
-  const [previewAtleta, setPreviewAtleta] = useState<AtletaDoc | null>(
-    isPreview && previewAtletaId === sessionAtleta.id ? sessionAtleta : null,
+  const [previewState, setPreviewState] = useState<{
+    atletaId: string;
+    atleta: AtletaDoc | null;
+    erro: boolean;
+  } | null>(() =>
+    isPreview && previewAtletaId === sessionAtleta.id
+      ? { atletaId: previewAtletaId, atleta: sessionAtleta, erro: false }
+      : null,
   );
-  const [erro, setErro] = useState(false);
 
   useEffect(() => {
-    if (!isPreview || !previewAtletaId) {
-      setPreviewAtleta(null);
-      setErro(false);
-      return;
-    }
+    if (!isPreview || !previewAtletaId) return;
 
-    setErro(false);
     const unsubscribe = onSnapshot(
       doc(db, "atletas", previewAtletaId),
       (snap) => {
         if (!snap.exists()) {
-          setPreviewAtleta(null);
-          setErro(true);
+          setPreviewState({ atletaId: previewAtletaId, atleta: null, erro: true });
           return;
         }
-        setPreviewAtleta({ id: snap.id, ...snap.data() } as AtletaDoc);
+        setPreviewState({
+          atletaId: previewAtletaId,
+          atleta: { id: snap.id, ...snap.data() } as AtletaDoc,
+          erro: false,
+        });
       },
       () => {
-        setPreviewAtleta(null);
-        setErro(true);
+        setPreviewState({ atletaId: previewAtletaId, atleta: null, erro: true });
       },
     );
 
     return unsubscribe;
   }, [isPreview, previewAtletaId]);
 
-  const atleta = isPreview ? previewAtleta : sessionAtleta;
+  const previewAtual =
+    isPreview && previewState?.atletaId === previewAtletaId ? previewState : null;
+  const erro = previewAtual?.erro ?? false;
+  const atleta = isPreview ? previewAtual?.atleta ?? null : sessionAtleta;
 
   const value = useMemo<AthleteViewContextValue | null>(() => {
     if (!atleta) return null;

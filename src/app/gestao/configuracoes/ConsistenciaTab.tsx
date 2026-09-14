@@ -269,7 +269,7 @@ export function ConsistenciaTab() {
         <p className="flex items-center gap-1.5 text-xs text-text-muted">
           <AlertTriangle className="size-3.5 shrink-0" />
           Se dois cadastros tiverem login próprio (contas diferentes), a fusão fica bloqueada — corrija
-          o vínculo de um deles primeiro em "Usuários e permissões".
+          o vínculo de um deles primeiro em &quot;Usuários e permissões&quot;.
         </p>
       )}
     </div>

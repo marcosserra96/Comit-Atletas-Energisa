@@ -1,4 +1,4 @@
-import { Document, Page, View, Text, Image, Svg, Circle, Rect, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 import type { Modalidade, BrandingDoc, AlertaCriterio } from "@/lib/types";
 import { atletaEstaEmAlerta, type ResumoAtletaMensal } from "@/lib/rankingMensal";
 
@@ -160,8 +160,6 @@ function TeamPage({
   lista,
   modalidade,
   mesLabel,
-  diasUteis,
-  branding,
   logo,
   alertaCriterio,
   alertaValor,
@@ -169,8 +167,6 @@ function TeamPage({
   lista: ResumoAtletaMensal[];
   modalidade: Modalidade;
   mesLabel: string;
-  diasUteis: number;
-  branding: BrandingDoc;
   logo?: string;
   alertaCriterio: AlertaCriterio;
   alertaValor: number;
@@ -411,8 +407,6 @@ export function ReportTimeDocument({
   bike,
   corrida,
   mesLabel,
-  diasUteis,
-  branding,
   logo,
   alertaCriterio,
   alertaValor,
@@ -435,8 +429,6 @@ export function ReportTimeDocument({
           lista={corrida}
           modalidade="corrida"
           mesLabel={mesLabel}
-          diasUteis={diasUteis}
-          branding={branding}
           logo={logo}
           alertaCriterio={alertaCriterio}
           alertaValor={alertaValor}
@@ -447,8 +439,6 @@ export function ReportTimeDocument({
           lista={bike}
           modalidade="bicicleta"
           mesLabel={mesLabel}
-          diasUteis={diasUteis}
-          branding={branding}
           logo={logo}
           alertaCriterio={alertaCriterio}
           alertaValor={alertaValor}
