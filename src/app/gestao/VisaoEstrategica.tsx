@@ -1,5 +1,6 @@
 "use client";
 
+import { dataIsoLocal } from "@/lib/date";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { collection, getDocs, onSnapshot, orderBy, query, where } from "firebase/firestore";
@@ -126,7 +127,7 @@ export function VisaoEstrategica() {
   );
 
   const proximosEventos = useMemo(
-    () => (eventos ?? []).filter((e) => e.data >= new Date().toISOString().slice(0, 10)).slice(0, 5),
+    () => (eventos ?? []).filter((e) => e.data >= dataIsoLocal()).slice(0, 5),
     [eventos],
   );
 

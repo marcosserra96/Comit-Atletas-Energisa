@@ -1,5 +1,6 @@
 "use client";
 
+import { dataIsoLocal } from "@/lib/date";
 import { useRef, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { FileSpreadsheet, Upload } from "lucide-react";
@@ -166,7 +167,7 @@ export function ImportarPontuacoesCard() {
           erros.push({ numeroLinha, motivo: `data "${linha["data"]}" inválida (use DD/MM/AAAA ou célula formatada como data)` });
           return;
         }
-        if (data > new Date().toISOString().slice(0, 10)) {
+        if (data > dataIsoLocal()) {
           erros.push({ numeroLinha, motivo: "data não pode ser no futuro" });
           return;
         }

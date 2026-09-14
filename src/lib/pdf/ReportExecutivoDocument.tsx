@@ -1,3 +1,4 @@
+import { dataIsoLocal } from "@/lib/date";
 import { Document, Page, View, Text, Image, Svg, Circle, Rect, StyleSheet } from "@react-pdf/renderer";
 import type { EventoDoc } from "@/lib/types";
 import type { EstatisticasDashboard, LoteResumo } from "@/lib/dashboardStats";
@@ -359,7 +360,7 @@ export function ReportExecutivoDocument({
   ].filter((a) => a.valor > 0);
 
   const proximosEventos = eventos
-    .filter((e) => e.data >= new Date().toISOString().slice(0, 10))
+    .filter((e) => e.data >= dataIsoLocal())
     .slice(0, 5);
 
   return (

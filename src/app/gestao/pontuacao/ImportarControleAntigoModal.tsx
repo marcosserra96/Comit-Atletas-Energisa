@@ -1,5 +1,6 @@
 "use client";
 
+import { dataIsoLocal } from "@/lib/date";
 import { useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { ArrowLeft, FileSpreadsheet, History, Table2, Upload } from "lucide-react";
@@ -168,7 +169,7 @@ export function ImportarControleAntigoModal({ open, onClose }: { open: boolean; 
 
         const diaStr = String(entrada.dia).padStart(2, "0");
         const data = `${ano}-${abaEscolhida.mesNumero}-${diaStr}`;
-        if (data > new Date().toISOString().slice(0, 10)) {
+        if (data > dataIsoLocal()) {
           erros.push({ numeroLinha, motivo: `data ${diaStr}/${abaEscolhida.mesNumero}/${ano} não pode ser no futuro` });
           continue;
         }

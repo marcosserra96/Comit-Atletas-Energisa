@@ -1,5 +1,6 @@
 "use client";
 
+import { dataIsoLocal } from "@/lib/date";
 import { FormEvent, useState } from "react";
 import { collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { MapPin } from "lucide-react";
@@ -93,7 +94,7 @@ export function NovoEventoModal({ open, onClose }: { open: boolean; onClose: () 
           label="Data"
           type="date"
           value={data}
-          min={new Date().toISOString().slice(0, 10)}
+          min={dataIsoLocal()}
           onChange={(e) => setData(e.target.value)}
           required
         />

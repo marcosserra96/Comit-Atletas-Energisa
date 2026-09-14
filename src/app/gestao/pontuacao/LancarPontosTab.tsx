@@ -1,5 +1,6 @@
 "use client";
 
+import { dataIsoLocal } from "@/lib/date";
 import { useEffect, useMemo, useState } from "react";
 import {
   collection,
@@ -38,7 +39,7 @@ export function LancarPontosTab() {
 
   const [modalidade, setModalidade] = useState<Modalidade>("corrida");
   const [tipo, setTipo] = useState<TipoLancamento>("treino");
-  const [dataTreino, setDataTreino] = useState(() => new Date().toISOString().slice(0, 10));
+  const [dataTreino, setDataTreino] = useState(() => dataIsoLocal());
   const [descricaoLote, setDescricaoLote] = useState("");
   const [kmLote, setKmLote] = useState("");
   const [eventoId, setEventoId] = useState("");
@@ -97,10 +98,10 @@ export function LancarPontosTab() {
 
   const eventosDisponiveis = useMemo(() => {
     if (!eventos) return { proximos: [], recentes: [] };
-    const hoje = new Date().toISOString().slice(0, 10);
+    const hoje = dataIsoLocal();
     const limite = new Date();
     limite.setDate(limite.getDate() - 7);
-    const limiteStr = limite.toISOString().slice(0, 10);
+    const limiteStr = dataIsoLocal(limite);
 
     const disponiveis = eventos.filter((e) => e.id === eventoId || !eventosJaLancados.has(e.id));
     const proximos = disponiveis
@@ -226,7 +227,7 @@ export function LancarPontosTab() {
       show("info", "Selecione a data do lançamento antes de salvar.");
       return;
     }
-    if (dataTreino > new Date().toISOString().slice(0, 10)) {
+    if (dataTreino > dataIsoLocal()) {
       show("error", "A data não pode ser no futuro.");
       return;
     }
@@ -409,7 +410,7 @@ export function LancarPontosTab() {
             <input
               type="date"
               value={dataTreino}
-              max={new Date().toISOString().slice(0, 10)}
+              max={dataIsoLocal()}
               onChange={(e) => setDataTreino(e.target.value)}
               className="h-10 rounded-[var(--radius)] border border-border bg-bg-card px-3 text-sm text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
             />

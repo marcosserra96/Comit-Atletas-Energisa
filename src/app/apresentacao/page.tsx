@@ -1,5 +1,6 @@
 "use client";
 
+import { dataIsoLocal } from "@/lib/date";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, where } from "firebase/firestore";
@@ -32,7 +33,7 @@ function useDadosApresentacao() {
     getDocs(collection(db, "historico_pontos")).then((snap) => {
       setLancamentos(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as HistoricoPontoDoc));
     });
-    const isoHoje = new Date().toISOString().slice(0, 10);
+    const isoHoje = dataIsoLocal();
     const unsubEventos = onSnapshot(
       query(collection(db, "agenda_eventos"), where("data", ">=", isoHoje), orderBy("data", "asc")),
       (snap) => setEventos(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as EventoDoc)),

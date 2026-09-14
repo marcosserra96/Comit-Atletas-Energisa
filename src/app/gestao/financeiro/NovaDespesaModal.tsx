@@ -1,5 +1,6 @@
 "use client";
 
+import { dataIsoLocal } from "@/lib/date";
 import { FormEvent, useState } from "react";
 import { collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { Plus, X } from "lucide-react";
@@ -36,7 +37,7 @@ const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "O
 const NOVA_EMPRESA = "__nova__";
 
 function hoje() {
-  return new Date().toISOString().slice(0, 10);
+  return dataIsoLocal();
 }
 
 function parcelasIniciais(orcadoAnual: number): ParcelaDespesa[] {

@@ -1,5 +1,6 @@
 "use client";
 
+import { dataIsoLocal } from "@/lib/date";
 import { useEffect, useRef, useState } from "react";
 import { pdf } from "@react-pdf/renderer";
 import { doc, getDoc } from "firebase/firestore";
@@ -73,7 +74,7 @@ export function ExportarRelatorioDropdown({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      const dataHoje = new Date().toISOString().slice(0, 10);
+      const dataHoje = dataIsoLocal();
       a.download = `report-executivo-atletas-${dataHoje}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
@@ -125,7 +126,7 @@ export function ExportarRelatorioDropdown({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      const dataHoje = new Date().toISOString().slice(0, 10);
+      const dataHoje = dataIsoLocal();
       a.download = `report-por-time-atletas-${dataHoje}.pdf`;
       a.click();
       URL.revokeObjectURL(url);

@@ -1,3 +1,4 @@
+import { dataIsoLocal } from "@/lib/date";
 import { ehMembroDoElenco } from "@/lib/labels";
 import type {
   AtletaDoc,
@@ -59,7 +60,7 @@ export function calcularEstatisticasDashboard(params: {
   const { atletas, lancamentos, despesas, eventos, regras } = params;
   const hoje = new Date();
   const ha30dias = new Date(hoje.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const iso30 = ha30dias.toISOString().slice(0, 10);
+  const iso30 = dataIsoLocal(ha30dias);
 
   const atletasProgram = atletas.filter((a) => ehMembroDoElenco(a.equipe));
   // Atleta na fila de espera ainda não entrou no programa — não conta como
@@ -154,8 +155,8 @@ export function calcularEstatisticasDashboard(params: {
   const eventosLancados = new Set(validos.filter((l) => l.eventoId).map((l) => l.eventoId));
   const limiteInferior = new Date(hoje);
   limiteInferior.setDate(limiteInferior.getDate() - 7);
-  const isoHoje = hoje.toISOString().slice(0, 10);
-  const isoLimite = limiteInferior.toISOString().slice(0, 10);
+  const isoHoje = dataIsoLocal(hoje);
+  const isoLimite = dataIsoLocal(limiteInferior);
   const eventosPendentesLancamento = eventos.filter(
     (e) => !eventosLancados.has(e.id) && e.data < isoHoje && e.data >= isoLimite,
   ).length;
