@@ -471,7 +471,7 @@ export default function DashboardPage() {
               title="Notícias" 
               icon={Newspaper} 
               action={
-                <Link href="/noticias" className="text-xs font-semibold text-[var(--color-primary)] hover:underline">
+                <Link href={withPreview("/noticias")} className="text-xs font-semibold text-[var(--color-primary)] hover:underline">
                   Ver todas
                 </Link>
               } 
