@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
-import { useActiveSession } from "@/lib/session/SessionProvider";
+import { useAthleteView } from "@/lib/session/AthleteViewProvider";
 import { useToast } from "@/components/ui/Toast";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -65,7 +65,7 @@ function partesDataEvento(valor: string) {
 }
 
 export default function DashboardPage() {
-  const { atleta } = useActiveSession();
+  const { atleta, isPreview, withPreview } = useAthleteView();
   const { show } = useToast();
   const modalidade = modalidadeFromEquipe(atleta.equipe);
   const waitlisted = isWaitlisted(atleta.equipe);
@@ -168,7 +168,7 @@ export default function DashboardPage() {
   const jaConfirmado = !!evento?.inscritos?.includes(atleta.id);
 
   async function handleRsvp() {
-    if (!evento) return;
+    if (!evento || isPreview) return;
     setInscrevendo(true);
     try {
       await updateDoc(doc(db, "agenda_eventos", evento.id), {
@@ -354,7 +354,7 @@ export default function DashboardPage() {
               title="Próximo evento"
               icon={CalendarCheck}
               action={
-                <Link href="/eventos" className="text-xs font-semibold text-primary hover:underline">
+                <Link href={withPreview("/eventos")} className="text-xs font-semibold text-primary hover:underline">
                   Agenda completa
                 </Link>
               }
@@ -411,8 +411,13 @@ export default function DashboardPage() {
                     className="mt-4 w-full justify-center"
                     onClick={handleRsvp}
                     loading={inscrevendo}
+                    disabled={isPreview}
                   >
-                    {jaConfirmado ? "Cancelar presença" : "Confirmar presença"}
+                    {isPreview
+                      ? "Somente visualização"
+                      : jaConfirmado
+                        ? "Cancelar presença"
+                        : "Confirmar presença"}
                   </Button>
                 </div>
 
@@ -425,7 +430,7 @@ export default function DashboardPage() {
                       {eventosPosteriores.map((item) => (
                         <Link
                           key={item.id}
-                          href="/eventos"
+                          href={withPreview("/eventos")}
                           className="group flex items-center gap-3 rounded-[var(--radius)] border border-transparent p-2.5 transition-colors hover:border-border hover:bg-bg-inset"
                         >
                           <div className="flex w-14 shrink-0 flex-col items-center rounded-[var(--radius-sm)] bg-bg-inset px-2 py-2">
@@ -485,7 +490,7 @@ export default function DashboardPage() {
                 />
               ) : (
                 noticias.map((noticia) => (
-                  <Link key={noticia.id} href={`/noticias/${noticia.id}`} className="group flex flex-col gap-1.5 p-3 rounded-[var(--radius-lg)] bg-[var(--color-bg-inset)] hover:bg-[var(--color-bg-hover)] transition-colors border border-transparent hover:border-[var(--color-border-subtle)]">
+                  <Link key={noticia.id} href={withPreview(`/noticias/${noticia.id}`)} className="group flex flex-col gap-1.5 p-3 rounded-[var(--radius-lg)] bg-[var(--color-bg-inset)] hover:bg-[var(--color-bg-hover)] transition-colors border border-transparent hover:border-[var(--color-border-subtle)]">
                     <p className="text-sm font-semibold text-[var(--color-text)] group-hover:text-[var(--color-primary)] transition-colors line-clamp-2 leading-snug">{noticia.titulo}</p>
                     <p className="text-xs text-[var(--color-text-secondary)] line-clamp-2">{noticia.resumo}</p>
                   </Link>
