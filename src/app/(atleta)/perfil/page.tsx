@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { User, MapPin, Cake, UserCircle, Shield, Mail, Zap } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { useActiveSession } from "@/lib/session/SessionProvider";
+import { useAthleteView } from "@/lib/session/AthleteViewProvider";
 import { useToast } from "@/components/ui/Toast";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -19,7 +19,7 @@ import { SenhaCard } from "@/components/account/SenhaCard";
 import { equipeLabel, isWaitlisted, modalidadeFromEquipe } from "@/lib/labels";
 
 export default function PerfilPage() {
-  const { atleta } = useActiveSession();
+  const { atleta, isPreview } = useAthleteView();
   const { show } = useToast();
   const [nome, setNome] = useState(atleta.nome);
   const [localidade, setLocalidade] = useState(atleta.localidade ?? "");
@@ -29,6 +29,7 @@ export default function PerfilPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (isPreview) return;
     setSaving(true);
     try {
       await updateDoc(doc(db, "atletas", atleta.id), {
@@ -53,7 +54,7 @@ export default function PerfilPage() {
       <PageHeader 
         icon={UserCircle} 
         title="Perfil" 
-        description="Seus dados pessoais e configurações da conta." 
+        description={isPreview ? "Consulta dos dados do atleta em modo somente leitura." : "Seus dados pessoais e configurações da conta."} 
       />
 
       {/* HERO SECTION */}
@@ -96,6 +97,7 @@ export default function PerfilPage() {
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
                 required
+                disabled={isPreview}
               />
               
               <TextField
@@ -113,6 +115,7 @@ export default function PerfilPage() {
                 placeholder="Sua cidade"
                 value={localidade}
                 onChange={(e) => setLocalidade(e.target.value)}
+                disabled={isPreview}
               />
 
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -122,10 +125,15 @@ export default function PerfilPage() {
                   icon={<Cake className="size-[18px]" />}
                   value={dataNascimento}
                   onChange={(e) => setDataNascimento(e.target.value)}
+                  disabled={isPreview}
                 />
                 <div className="flex flex-col gap-1.5">
                   <label className="text-sm font-semibold text-text">Sexo</label>
-                  <Select value={sexo} onChange={(e) => setSexo(e.target.value as typeof sexo)}>
+                  <Select
+                    value={sexo}
+                    onChange={(e) => setSexo(e.target.value as typeof sexo)}
+                    disabled={isPreview}
+                  >
                     <option value="M">Masculino</option>
                     <option value="F">Feminino</option>
                     <option value="Outro">Prefiro não informar</option>
@@ -134,8 +142,8 @@ export default function PerfilPage() {
               </div>
 
               <div className="flex justify-end pt-2">
-                <Button type="submit" loading={saving}>
-                  Salvar alterações
+                <Button type="submit" loading={saving} disabled={isPreview}>
+                  {isPreview ? "Somente visualização" : "Salvar alterações"}
                 </Button>
               </div>
             </form>
@@ -170,8 +178,24 @@ export default function PerfilPage() {
 
         {/* COLUNA DIREITA - CONFIGURAÇÕES */}
         <div className="xl:col-span-5 flex flex-col gap-6">
-          <AparenciaCard />
-          <SenhaCard />
+          {isPreview ? (
+            <Card className="border-amber-200 bg-amber-50/60">
+              <div className="flex items-start gap-3">
+                <Shield className="mt-0.5 size-5 shrink-0 text-amber-700" />
+                <div>
+                  <p className="font-bold text-text">Modo somente leitura</p>
+                  <p className="mt-1 text-sm text-text-light">
+                    Configurações da conta e senha não ficam disponíveis durante a visualização administrativa.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          ) : (
+            <>
+              <AparenciaCard />
+              <SenhaCard />
+            </>
+          )}
         </div>
       </div>
     </div>
