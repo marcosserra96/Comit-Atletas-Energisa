@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { doc, onSnapshot } from "firebase/firestore";
 import { AlertCircle, ArrowLeft, Newspaper, Pin, RefreshCw } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { useAthleteView } from "@/lib/session/AthleteViewProvider";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -17,6 +18,7 @@ import type { NoticiaDoc } from "@/lib/types";
 export default function DetalheNoticiaPage() {
   const params = useParams<{ id: string }>();
   const noticiaId = params.id;
+  const { withPreview } = useAthleteView();
   const [noticia, setNoticia] = useState<NoticiaDoc | null | undefined>(undefined);
   const [erroCarregamento, setErroCarregamento] = useState(false);
 
@@ -39,7 +41,7 @@ export default function DetalheNoticiaPage() {
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
       <Link
-        href="/noticias"
+        href={withPreview("/noticias")}
         className="inline-flex w-fit items-center gap-2 text-sm font-semibold text-primary hover:text-primary-hover"
       >
         <ArrowLeft className="size-4" />
