@@ -1,24 +1,26 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "@/lib/session/SessionProvider";
 import { souTambemAtleta } from "@/lib/session/dualRole";
 import { FullScreenLoader } from "@/components/ui/FullScreenLoader";
 
 /**
- * Guarda a área do atleta: acessível a quem tem role "atleta", e também a
- * comitê/administrador que sejam atletas competindo de fato (ver souTambemAtleta).
- * Staff sem essa condição é redirecionado para /gestao em vez de ver uma área que
- * não é dele.
+ * Guarda a área do atleta. Administradores também podem entrar quando há um
+ * atleta explícito na URL, mantendo a sessão real e somente visualizando os dados.
  */
 export function RequireAtletaAccess({ children }: { children: React.ReactNode }) {
   const { session } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const previewAtletaId = searchParams.get("visualizarAtleta");
 
   const podeAcessar =
     session.status === "active" &&
-    (session.usuario.role === "atleta" || souTambemAtleta(session.usuario, session.atleta));
+    (session.usuario.role === "atleta" ||
+      souTambemAtleta(session.usuario, session.atleta) ||
+      (session.usuario.role === "administrador" && Boolean(previewAtletaId)));
 
   useEffect(() => {
     if (session.status === "signed-out") {
