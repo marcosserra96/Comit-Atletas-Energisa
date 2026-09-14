@@ -1,10 +1,11 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { onAuthStateChanged, signOut } from "firebase/auth";
-import { doc, onSnapshot } from "firebase/firestore";
+import { onAuthStateChanged, sendEmailVerification, signOut, type User } from "firebase/auth";
+import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { FullScreenLoader } from "@/components/ui/FullScreenLoader";
+import { EmailVerificationScreen } from "@/components/session/EmailVerificationScreen";
 import { PendingScreen } from "@/components/session/PendingScreen";
 import { RecusadoScreen } from "@/components/session/RecusadoScreen";
 import type { AtletaDoc, SolicitacaoAcessoDoc, UsuarioDoc } from "@/lib/types";
@@ -12,6 +13,7 @@ import type { AtletaDoc, SolicitacaoAcessoDoc, UsuarioDoc } from "@/lib/types";
 type Session =
   | { status: "loading" }
   | { status: "signed-out" }
+  | { status: "email-nao-verificado"; email: string }
   | { status: "pending" }
   | { status: "recusado"; motivo?: string }
   | { status: "active"; uid: string; usuario: UsuarioDoc; atleta: AtletaDoc };
@@ -19,9 +21,29 @@ type Session =
 interface SessionContextValue {
   session: Session;
   logout: () => Promise<void>;
+  confirmarVerificacaoEmail: () => Promise<boolean>;
+  reenviarVerificacaoEmail: () => Promise<void>;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
+
+async function criarSolicitacaoSeNecessario(user: User) {
+  const solicitacaoRef = doc(db, "solicitacoes_acesso", user.uid);
+  const existente = await getDoc(solicitacaoRef);
+  if (existente.exists()) return;
+
+  const email = user.email?.trim().toLowerCase();
+  if (!email) throw new Error("Usuário sem e-mail.");
+
+  await user.getIdToken(true);
+  await setDoc(solicitacaoRef, {
+    uid: user.uid,
+    nome: user.displayName?.trim() || email.split("@")[0],
+    email,
+    status: "pendente",
+    criadoEm: serverTimestamp(),
+  });
+}
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session>({ status: "loading" });
@@ -46,12 +68,23 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      unsubUsuario = onSnapshot(doc(db, "usuarios", user.uid), (usuarioSnap) => {
+      unsubUsuario = onSnapshot(doc(db, "usuarios", user.uid), async (usuarioSnap) => {
         unsubSolicitacao?.();
         unsubAtleta?.();
 
         if (!usuarioSnap.exists()) {
-          // Ainda não foi aprovado/vinculado — verifica a solicitação de acesso.
+          if (!user.emailVerified) {
+            setSession({ status: "email-nao-verificado", email: user.email ?? "" });
+            return;
+          }
+
+          try {
+            await criarSolicitacaoSeNecessario(user);
+          } catch {
+            setSession({ status: "email-nao-verificado", email: user.email ?? "" });
+            return;
+          }
+
           unsubSolicitacao = onSnapshot(
             doc(db, "solicitacoes_acesso", user.uid),
             (solSnap) => {
@@ -62,6 +95,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
                 setSession({ status: "pending" });
               }
             },
+            () => setSession({ status: "pending" }),
           );
           return;
         }
@@ -92,10 +126,36 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     await signOut(auth);
   }
 
+  async function confirmarVerificacaoEmail() {
+    const user = auth.currentUser;
+    if (!user) return false;
+    await user.reload();
+    await user.getIdToken(true);
+    if (!user.emailVerified) return false;
+    await criarSolicitacaoSeNecessario(user);
+    setSession({ status: "pending" });
+    return true;
+  }
+
+  async function reenviarVerificacaoEmail() {
+    const user = auth.currentUser;
+    if (!user) throw new Error("Sessão encerrada.");
+    await sendEmailVerification(user);
+  }
+
   return (
-    <SessionContext.Provider value={{ session, logout }}>
+    <SessionContext.Provider
+      value={{ session, logout, confirmarVerificacaoEmail, reenviarVerificacaoEmail }}
+    >
       {session.status === "loading" ? (
         <FullScreenLoader />
+      ) : session.status === "email-nao-verificado" ? (
+        <EmailVerificationScreen
+          email={session.email}
+          onConfirmar={confirmarVerificacaoEmail}
+          onReenviar={reenviarVerificacaoEmail}
+          onLogout={logout}
+        />
       ) : session.status === "pending" ? (
         <PendingScreen onLogout={logout} />
       ) : session.status === "recusado" ? (
