@@ -33,7 +33,7 @@ export function UsuariosTab() {
       setStaff(
         snap.docs
           .map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)
-          .filter((a) => a.role === "comite" || a.role === "administrador"),
+          .filter((a) => Boolean(a.authUid)),
       );
     });
     return unsubscribe;
@@ -117,7 +117,7 @@ export function UsuariosTab() {
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-text-light">
-        {staff === null ? "Carregando…" : `${staff.length} membros da equipe do programa.`}
+        {staff === null ? "Carregando…" : `${staff.length} usuários com acesso ao portal.`}
       </p>
 
       {staff === null ? (
@@ -126,8 +126,8 @@ export function UsuariosTab() {
         <Card>
           <EmptyState
             icon={ShieldCheck}
-            title="Nenhum membro de equipe"
-            description="Comitê e administradores aparecem aqui assim que forem criados."
+            title="Nenhum usuário com acesso"
+            description="As pessoas aparecem aqui assim que o login é vinculado a um cadastro."
           />
         </Card>
       ) : (
@@ -143,9 +143,21 @@ export function UsuariosTab() {
                   <p className="text-xs text-text-light">{pessoa.email}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge tone={pessoa.id === adminAtleta.id ? "primary" : "neutral"}>
-                  {pessoa.id === adminAtleta.id ? "Você" : roleLabel[pessoa.role as Role]}
+              <div className="flex flex-wrap items-center gap-2">
+                {pessoa.id === adminAtleta.id && <Badge tone="primary">Você</Badge>}
+                <Badge tone="neutral">
+                  {pessoa.role ? roleLabel[pessoa.role] : "Sem perfil"}
+                </Badge>
+                <Badge tone="neutral">
+                  {pessoa.equipe === "bicicleta"
+                    ? "Atleta · Bicicleta"
+                    : pessoa.equipe === "corrida"
+                      ? "Atleta · Corrida"
+                      : pessoa.equipe === "fila_bicicleta"
+                        ? "Fila · Bicicleta"
+                        : pessoa.equipe === "fila_corrida"
+                          ? "Fila · Corrida"
+                          : "Não compete"}
                 </Badge>
               </div>
               <Select
@@ -153,20 +165,34 @@ export function UsuariosTab() {
                 disabled={pessoa.id === adminAtleta.id || salvandoIds.has(pessoa.id)}
                 onChange={(e) => handleChangeRole(pessoa, e.target.value as Role)}
               >
+                <option value="atleta">Atleta</option>
                 <option value="comite">Comitê</option>
                 <option value="administrador">Administrador</option>
               </Select>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-text-light">Também é atleta?</label>
+                <label className="text-xs font-semibold text-text-light">Participação no programa</label>
                 <Select
-                  value={pessoa.equipe === "bicicleta" || pessoa.equipe === "corrida" ? pessoa.equipe : "comite"}
+                  value={
+                    pessoa.equipe === "bicicleta" || pessoa.equipe === "corrida"
+                      ? pessoa.equipe
+                      : "nao_compete"
+                  }
                   disabled={salvandoIds.has(pessoa.id)}
-                  onChange={(e) => handleChangeEquipe(pessoa, e.target.value as Equipe)}
+                  onChange={(e) => {
+                    const valor = e.target.value;
+                    const novaEquipe: Equipe =
+                      valor === "nao_compete"
+                        ? pessoa.role === "atleta"
+                          ? "nenhuma"
+                          : "comite"
+                        : (valor as Equipe);
+                    handleChangeEquipe(pessoa, novaEquipe);
+                  }}
                 >
-                  <option value="comite">Comitê</option>
-                  <option value="bicicleta">Sim, Bicicleta</option>
-                  <option value="corrida">Sim, Corrida</option>
+                  <option value="nao_compete">Não compete</option>
+                  <option value="bicicleta">Atleta · Bicicleta</option>
+                  <option value="corrida">Atleta · Corrida</option>
                 </Select>
               </div>
 
