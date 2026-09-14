@@ -13,7 +13,7 @@ import {
 } from "firebase/firestore";
 import { AlertCircle, CalendarCheck, Check, MapPin, RefreshCw, Users } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { useActiveSession } from "@/lib/session/SessionProvider";
+import { useAthleteView } from "@/lib/session/AthleteViewProvider";
 import { useToast } from "@/components/ui/Toast";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -43,7 +43,7 @@ function partesData(valor: string) {
 }
 
 export default function EventosAtletaPage() {
-  const { atleta } = useActiveSession();
+  const { atleta, isPreview } = useAthleteView();
   const { show } = useToast();
   const [eventos, setEventos] = useState<EventoDoc[] | null>(null);
   const [erroCarregamento, setErroCarregamento] = useState(false);
@@ -73,6 +73,7 @@ export default function EventosAtletaPage() {
   }, [eventos]);
 
   async function alternarPresenca(evento: EventoDoc) {
+    if (isPreview) return;
     const confirmado = evento.inscritos?.includes(atleta.id) ?? false;
     setAlterandoId(evento.id);
     try {
@@ -197,10 +198,14 @@ export default function EventosAtletaPage() {
                             variant={confirmado ? "secondary" : "primary"}
                             className="w-full justify-center sm:w-auto"
                             loading={alterandoId === evento.id}
-                            disabled={alterandoId !== null && alterandoId !== evento.id}
+                            disabled={isPreview || (alterandoId !== null && alterandoId !== evento.id)}
                             onClick={() => alternarPresenca(evento)}
                           >
-                            {confirmado ? "Cancelar presença" : "Confirmar presença"}
+                            {isPreview
+                              ? "Somente visualização"
+                              : confirmado
+                                ? "Cancelar presença"
+                                : "Confirmar presença"}
                           </Button>
                         </div>
                       </div>
