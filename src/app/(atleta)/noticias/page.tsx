@@ -1,91 +1,107 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
-import { Newspaper, Pin, ChevronDown, ChevronUp } from "lucide-react";
+import { AlertCircle, ChevronRight, Newspaper, Pin, RefreshCw } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { formatRelativeTime } from "@/lib/format";
 import type { NoticiaDoc } from "@/lib/types";
 
-function NoticiaCard({ noticia, isHero = false }: { noticia: NoticiaDoc; isHero?: boolean }) {
-  const [expanded, setExpanded] = useState(false);
-
+function NoticiaCard({ noticia, destaque = false }: { noticia: NoticiaDoc; destaque?: boolean }) {
   return (
-    <Card 
-      className={`flex flex-col cursor-pointer transition-colors hover:border-primary/50 ${
-        isHero ? "bg-primary/5 border-primary/20 shadow-sm p-6" : "p-5"
-      }`}
-      onClick={() => setExpanded(!expanded)}
-    >
-      <div className="flex flex-col gap-3">
-        <div className="flex justify-between items-start gap-4">
-          <div className="flex flex-col gap-2">
-            {noticia.fixado && isHero && (
+    <Link href={"/noticias/" + noticia.id} className="group block">
+      <Card
+        className={
+          "flex h-full flex-col transition-all group-hover:-translate-y-0.5 group-hover:border-primary/40 group-hover:shadow-[var(--shadow-elevated)] " +
+          (destaque ? "border-primary/20 bg-gradient-to-br from-primary/10 via-bg-card to-secondary/10 p-6" : "")
+        }
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex min-w-0 flex-col gap-2">
+            {noticia.fixado && destaque && (
               <Badge tone="primary" className="w-fit">
-                <Pin className="size-3.5 mr-1" /> Destaque
+                <Pin className="mr-1 size-3.5" />
+                Destaque
               </Badge>
             )}
-            <h3 className={`font-bold text-text ${isHero ? "text-2xl" : "text-lg"}`}>
+            <h2 className={destaque ? "text-2xl font-bold text-text" : "text-lg font-bold text-text"}>
               {noticia.titulo}
-            </h3>
+            </h2>
           </div>
-          <button 
-            type="button" 
-            className="text-text-muted hover:text-text rounded-full p-1"
-            aria-label="Expandir notícia"
-          >
-            {expanded ? <ChevronUp className="size-5" /> : <ChevronDown className="size-5" />}
-          </button>
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-bg text-text-muted transition-colors group-hover:bg-primary group-hover:text-white">
+            <ChevronRight className="size-5" />
+          </span>
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-text-muted font-medium">
+        <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-text-light">
+          {noticia.resumo}
+        </p>
+
+        <div className="mt-auto flex items-center gap-2 pt-5 text-xs font-medium text-text-muted">
           {noticia.autorNome && <span>{noticia.autorNome}</span>}
           {noticia.autorNome && <span>•</span>}
           <span>{formatRelativeTime(noticia.criadoEm)}</span>
         </div>
-
-        <div className={`text-text-light text-sm leading-relaxed ${expanded ? "" : "line-clamp-2"}`}>
-          {noticia.resumo}
-        </div>
-      </div>
-    </Card>
+      </Card>
+    </Link>
   );
 }
 
 export default function NoticiasAtletaPage() {
   const [noticias, setNoticias] = useState<NoticiaDoc[] | null>(null);
+  const [erroCarregamento, setErroCarregamento] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
       query(collection(db, "noticias"), orderBy("criadoEm", "desc")),
-      (snap) => setNoticias(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as NoticiaDoc)),
-      () => setNoticias([]),
+      (snap) => {
+        setNoticias(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as NoticiaDoc));
+        setErroCarregamento(false);
+      },
+      () => {
+        setNoticias([]);
+        setErroCarregamento(true);
+      },
     );
     return unsubscribe;
   }, []);
 
-  const pinnedNews = noticias?.find(n => n.fixado);
-  const regularNews = noticias?.filter(n => n.id !== pinnedNews?.id) ?? [];
+  const destaque = noticias?.find((noticia) => noticia.fixado);
+  const demais = noticias?.filter((noticia) => noticia.id !== destaque?.id) ?? [];
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader 
-        icon={Newspaper} 
-        title="Notícias" 
-        description="Comunicados e novidades do comitê do programa." 
+      <PageHeader
+        icon={Newspaper}
+        title="Notícias"
+        description="Comunicados e novidades do programa."
       />
 
-      {noticias === null ? (
+      {erroCarregamento ? (
+        <Card className="flex flex-col items-center gap-4 py-10 text-center">
+          <AlertCircle className="size-8 text-danger" />
+          <div>
+            <h2 className="font-bold text-text">Não foi possível carregar as notícias</h2>
+            <p className="mt-1 text-sm text-text-light">Confira sua conexão e tente novamente.</p>
+          </div>
+          <Button variant="secondary" onClick={() => window.location.reload()}>
+            <RefreshCw className="size-4" />
+            Tentar novamente
+          </Button>
+        </Card>
+      ) : noticias === null ? (
         <div className="flex flex-col gap-4">
-          <SkeletonCard className="h-48" />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <SkeletonCard />
-            <SkeletonCard />
+          <SkeletonCard className="h-52" />
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <SkeletonCard className="h-44" />
+            <SkeletonCard className="h-44" />
           </div>
         </div>
       ) : noticias.length === 0 ? (
@@ -93,21 +109,16 @@ export default function NoticiasAtletaPage() {
           <EmptyState
             icon={Newspaper}
             title="Nenhuma notícia publicada"
-            description="Comunicados do comitê vão aparecer aqui assim que forem publicados."
+            description="Comunicados do comitê aparecerão aqui."
           />
         </Card>
       ) : (
         <div className="flex flex-col gap-6">
-          {pinnedNews && (
-            <section>
-              <NoticiaCard noticia={pinnedNews} isHero />
-            </section>
-          )}
-
-          {regularNews.length > 0 && (
-            <section className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-              {regularNews.map((n) => (
-                <NoticiaCard key={n.id} noticia={n} />
+          {destaque && <NoticiaCard noticia={destaque} destaque />}
+          {demais.length > 0 && (
+            <section className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
+              {demais.map((noticia) => (
+                <NoticiaCard key={noticia.id} noticia={noticia} />
               ))}
             </section>
           )}
