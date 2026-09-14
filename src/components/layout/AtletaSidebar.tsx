@@ -15,6 +15,7 @@ import {
   ChevronsRight,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { useAthleteView } from "@/lib/session/AthleteViewProvider";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -34,6 +35,7 @@ export function AtletaSidebar({
 }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const { withPreview } = useAthleteView();
 
   return (
     <>
@@ -73,7 +75,7 @@ export function AtletaSidebar({
             return (
               <Link
                 key={href}
-                href={href}
+                href={withPreview(href)}
                 onClick={onCloseMobile}
                 aria-current={active ? "page" : undefined}
                 className={cn(
@@ -94,7 +96,7 @@ export function AtletaSidebar({
         <button
           onClick={() => setCollapsed((c) => !c)}
           className={cn(
-            "hidden items-center gap-2 border-t border-white/10 px-4 py-4 text-xs font-medium text-white/50 hover:text-white/80 lg:flex cursor-pointer",
+            "hidden cursor-pointer items-center gap-2 border-t border-white/10 px-4 py-4 text-xs font-medium text-white/50 hover:text-white/80 lg:flex",
             collapsed && "justify-center px-0",
           )}
         >
