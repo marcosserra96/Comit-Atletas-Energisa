@@ -5,8 +5,7 @@ import {
   collection,
   doc,
   serverTimestamp,
-  setDoc,
-  updateDoc,
+  writeBatch,
 } from "firebase/firestore";
 import { Mail, Clock, Link2, UserPlus } from "lucide-react";
 import { db } from "@/lib/firebase";
@@ -15,7 +14,7 @@ import { useToast } from "@/components/ui/Toast";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
-import { logAudit } from "@/lib/audit";
+import { addAuditToBatch } from "@/lib/audit";
 import { formatRelativeTime } from "@/lib/format";
 import { equipeLabel, roleLabel } from "@/lib/labels";
 import { RejectRequestModal } from "./RejectRequestModal";
@@ -56,24 +55,25 @@ export function RequestCard({
     }
     setBusy(true);
     try {
-      await updateDoc(doc(db, "atletas", atletaSelecionado), {
+      const batch = writeBatch(db);
+      batch.update(doc(db, "atletas", atletaSelecionado), {
         authUid: solicitacao.uid,
         email: solicitacao.email,
         role: roleEscolhida,
         ativo: true,
         atualizadoEm: serverTimestamp(),
       });
-      await setDoc(doc(db, "usuarios", solicitacao.uid), {
+      batch.set(doc(db, "usuarios", solicitacao.uid), {
         uid: solicitacao.uid,
         role: roleEscolhida,
         atletaId: atletaSelecionado,
         criadoEm: serverTimestamp(),
       });
-      await updateDoc(doc(db, "solicitacoes_acesso", solicitacao.uid), {
+      batch.update(doc(db, "solicitacoes_acesso", solicitacao.uid), {
         status: "vinculado",
         atualizadoEm: serverTimestamp(),
       });
-      await logAudit({
+      addAuditToBatch(batch, {
         acao: "vincular_acesso",
         entidade: "atletas",
         entidadeId: atletaSelecionado,
@@ -81,6 +81,7 @@ export function RequestCard({
         criadoPor: adminUid,
         criadoPorNome: adminAtleta.nome,
       });
+      await batch.commit();
       show("success", `${primeiroNome} vinculado(a) como ${roleLabel[roleEscolhida]}.`);
     } catch {
       show("error", "Não foi possível vincular agora. Tente novamente.");
@@ -97,7 +98,8 @@ export function RequestCard({
     setBusy(true);
     try {
       const novoAtleta = doc(collection(db, "atletas"));
-      await setDoc(novoAtleta, {
+      const batch = writeBatch(db);
+      batch.set(novoAtleta, {
         id: novoAtleta.id,
         nome: solicitacao.nome,
         email: solicitacao.email,
@@ -110,17 +112,17 @@ export function RequestCard({
         atualizadoEm: serverTimestamp(),
         criadoPor: adminUid,
       });
-      await setDoc(doc(db, "usuarios", solicitacao.uid), {
+      batch.set(doc(db, "usuarios", solicitacao.uid), {
         uid: solicitacao.uid,
         role: roleEscolhida,
         atletaId: novoAtleta.id,
         criadoEm: serverTimestamp(),
       });
-      await updateDoc(doc(db, "solicitacoes_acesso", solicitacao.uid), {
+      batch.update(doc(db, "solicitacoes_acesso", solicitacao.uid), {
         status: "vinculado",
         atualizadoEm: serverTimestamp(),
       });
-      await logAudit({
+      addAuditToBatch(batch, {
         acao: "criar_perfil_acesso",
         entidade: "atletas",
         entidadeId: novoAtleta.id,
@@ -128,6 +130,7 @@ export function RequestCard({
         criadoPor: adminUid,
         criadoPorNome: adminAtleta.nome,
       });
+      await batch.commit();
       show("success", `Perfil de ${roleEscolhida} criado para ${primeiroNome}.`);
     } catch {
       show("error", "Não foi possível criar o perfil agora. Tente novamente.");
@@ -138,12 +141,13 @@ export function RequestCard({
 
   async function handleReject(motivo: string) {
     try {
-      await updateDoc(doc(db, "solicitacoes_acesso", solicitacao.uid), {
+      const batch = writeBatch(db);
+      batch.update(doc(db, "solicitacoes_acesso", solicitacao.uid), {
         status: "recusado",
         motivoRecusa: motivo,
         atualizadoEm: serverTimestamp(),
       });
-      await logAudit({
+      addAuditToBatch(batch, {
         acao: "recusar_acesso",
         entidade: "solicitacoes_acesso",
         entidadeId: solicitacao.uid,
@@ -151,6 +155,7 @@ export function RequestCard({
         criadoPor: adminUid,
         criadoPorNome: adminAtleta.nome,
       });
+      await batch.commit();
       show("info", `Solicitação de ${primeiroNome} recusada.`);
       setRejectOpen(false);
     } catch {

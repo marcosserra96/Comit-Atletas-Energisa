@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  addDoc,
   collection,
   doc,
   getDocs,
@@ -308,14 +307,13 @@ export function LancarPontosTab() {
         }
       }
 
-      await batch.commit();
-
       const dataFormatada = formatShortDate(dataTreino);
       for (const [atletaId, texto] of Object.entries(observacoes)) {
         if (!texto.trim()) continue;
         const envolvido = faltosos.has(atletaId) || (marcados[atletaId]?.size ?? 0) > 0;
         if (!envolvido) continue;
-        await addDoc(collection(db, "comentarios_atletas"), {
+        const comentarioRef = doc(collection(db, "comentarios_atletas"));
+        batch.set(comentarioRef, {
           atletaId,
           texto: `[Ref: ${dataFormatada} — ${descricaoLote.trim()}] ${texto.trim()}`,
           autorNome: autor.nome,
@@ -323,6 +321,8 @@ export function LancarPontosTab() {
           criadoEm: serverTimestamp(),
         });
       }
+
+      await batch.commit();
 
       show("success", `Lançamento registrado para ${totalAtletasEnvolvidos} atleta(s).`);
       resetFormulario();
