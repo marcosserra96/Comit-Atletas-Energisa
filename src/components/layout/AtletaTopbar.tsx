@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, LogOut, Menu } from "lucide-react";
 import { useActiveSession } from "@/lib/session/SessionProvider";
+import { useAthleteView } from "@/lib/session/AthleteViewProvider";
 import { souTambemAtleta } from "@/lib/session/dualRole";
 import { roleLabel } from "@/lib/labels";
 
@@ -18,10 +19,11 @@ const titleByPath: Record<string, string> = {
 
 export function AtletaTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
   const pathname = usePathname();
-  const { atleta, usuario, logout } = useActiveSession();
+  const { atleta: sessionAtleta, usuario, logout } = useActiveSession();
+  const { atleta, isPreview } = useAthleteView();
   const title = titleByPath[pathname] ?? "";
   const initial = atleta.nome.trim().charAt(0).toUpperCase();
-  const tambemComite = souTambemAtleta(usuario, atleta);
+  const tambemComite = !isPreview && souTambemAtleta(usuario, sessionAtleta);
 
   return (
     <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between border-b border-border bg-bg-card px-4 sm:px-6">
@@ -37,13 +39,13 @@ export function AtletaTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
       </div>
 
       <div className="flex items-center gap-4">
-        {tambemComite && (
+        {(tambemComite || isPreview) && (
           <Link
-            href="/gestao"
+            href={isPreview ? "/gestao/atletas?tab=ver" : "/gestao"}
             className="hidden items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/20 sm:flex"
           >
             <LayoutDashboard className="size-3.5" />
-            Modo Comitê
+            {isPreview ? "Voltar à gestão" : "Modo Comitê"}
           </Link>
         )}
 
@@ -53,9 +55,9 @@ export function AtletaTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
           </span>
           <div className="hidden leading-tight sm:block">
             <span className="block text-sm font-medium text-text">{atleta.nome.split(" ")[0]}</span>
-            {tambemComite && (
+            {(tambemComite || isPreview) && (
               <span className="block text-[10px] font-bold uppercase tracking-wide text-text-muted">
-                {roleLabel[usuario.role]}
+                {isPreview ? "Visualização" : roleLabel[usuario.role]}
               </span>
             )}
           </div>
