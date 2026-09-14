@@ -16,10 +16,11 @@ import {
 } from "lucide-react";
 import {
   createUserWithEmailAndPassword,
+  sendEmailVerification,
   signInWithEmailAndPassword,
+  updateProfile,
 } from "firebase/auth";
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 import { TextField } from "@/components/ui/TextField";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
@@ -73,15 +74,14 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const credential = await createUserWithEmailAndPassword(auth, regEmail, regPassword);
-      await setDoc(doc(db, "solicitacoes_acesso", credential.user.uid), {
-        uid: credential.user.uid,
-        nome: regNome,
-        email: regEmail,
-        status: "pendente",
-        criadoEm: serverTimestamp(),
-      });
-      show("success", "Solicitação enviada! Avisaremos quando seu acesso for aprovado.");
+      const credential = await createUserWithEmailAndPassword(
+        auth,
+        regEmail.trim().toLowerCase(),
+        regPassword,
+      );
+      await updateProfile(credential.user, { displayName: regNome.trim() });
+      await sendEmailVerification(credential.user);
+      show("success", "Enviamos um link para confirmar seu e-mail.");
     } catch (error) {
       show("error", mapFirebaseError(firebaseErrorCode(error)));
     } finally {
@@ -245,7 +245,7 @@ export default function LoginPage() {
                   </div>
                 </div>
                 <p className="-mt-4 mb-7 text-sm text-text-light">
-                  Preencha seus dados e aguarde a aprovação do administrador.
+                  Confirme seu e-mail para enviar a solicitação ao administrador.
                 </p>
 
                 <form onSubmit={handleRegister} className="flex flex-col gap-4">
