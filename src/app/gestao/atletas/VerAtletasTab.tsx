@@ -15,8 +15,10 @@ import {
   LayoutGrid,
   List,
   FileSpreadsheet,
+  Eye,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { useActiveSession } from "@/lib/session/SessionProvider";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -40,6 +42,8 @@ interface Resumo {
 
 export function VerAtletasTab() {
   const searchParams = useSearchParams();
+  const { usuario } = useActiveSession();
+  const isAdmin = usuario.role === "administrador";
   const [atletas, setAtletas] = useState<AtletaDoc[] | null>(null);
   const [resumos, setResumos] = useState<Record<string, Resumo>>({});
   const [busca, setBusca] = useState(() => searchParams.get("q") ?? "");
@@ -239,13 +243,27 @@ export function VerAtletasTab() {
                     <p className="text-xs text-text-light">{equipeLabel[a.equipe]}</p>
                   </div>
                 </div>
-                <button
-                  onClick={() => setFichaAberta(a)}
-                  aria-label="Ver ficha"
-                  className="shrink-0 rounded-[var(--radius)] p-1.5 text-text-muted hover:bg-bg hover:text-primary"
-                >
-                  <Pencil className="size-4" />
-                </button>
+                <div className="flex shrink-0 items-center gap-1">
+                  {isAdmin && (
+                    <a
+                      href={`/dashboard?visualizarAtleta=${encodeURIComponent(a.id)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={`Visualizar portal de ${a.nome}`}
+                      title="Visualizar como atleta"
+                      className="rounded-[var(--radius)] p-1.5 text-text-muted hover:bg-primary/10 hover:text-primary"
+                    >
+                      <Eye className="size-4" />
+                    </a>
+                  )}
+                  <button
+                    onClick={() => setFichaAberta(a)}
+                    aria-label="Ver ficha"
+                    className="rounded-[var(--radius)] p-1.5 text-text-muted hover:bg-bg hover:text-primary"
+                  >
+                    <Pencil className="size-4" />
+                  </button>
+                </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -300,10 +318,23 @@ export function VerAtletasTab() {
                       </Badge>
                     </td>
                     <td className="px-3.5 py-2.5">
-                      <Button size="sm" variant="secondary" onClick={() => setFichaAberta(a)}>
-                        <Pencil className="size-3.5" />
-                        Ficha
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        {isAdmin && (
+                          <a
+                            href={`/dashboard?visualizarAtleta=${encodeURIComponent(a.id)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex h-8 items-center gap-1.5 rounded-[var(--radius)] bg-primary px-3 text-xs font-semibold text-white transition-colors hover:bg-primary-hover"
+                          >
+                            <Eye className="size-3.5" />
+                            Visualizar
+                          </a>
+                        )}
+                        <Button size="sm" variant="secondary" onClick={() => setFichaAberta(a)}>
+                          <Pencil className="size-3.5" />
+                          Ficha
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 );
