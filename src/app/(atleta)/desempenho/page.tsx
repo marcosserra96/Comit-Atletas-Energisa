@@ -18,7 +18,7 @@ import {
   Trophy,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { useActiveSession } from "@/lib/session/SessionProvider";
+import { useAthleteView } from "@/lib/session/AthleteViewProvider";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { Card } from "@/components/ui/Card";
@@ -175,7 +175,7 @@ function textoComparacao(analise: AnaliseDesempenho) {
 }
 
 export default function DesempenhoPage() {
-  const { atleta } = useActiveSession();
+  const { atleta } = useAthleteView();
   const [lancamentos, setLancamentos] = useState<HistoricoPontoDoc[] | null>(null);
   const [erroCarregamento, setErroCarregamento] = useState(false);
   const [periodo, setPeriodo] = useState<PeriodoDesempenho>("6m");
