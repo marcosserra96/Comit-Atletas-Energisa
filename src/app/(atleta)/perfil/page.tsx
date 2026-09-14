@@ -16,7 +16,7 @@ import { SportBadge } from "@/components/ui/SportBadge";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { AparenciaCard } from "@/components/account/AparenciaCard";
 import { SenhaCard } from "@/components/account/SenhaCard";
-import { equipeLabel, isWaitlisted } from "@/lib/labels";
+import { equipeLabel, isWaitlisted, modalidadeFromEquipe } from "@/lib/labels";
 
 export default function PerfilPage() {
   const { atleta } = useActiveSession();
@@ -46,8 +46,7 @@ export default function PerfilPage() {
     }
   }
 
-  // Determine the default modality visual based on the equipe as a fallback
-  const modalidadeBadge = atleta.equipe === "corrida" || atleta.equipe === "bicicleta" ? atleta.equipe : "corrida";
+  const modalidade = modalidadeFromEquipe(atleta.equipe);
 
   return (
     <div className="flex flex-col gap-6">
@@ -65,7 +64,7 @@ export default function PerfilPage() {
         <div className="flex flex-col items-center sm:items-start gap-3 w-full">
           <div className="text-center sm:text-left">
             <h2 className="text-2xl font-extrabold text-text">{atleta.nome}</h2>
-            <p className="text-text-light text-sm">{(atleta as any).email || "E-mail não informado"}</p>
+            <p className="text-text-light text-sm">{atleta.email || "E-mail não informado"}</p>
           </div>
           
           <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-2">
@@ -73,7 +72,7 @@ export default function PerfilPage() {
               {isWaitlisted(atleta.equipe) ? "Na fila de espera" : atleta.ativo ? "Atleta Ativo" : "Atleta Inativo"}
             </Badge>
             <div className="flex items-center">
-              <SportBadge sport={modalidadeBadge} />
+              <SportBadge modalidade={modalidade} />
             </div>
             <Badge tone="neutral" className="px-3 py-1">
               <Zap className="size-3.5 mr-1" /> {atleta.pontuacaoTotal || 0} pts
@@ -102,7 +101,7 @@ export default function PerfilPage() {
               <TextField
                 label="E-mail"
                 icon={<Mail className="size-[18px]" />}
-                value={(atleta as any).email || ""}
+                value={atleta.email || ""}
                 readOnly
                 className="bg-bg-inset text-text-muted cursor-not-allowed"
                 title="E-mail não pode ser alterado."
@@ -155,7 +154,7 @@ export default function PerfilPage() {
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-semibold text-text-muted">Modalidade</label>
                 <div className="px-3 py-2.5 rounded-lg bg-bg-inset border border-border/50 text-text-muted font-medium text-sm flex items-center h-[42px] capitalize">
-                  {modalidadeBadge}
+                  {modalidade === "bicicleta" ? "Ciclismo" : modalidade === "corrida" ? "Corrida" : "Não se aplica"}
                 </div>
               </div>
               <div className="flex flex-col gap-1.5 sm:col-span-2">
