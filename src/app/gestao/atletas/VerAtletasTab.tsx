@@ -244,19 +244,7 @@ export function VerAtletasTab() {
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
-                  {isAdmin && (
-                    <a
-                      href={`/dashboard?visualizarAtleta=${encodeURIComponent(a.id)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label={`Visualizar portal de ${a.nome}`}
-                      title="Visualizar como atleta"
-                      className="rounded-[var(--radius)] p-1.5 text-text-muted hover:bg-primary/10 hover:text-primary"
-                    >
-                      <Eye className="size-4" />
-                    </a>
-                  )}
-                  <button
+                   <button
                     onClick={() => setFichaAberta(a)}
                     aria-label="Ver ficha"
                     className="rounded-[var(--radius)] p-1.5 text-text-muted hover:bg-bg hover:text-primary"
@@ -278,6 +266,17 @@ export function VerAtletasTab() {
                   </Badge>
                 )}
               </div>
+              {isAdmin && (
+                <a
+                  href={`/dashboard?visualizarAtleta=${encodeURIComponent(a.id)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-[var(--radius)] border border-primary/25 bg-primary/5 px-3 text-xs font-bold text-primary transition-colors hover:bg-primary/10"
+                >
+                  <Eye className="size-4" />
+                  Visualizar como atleta
+                </a>
+              )}
             </Card>
           ))}
         </div>
