@@ -7,17 +7,18 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // "usuarios/{uid}" é o ponteiro auth -> perfil, escrito só por staff no
-    // momento da aprovação/vínculo. É a fonte confiável de role para as regras
-    // (nunca um campo que o próprio usuário possa escrever).
+    function hasUsuario() {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
+    }
+
+    // "usuarios/{uid}" é o ponteiro auth -> perfil e a fonte confiável de role.
     function meuUsuario() {
       return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
     }
 
     function minhaRole() {
-      return signedIn() && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
-        ? meuUsuario().role
-        : null;
+      return hasUsuario() ? meuUsuario().role : null;
     }
 
     function isAdmin() {
@@ -36,9 +37,6 @@ service cloud.firestore {
       return meuUsuario().atletaId;
     }
 
-    // Permissões granulares do Comitê (ex: "atletas", "registrar", "eventos",
-    // "noticias", "financeiro"). Administrador nunca depende disso — sempre
-    // tem acesso total, verificado separadamente via isAdmin().
     function minhasPermissoes() {
       return meuUsuario().get("permissoes", ["inicio"]);
     }
@@ -53,54 +51,54 @@ service cloud.firestore {
     }
 
     match /solicitacoes_acesso/{uid} {
-      allow create: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() &&
+        request.auth.uid == uid &&
+        request.auth.token.email_verified == true &&
+        request.resource.data.keys().hasOnly([
+          "uid", "nome", "email", "status", "criadoEm"
+        ]) &&
+        request.resource.data.uid == uid &&
+        request.resource.data.email == request.auth.token.email &&
+        request.resource.data.status == "pendente";
       allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
       allow update, delete: if isAdmin();
     }
 
-    // Atletas: leitura liberada para qualquer autenticado (perfil/ranking usam
-    // isso); escrita restrita a staff com a permissão "atletas", exceto o
-    // próprio atleta editando só os próprios dados pessoais (nunca
-    // role/equipe/pontuacaoTotal).
+    // Somente perfis já aprovados acessam o cadastro de atletas.
+    // O ranking ainda depende da leitura do elenco; dados pessoais sensíveis
+    // devem migrar futuramente para uma coleção privada separada.
     match /atletas/{atletaId} {
-      allow read: if signedIn();
+      allow read: if hasUsuario();
       allow create: if isAdmin() || comitePode("atletas");
-      // Comitê com a permissão "atletas" pode editar tudo, exceto o campo
-      // "role" (só administrador promove/rebaixa perfis — evita
-      // escalonamento de privilégio via Comitê). Comitê com a permissão
-      // "registrar" (sem "atletas") ainda pode atualizar só a pontuação, que
-      // é o efeito colateral de lançar/estornar pontos.
       allow update: if isAdmin() ||
         (comitePode("atletas") && !("role" in request.resource.data.diff(resource.data).affectedKeys())) ||
         (comitePode("registrar") &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(["pontuacaoTotal", "atualizadoEm"])) ||
-        (signedIn() && meuAtletaId() == atletaId &&
+        (hasUsuario() && meuAtletaId() == atletaId &&
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(["nome", "sexo", "dataNascimento", "localidade", "atualizadoEm"]));
       allow delete: if isAdmin();
     }
 
+    // Cada atleta lê apenas o próprio histórico. Comitê e administrador
+    // continuam com acesso conforme suas responsabilidades.
     match /historico_pontos/{id} {
-      allow read: if signedIn();
+      allow read: if isStaff() ||
+        (hasUsuario() && resource.data.atletaId == meuAtletaId());
       allow create, update: if isAdmin() || comitePode("registrar");
       allow delete: if isAdmin();
     }
 
-    // Critérios de pontuação — leitura liberada a qualquer autenticado (para
-    // lançar pontos com base nas regras); escrita exige a permissão "regras".
     match /regras_pontuacao/{id} {
-      allow read: if signedIn();
+      allow read: if hasUsuario();
       allow write: if isAdmin() || comitePode("regras");
     }
 
     match /agenda_eventos/{id} {
-      allow read: if signedIn();
+      allow read: if hasUsuario();
       allow create, delete: if isAdmin() || comitePode("eventos");
-      // Além do comitê/admin (dono de todo o evento), qualquer atleta pode se
-      // inscrever/desinscrever de um evento — mas só o campo "inscritos", e só
-      // adicionando ou removendo o próprio id (nunca em nome de outro atleta).
       allow update: if isAdmin() || comitePode("eventos") ||
-        (signedIn() &&
+        (hasUsuario() &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(["inscritos"]) &&
           (
             (request.resource.data.inscritos.removeAll([meuAtletaId()]) == resource.data.get("inscritos", []) &&
@@ -111,7 +109,7 @@ service cloud.firestore {
     }
 
     match /noticias/{id} {
-      allow read: if signedIn();
+      allow read: if hasUsuario();
       allow write: if isAdmin() || comitePode("noticias");
     }
 
@@ -119,35 +117,27 @@ service cloud.firestore {
       allow read, write: if isAdmin() || comitePode("financeiro");
     }
 
-    // Lista viva de empresas pagadoras, cadastrada sob demanda ao lançar despesas.
     match /empresas_pagadoras/{id} {
       allow read, write: if isAdmin() || comitePode("financeiro");
     }
 
-    // Comentários de atletas são usados tanto pela ficha (permissão "atletas")
-    // quanto pela observação ao lançar pontos (permissão "registrar").
     match /comentarios_atletas/{id} {
       allow read, write: if isAdmin() || comitePode("atletas") || comitePode("registrar");
     }
 
-    // Comitê com a permissão "atletas" pode ler auditoria de ações sobre
-    // atletas (usado na aba Auditoria da ficha); o log completo do programa
-    // continua exclusivo do administrador.
     match /auditoria/{id} {
       allow read: if isAdmin() || (comitePode("atletas") && resource.data.entidade == "atletas");
       allow create: if isStaff();
       allow update, delete: if false;
     }
 
-    // "branding" define a identidade visual do portal (cores, fundo do login)
-    // e precisa ser lida até por visitantes não autenticados na tela de login.
     match /configuracoes/branding {
       allow read: if true;
       allow write: if isAdmin();
     }
 
     match /configuracoes/{docId} {
-      allow read: if signedIn();
+      allow read: if hasUsuario();
       allow write: if isAdmin();
     }
   }
