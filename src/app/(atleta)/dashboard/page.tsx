@@ -47,6 +47,14 @@ import { formatDataTreino, formatLongDate, formatShortDate } from "@/lib/format"
 import { calcularInsightsAtleta } from "@/lib/athleteStats";
 import type { AtletaDoc, EventoDoc, HistoricoPontoDoc, NoticiaDoc } from "@/lib/types";
 
+function hojeIsoLocal() {
+  const hoje = new Date();
+  const ano = hoje.getFullYear();
+  const mes = String(hoje.getMonth() + 1).padStart(2, "0");
+  const dia = String(hoje.getDate()).padStart(2, "0");
+  return ano + "-" + mes + "-" + dia;
+}
+
 function partesDataEvento(valor: string) {
   const data = new Date(valor + "T00:00:00");
   if (Number.isNaN(data.getTime())) return { mes: "—", dia: "—" };
@@ -115,9 +123,9 @@ export default function DashboardPage() {
   }, [atleta.id]);
 
   useEffect(() => {
-    const isoHoje = new Date().toISOString().slice(0, 10);
+    const isoHoje = hojeIsoLocal();
     const unsubscribe = onSnapshot(
-      query(collection(db, "agenda_eventos"), where("data", ">=", isoHoje), orderBy("data", "asc"), limit(1)),
+      query(collection(db, "agenda_eventos"), where("data", ">=", isoHoje), orderBy("data", "asc"), limit(12)),
       (snap) => setProximoEvento(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as EventoDoc)),
       () => {
         setProximoEvento([]);
@@ -145,7 +153,17 @@ export default function DashboardPage() {
     return meusLancamentos?.filter(l => !l.estornado).reduce((acc, curr) => acc + (curr.kmPercorrido || 0), 0) || 0;
   }, [meusLancamentos]);
 
-  const evento = proximoEvento?.[0];
+  const eventosDoAtleta = useMemo(() => {
+    const todos = proximoEvento ?? [];
+    if (!modalidade) return todos;
+    const relevantes = todos.filter(
+      (item) => item.modalidade === "ambas" || item.modalidade === modalidade,
+    );
+    return relevantes.length > 0 ? relevantes : todos;
+  }, [modalidade, proximoEvento]);
+
+  const evento = eventosDoAtleta[0];
+  const eventosPosteriores = eventosDoAtleta.slice(1, 4);
   const dataEvento = evento ? partesDataEvento(evento.data) : null;
   const jaConfirmado = !!evento?.inscritos?.includes(atleta.id);
 
@@ -331,51 +349,113 @@ export default function DashboardPage() {
         {/* SIDE COLUMN (1 col lg) */}
         <div className="flex flex-col gap-6">
           {/* NEXT EVENT */}
-          <Card className="flex flex-col min-h-[300px]">
-            <SectionHeader title="Próximo evento" icon={CalendarCheck} />
+          <Card className="flex flex-col">
+            <SectionHeader
+              title="Próximo evento"
+              icon={CalendarCheck}
+              action={
+                <Link href="/eventos" className="text-xs font-semibold text-primary hover:underline">
+                  Agenda completa
+                </Link>
+              }
+            />
             {proximoEvento === null ? (
-              <div className="flex flex-col gap-4 mt-4 h-full">
-                <SkeletonCard className="h-32" />
-                <SkeletonCard className="h-12 mt-auto" />
+              <div className="mt-4 flex flex-col gap-4">
+                <SkeletonCard className="h-40" />
+                <SkeletonCard className="h-16" />
+                <SkeletonCard className="h-16" />
               </div>
             ) : !evento ? (
               <EmptyState
                 icon={CalendarCheck}
                 title="Nenhum evento agendado"
-                description="Quando o comitê publicar um evento, ele aparece aqui."
+                description="Quando o comitê publicar um evento, ele aparecerá aqui."
               />
             ) : (
-              <div className="flex flex-col flex-1 mt-2">
-                <div className="bg-[var(--color-bg-inset)] rounded-[var(--radius-lg)] p-6 flex flex-col items-center justify-center text-center mb-5">
-                  <span className="text-[var(--color-primary)] text-sm font-bold uppercase tracking-wider mb-1">
-                    {dataEvento?.mes}
-                  </span>
-                  <span className="text-4xl font-black text-[var(--color-text)] leading-none">
-                    {dataEvento?.dia}
-                  </span>
-                </div>
-                <p className="font-semibold text-[var(--color-text)] line-clamp-2 text-lg">{evento.titulo}</p>
-                <p className="mt-3 flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
-                  <MapPin className="size-4 shrink-0" />
-                  <span className="truncate">{evento.local}</span>
-                </p>
-                <div className="mt-auto pt-6">
+              <div className="mt-4 flex flex-col">
+                <div className="rounded-[var(--radius-lg)] border border-primary/15 bg-gradient-to-br from-primary/10 via-bg-card to-secondary/10 p-4">
+                  <div className="flex items-start gap-4">
+                    <div className="flex size-18 shrink-0 flex-col items-center justify-center rounded-[var(--radius)] bg-bg-card shadow-sm">
+                      <span className="text-xs font-bold uppercase tracking-wide text-primary">
+                        {dataEvento?.mes}
+                      </span>
+                      <span className="text-3xl font-black leading-none text-text">
+                        {dataEvento?.dia}
+                      </span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-2 text-lg font-bold leading-tight text-text">
+                        {evento.titulo}
+                      </p>
+                      <p className="mt-2 flex items-center gap-1.5 text-sm text-text-light">
+                        <MapPin className="size-4 shrink-0" />
+                        <span className="truncate">{evento.local}</span>
+                      </p>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        {evento.modalidade === "ambas" ? (
+                          <Badge tone="neutral">Todas as modalidades</Badge>
+                        ) : (
+                          <SportBadge modalidade={evento.modalidade} size="sm" />
+                        )}
+                        {jaConfirmado && (
+                          <Badge tone="success">
+                            <Check className="mr-1 size-3" />
+                            Confirmado
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                   <Button
                     variant={jaConfirmado ? "secondary" : "primary"}
-                    className="w-full justify-center"
+                    className="mt-4 w-full justify-center"
                     onClick={handleRsvp}
                     loading={inscrevendo}
                   >
-                    {jaConfirmado ? (
-                      <>
-                        <Check className="size-4 mr-2" />
-                        Presença confirmada
-                      </>
-                    ) : (
-                      "Confirmar presença"
-                    )}
+                    {jaConfirmado ? "Cancelar presença" : "Confirmar presença"}
                   </Button>
                 </div>
+
+                {eventosPosteriores.length > 0 && (
+                  <div className="mt-5 border-t border-border-subtle pt-4">
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-text-muted">
+                      Depois
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      {eventosPosteriores.map((item) => (
+                        <Link
+                          key={item.id}
+                          href="/eventos"
+                          className="group flex items-center gap-3 rounded-[var(--radius)] border border-transparent p-2.5 transition-colors hover:border-border hover:bg-bg-inset"
+                        >
+                          <div className="flex w-14 shrink-0 flex-col items-center rounded-[var(--radius-sm)] bg-bg-inset px-2 py-2">
+                            <span className="text-[10px] font-bold uppercase text-primary">
+                              {partesDataEvento(item.data).mes}
+                            </span>
+                            <span className="text-lg font-extrabold leading-none text-text">
+                              {partesDataEvento(item.data).dia}
+                            </span>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-text transition-colors group-hover:text-primary">
+                              {item.titulo}
+                            </p>
+                            <p className="mt-0.5 truncate text-xs text-text-muted">
+                              {formatShortDate(item.data)} · {item.local}
+                            </p>
+                          </div>
+                          <span className="shrink-0 text-[10px] font-semibold text-text-muted">
+                            {item.modalidade === "ambas"
+                              ? "Todas"
+                              : item.modalidade === "bicicleta"
+                                ? "Ciclismo"
+                                : "Corrida"}
+                          </span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </Card>
