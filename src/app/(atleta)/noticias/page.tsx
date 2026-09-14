@@ -5,6 +5,7 @@ import Link from "next/link";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import { AlertCircle, ChevronRight, Newspaper, Pin, RefreshCw } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { useAthleteView } from "@/lib/session/AthleteViewProvider";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -15,8 +16,10 @@ import { formatRelativeTime } from "@/lib/format";
 import type { NoticiaDoc } from "@/lib/types";
 
 function NoticiaCard({ noticia, destaque = false }: { noticia: NoticiaDoc; destaque?: boolean }) {
+  const { withPreview } = useAthleteView();
+
   return (
-    <Link href={"/noticias/" + noticia.id} className="group block">
+    <Link href={withPreview("/noticias/" + noticia.id)} className="group block">
       <Card
         className={
           "flex h-full flex-col transition-all group-hover:-translate-y-0.5 group-hover:border-primary/40 group-hover:shadow-[var(--shadow-elevated)] " +
