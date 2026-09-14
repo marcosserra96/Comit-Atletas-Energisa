@@ -10,7 +10,7 @@ import {
   Activity,
   CalendarCheck,
   Trophy,
-  MoreHorizontal,
+  UserCircle,
 } from "lucide-react";
 
 const bottomNavItems = [
@@ -18,7 +18,7 @@ const bottomNavItems = [
   { href: "/desempenho", label: "Desempenho", icon: Activity },
   { href: "/eventos", label: "Eventos", icon: CalendarCheck },
   { href: "/ranking", label: "Ranking", icon: Trophy },
-  { href: "/perfil", label: "Mais", icon: MoreHorizontal },
+  { href: "/perfil", label: "Perfil", icon: UserCircle },
 ];
 
 function AtletaShellInner({ children }: { children: React.ReactNode }) {
