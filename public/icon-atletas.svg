@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Atletas Energisa">
+  <defs>
+    <linearGradient id="bg" x1="72" y1="40" x2="438" y2="472" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#009FC2"/>
+      <stop offset="1" stop-color="#005061"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <path d="M122 339 218 133c15-32 61-32 76 0l96 206h-70l-18-43h-93l-18 43h-69Zm111-101h45l-22-55-23 55Z" fill="#fff"/>
+  <path d="M323 126c42 8 73 31 92 69l-48 25c-10-21-26-34-49-40l5-54Z" fill="#F37021"/>
+  <circle cx="384" cy="148" r="24" fill="#fff"/>
+</svg>
