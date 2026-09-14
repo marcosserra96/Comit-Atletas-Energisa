@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { collection, onSnapshot, orderBy, query, where } from "firebase/firestore";
-import { Search, Trophy } from "lucide-react";
+import { AlertCircle, RefreshCw, Search, Trophy } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -12,12 +12,12 @@ import { RankingPosition } from "@/components/ui/RankingPosition";
 import { Skeleton, SkeletonLine } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import type { AtletaDoc, Modalidade } from "@/lib/types";
 
 interface RankedAtleta extends AtletaDoc {
   rank: number;
-  kmTotal?: number;
 }
 
 export default function RankingPage() {
@@ -31,6 +31,8 @@ export default function RankingPage() {
   const [corredores, setCorredores] = useState<AtletaDoc[] | null>(null);
   const [ciclistas, setCiclistas] = useState<AtletaDoc[] | null>(null);
   const [search, setSearch] = useState("");
+  const [erroCorrida, setErroCorrida] = useState(false);
+  const [erroBicicleta, setErroBicicleta] = useState(false);
 
   useEffect(() => {
     const q = query(
@@ -40,8 +42,14 @@ export default function RankingPage() {
     );
     const unsubscribe = onSnapshot(
       q,
-      (snap) => setCorredores(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)),
-      () => setCorredores([])
+      (snap) => {
+        setCorredores(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc));
+        setErroCorrida(false);
+      },
+      () => {
+        setCorredores([]);
+        setErroCorrida(true);
+      }
     );
     return unsubscribe;
   }, []);
@@ -54,21 +62,27 @@ export default function RankingPage() {
     );
     const unsubscribe = onSnapshot(
       q,
-      (snap) => setCiclistas(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)),
-      () => setCiclistas([])
+      (snap) => {
+        setCiclistas(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc));
+        setErroBicicleta(false);
+      },
+      () => {
+        setCiclistas([]);
+        setErroBicicleta(true);
+      }
     );
     return unsubscribe;
   }, []);
 
   const atletasAtuais = modalidade === "corrida" ? corredores : ciclistas;
+  const erroAtual = modalidade === "corrida" ? erroCorrida : erroBicicleta;
 
   const atletasComRank = useMemo(() => {
     if (!atletasAtuais) return null;
     return atletasAtuais.map((a, i) => {
-      return { 
-        ...a, 
+      return {
+        ...a,
         rank: i + 1,
-        kmTotal: (a as any).kmTotal || 0
       } as RankedAtleta;
     });
   }, [atletasAtuais]);
@@ -194,6 +208,18 @@ export default function RankingPage() {
             </div>
           </Card>
         </div>
+      ) : erroAtual ? (
+        <Card className="flex flex-col items-center gap-4 py-10 text-center">
+          <AlertCircle className="size-8 text-danger" />
+          <div>
+            <h2 className="font-bold text-text">Não foi possível carregar o ranking</h2>
+            <p className="mt-1 text-sm text-text-light">Confira sua conexão e tente novamente.</p>
+          </div>
+          <Button variant="secondary" onClick={() => window.location.reload()}>
+            <RefreshCw className="size-4" />
+            Tentar novamente
+          </Button>
+        </Card>
       ) : atletasAtuais.length === 0 ? (
         <EmptyState
           icon={Trophy}
@@ -256,12 +282,9 @@ export default function RankingPage() {
                         </div>
                       </div>
                       
-                      <div className="flex flex-col items-end shrink-0 ml-2">
-                        <span className="font-bold text-text text-sm sm:text-base">
+                      <div className="ml-2 shrink-0 text-right">
+                        <span className="text-sm font-bold text-text sm:text-base">
                           {a.pontuacaoTotal} pts
-                        </span>
-                        <span className="text-[10px] sm:text-xs text-text-light font-medium mt-0.5">
-                          {a.kmTotal?.toFixed(1) || "0.0"} km
                         </span>
                       </div>
                     </li>
