@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
+import { consolidarAtividades } from "@/lib/activityConsolidation";
 import { useAthleteView } from "@/lib/session/AthleteViewProvider";
 import { useToast } from "@/components/ui/Toast";
 import { Card } from "@/components/ui/Card";
@@ -144,13 +145,15 @@ export default function DashboardPage() {
     [meusLancamentos],
   );
 
-  const participacoesTotais = useMemo(() => {
-    return meusLancamentos?.filter(l => !l.estornado).length ?? 0;
-  }, [meusLancamentos]);
-
-  const kmAcumulado = useMemo(() => {
-    return meusLancamentos?.filter(l => !l.estornado).reduce((acc, curr) => acc + (curr.kmPercorrido || 0), 0) || 0;
-  }, [meusLancamentos]);
+  const atividadesConsolidadas = useMemo(
+    () => consolidarAtividades(meusLancamentos ?? []),
+    [meusLancamentos],
+  );
+  const participacoesTotais = atividadesConsolidadas.length;
+  const kmAcumulado = atividadesConsolidadas.reduce(
+    (soma, atividade) => soma + atividade.km,
+    0,
+  );
 
   const eventosDoAtleta = useMemo(() => {
     const todos = proximoEvento ?? [];

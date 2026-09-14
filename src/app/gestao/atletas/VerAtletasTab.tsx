@@ -18,6 +18,7 @@ import {
   Eye,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { consolidarAtividades } from "@/lib/activityConsolidation";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -70,21 +71,16 @@ export function VerAtletasTab() {
   useEffect(() => {
     getDocs(collection(db, "historico_pontos")).then((snap) => {
       const acc: Record<string, Resumo> = {};
-      const lotesVistos: Record<string, Set<string>> = {};
-      snap.docs.forEach((docSnap) => {
-        const l = docSnap.data() as HistoricoPontoDoc;
-        if (l.estornado) return;
-        const atual = acc[l.atletaId] ?? { km: 0, eventos: 0, ultimo: null };
-        const lotes = lotesVistos[l.atletaId] ?? new Set<string>();
-        if (!lotes.has(l.loteId)) {
-          lotes.add(l.loteId);
-          atual.km += l.kmPercorrido ?? 0;
-          atual.eventos += 1;
-        }
-        if (!atual.ultimo || l.dataTreino > atual.ultimo) atual.ultimo = l.dataTreino;
-        acc[l.atletaId] = atual;
-        lotesVistos[l.atletaId] = lotes;
-      });
+      const lancamentos = snap.docs.map(
+        (documento) => ({ id: documento.id, ...documento.data() }) as HistoricoPontoDoc,
+      );
+      for (const atividade of consolidarAtividades(lancamentos)) {
+        const atual = acc[atividade.atletaId] ?? { km: 0, eventos: 0, ultimo: null };
+        atual.km += atividade.km;
+        atual.eventos += 1;
+        if (!atual.ultimo || atividade.data > atual.ultimo) atual.ultimo = atividade.data;
+        acc[atividade.atletaId] = atual;
+      }
       setResumos(acc);
     });
   }, []);

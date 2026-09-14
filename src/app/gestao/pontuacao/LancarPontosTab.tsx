@@ -268,8 +268,9 @@ export function LancarPontosTab() {
         const kmPercorrido = kmOverride ? Number(kmOverride.replace(",", ".")) || 0 : kmLoteNum;
 
         if (isFalta) {
-          batch.set(doc(collection(db, "historico_pontos")), {
-            id: doc(collection(db, "historico_pontos")).id,
+          const lancamentoRef = doc(collection(db, "historico_pontos"));
+          batch.set(lancamentoRef, {
+            id: lancamentoRef.id,
             atletaId: atletaDoc.id,
             atletaNome: atletaDoc.nome,
             equipe: atletaDoc.equipe,

@@ -1,6 +1,8 @@
 "use client";
 
-import type { HistoricoPontoDoc, TipoLancamento } from "@/lib/types";
+import { consolidarAtividades } from "@/lib/activityConsolidation";
+import type { HistoricoPontoDoc } from "@/lib/types";
+export type { AtividadeConsolidada } from "@/lib/activityConsolidation";
 
 export type PeriodoDesempenho = "6m" | "12m" | "ano";
 
@@ -10,15 +12,6 @@ export interface SerieMensalDesempenho {
   rotuloCurto: string;
   treinos: number;
   participacoes: number;
-  pontos: number;
-  km: number;
-}
-
-export interface AtividadeConsolidada {
-  chave: string;
-  data: string;
-  tipo: TipoLancamento;
-  descricao: string;
   pontos: number;
   km: number;
 }
@@ -94,22 +87,6 @@ function chaveSemana(valor: string) {
   return dataIsoLocal(data);
 }
 
-function chaveAtividade(lancamento: HistoricoPontoDoc) {
-  // A importação do controle antigo pode reutilizar um lote em vários dias.
-  // Lote + data mantém juntas as regras do mesmo treino sem reduzir o mês inteiro a uma atividade.
-  if (lancamento.loteId?.trim()) {
-    return lancamento.loteId + "|" + lancamento.dataTreino;
-  }
-  if (lancamento.eventoId?.trim()) {
-    return "evento|" + lancamento.eventoId + "|" + lancamento.dataTreino;
-  }
-  return [
-    lancamento.dataTreino,
-    lancamento.tipoLancamento,
-    lancamento.descricaoLote || "sem-descricao",
-  ].join("|");
-}
-
 export function obterInicioPeriodo(periodo: PeriodoDesempenho, hoje = new Date()) {
   if (periodo === "ano") {
     return dataIsoLocal(new Date(hoje.getFullYear(), 0, 1));
@@ -139,35 +116,6 @@ function construirMeses(periodo: PeriodoDesempenho, hoje: Date) {
     });
   }
   return meses;
-}
-
-function consolidarAtividades(lancamentos: HistoricoPontoDoc[]) {
-  const porChave = new Map<string, AtividadeConsolidada>();
-
-  for (const lancamento of lancamentos) {
-    const chave = chaveAtividade(lancamento);
-    const atual = porChave.get(chave);
-    const km = Number(lancamento.kmPercorrido) || 0;
-
-    if (!atual) {
-      porChave.set(chave, {
-        chave,
-        data: lancamento.dataTreino,
-        tipo: lancamento.tipoLancamento,
-        descricao: lancamento.descricaoLote || lancamento.regraDesc,
-        pontos: lancamento.pontos,
-        km,
-      });
-      continue;
-    }
-
-    atual.pontos += lancamento.pontos;
-    atual.km = Math.max(atual.km, km);
-    if (lancamento.dataTreino > atual.data) atual.data = lancamento.dataTreino;
-    if (lancamento.tipoLancamento === "treino") atual.tipo = "treino";
-  }
-
-  return [...porChave.values()];
 }
 
 export function calcularDesempenhoAtleta(params: {

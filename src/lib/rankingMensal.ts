@@ -1,3 +1,4 @@
+import { consolidarAtividades } from "@/lib/activityConsolidation";
 import type { AlertaCriterio, AtletaDoc, Equipe, HistoricoPontoDoc } from "@/lib/types";
 
 export interface ResumoAtletaMensal {
@@ -43,36 +44,28 @@ export function calcularResumoRankingPeriodo(params: {
     porAtleta.set(a.id, { id: a.id, nome: a.nome, equipe: a.equipe, pontosMes: 0, kmMes: 0, treinosMes: 0, ultimaData: "" });
   }
 
-  const participacoes = new Set<string>();
-  const kmPorLancamento = new Map<string, number>();
+  const lancamentosDoPeriodo: HistoricoPontoDoc[] = [];
 
-  for (const l of lancamentos) {
-    if (l.estornado) continue;
-    const item = porAtleta.get(l.atletaId);
+  for (const lancamento of lancamentos) {
+    if (lancamento.estornado) continue;
+    const item = porAtleta.get(lancamento.atletaId);
     if (!item) continue;
-    if (l.dataTreino && l.dataTreino > item.ultimaData) item.ultimaData = l.dataTreino;
-    const competencia = l.dataTreino.slice(0, 7);
+    if (lancamento.dataTreino && lancamento.dataTreino > item.ultimaData) {
+      item.ultimaData = lancamento.dataTreino;
+    }
+
+    const competencia = lancamento.dataTreino.slice(0, 7);
     if (competencia < de || competencia > ate) continue;
 
-    item.pontosMes += l.pontos;
-
-    const chaveLancamento = `${l.atletaId}|${l.loteId || [l.eventoId ?? "sem-evento", l.dataTreino, l.regraDesc].join("|")}`;
-    participacoes.add(chaveLancamento);
-    const km = l.kmPercorrido ?? 0;
-    if (!kmPorLancamento.has(chaveLancamento) || km > (kmPorLancamento.get(chaveLancamento) ?? 0)) {
-      kmPorLancamento.set(chaveLancamento, km);
-    }
+    item.pontosMes += lancamento.pontos;
+    lancamentosDoPeriodo.push(lancamento);
   }
 
-  for (const chave of participacoes) {
-    const atletaId = chave.split("|")[0];
-    const item = porAtleta.get(atletaId);
-    if (item) item.treinosMes += 1;
-  }
-  for (const [chave, km] of kmPorLancamento) {
-    const atletaId = chave.split("|")[0];
-    const item = porAtleta.get(atletaId);
-    if (item) item.kmMes += km;
+  for (const atividade of consolidarAtividades(lancamentosDoPeriodo)) {
+    const item = porAtleta.get(atividade.atletaId);
+    if (!item) continue;
+    item.kmMes += atividade.km;
+    if (atividade.tipo === "treino") item.treinosMes += 1;
   }
 
   return [...porAtleta.values()].sort(ordenarRankingMensal);

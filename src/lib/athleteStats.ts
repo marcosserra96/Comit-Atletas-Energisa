@@ -1,3 +1,5 @@
+import { consolidarAtividades } from "@/lib/activityConsolidation";
+import { dataIsoLocal } from "@/lib/date";
 import type { AtletaDoc, HistoricoPontoDoc } from "@/lib/types";
 
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
@@ -44,20 +46,24 @@ export function calcularInsightsAtleta(params: {
   const mes = hoje.getMonth() + 1;
   const prefixoMes = `${ano}-${String(mes).padStart(2, "0")}`;
 
-  const lotesMes = new Map<string, { pontos: number; km: number }>();
-  for (const l of validos) {
-    if (!l.dataTreino.startsWith(prefixoMes)) continue;
-    const atual = lotesMes.get(l.loteId) ?? { pontos: 0, km: 0 };
-    atual.pontos += l.pontos;
-    atual.km += l.kmPercorrido ?? 0;
-    lotesMes.set(l.loteId, atual);
-  }
-  const pontosMes = [...lotesMes.values()].reduce((s, v) => s + v.pontos, 0);
-  const kmMes = [...lotesMes.values()].reduce((s, v) => s + v.km, 0);
-  const treinosMes = lotesMes.size;
+  const atividades = consolidarAtividades(validos);
+  const atividadesMes = atividades.filter((atividade) => atividade.data.startsWith(prefixoMes));
+  const pontosMes = validos
+    .filter((lancamento) => lancamento.dataTreino.startsWith(prefixoMes))
+    .reduce((soma, lancamento) => soma + lancamento.pontos, 0);
+  const kmMes = atividadesMes.reduce((soma, atividade) => soma + atividade.km, 0);
+  const treinosMes = atividadesMes.filter((atividade) => atividade.tipo === "treino").length;
 
-  const iso7dias = new Date(hoje.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const treinosSemana = new Set(validos.filter((l) => l.dataTreino >= iso7dias).map((l) => l.loteId)).size;
+  const inicio7Dias = new Date(hoje);
+  inicio7Dias.setDate(inicio7Dias.getDate() - 6);
+  const iso7dias = dataIsoLocal(inicio7Dias);
+  const hojeIso = dataIsoLocal(hoje);
+  const treinosSemana = atividades.filter(
+    (atividade) =>
+      atividade.tipo === "treino" &&
+      atividade.data >= iso7dias &&
+      atividade.data <= hojeIso,
+  ).length;
 
   const seriesMensal = Array.from({ length: 6 }, (_, i) => {
     const ref = new Date(hoje.getFullYear(), hoje.getMonth() - (5 - i), 1);
