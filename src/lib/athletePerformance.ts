@@ -95,8 +95,14 @@ function chaveSemana(valor: string) {
 }
 
 function chaveAtividade(lancamento: HistoricoPontoDoc) {
-  if (lancamento.loteId?.trim()) return lancamento.loteId;
-  if (lancamento.eventoId?.trim()) return "evento|" + lancamento.eventoId;
+  // A importação do controle antigo pode reutilizar um lote em vários dias.
+  // Lote + data mantém juntas as regras do mesmo treino sem reduzir o mês inteiro a uma atividade.
+  if (lancamento.loteId?.trim()) {
+    return lancamento.loteId + "|" + lancamento.dataTreino;
+  }
+  if (lancamento.eventoId?.trim()) {
+    return "evento|" + lancamento.eventoId + "|" + lancamento.dataTreino;
+  }
   return [
     lancamento.dataTreino,
     lancamento.tipoLancamento,
