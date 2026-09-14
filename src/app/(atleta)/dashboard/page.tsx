@@ -26,6 +26,7 @@ import {
   Check,
   TrendingUp,
   Award,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
@@ -46,6 +47,15 @@ import { formatDataTreino, formatLongDate, formatShortDate } from "@/lib/format"
 import { calcularInsightsAtleta } from "@/lib/athleteStats";
 import type { AtletaDoc, EventoDoc, HistoricoPontoDoc, NoticiaDoc } from "@/lib/types";
 
+function partesDataEvento(valor: string) {
+  const data = new Date(valor + "T00:00:00");
+  if (Number.isNaN(data.getTime())) return { mes: "—", dia: "—" };
+  return {
+    mes: data.toLocaleDateString("pt-BR", { month: "short" }).replace(".", ""),
+    dia: data.getDate(),
+  };
+}
+
 export default function DashboardPage() {
   const { atleta } = useActiveSession();
   const { show } = useToast();
@@ -58,13 +68,17 @@ export default function DashboardPage() {
   const [proximoEvento, setProximoEvento] = useState<EventoDoc[] | null>(null);
   const [noticias, setNoticias] = useState<NoticiaDoc[] | null>(null);
   const [inscrevendo, setInscrevendo] = useState(false);
+  const [erroDados, setErroDados] = useState(false);
 
   useEffect(() => {
     if (!modalidade) return;
     const unsubscribe = onSnapshot(
       query(collection(db, "atletas"), where("equipe", "==", atleta.equipe), orderBy("pontuacaoTotal", "desc")),
       (snap) => setCompanheiros(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)),
-      () => setCompanheiros([]),
+      () => {
+        setCompanheiros([]);
+        setErroDados(true);
+      },
     );
     return unsubscribe;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- modalidade deriva de atleta.equipe, mesma dependência
@@ -78,7 +92,10 @@ export default function DashboardPage() {
         if (active) setMeusLancamentos(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as HistoricoPontoDoc));
       })
       .catch(() => {
-        if (active) setMeusLancamentos([]);
+        if (active) {
+          setMeusLancamentos([]);
+          setErroDados(true);
+        }
       });
 
     getDocs(query(collection(db, "noticias"), orderBy("criadoEm", "desc"), limit(3)))
@@ -86,7 +103,10 @@ export default function DashboardPage() {
         if (active) setNoticias(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as NoticiaDoc));
       })
       .catch(() => {
-        if (active) setNoticias([]);
+        if (active) {
+          setNoticias([]);
+          setErroDados(true);
+        }
       });
 
     return () => {
@@ -99,7 +119,10 @@ export default function DashboardPage() {
     const unsubscribe = onSnapshot(
       query(collection(db, "agenda_eventos"), where("data", ">=", isoHoje), orderBy("data", "asc"), limit(1)),
       (snap) => setProximoEvento(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as EventoDoc)),
-      () => setProximoEvento([]),
+      () => {
+        setProximoEvento([]);
+        setErroDados(true);
+      },
     );
     return unsubscribe;
   }, []);
@@ -123,6 +146,7 @@ export default function DashboardPage() {
   }, [meusLancamentos]);
 
   const evento = proximoEvento?.[0];
+  const dataEvento = evento ? partesDataEvento(evento.data) : null;
   const jaConfirmado = !!evento?.inscritos?.includes(atleta.id);
 
   async function handleRsvp() {
@@ -160,6 +184,16 @@ export default function DashboardPage() {
         }
         className="mb-6"
       />
+
+      {erroDados && (
+        <div className="mb-6 flex items-start gap-3 rounded-[var(--radius)] border border-danger/20 bg-danger/5 p-4 text-sm text-text-light">
+          <AlertCircle className="mt-0.5 size-5 shrink-0 text-danger" />
+          <p>
+            Parte dos dados não pôde ser carregada. Atualize a página; se o problema continuar,
+            fale com o comitê.
+          </p>
+        </div>
+      )}
 
       {/* METRIC CARDS ROW */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
@@ -314,10 +348,10 @@ export default function DashboardPage() {
               <div className="flex flex-col flex-1 mt-2">
                 <div className="bg-[var(--color-bg-inset)] rounded-[var(--radius-lg)] p-6 flex flex-col items-center justify-center text-center mb-5">
                   <span className="text-[var(--color-primary)] text-sm font-bold uppercase tracking-wider mb-1">
-                    {new Date(evento.data).toLocaleDateString('pt-BR', { month: 'short' })}
+                    {dataEvento?.mes}
                   </span>
                   <span className="text-4xl font-black text-[var(--color-text)] leading-none">
-                    {new Date(evento.data).getDate()}
+                    {dataEvento?.dia}
                   </span>
                 </div>
                 <p className="font-semibold text-[var(--color-text)] line-clamp-2 text-lg">{evento.titulo}</p>
