@@ -37,8 +37,8 @@ async function main() {
 
   const existente = await auth.getUserByEmail(email).catch(() => null);
   const usuario = existente
-    ? await auth.updateUser(existente.uid, { password: senha, displayName: nome })
-    : await auth.createUser({ email, password: senha, displayName: nome });
+    ? await auth.updateUser(existente.uid, { password: senha, displayName: nome, emailVerified: true })
+    : await auth.createUser({ email, password: senha, displayName: nome, emailVerified: true });
 
   console.log(existente ? "Conta já existia — senha e nome atualizados." : "Conta criada.");
 
