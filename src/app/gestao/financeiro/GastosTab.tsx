@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ConfirmActionModal } from "@/components/ui/ConfirmActionModal";
 import { formatBRL, formatShortDate } from "@/lib/format";
 import { exportToExcel } from "@/lib/excel";
 import { cn } from "@/lib/cn";
@@ -38,6 +39,7 @@ export function GastosTab() {
   const [novaKey, setNovaKey] = useState(0);
   const [editando, setEditando] = useState<DespesaDoc | null>(null);
   const [expandido, setExpandido] = useState<string | null>(null);
+  const [excluindo, setExcluindo] = useState<DespesaDoc | null>(null);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -75,9 +77,11 @@ export function GastosTab() {
     setNovaOpen(true);
   }
 
-  async function handleExcluir(d: DespesaDoc) {
+  async function handleExcluir() {
+    if (!excluindo) return;
     try {
-      await deleteDoc(doc(db, "despesas", d.id));
+      await deleteDoc(doc(db, "despesas", excluindo.id));
+      setExcluindo(null);
       show("success", "Despesa removida.");
     } catch {
       show("error", "Não foi possível remover agora. Tente novamente.");
@@ -224,7 +228,7 @@ export function GastosTab() {
                             <Pencil className="size-4" />
                           </button>
                           <button
-                            onClick={() => handleExcluir(d)}
+                            onClick={() => setExcluindo(d)}
                             aria-label="Excluir"
                             className="rounded-[var(--radius)] p-1.5 text-text-muted hover:bg-danger/10 hover:text-danger"
                           >
@@ -344,6 +348,13 @@ export function GastosTab() {
         </Card>
       )}
 
+      <ConfirmActionModal
+        open={!!excluindo}
+        title="Excluir despesa"
+        description={`A despesa “${excluindo?.evento ?? ""}” será apagada e deixará de compor os indicadores financeiros.`}
+        onClose={() => setExcluindo(null)}
+        onConfirm={handleExcluir}
+      />
       <NovaDespesaModal
         key={`nova-${novaKey}`}
         open={novaOpen}

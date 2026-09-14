@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ConfirmActionModal } from "@/components/ui/ConfirmActionModal";
 import { NotAuthorized } from "@/components/ui/NotAuthorized";
 import { formatRelativeTime } from "@/lib/format";
 import { temPermissao } from "@/lib/permissoes";
@@ -21,6 +22,7 @@ export default function NoticiasPage() {
   const { show } = useToast();
   const [noticias, setNoticias] = useState<NoticiaDoc[] | null>(null);
   const [novaOpen, setNovaOpen] = useState(false);
+  const [removendo, setRemovendo] = useState<NoticiaDoc | null>(null);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -33,9 +35,11 @@ export default function NoticiasPage() {
     return unsubscribe;
   }, []);
 
-  async function handleRemover(noticia: NoticiaDoc) {
+  async function handleRemover() {
+    if (!removendo) return;
     try {
-      await deleteDoc(doc(db, "noticias", noticia.id));
+      await deleteDoc(doc(db, "noticias", removendo.id));
+      setRemovendo(null);
       show("success", "Notícia removida.");
     } catch {
       show("error", "Não foi possível remover agora. Tente novamente.");
@@ -91,7 +95,7 @@ export default function NoticiasPage() {
                 </p>
               </div>
               <button
-                onClick={() => handleRemover(n)}
+                onClick={() => setRemovendo(n)}
                 aria-label="Remover"
                 className="shrink-0 rounded-[var(--radius)] p-1.5 text-text-muted hover:bg-danger/10 hover:text-danger"
               >
@@ -103,6 +107,13 @@ export default function NoticiasPage() {
       )}
 
       <NovaNoticiaModal open={novaOpen} onClose={() => setNovaOpen(false)} />
+      <ConfirmActionModal
+        open={!!removendo}
+        title="Excluir notícia"
+        description={`A notícia “${removendo?.titulo ?? ""}” será apagada permanentemente.`}
+        onClose={() => setRemovendo(null)}
+        onConfirm={handleRemover}
+      />
     </div>
   );
 }

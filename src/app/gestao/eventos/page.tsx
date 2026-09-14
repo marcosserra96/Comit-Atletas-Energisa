@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ConfirmActionModal } from "@/components/ui/ConfirmActionModal";
 import { NotAuthorized } from "@/components/ui/NotAuthorized";
 import { formatShortDate } from "@/lib/format";
 import { exportToExcel } from "@/lib/excel";
@@ -28,6 +29,7 @@ export default function EventosPage() {
   const { show } = useToast();
   const [eventos, setEventos] = useState<EventoDoc[] | null>(null);
   const [novoOpen, setNovoOpen] = useState(false);
+  const [removendo, setRemovendo] = useState<EventoDoc | null>(null);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -40,9 +42,11 @@ export default function EventosPage() {
     return unsubscribe;
   }, []);
 
-  async function handleRemover(evento: EventoDoc) {
+  async function handleRemover() {
+    if (!removendo) return;
     try {
-      await deleteDoc(doc(db, "agenda_eventos", evento.id));
+      await deleteDoc(doc(db, "agenda_eventos", removendo.id));
+      setRemovendo(null);
       show("success", "Evento removido da agenda.");
     } catch {
       show("error", "Não foi possível remover agora. Tente novamente.");
@@ -111,7 +115,7 @@ export default function EventosPage() {
                   </p>
                 </div>
                 <button
-                  onClick={() => handleRemover(evento)}
+                  onClick={() => setRemovendo(evento)}
                   aria-label="Remover"
                   className="shrink-0 rounded-[var(--radius)] p-1.5 text-text-muted hover:bg-danger/10 hover:text-danger"
                 >
@@ -129,6 +133,13 @@ export default function EventosPage() {
       )}
 
       <NovoEventoModal open={novoOpen} onClose={() => setNovoOpen(false)} />
+      <ConfirmActionModal
+        open={!!removendo}
+        title="Excluir evento"
+        description={`O evento “${removendo?.titulo ?? ""}” será removido da agenda. Essa ação não pode ser desfeita.`}
+        onClose={() => setRemovendo(null)}
+        onConfirm={handleRemover}
+      />
     </div>
   );
 }

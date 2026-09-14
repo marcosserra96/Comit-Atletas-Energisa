@@ -7,11 +7,13 @@ import { db } from "@/lib/firebase";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { RequestCard } from "./RequestCard";
+import { RejectedRequestCard } from "./RejectedRequestCard";
 import type { AtletaDoc, SolicitacaoAcessoDoc } from "@/lib/types";
 
 export function PendentesTab() {
   const [pendentes, setPendentes] = useState<SolicitacaoAcessoDoc[] | null>(null);
   const [atletasSemVinculo, setAtletasSemVinculo] = useState<AtletaDoc[]>([]);
+  const [recusadas, setRecusadas] = useState<SolicitacaoAcessoDoc[]>([]);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -22,6 +24,20 @@ export function PendentesTab() {
       ),
       (snap) => setPendentes(snap.docs.map((d) => d.data() as SolicitacaoAcessoDoc)),
       () => setPendentes([]),
+    );
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      query(collection(db, "solicitacoes_acesso"), where("status", "==", "recusado")),
+      (snap) =>
+        setRecusadas(
+          snap.docs
+            .map((documento) => documento.data() as SolicitacaoAcessoDoc)
+            .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
+        ),
+      () => setRecusadas([]),
     );
     return unsubscribe;
   }, []);
@@ -66,6 +82,20 @@ export function PendentesTab() {
             />
           ))}
         </div>
+      )}
+
+      {recusadas.length > 0 && (
+        <section className="mt-4 flex flex-col gap-3">
+          <div>
+            <h3 className="font-bold text-text">Solicitações recusadas</h3>
+            <p className="text-xs text-text-light">
+              Reabra uma análise ou exclua o pedido para permitir uma nova solicitação.
+            </p>
+          </div>
+          {recusadas.map((solicitacao) => (
+            <RejectedRequestCard key={solicitacao.uid} solicitacao={solicitacao} />
+          ))}
+        </section>
       )}
     </div>
   );

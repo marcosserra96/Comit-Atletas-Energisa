@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ConfirmActionModal } from "@/components/ui/ConfirmActionModal";
 import { NovaRegraModal } from "./NovaRegraModal";
 import type { RegraPontuacaoDoc } from "@/lib/types";
 
@@ -23,6 +24,7 @@ export function CriteriosTab() {
   const [regras, setRegras] = useState<RegraPontuacaoDoc[] | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando] = useState<RegraPontuacaoDoc | null>(null);
+  const [excluindo, setExcluindo] = useState<RegraPontuacaoDoc | null>(null);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "regras_pontuacao"), (snap) => {
@@ -31,9 +33,11 @@ export function CriteriosTab() {
     return unsubscribe;
   }, []);
 
-  async function handleExcluir(regra: RegraPontuacaoDoc) {
+  async function handleExcluir() {
+    if (!excluindo) return;
     try {
-      await deleteDoc(doc(db, "regras_pontuacao", regra.id));
+      await deleteDoc(doc(db, "regras_pontuacao", excluindo.id));
+      setExcluindo(null);
       show("success", "Regra removida.");
     } catch {
       show("error", "Não foi possível remover agora. Tente novamente.");
@@ -95,7 +99,7 @@ export function CriteriosTab() {
                         <Pencil className="size-4" />
                       </button>
                       <button
-                        onClick={() => handleExcluir(r)}
+                        onClick={() => setExcluindo(r)}
                         aria-label="Excluir"
                         className="rounded-[var(--radius)] p-1.5 text-text-muted hover:bg-danger/10 hover:text-danger"
                       >
@@ -110,6 +114,13 @@ export function CriteriosTab() {
         </Card>
       )}
 
+      <ConfirmActionModal
+        open={!!excluindo}
+        title="Excluir regra"
+        description={`A regra “${excluindo?.descricao ?? ""}” será removida. Lançamentos já registrados serão preservados.`}
+        onClose={() => setExcluindo(null)}
+        onConfirm={handleExcluir}
+      />
       <NovaRegraModal
         key={editando?.id ?? "nova"}
         open={modalOpen}
