@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { logAudit } from "@/lib/audit";
 import { formatRelativeTime } from "@/lib/format";
-import { equipeLabel } from "@/lib/labels";
+import { equipeLabel, roleLabel } from "@/lib/labels";
 import { RejectRequestModal } from "./RejectRequestModal";
 import type { AtletaDoc, Role, SolicitacaoAcessoDoc } from "@/lib/types";
 
@@ -43,7 +43,7 @@ export function RequestCard({
     atletasSemVinculo.length > 0 ? "vincular" : "criar",
   );
   const [atletaSelecionado, setAtletaSelecionado] = useState("");
-  const [roleEscolhida, setRoleEscolhida] = useState<Role | "">("");
+  const [roleEscolhida, setRoleEscolhida] = useState<Role>("atleta");
   const [busy, setBusy] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
 
@@ -59,13 +59,13 @@ export function RequestCard({
       await updateDoc(doc(db, "atletas", atletaSelecionado), {
         authUid: solicitacao.uid,
         email: solicitacao.email,
-        role: "atleta",
+        role: roleEscolhida,
         ativo: true,
         atualizadoEm: serverTimestamp(),
       });
       await setDoc(doc(db, "usuarios", solicitacao.uid), {
         uid: solicitacao.uid,
-        role: "atleta",
+        role: roleEscolhida,
         atletaId: atletaSelecionado,
         criadoEm: serverTimestamp(),
       });
@@ -77,11 +77,11 @@ export function RequestCard({
         acao: "vincular_acesso",
         entidade: "atletas",
         entidadeId: atletaSelecionado,
-        dados: { solicitacaoUid: solicitacao.uid },
+        dados: { solicitacaoUid: solicitacao.uid, role: roleEscolhida },
         criadoPor: adminUid,
         criadoPorNome: adminAtleta.nome,
       });
-      show("success", `${primeiroNome} vinculado(a) ao cadastro existente.`);
+      show("success", `${primeiroNome} vinculado(a) como ${roleLabel[roleEscolhida]}.`);
     } catch {
       show("error", "Não foi possível vincular agora. Tente novamente.");
     } finally {
@@ -208,17 +208,32 @@ export function RequestCard({
             perfil&rdquo;.
           </p>
         ) : (
-          <Select
-            placeholder="Selecione o cadastro do atleta"
-            value={atletaSelecionado}
-            onChange={(e) => setAtletaSelecionado(e.target.value)}
-          >
-            {atletasSemVinculo.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.nome} — {equipeLabel[a.equipe]}
-              </option>
-            ))}
-          </Select>
+          <div className="flex flex-col gap-2">
+            <Select
+              placeholder="Selecione o cadastro do atleta"
+              value={atletaSelecionado}
+              onChange={(e) => setAtletaSelecionado(e.target.value)}
+            >
+              {atletasSemVinculo.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.nome} — {equipeLabel[a.equipe]}
+                </option>
+              ))}
+            </Select>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-text-light">Perfil de acesso</label>
+              <Select
+                value={roleEscolhida}
+                onChange={(e) => setRoleEscolhida(e.target.value as Role)}
+              >
+                {roleOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </div>
         )
       ) : (
         <Select
