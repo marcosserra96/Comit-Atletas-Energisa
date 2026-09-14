@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { collection, onSnapshot, orderBy, query, where } from "firebase/firestore";
 import { AlertCircle, RefreshCw, Search, Trophy } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { useActiveSession } from "@/lib/session/SessionProvider";
+import { useAthleteView } from "@/lib/session/AthleteViewProvider";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { SportBadge } from "@/components/ui/SportBadge";
@@ -21,7 +21,7 @@ interface RankedAtleta extends AtletaDoc {
 }
 
 export default function RankingPage() {
-  const { atleta: myAtleta } = useActiveSession();
+  const { atleta: myAtleta } = useAthleteView();
   
   const initialModality = (myAtleta.equipe === "corrida" || myAtleta.equipe === "bicicleta") 
     ? myAtleta.equipe 
