@@ -61,7 +61,7 @@ export function UsuariosTab() {
       });
       show(
         "success",
-        novaEquipe === "comite"
+        novaEquipe === "comite" || novaEquipe === "nenhuma"
           ? `${pessoa.nome.split(" ")[0]} não compete mais no programa.`
           : `${pessoa.nome.split(" ")[0]} agora também compete em ${novaEquipe === "bicicleta" ? "Bicicleta" : "Corrida"}.`,
       );
