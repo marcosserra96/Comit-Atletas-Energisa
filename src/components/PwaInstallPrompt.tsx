@@ -12,9 +12,13 @@ interface NavigatorStandalone extends Navigator {
   standalone?: boolean;
 }
 
+const DISMISS_KEY = "pwa-install-dismissed-at";
+const DISMISS_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+
 export function PwaInstallPrompt() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isIos, setIsIos] = useState(false);
+  const [isSafari, setIsSafari] = useState(false);
   const [isStandalone, setIsStandalone] = useState(true);
   const [dismissed, setDismissed] = useState(true);
 
@@ -26,11 +30,21 @@ export function PwaInstallPrompt() {
     const ios =
       /iphone|ipad|ipod/i.test(navigator.userAgent) ||
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const safari =
+      ios &&
+      /safari/i.test(navigator.userAgent) &&
+      !/crios|fxios|edgios|opios/i.test(navigator.userAgent);
+    const dismissedAt = Number(localStorage.getItem(DISMISS_KEY));
+    const recentlyDismissed =
+      Number.isFinite(dismissedAt) && Date.now() - dismissedAt < DISMISS_TTL_MS;
+
+    if (!recentlyDismissed) localStorage.removeItem(DISMISS_KEY);
 
     const animationFrame = window.requestAnimationFrame(() => {
       setIsStandalone(standalone);
       setIsIos(ios);
-      setDismissed(sessionStorage.getItem("pwa-install-dismissed") === "1");
+      setIsSafari(safari);
+      setDismissed(recentlyDismissed);
     });
 
     function handleBeforeInstallPrompt(event: Event) {
@@ -54,7 +68,7 @@ export function PwaInstallPrompt() {
   }, []);
 
   function dismiss() {
-    sessionStorage.setItem("pwa-install-dismissed", "1");
+    localStorage.setItem(DISMISS_KEY, String(Date.now()));
     setDismissed(true);
   }
 
@@ -107,7 +121,7 @@ export function PwaInstallPrompt() {
           <Download className="size-4" />
           Instalar aplicativo
         </button>
-      ) : (
+      ) : isSafari ? (
         <div className="mt-4 rounded-[var(--radius)] bg-bg p-3 text-sm text-text-light">
           <p className="flex items-start gap-2">
             <Share2 className="mt-0.5 size-4 shrink-0 text-primary" />
@@ -117,6 +131,10 @@ export function PwaInstallPrompt() {
             <SquarePlus className="mt-0.5 size-4 shrink-0 text-primary" />
             Depois selecione <strong className="text-text">Adicionar à Tela de Início</strong>.
           </p>
+        </div>
+      ) : (
+        <div className="mt-4 rounded-[var(--radius)] bg-bg p-3 text-sm text-text-light">
+          Para instalar no iPhone ou iPad, abra esta página no Safari.
         </div>
       )}
     </aside>

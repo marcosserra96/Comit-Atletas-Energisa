@@ -33,7 +33,8 @@ export function MobileBottomNav({ items, className }: MobileBottomNavProps) {
       >
         <div className="flex justify-around items-center h-16 px-2">
           {displayItems.map((item) => {
-            const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`);
+            const hrefPath = item.href.split("?")[0];
+            const isActive = pathname === hrefPath || pathname?.startsWith(`${hrefPath}/`);
             const Icon = item.icon;
 
             return (
