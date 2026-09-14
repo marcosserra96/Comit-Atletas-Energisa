@@ -1,6 +1,6 @@
 "use client";
 
-import { consolidarAtividades } from "@/lib/activityConsolidation";
+import { consolidarAtividades, type AtividadeConsolidada } from "@/lib/activityConsolidation";
 import type { HistoricoPontoDoc } from "@/lib/types";
 export type { AtividadeConsolidada } from "@/lib/activityConsolidation";
 
