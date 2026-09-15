@@ -127,6 +127,14 @@ service cloud.firestore {
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(["nome"]));
     }
 
+    match /ranking_resultados/{id} {
+      allow read: if isStaff() ||
+        (hasUsuario() &&
+          resource.data.equipe == minhaModalidade() &&
+          rankingLiberado(resource.data.equipe));
+      allow create, update, delete: if isAdmin();
+    }
+
     // Cada atleta lê apenas o próprio histórico. Comitê e administrador
     // continuam com acesso conforme suas responsabilidades.
     match /historico_pontos/{id} {

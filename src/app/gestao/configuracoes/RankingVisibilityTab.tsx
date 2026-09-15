@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { TextField } from "@/components/ui/TextField";
+import { RankingPeriodsCard } from "./RankingPeriodsCard";
 import {
   RANKING_VISIBILITY_DEFAULT,
   normalizarRankingVisibility,
@@ -210,6 +211,8 @@ export function RankingVisibilityTab() {
           onChange={(value) => update("bicicleta", value)}
         />
       </div>
+
+      <RankingPeriodsCard />
 
       <div className="flex justify-end">
         <Button onClick={handleSalvar} loading={saving}>

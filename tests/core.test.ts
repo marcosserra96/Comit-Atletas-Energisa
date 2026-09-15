@@ -3,8 +3,9 @@ import test from "node:test";
 import { consolidarAtividades } from "../src/lib/activityConsolidation";
 import { dataIsoLocal } from "../src/lib/date";
 import { modalidadeDoAtleta, rankingOcultoAgora } from "../src/lib/rankingVisibility";
+import { calcularResultadosRanking } from "../src/lib/rankingPeriods";
 import type { RankingVisibilityConfigDoc } from "../src/lib/types";
-import type { HistoricoPontoDoc } from "../src/lib/types";
+import type { AtletaDoc, HistoricoPontoDoc } from "../src/lib/types";
 
 function lancamento(
   overrides: Partial<HistoricoPontoDoc> = {},
@@ -90,4 +91,61 @@ test("converte equipes e filas para a modalidade do atleta", () => {
   assert.equal(modalidadeDoAtleta("corrida"), "corrida");
   assert.equal(modalidadeDoAtleta("fila_bicicleta"), "bicicleta");
   assert.equal(modalidadeDoAtleta("comite"), null);
+});
+
+
+function atletaRanking(overrides: Partial<AtletaDoc> = {}): AtletaDoc {
+  return {
+    id: "atleta-1",
+    nome: "Atleta",
+    email: null,
+    role: "atleta",
+    equipe: "corrida",
+    ativo: true,
+    pontuacaoTotal: 0,
+    authUid: null,
+    criadoEm: null,
+    atualizadoEm: null,
+    ...overrides,
+  };
+}
+
+test("calcula pontos, treinos e KM sem duplicar regras do mesmo treino", () => {
+  const resultados = calcularResultadosRanking(
+    [atletaRanking()],
+    [
+      lancamento(),
+      lancamento({
+        id: "registro-2",
+        regraId: "distancia",
+        pontos: 3,
+        kmPercorrido: 10,
+      }),
+    ],
+    "geral",
+  );
+
+  assert.equal(resultados.length, 1);
+  assert.equal(resultados[0].pontuacaoTotal, 8);
+  assert.equal(resultados[0].treinos, 1);
+  assert.equal(resultados[0].km, 10);
+});
+
+test("respeita datas personalizadas do ranking trimestral", () => {
+  const resultados = calcularResultadosRanking(
+    [atletaRanking()],
+    [
+      lancamento({ dataTreino: "2026-06-30" }),
+      lancamento({ id: "registro-2", loteId: "lote-2", dataTreino: "2026-07-01" }),
+      lancamento({ id: "registro-3", loteId: "lote-3", dataTreino: "2026-09-30" }),
+      lancamento({ id: "registro-4", loteId: "lote-4", dataTreino: "2026-10-01" }),
+    ],
+    "trimestre",
+    "2026-07-01",
+    "2026-09-30",
+  );
+
+  assert.equal(resultados[0].pontuacaoTotal, 10);
+  assert.equal(resultados[0].treinos, 2);
+  assert.equal(resultados[0].km, 20);
 });

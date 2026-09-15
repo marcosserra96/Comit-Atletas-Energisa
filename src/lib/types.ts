@@ -221,6 +221,29 @@ export interface BrandingDoc {
 export type AlertaCriterio = "sem_treino_mes" | "sem_treino_30d" | "ate_x_treinos" | "ate_x_pontos";
 
 /** configuracoes/informativo — padrão do Informativo do Ranking, definido pelo Administrador. */
+export type RankingPeriodKey = "geral" | "trimestre";
+
+export interface RankingPeriodsConfigDoc {
+  trimestre: {
+    ativo: boolean;
+    nome: string;
+    inicio: string;
+    fim: string;
+  };
+  geracaoPublicada?: string;
+  atualizadoEm?: unknown;
+  atualizadoPor?: string;
+}
+
+export interface RankingResultadoDoc extends AtletaPublicoDoc {
+  periodoId: RankingPeriodKey;
+  geracaoId: string;
+  atletaId: string;
+  treinos: number;
+  km: number;
+  geradoEm: unknown;
+}
+
 export interface RankingVisibilityPeriodConfig {
   ativo: boolean;
   /** Datas civis inclusivas no formato yyyy-mm-dd. */

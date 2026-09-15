@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { collection, doc, onSnapshot, orderBy, query, where } from "firebase/firestore";
 import { AlertCircle, EyeOff, RefreshCw, Search, Trophy } from "lucide-react";
 import { db } from "@/lib/firebase";
@@ -16,6 +16,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import { formatShortDate } from "@/lib/format";
+import { normalizarRankingPeriods } from "@/lib/rankingPeriods";
 import {
   modalidadeDoAtleta,
   normalizarRankingVisibility,
@@ -24,11 +26,95 @@ import {
 import type {
   AtletaPublicoDoc,
   Modalidade,
+  RankingPeriodKey,
+  RankingPeriodsConfigDoc,
+  RankingResultadoDoc,
   RankingVisibilityConfigDoc,
 } from "@/lib/types";
 
-interface RankedAtleta extends AtletaPublicoDoc {
+interface RankingEntry extends AtletaPublicoDoc {
+  treinos?: number;
+  km?: number;
+}
+
+interface RankedAtleta extends RankingEntry {
   rank: number;
+}
+
+function Podium({ atletas }: { atletas: RankedAtleta[] }) {
+  if (atletas.length === 0) return null;
+  const [primeiro, segundo, terceiro] = atletas;
+
+  function Place({
+    atleta,
+    position,
+    height,
+    maxWidth,
+  }: {
+    atleta?: RankedAtleta;
+    position: 1 | 2 | 3;
+    height: string;
+    maxWidth: string;
+  }) {
+    const color =
+      position === 1
+        ? "var(--color-ranking-gold)"
+        : position === 2
+          ? "var(--color-ranking-silver)"
+          : "var(--color-ranking-bronze)";
+    const background =
+      position === 1
+        ? "var(--color-ranking-gold-bg)"
+        : position === 2
+          ? "var(--color-ranking-silver-bg)"
+          : "var(--color-ranking-bronze-bg)";
+
+    return (
+      <div
+        className="relative flex w-1/3 flex-col items-center justify-end"
+        style={{ height, maxWidth }}
+      >
+        {atleta ? (
+          <>
+            <div className="mb-2 flex w-full flex-col items-center px-1 text-center">
+              <RankingPosition
+                position={position}
+                size={position === 1 ? "lg" : "md"}
+                className={position === 1 ? "mb-2 scale-110 shadow-md sm:scale-125" : "mb-2"}
+              />
+              <span className="w-full truncate text-xs font-bold text-text sm:text-sm">
+                {atleta.nome}
+              </span>
+              <span className="text-xs font-extrabold sm:text-sm" style={{ color }}>
+                {atleta.pontuacaoTotal} pts
+              </span>
+              {atleta.treinos !== undefined ? (
+                <span className="mt-0.5 text-[10px] text-text-muted">
+                  {atleta.treinos} treinos · {atleta.km?.toFixed(1)} km
+                </span>
+              ) : null}
+            </div>
+            <div
+              className="relative h-full w-full overflow-hidden rounded-t-[var(--radius-lg)] border-2 shadow-sm"
+              style={{ backgroundColor: background, borderColor: color }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent" />
+            </div>
+          </>
+        ) : (
+          <div className="h-full w-full rounded-t-[var(--radius-lg)] border-2 border-dashed border-border bg-bg-inset opacity-50" />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-12 mt-12 flex h-56 items-end justify-center gap-2 px-2 sm:h-64 sm:gap-4">
+      <Place atleta={segundo} position={2} height="75%" maxWidth="120px" />
+      <Place atleta={primeiro} position={1} height="100%" maxWidth="140px" />
+      <Place atleta={terceiro} position={3} height="60%" maxWidth="120px" />
+    </div>
+  );
 }
 
 export default function RankingPage() {
@@ -37,19 +123,21 @@ export default function RankingPage() {
   const athleteDirectory = useAthleteDirectoryCollection();
   const isStaff = usuario.role === "administrador" || usuario.role === "comite";
   const athleteModality = modalidadeDoAtleta(myAtleta.equipe);
+
   const [modalidade, setModalidade] = useState<Modalidade>(athleteModality ?? "corrida");
-  const [corredores, setCorredores] = useState<AtletaPublicoDoc[] | null>(null);
-  const [ciclistas, setCiclistas] = useState<AtletaPublicoDoc[] | null>(null);
+  const [periodo, setPeriodo] = useState<RankingPeriodKey>("geral");
+  const [legacy, setLegacy] = useState<AtletaPublicoDoc[] | null>(null);
+  const [resultados, setResultados] = useState<RankingResultadoDoc[] | null>(null);
   const [search, setSearch] = useState("");
-  const [erroCorrida, setErroCorrida] = useState(false);
-  const [erroBicicleta, setErroBicicleta] = useState(false);
+  const [erroRanking, setErroRanking] = useState(false);
   const [visibility, setVisibility] = useState<RankingVisibilityConfigDoc | null | undefined>(
     undefined,
   );
-  const [erroVisibility, setErroVisibility] = useState(false);
+  const [periods, setPeriods] = useState<RankingPeriodsConfigDoc | null | undefined>(undefined);
+  const [erroConfig, setErroConfig] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(
+    const unsubVisibility = onSnapshot(
       doc(db, "configuracoes", "ranking_visibilidade"),
       (snap) => {
         setVisibility(
@@ -57,16 +145,37 @@ export default function RankingPage() {
             ? normalizarRankingVisibility(snap.data() as Partial<RankingVisibilityConfigDoc>)
             : null,
         );
-        setErroVisibility(false);
+        setErroConfig(false);
       },
       () => {
         setVisibility(null);
-        setErroVisibility(true);
+        setErroConfig(true);
       },
     );
-    return unsubscribe;
+    const unsubPeriods = onSnapshot(
+      doc(db, "configuracoes", "ranking_periodos"),
+      (snap) => {
+        setPeriods(
+          snap.exists()
+            ? normalizarRankingPeriods(snap.data() as Partial<RankingPeriodsConfigDoc>)
+            : null,
+        );
+        setErroConfig(false);
+      },
+      () => {
+        setPeriods(null);
+        setErroConfig(true);
+      },
+    );
+    return () => {
+      unsubVisibility();
+      unsubPeriods();
+    };
   }, []);
 
+  const periodoEfetivo: RankingPeriodKey =
+    periodo === "trimestre" && periods?.trimestre.ativo ? "trimestre" : "geral";
+  const possuiResultadosPublicados = Boolean(periods?.geracaoPublicada);
   const corridaOculta =
     !isStaff && visibility ? rankingOcultoAgora(visibility, "corrida") : false;
   const bicicletaOculta =
@@ -75,146 +184,121 @@ export default function RankingPage() {
   const mensagemOcultacao =
     visibility?.[modalidade].mensagem.trim() ||
     "O ranking está em fechamento para conferência dos resultados e premiações.";
+  const podeConsultar = isStaff || athleteModality === modalidade;
 
   useEffect(() => {
-    const podeConsultar = isStaff || athleteModality === "corrida";
-    if (!athleteDirectory || (!isStaff && (visibility === undefined || erroVisibility)) || !podeConsultar || corridaOculta) {
+    if (
+      !possuiResultadosPublicados ||
+      !periods?.geracaoPublicada ||
+      !podeConsultar ||
+      rankingOcultoAtual ||
+      (!isStaff && (visibility === undefined || erroConfig))
+    ) {
       return;
     }
+
     const q = query(
-      collection(db, athleteDirectory),
-      where("equipe", "==", "corrida"),
-      orderBy("pontuacaoTotal", "desc")
+      collection(db, "ranking_resultados"),
+      where("geracaoId", "==", periods.geracaoPublicada),
+      where("periodoId", "==", periodoEfetivo),
+      where("equipe", "==", modalidade),
     );
     const unsubscribe = onSnapshot(
       q,
       (snap) => {
-        setCorredores(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaPublicoDoc));
-        setErroCorrida(false);
+        setResultados(snap.docs.map((item) => item.data() as RankingResultadoDoc));
+        setErroRanking(false);
       },
       () => {
-        setCorredores([]);
-        setErroCorrida(true);
-      }
+        setResultados([]);
+        setErroRanking(true);
+      },
     );
     return unsubscribe;
-  }, [athleteDirectory, athleteModality, corridaOculta, erroVisibility, isStaff, visibility]);
+  }, [
+    erroConfig,
+    isStaff,
+    modalidade,
+    podeConsultar,
+    periodoEfetivo,
+    periods?.geracaoPublicada,
+    possuiResultadosPublicados,
+    rankingOcultoAtual,
+    visibility,
+  ]);
 
   useEffect(() => {
-    const podeConsultar = isStaff || athleteModality === "bicicleta";
-    if (!athleteDirectory || (!isStaff && (visibility === undefined || erroVisibility)) || !podeConsultar || bicicletaOculta) {
+    if (
+      possuiResultadosPublicados ||
+      periods === undefined ||
+      !athleteDirectory ||
+      !podeConsultar ||
+      rankingOcultoAtual ||
+      (!isStaff && (visibility === undefined || erroConfig))
+    ) {
       return;
     }
+
     const q = query(
       collection(db, athleteDirectory),
-      where("equipe", "==", "bicicleta"),
-      orderBy("pontuacaoTotal", "desc")
+      where("equipe", "==", modalidade),
+      orderBy("pontuacaoTotal", "desc"),
     );
     const unsubscribe = onSnapshot(
       q,
       (snap) => {
-        setCiclistas(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaPublicoDoc));
-        setErroBicicleta(false);
+        setLegacy(snap.docs.map((item) => ({ id: item.id, ...item.data() }) as AtletaPublicoDoc));
+        setErroRanking(false);
       },
       () => {
-        setCiclistas([]);
-        setErroBicicleta(true);
-      }
+        setLegacy([]);
+        setErroRanking(true);
+      },
     );
     return unsubscribe;
-  }, [athleteDirectory, athleteModality, bicicletaOculta, erroVisibility, isStaff, visibility]);
+  }, [
+    athleteDirectory,
+    erroConfig,
+    isStaff,
+    modalidade,
+    periods,
+    podeConsultar,
+    possuiResultadosPublicados,
+    rankingOcultoAtual,
+    visibility,
+  ]);
 
-  const atletasAtuais = modalidade === "corrida" ? corredores : ciclistas;
-  const erroAtual = modalidade === "corrida" ? erroCorrida : erroBicicleta;
+  const atletasAtuais = useMemo<RankingEntry[] | null>(() => {
+    const lista = possuiResultadosPublicados ? resultados : legacy;
+    if (!lista) return null;
+    return [...lista].sort(
+      (a, b) =>
+        b.pontuacaoTotal - a.pontuacaoTotal ||
+        (b.treinos ?? 0) - (a.treinos ?? 0) ||
+        (b.km ?? 0) - (a.km ?? 0) ||
+        a.nome.localeCompare(b.nome, "pt-BR"),
+    );
+  }, [legacy, possuiResultadosPublicados, resultados]);
 
-  const atletasComRank = useMemo(() => {
+  const atletasComRank = useMemo<RankedAtleta[] | null>(() => {
     if (!atletasAtuais) return null;
-    return atletasAtuais.map((a, i) => {
-      return {
-        ...a,
-        rank: i + 1,
-      } as RankedAtleta;
-    });
+    return atletasAtuais.map((atleta, index) => ({ ...atleta, rank: index + 1 }));
   }, [atletasAtuais]);
 
   const filteredAtletas = useMemo(() => {
     if (!atletasComRank) return null;
-    if (!search.trim()) return atletasComRank;
-    const s = search.toLowerCase();
-    return atletasComRank.filter((a) => a.nome.toLowerCase().includes(s));
+    const termo = search.trim().toLocaleLowerCase("pt-BR");
+    return termo
+      ? atletasComRank.filter((atleta) =>
+          atleta.nome.toLocaleLowerCase("pt-BR").includes(termo),
+        )
+      : atletasComRank;
   }, [atletasComRank, search]);
 
-  const top3 = useMemo(() => {
-    if (!atletasComRank) return [];
-    return atletasComRank.slice(0, 3);
-  }, [atletasComRank]);
-
-  const myRankAtleta = atletasComRank?.find((a) => a.id === myAtleta.id);
-
-  const renderPodium = () => {
-    if (top3.length === 0) return null;
-    const [primeiro, segundo, terceiro] = top3;
-
-    return (
-      <div className="flex items-end justify-center gap-2 sm:gap-4 mt-12 mb-12 h-56 sm:h-64 px-2">
-        {/* 2º Lugar */}
-        <div className="flex flex-col items-center justify-end w-1/3 max-w-[120px] h-[75%] relative">
-          {segundo ? (
-            <>
-              <div className="text-center mb-2 flex flex-col items-center w-full px-1">
-                <RankingPosition position={2} size="md" className="mb-2 sm:hidden" />
-                <RankingPosition position={2} size="lg" className="mb-2 hidden sm:flex" />
-                <span className="font-bold text-text text-xs sm:text-sm line-clamp-2 leading-tight w-full truncate">{segundo.nome}</span>
-                <span className="text-[var(--color-ranking-silver)] text-xs sm:text-sm font-extrabold">{segundo.pontuacaoTotal} pts</span>
-              </div>
-              <div className="w-full h-full bg-[var(--color-ranking-silver-bg)] border-2 border-[var(--color-ranking-silver)] rounded-t-[var(--radius-lg)] shadow-sm relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent"></div>
-              </div>
-            </>
-          ) : (
-            <div className="w-full h-full bg-bg-inset border-2 border-border border-dashed rounded-t-[var(--radius-lg)] opacity-50" />
-          )}
-        </div>
-
-        {/* 1º Lugar */}
-        <div className="flex flex-col items-center justify-end w-1/3 max-w-[140px] h-full z-10 relative">
-          {primeiro ? (
-            <>
-              <div className="text-center mb-2 flex flex-col items-center w-full px-1">
-                <RankingPosition position={1} size="lg" className="mb-2 shadow-md transform scale-110 sm:scale-125 transition-transform" />
-                <span className="font-bold text-text text-sm sm:text-base line-clamp-2 leading-tight w-full truncate">{primeiro.nome}</span>
-                <span className="text-[var(--color-ranking-gold)] text-xs sm:text-sm font-extrabold">{primeiro.pontuacaoTotal} pts</span>
-              </div>
-              <div className="w-full h-full bg-[var(--color-ranking-gold-bg)] border-2 border-[var(--color-ranking-gold)] rounded-t-[var(--radius-lg)] shadow-md relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent"></div>
-              </div>
-            </>
-          ) : (
-             <div className="w-full h-full bg-bg-inset border-2 border-border border-dashed rounded-t-[var(--radius-lg)] opacity-50" />
-          )}
-        </div>
-
-        {/* 3º Lugar */}
-        <div className="flex flex-col items-center justify-end w-1/3 max-w-[120px] h-[60%] relative">
-          {terceiro ? (
-            <>
-              <div className="text-center mb-2 flex flex-col items-center w-full px-1">
-                <RankingPosition position={3} size="md" className="mb-2 sm:hidden" />
-                <RankingPosition position={3} size="lg" className="mb-2 hidden sm:flex" />
-                <span className="font-bold text-text text-xs sm:text-sm line-clamp-2 leading-tight w-full truncate">{terceiro.nome}</span>
-                <span className="text-[var(--color-ranking-bronze)] text-xs sm:text-sm font-extrabold">{terceiro.pontuacaoTotal} pts</span>
-              </div>
-              <div className="w-full h-full bg-[var(--color-ranking-bronze-bg)] border-2 border-[var(--color-ranking-bronze)] rounded-t-[var(--radius-lg)] shadow-sm relative overflow-hidden">
-                 <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent"></div>
-              </div>
-            </>
-          ) : (
-             <div className="w-full h-full bg-bg-inset border-2 border-border border-dashed rounded-t-[var(--radius-lg)] opacity-50" />
-          )}
-        </div>
-      </div>
-    );
-  };
+  const top3 = atletasComRank?.slice(0, 3) ?? [];
+  const myRankAtleta = atletasComRank?.find((atleta) => atleta.id === myAtleta.id);
+  const trimestreDisponivel =
+    Boolean(periods?.geracaoPublicada) && periods?.trimestre.ativo === true;
 
   return (
     <div className="flex flex-col gap-6 pb-10">
@@ -222,27 +306,53 @@ export default function RankingPage() {
         title="Ranking"
         subtitle={
           isStaff
-            ? "Classificação atual dos atletas por modalidade."
-            : "Classificação atual da sua modalidade."
+            ? "Classificação publicada por período e modalidade."
+            : "Classificação publicada da sua modalidade."
         }
         icon={Trophy}
         badge={<SportBadge modalidade={modalidade} size="md" />}
         actions={
-          isStaff ? (
-            <SegmentedControl
-              value={modalidade}
-              onChange={(val) => {
-                setModalidade(val as Modalidade);
-                setSearch("");
-              }}
-              options={[
-                { value: "corrida", label: "Corrida" },
-                { value: "bicicleta", label: "Ciclismo" },
-              ]}
-            />
-          ) : undefined
+          <div className="flex flex-wrap items-center gap-2">
+            {trimestreDisponivel ? (
+              <SegmentedControl
+                value={periodoEfetivo}
+                onChange={(value) => {
+                  setPeriodo(value as RankingPeriodKey);
+                  setResultados(null);
+                  setSearch("");
+                }}
+                options={[
+                  { value: "geral", label: "Geral" },
+                  { value: "trimestre", label: periods?.trimestre.nome ?? "Trimestre" },
+                ]}
+              />
+            ) : null}
+            {isStaff ? (
+              <SegmentedControl
+                value={modalidade}
+                onChange={(value) => {
+                  setModalidade(value as Modalidade);
+                  setResultados(null);
+                  setLegacy(null);
+                  setSearch("");
+                }}
+                options={[
+                  { value: "corrida", label: "Corrida" },
+                  { value: "bicicleta", label: "Ciclismo" },
+                ]}
+              />
+            ) : null}
+          </div>
         }
       />
+
+      {periodoEfetivo === "trimestre" && periods?.trimestre.ativo ? (
+        <div className="rounded-[var(--radius)] border border-border bg-bg-card px-4 py-3 text-sm text-text-light">
+          <strong className="text-text">{periods.trimestre.nome}</strong>
+          <span className="mx-2 text-text-muted">·</span>
+          {formatShortDate(periods.trimestre.inicio)} a {formatShortDate(periods.trimestre.fim)}
+        </div>
+      ) : null}
 
       {!isStaff && !athleteModality ? (
         <EmptyState
@@ -250,15 +360,12 @@ export default function RankingPage() {
           title="Modalidade não definida"
           description="Seu cadastro ainda não está vinculado a uma modalidade de corrida ou ciclismo."
         />
-      ) : !isStaff && visibility === undefined ? (
+      ) : !isStaff && (visibility === undefined || periods === undefined) ? (
         <Card className="h-72 animate-pulse" />
-      ) : !isStaff && erroVisibility ? (
+      ) : !isStaff && erroConfig ? (
         <Card className="flex flex-col items-center gap-4 py-10 text-center">
           <AlertCircle className="size-8 text-danger" />
-          <div>
-            <h2 className="font-bold text-text">Não foi possível verificar o ranking</h2>
-            <p className="mt-1 text-sm text-text-light">Confira sua conexão e tente novamente.</p>
-          </div>
+          <h2 className="font-bold text-text">Não foi possível verificar o ranking</h2>
           <Button variant="secondary" onClick={() => window.location.reload()}>
             <RefreshCw className="size-4" />
             Tentar novamente
@@ -274,34 +381,19 @@ export default function RankingPage() {
         </Card>
       ) : atletasAtuais === null ? (
         <div className="space-y-8">
-          <div className="flex items-end justify-center gap-2 sm:gap-4 h-56 sm:h-64 px-2">
-            <Skeleton className="w-1/3 max-w-[120px] h-[75%] rounded-t-[var(--radius-lg)] rounded-b-none" />
-            <Skeleton className="w-1/3 max-w-[140px] h-full rounded-t-[var(--radius-lg)] rounded-b-none" />
-            <Skeleton className="w-1/3 max-w-[120px] h-[60%] rounded-t-[var(--radius-lg)] rounded-b-none" />
+          <div className="flex h-56 items-end justify-center gap-2 px-2 sm:h-64 sm:gap-4">
+            <Skeleton className="h-[75%] w-1/3 max-w-[120px] rounded-b-none rounded-t-[var(--radius-lg)]" />
+            <Skeleton className="h-full w-1/3 max-w-[140px] rounded-b-none rounded-t-[var(--radius-lg)]" />
+            <Skeleton className="h-[60%] w-1/3 max-w-[120px] rounded-b-none rounded-t-[var(--radius-lg)]" />
           </div>
-          <Card className="p-0">
-            <div className="p-4 space-y-4">
-              <SkeletonLine className="h-10" />
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex gap-4 items-center">
-                  <Skeleton className="size-8 rounded-full" />
-                  <div className="flex-1 space-y-2">
-                    <SkeletonLine />
-                    <SkeletonLine className="w-1/2" />
-                  </div>
-                  <Skeleton className="w-16 h-8" />
-                </div>
-              ))}
-            </div>
+          <Card className="p-4">
+            <SkeletonLine className="h-10" />
           </Card>
         </div>
-      ) : erroAtual ? (
+      ) : erroRanking ? (
         <Card className="flex flex-col items-center gap-4 py-10 text-center">
           <AlertCircle className="size-8 text-danger" />
-          <div>
-            <h2 className="font-bold text-text">Não foi possível carregar o ranking</h2>
-            <p className="mt-1 text-sm text-text-light">Confira sua conexão e tente novamente.</p>
-          </div>
+          <h2 className="font-bold text-text">Não foi possível carregar o ranking</h2>
           <Button variant="secondary" onClick={() => window.location.reload()}>
             <RefreshCw className="size-4" />
             Tentar novamente
@@ -310,25 +402,24 @@ export default function RankingPage() {
       ) : atletasAtuais.length === 0 ? (
         <EmptyState
           icon={Trophy}
-          title="Sem ranking ainda"
-          description="Assim que houver pontuação, o ranking aparecerá aqui."
+          title="Sem ranking publicado"
+          description="A gestão ainda não publicou resultados para este período."
         />
       ) : (
         <div className="flex flex-col">
-          {!search.trim() && renderPodium()}
+          {!search.trim() ? <Podium atletas={top3} /> : null}
 
-          <Card className="flex flex-col p-0 overflow-hidden">
-            <div className="p-4 sm:p-5 border-b border-border bg-bg/50">
+          <Card className="flex flex-col overflow-hidden p-0">
+            <div className="border-b border-border bg-bg/50 p-4 sm:p-5">
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="size-4 text-text-muted" />
-                </div>
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-muted" />
                 <input
-                  type="text"
+                  type="search"
+                  aria-label="Buscar atleta por nome"
                   placeholder="Buscar atleta por nome..."
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="block w-full pl-9 pr-3 py-2.5 sm:py-2 border border-border rounded-[var(--radius)] bg-bg text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm sm:text-base transition-colors"
+                  onChange={(event) => setSearch(event.target.value)}
+                  className="block w-full rounded-[var(--radius)] border border-border bg-bg py-2.5 pl-9 pr-3 text-sm text-text outline-none placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/50"
                 />
               </div>
             </div>
@@ -343,51 +434,75 @@ export default function RankingPage() {
               </div>
             ) : (
               <ul className="flex flex-col divide-y divide-border">
-                {filteredAtletas?.map((a) => {
-                  const isMe = a.id === myAtleta.id;
-                  const isTop3 = a.rank <= 3;
-                  
+                {filteredAtletas?.map((atleta) => {
+                  const isMe = atleta.id === myAtleta.id;
+                  const isTop3 = atleta.rank <= 3;
                   return (
                     <li
-                      key={a.id}
+                      key={atleta.id}
                       className={cn(
-                        "flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 transition-colors hover:bg-bg-inset",
-                        isMe ? "bg-[var(--color-primary-subtle)] border-l-4 border-l-primary" : "border-l-4 border-l-transparent",
+                        "flex items-center gap-3 border-l-4 px-4 py-3 transition-colors hover:bg-bg-inset sm:px-5 sm:py-4",
+                        isMe
+                          ? "border-l-primary bg-[var(--color-primary-subtle)]"
+                          : "border-l-transparent",
                       )}
                     >
-                      <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
-                        <RankingPosition 
-                          position={a.rank} 
-                          size={isTop3 ? "md" : "sm"} 
-                          className={cn(!isTop3 && "bg-bg text-text-muted")} 
-                        />
-                        
-                        <div className="flex flex-col flex-1 min-w-0">
-                          <span className={cn("font-medium text-text truncate text-sm sm:text-base", isMe && "font-bold text-primary")}>
-                            {a.nome} {isMe && <span className="text-xs font-normal opacity-80">(você)</span>}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <div className="ml-2 shrink-0 text-right">
-                        <span className="text-sm font-bold text-text sm:text-base">
-                          {a.pontuacaoTotal} pts
+                      <RankingPosition
+                        position={atleta.rank}
+                        size={isTop3 ? "md" : "sm"}
+                        className={cn(!isTop3 && "bg-bg text-text-muted")}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <span
+                          className={cn(
+                            "block truncate text-sm font-medium text-text sm:text-base",
+                            isMe && "font-bold text-primary",
+                          )}
+                        >
+                          {atleta.nome}
+                          {isMe ? <span className="ml-1 text-xs font-normal">(você)</span> : null}
                         </span>
+                      </div>
+                      <div className="grid shrink-0 grid-cols-3 gap-2 text-right sm:gap-5">
+                        <div>
+                          <strong className="block text-sm text-text">
+                            {atleta.treinos ?? "—"}
+                          </strong>
+                          <span className="text-[10px] text-text-muted">treinos</span>
+                        </div>
+                        <div>
+                          <strong className="block text-sm text-text">
+                            {atleta.km === undefined ? "—" : atleta.km.toFixed(1)}
+                          </strong>
+                          <span className="text-[10px] text-text-muted">km</span>
+                        </div>
+                        <div>
+                          <strong className="block text-sm text-text sm:text-base">
+                            {atleta.pontuacaoTotal}
+                          </strong>
+                          <span className="text-[10px] text-text-muted">pontos</span>
+                        </div>
                       </div>
                     </li>
                   );
                 })}
               </ul>
             )}
-            
-            {myRankAtleta && !search && (myRankAtleta.rank > 3) && (
-              <div className="p-3 bg-bg-inset border-t border-border flex justify-center">
-                <p className="text-xs sm:text-sm text-text-muted text-center">
-                  Sua posição atual é <strong className="text-text">{myRankAtleta.rank}º lugar</strong> com {myRankAtleta.pontuacaoTotal} pontos.
-                </p>
+
+            {myRankAtleta && !search && myRankAtleta.rank > 3 ? (
+              <div className="border-t border-border bg-bg-inset p-3 text-center text-xs text-text-muted sm:text-sm">
+                Sua posição é <strong className="text-text">{myRankAtleta.rank}º lugar</strong> com{" "}
+                {myRankAtleta.pontuacaoTotal} pontos, {myRankAtleta.treinos ?? 0} treinos e{" "}
+                {(myRankAtleta.km ?? 0).toFixed(1)} km.
               </div>
-            )}
+            ) : null}
           </Card>
+
+          {!possuiResultadosPublicados && isStaff ? (
+            <p className="mt-3 text-center text-xs text-text-muted">
+              Visualização de compatibilidade. Publique os períodos para incluir treinos e quilômetros.
+            </p>
+          ) : null}
         </div>
       )}
     </div>
