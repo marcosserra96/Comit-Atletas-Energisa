@@ -271,7 +271,7 @@ export default function RankingPage() {
   ]);
 
   const atletasAtuais = useMemo<RankingEntry[] | null>(() => {
-    const lista = possuiResultadosPublicados ? resultados : legacy;
+    const lista: RankingEntry[] | null = possuiResultadosPublicados ? resultados : legacy;
     if (!lista) return null;
     return [...lista].sort(
       (a, b) =>
