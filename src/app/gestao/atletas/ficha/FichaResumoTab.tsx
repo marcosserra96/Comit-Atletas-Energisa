@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { collection, doc, getDocs, query, serverTimestamp, where, writeBatch } from "firebase/firestore";
 import { UserRound } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { consolidarAtividades } from "@/lib/activityConsolidation";
 import { atletaPublicoRef } from "@/lib/publicAthletes";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
@@ -25,15 +26,11 @@ export function FichaResumoTab({ atleta }: { atleta: AtletaDoc }) {
 
   useEffect(() => {
     getDocs(query(collection(db, "historico_pontos"), where("atletaId", "==", atleta.id))).then((snap) => {
-      const lotes = new Set<string>();
-      let km = 0;
-      snap.docs.forEach((d) => {
-        const l = d.data() as HistoricoPontoDoc;
-        if (l.estornado || lotes.has(l.loteId)) return;
-        lotes.add(l.loteId);
-        km += l.kmPercorrido ?? 0;
-      });
-      setResumo({ km, eventos: lotes.size });
+      const atividades = consolidarAtividades(
+        snap.docs.map((d) => d.data() as HistoricoPontoDoc),
+      );
+      const km = atividades.reduce((total, atividade) => total + atividade.km, 0);
+      setResumo({ km, eventos: atividades.length });
     });
   }, [atleta.id]);
 

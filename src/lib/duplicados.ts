@@ -16,6 +16,7 @@ import {
 import { db } from "@/lib/firebase";
 import { logAudit } from "@/lib/audit";
 import { TAMANHO_LOTE } from "@/lib/pontuacaoImportacao";
+import { atletaPublicoRef, dadosAtletaPublico } from "@/lib/publicAthletes";
 import type { AtletaDoc, HistoricoPontoDoc } from "@/lib/types";
 
 /** Remove acentos, colapsa espaços e baixa a caixa — pra comparar nomes ignorando diferenças de digitação. */
@@ -227,7 +228,10 @@ export async function mesclarAtletas(params: {
       await batch.commit();
     }
 
-    await deleteDoc(doc(db, "atletas", perdedorId));
+    await Promise.all([
+      deleteDoc(doc(db, "atletas", perdedorId)),
+      deleteDoc(atletaPublicoRef(perdedorId)),
+    ]);
     nomesRemovidos.push(perdedor.nome);
   }
 
@@ -238,10 +242,17 @@ export async function mesclarAtletas(params: {
     const dados = d.data() as HistoricoPontoDoc;
     return dados.estornado ? soma : soma + dados.pontos;
   }, 0);
-  await updateDoc(doc(db, "atletas", canonicalId), {
+  const batchFinal = writeBatch(db);
+  batchFinal.update(doc(db, "atletas", canonicalId), {
     pontuacaoTotal: totalReal,
     atualizadoEm: serverTimestamp(),
   });
+  batchFinal.set(
+    atletaPublicoRef(canonicalId),
+    dadosAtletaPublico({ ...canonical, pontuacaoTotal: totalReal }),
+    { merge: true },
+  );
+  await batchFinal.commit();
 
   await logAudit({
     acao: "mesclar_atletas",
