@@ -127,13 +127,8 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!modalidade || !athleteDirectory) return;
     if (!isStaff && rankingVisibility === undefined) return;
-    if (rankingIndisponivel) {
-      setCompanheiros([]);
-      setErroRanking(false);
-      return;
-    }
+    if (rankingIndisponivel) return;
 
-    setCompanheiros(null);
     const unsubscribe = onSnapshot(
       query(
         collection(db, athleteDirectory),
@@ -208,10 +203,16 @@ export default function DashboardPage() {
     return unsubscribe;
   }, []);
 
+  const companheirosParaInsights = rankingIndisponivel ? [] : companheiros;
+
   const insights = useMemo(() => {
-    if (companheiros === null || meusLancamentos === null) return null;
-    return calcularInsightsAtleta({ atleta, companheiros, meusLancamentos });
-  }, [atleta, companheiros, meusLancamentos]);
+    if (companheirosParaInsights === null || meusLancamentos === null) return null;
+    return calcularInsightsAtleta({
+      atleta,
+      companheiros: companheirosParaInsights,
+      meusLancamentos,
+    });
+  }, [atleta, companheirosParaInsights, meusLancamentos]);
 
   const ultimosLancamentos = useMemo(
     () => [...(meusLancamentos ?? [])].sort((a, b) => b.dataTreino.localeCompare(a.dataTreino)).slice(0, 5),
