@@ -31,6 +31,7 @@ import Link from "next/link";
 import { db } from "@/lib/firebase";
 import { consolidarAtividades } from "@/lib/activityConsolidation";
 import { useAthleteView } from "@/lib/session/AthleteViewProvider";
+import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useAthleteDirectoryCollection } from "@/lib/session/useAthleteDirectory";
 import { useToast } from "@/components/ui/Toast";
 import { Card } from "@/components/ui/Card";
@@ -46,7 +47,17 @@ import { cn } from "@/lib/cn";
 import { isWaitlisted, modalidadeFromEquipe } from "@/lib/labels";
 import { formatDataTreino, formatLongDate, formatShortDate } from "@/lib/format";
 import { calcularInsightsAtleta } from "@/lib/athleteStats";
-import type { AtletaPublicoDoc, EventoDoc, HistoricoPontoDoc, NoticiaDoc } from "@/lib/types";
+import {
+  normalizarRankingVisibility,
+  rankingOcultoAgora,
+} from "@/lib/rankingVisibility";
+import type {
+  AtletaPublicoDoc,
+  EventoDoc,
+  HistoricoPontoDoc,
+  NoticiaDoc,
+  RankingVisibilityConfigDoc,
+} from "@/lib/types";
 
 function hojeIsoLocal() {
   const hoje = new Date();
@@ -67,8 +78,10 @@ function partesDataEvento(valor: string) {
 
 export default function DashboardPage() {
   const { atleta, isPreview, withPreview } = useAthleteView();
+  const { usuario } = useActiveSession();
   const { show } = useToast();
   const athleteDirectory = useAthleteDirectoryCollection();
+  const isStaff = usuario.role === "administrador" || usuario.role === "comite";
   const modalidade = modalidadeFromEquipe(atleta.equipe);
   const waitlisted = isWaitlisted(atleta.equipe);
   const ModalidadeIcon = modalidade === "bicicleta" ? Bike : Footprints;
@@ -78,43 +91,99 @@ export default function DashboardPage() {
   const [proximoEvento, setProximoEvento] = useState<EventoDoc[] | null>(null);
   const [noticias, setNoticias] = useState<NoticiaDoc[] | null>(null);
   const [inscrevendo, setInscrevendo] = useState(false);
-  const [erroDados, setErroDados] = useState(false);
+  const [rankingVisibility, setRankingVisibility] = useState<
+    RankingVisibilityConfigDoc | null | undefined
+  >(undefined);
+  const [erroRanking, setErroRanking] = useState(false);
+  const [erroHistorico, setErroHistorico] = useState(false);
+  const [erroEventos, setErroEventos] = useState(false);
+  const [erroNoticias, setErroNoticias] = useState(false);
+
+  const rankingOcultoAtual = Boolean(
+    !isStaff &&
+      modalidade &&
+      rankingVisibility &&
+      rankingOcultoAgora(rankingVisibility, modalidade),
+  );
+  const rankingIndisponivel = rankingOcultoAtual || waitlisted;
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      doc(db, "configuracoes", "ranking_visibilidade"),
+      (snapshot) => {
+        setRankingVisibility(
+          snapshot.exists()
+            ? normalizarRankingVisibility(
+                snapshot.data() as Partial<RankingVisibilityConfigDoc>,
+              )
+            : null,
+        );
+      },
+      () => setRankingVisibility(null),
+    );
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     if (!modalidade || !athleteDirectory) return;
+    if (!isStaff && rankingVisibility === undefined) return;
+    if (rankingIndisponivel) {
+      setCompanheiros([]);
+      setErroRanking(false);
+      return;
+    }
+
+    setCompanheiros(null);
     const unsubscribe = onSnapshot(
-      query(collection(db, athleteDirectory), where("equipe", "==", atleta.equipe), orderBy("pontuacaoTotal", "desc")),
-      (snap) => setCompanheiros(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaPublicoDoc)),
+      query(
+        collection(db, athleteDirectory),
+        where("equipe", "==", modalidade),
+        orderBy("pontuacaoTotal", "desc"),
+      ),
+      (snap) => {
+        setCompanheiros(
+          snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaPublicoDoc),
+        );
+        setErroRanking(false);
+      },
       () => {
         setCompanheiros([]);
-        setErroDados(true);
+        setErroRanking(true);
       },
     );
     return unsubscribe;
-  }, [athleteDirectory, atleta.equipe, modalidade]);
+  }, [athleteDirectory, isStaff, modalidade, rankingIndisponivel, rankingVisibility]);
 
   useEffect(() => {
     let active = true;
 
     getDocs(query(collection(db, "historico_pontos"), where("atletaId", "==", atleta.id)))
       .then((snap) => {
-        if (active) setMeusLancamentos(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as HistoricoPontoDoc));
+        if (active) {
+          setMeusLancamentos(
+            snap.docs.map((d) => ({ id: d.id, ...d.data() }) as HistoricoPontoDoc),
+          );
+          setErroHistorico(false);
+        }
       })
       .catch(() => {
         if (active) {
           setMeusLancamentos([]);
-          setErroDados(true);
+          setErroHistorico(true);
         }
       });
 
     getDocs(query(collection(db, "noticias"), orderBy("criadoEm", "desc"), limit(3)))
       .then((snap) => {
-        if (active) setNoticias(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as NoticiaDoc));
+        if (active) {
+          setNoticias(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as NoticiaDoc));
+          setErroNoticias(false);
+        }
       })
       .catch(() => {
         if (active) {
           setNoticias([]);
-          setErroDados(true);
+          setErroNoticias(true);
         }
       });
 
@@ -127,10 +196,13 @@ export default function DashboardPage() {
     const isoHoje = hojeIsoLocal();
     const unsubscribe = onSnapshot(
       query(collection(db, "agenda_eventos"), where("data", ">=", isoHoje), orderBy("data", "asc"), limit(12)),
-      (snap) => setProximoEvento(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as EventoDoc)),
+      (snap) => {
+        setProximoEvento(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as EventoDoc));
+        setErroEventos(false);
+      },
       () => {
         setProximoEvento([]);
-        setErroDados(true);
+        setErroEventos(true);
       },
     );
     return unsubscribe;
@@ -185,6 +257,14 @@ export default function DashboardPage() {
     }
   }
 
+  const fontesComErro = [
+    erroHistorico ? "histórico" : null,
+    erroEventos ? "eventos" : null,
+    erroNoticias ? "notícias" : null,
+    erroRanking && !rankingIndisponivel ? "ranking" : null,
+  ].filter((fonte): fonte is string => fonte !== null);
+  const erroDados = fontesComErro.length > 0;
+
   const maxSerie = Math.max(1, ...(insights?.seriesMensal.map((s) => s.pontos) ?? [1]));
   const isTop3 = insights?.posicao && insights.posicao <= 3;
   const medalColor = insights?.posicao === 1 ? "var(--color-ranking-gold)" 
@@ -210,8 +290,8 @@ export default function DashboardPage() {
         <div className="mb-6 flex items-start gap-3 rounded-[var(--radius)] border border-danger/20 bg-danger/5 p-4 text-sm text-text-light">
           <AlertCircle className="mt-0.5 size-5 shrink-0 text-danger" />
           <p>
-            Parte dos dados não pôde ser carregada. Atualize a página; se o problema continuar,
-            fale com o comitê.
+            Não foi possível carregar: {fontesComErro.join(", ")}. Atualize a página; se o
+            problema continuar, fale com o comitê.
           </p>
         </div>
       )}
@@ -236,10 +316,24 @@ export default function DashboardPage() {
             />
             <MetricCard
               label="Posição no ranking"
-              value={!modalidade ? "—" : insights?.posicao ? `${insights.posicao}º` : "…"}
+              value={
+                rankingOcultoAtual
+                  ? "Oculto"
+                  : !modalidade || waitlisted
+                    ? "—"
+                    : insights?.posicao
+                      ? `${insights.posicao}º`
+                      : "…"
+              }
               icon={Award}
-              iconColor={isTop3 ? medalColor : undefined}
-              subtitle={modalidade && insights?.totalNoRanking ? `de ${insights.totalNoRanking} atletas` : undefined}
+              iconColor={!rankingOcultoAtual && isTop3 ? medalColor : undefined}
+              subtitle={
+                rankingOcultoAtual
+                  ? "Fechamento em andamento"
+                  : modalidade && insights?.totalNoRanking
+                    ? `de ${insights.totalNoRanking} atletas`
+                    : undefined
+              }
             />
             <MetricCard
               label="KM Acumulado"
