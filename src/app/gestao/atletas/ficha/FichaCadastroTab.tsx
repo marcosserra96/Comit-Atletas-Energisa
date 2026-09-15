@@ -1,9 +1,10 @@
 "use client";
 
 import { Fragment, FormEvent, useState } from "react";
-import { deleteDoc, doc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { doc, serverTimestamp, writeBatch } from "firebase/firestore";
 import { AlertOctagon, Trash2 } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { atletaPublicoRef } from "@/lib/publicAthletes";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
 import { TextField } from "@/components/ui/TextField";
@@ -34,7 +35,9 @@ export function FichaCadastroTab({ atleta, onSaved }: { atleta: AtletaDoc; onSav
     try {
       const entrouNaFilaAgora = equipe.startsWith("fila_") && !atleta.equipe.startsWith("fila_");
       const saiuDaFilaAgora = !equipe.startsWith("fila_") && atleta.equipe.startsWith("fila_");
-      await updateDoc(doc(db, "atletas", atleta.id), {
+      const ativoAtualizado = entrouNaFilaAgora ? false : saiuDaFilaAgora ? true : atleta.ativo;
+      const batch = writeBatch(db);
+      batch.update(doc(db, "atletas", atleta.id), {
         nome,
         email: email || null,
         sexo,
@@ -52,6 +55,12 @@ export function FichaCadastroTab({ atleta, onSaved }: { atleta: AtletaDoc; onSav
         ...(entrouNaFilaAgora ? { ordemFila: Date.now() } : {}),
         atualizadoEm: serverTimestamp(),
       });
+      batch.set(
+        atletaPublicoRef(atleta.id),
+        { nome, equipe, ativo: ativoAtualizado },
+        { merge: true },
+      );
+      await batch.commit();
       await logAudit({
         acao: "editar_atleta",
         entidade: "atletas",
@@ -71,10 +80,13 @@ export function FichaCadastroTab({ atleta, onSaved }: { atleta: AtletaDoc; onSav
 
   async function handleExcluir() {
     try {
-      await deleteDoc(doc(db, "atletas", atleta.id));
+      const batch = writeBatch(db);
+      batch.delete(doc(db, "atletas", atleta.id));
+      batch.delete(atletaPublicoRef(atleta.id));
       if (atleta.authUid) {
-        await deleteDoc(doc(db, "usuarios", atleta.authUid));
+        batch.delete(doc(db, "usuarios", atleta.authUid));
       }
+      await batch.commit();
       await logAudit({
         acao: "excluir_atleta",
         entidade: "atletas",

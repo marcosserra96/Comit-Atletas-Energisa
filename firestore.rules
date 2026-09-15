@@ -64,11 +64,14 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
-    // Somente perfis já aprovados acessam o cadastro de atletas.
-    // O ranking ainda depende da leitura do elenco; dados pessoais sensíveis
-    // devem migrar futuramente para uma coleção privada separada.
+    // Cadastro completo: somente equipe de gestão ou o próprio atleta.
+    // Antes da primeira sincronização pública, mantém compatibilidade temporária
+    // para que a migração possa ser feita sem interromper o ranking.
     match /atletas/{atletaId} {
-      allow read: if hasUsuario();
+      allow read: if isStaff() ||
+        (hasUsuario() && meuAtletaId() == atletaId) ||
+        (hasUsuario() &&
+          !exists(/databases/$(database)/documents/configuracoes/privacidade_atletas));
       allow create: if isAdmin() || comitePode("atletas");
       allow update: if isAdmin() ||
         (comitePode("atletas") && !("role" in request.resource.data.diff(resource.data).affectedKeys())) ||
@@ -78,6 +81,14 @@ service cloud.firestore {
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(["nome", "sexo", "dataNascimento", "localidade", "atualizadoEm"]));
       allow delete: if isAdmin();
+    }
+
+    match /atletas_publicos/{atletaId} {
+      allow read: if hasUsuario();
+      allow create, delete: if isAdmin() || comitePode("atletas") || comitePode("registrar");
+      allow update: if isAdmin() || comitePode("atletas") || comitePode("registrar") ||
+        (hasUsuario() && meuAtletaId() == atletaId &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(["nome"]));
     }
 
     // Cada atleta lê apenas o próprio histórico. Comitê e administrador

@@ -16,6 +16,7 @@ import {
 } from "firebase/firestore";
 import { History, RotateCcw, Trash2, X } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { atletaPublicoRef } from "@/lib/publicAthletes";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
 import { Card } from "@/components/ui/Card";
@@ -114,6 +115,11 @@ export function ExtratoTab() {
         pontuacaoTotal: increment(-alvo.pontos),
         atualizadoEm: serverTimestamp(),
       });
+      batch.set(
+        atletaPublicoRef(alvo.atletaId),
+        { pontuacaoTotal: increment(-alvo.pontos) },
+        { merge: true },
+      );
       await batch.commit();
       await logAudit({
         acao: "estornar_lancamento",
@@ -157,6 +163,11 @@ export function ExtratoTab() {
             pontuacaoTotal: increment(-pontos),
             atualizadoEm: serverTimestamp(),
           });
+          batch.set(
+            atletaPublicoRef(atletaId),
+            { pontuacaoTotal: increment(-pontos) },
+            { merge: true },
+          );
         });
         await batch.commit();
       }

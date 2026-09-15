@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { collection, doc, serverTimestamp, writeBatch } from "firebase/firestore";
 import { FileSpreadsheet, Upload } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { atletaPublicoRef, dadosAtletaPublico } from "@/lib/publicAthletes";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
 import { Card } from "@/components/ui/Card";
@@ -115,7 +116,7 @@ export function ImportarAtletasCard() {
         const anoEntrada = Number(linha["ano entrada"]);
 
         const novoAtleta = doc(collection(db, "atletas"));
-        batch.set(novoAtleta, {
+        const novoCadastro = {
           id: novoAtleta.id,
           nome,
           email: linha["email"] || null,
@@ -133,7 +134,9 @@ export function ImportarAtletasCard() {
           criadoEm: serverTimestamp(),
           atualizadoEm: serverTimestamp(),
           criadoPor: uid,
-        });
+        };
+        batch.set(novoAtleta, novoCadastro);
+        batch.set(atletaPublicoRef(novoAtleta.id), dadosAtletaPublico(novoCadastro));
         criados += 1;
       });
 

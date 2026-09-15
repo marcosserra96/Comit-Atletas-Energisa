@@ -9,6 +9,7 @@ import {
 } from "firebase/firestore";
 import { Mail, Clock, Link2, UserPlus } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { atletaPublicoRef } from "@/lib/publicAthletes";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
 import { Card } from "@/components/ui/Card";
@@ -63,6 +64,17 @@ export function RequestCard({
         ativo: true,
         atualizadoEm: serverTimestamp(),
       });
+      batch.set(atletaPublicoRef(atletaSelecionado), { ativo: true }, { merge: true });
+      batch.set(
+        atletaPublicoRef(novoAtleta.id),
+        {
+          id: novoAtleta.id,
+          nome: solicitacao.nome,
+          equipe: roleEscolhida === "atleta" ? "nenhuma" : "comite",
+          ativo: true,
+          pontuacaoTotal: 0,
+        },
+      );
       batch.set(doc(db, "usuarios", solicitacao.uid), {
         uid: solicitacao.uid,
         role: roleEscolhida,

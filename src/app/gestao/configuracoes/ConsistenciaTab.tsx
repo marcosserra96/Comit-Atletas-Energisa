@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmarPerigoModal } from "@/components/ui/ConfirmarPerigoModal";
+import { PrivacidadeAtletasCard } from "./PrivacidadeAtletasCard";
 import { equipeLabel } from "@/lib/labels";
 import {
   carregarParesIgnorados,
@@ -128,6 +129,7 @@ export function ConsistenciaTab() {
 
   return (
     <div className="flex flex-col gap-4">
+      <PrivacidadeAtletasCard />
       <Card className="border-primary/20 bg-primary/[0.03]">
         <div className="flex items-start gap-2.5">
           <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />

@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, doc, getDocs, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
+import { collection, doc, getDocs, query, serverTimestamp, where, writeBatch } from "firebase/firestore";
 import { UserRound } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { atletaPublicoRef } from "@/lib/publicAthletes";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
@@ -47,7 +48,10 @@ export function FichaResumoTab({ atleta }: { atleta: AtletaDoc }) {
     }
     setSalvando(true);
     try {
-      await updateDoc(doc(db, "atletas", atleta.id), { ativo, atualizadoEm: serverTimestamp() });
+      const batch = writeBatch(db);
+      batch.update(doc(db, "atletas", atleta.id), { ativo, atualizadoEm: serverTimestamp() });
+      batch.set(atletaPublicoRef(atleta.id), { ativo }, { merge: true });
+      await batch.commit();
       await logAudit({
         acao: ativo ? "reativar_atleta" : "desativar_atleta",
         entidade: "atletas",

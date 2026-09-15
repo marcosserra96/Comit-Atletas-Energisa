@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore";
 import { History, RotateCcw } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { atletaPublicoRef } from "@/lib/publicAthletes";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
 import { Badge } from "@/components/ui/Badge";
@@ -55,6 +56,11 @@ export function FichaLancamentosTab({ atleta }: { atleta: AtletaDoc }) {
         pontuacaoTotal: increment(-alvo.pontos),
         atualizadoEm: serverTimestamp(),
       });
+      batch.set(
+        atletaPublicoRef(alvo.atletaId),
+        { pontuacaoTotal: increment(-alvo.pontos) },
+        { merge: true },
+      );
       await batch.commit();
       await logAudit({
         acao: "estornar_lancamento",

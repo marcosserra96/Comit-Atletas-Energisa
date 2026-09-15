@@ -1,9 +1,10 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { collection, doc, serverTimestamp, writeBatch } from "firebase/firestore";
 import { User, Mail, UserPlus } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { atletaPublicoRef, dadosAtletaPublico } from "@/lib/publicAthletes";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
 import { Card } from "@/components/ui/Card";
@@ -32,7 +33,8 @@ export function CadastrarTab() {
     setLoading(true);
     try {
       const novoAtleta = doc(collection(db, "atletas"));
-      await setDoc(novoAtleta, {
+      const batch = writeBatch(db);
+      const novoCadastro = {
         id: novoAtleta.id,
         nome,
         email: email || null,
@@ -50,7 +52,10 @@ export function CadastrarTab() {
         criadoEm: serverTimestamp(),
         atualizadoEm: serverTimestamp(),
         criadoPor: uid,
-      });
+      };
+      batch.set(novoAtleta, novoCadastro);
+      batch.set(atletaPublicoRef(novoAtleta.id), dadosAtletaPublico(novoCadastro));
+      await batch.commit();
       await logAudit({
         acao: "cadastrar_atleta",
         entidade: "atletas",

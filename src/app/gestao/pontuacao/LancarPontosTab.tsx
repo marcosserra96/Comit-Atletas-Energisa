@@ -16,6 +16,7 @@ import {
 } from "firebase/firestore";
 import { Activity, CalendarCheck, PlusCircle, Target } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { atletaPublicoRef } from "@/lib/publicAthletes";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
 import { Card } from "@/components/ui/Card";
@@ -305,6 +306,11 @@ export function LancarPontosTab() {
             pontuacaoTotal: increment(totalAtleta),
             atualizadoEm: serverTimestamp(),
           });
+          batch.set(
+            atletaPublicoRef(atletaDoc.id),
+            { pontuacaoTotal: increment(totalAtleta) },
+            { merge: true },
+          );
         }
       }
 

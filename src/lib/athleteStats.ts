@@ -1,6 +1,6 @@
 import { consolidarAtividades } from "@/lib/activityConsolidation";
 import { dataIsoLocal } from "@/lib/date";
-import type { AtletaDoc, HistoricoPontoDoc } from "@/lib/types";
+import type { AtletaDoc, AtletaPublicoDoc, HistoricoPontoDoc } from "@/lib/types";
 
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
@@ -27,7 +27,7 @@ export interface AtletaInsights {
 export function calcularInsightsAtleta(params: {
   atleta: AtletaDoc;
   /** Atletas da mesma equipe, já ordenados por pontuacaoTotal desc (mesma query da tela Ranking). */
-  companheiros: AtletaDoc[];
+  companheiros: AtletaPublicoDoc[];
   /** Lançamentos do próprio atleta (qualquer ordem). */
   meusLancamentos: HistoricoPontoDoc[];
 }): AtletaInsights {

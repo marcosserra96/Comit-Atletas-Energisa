@@ -31,6 +31,7 @@ import Link from "next/link";
 import { db } from "@/lib/firebase";
 import { consolidarAtividades } from "@/lib/activityConsolidation";
 import { useAthleteView } from "@/lib/session/AthleteViewProvider";
+import { useAthleteDirectoryCollection } from "@/lib/session/useAthleteDirectory";
 import { useToast } from "@/components/ui/Toast";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -45,7 +46,7 @@ import { cn } from "@/lib/cn";
 import { isWaitlisted, modalidadeFromEquipe } from "@/lib/labels";
 import { formatDataTreino, formatLongDate, formatShortDate } from "@/lib/format";
 import { calcularInsightsAtleta } from "@/lib/athleteStats";
-import type { AtletaDoc, EventoDoc, HistoricoPontoDoc, NoticiaDoc } from "@/lib/types";
+import type { AtletaPublicoDoc, EventoDoc, HistoricoPontoDoc, NoticiaDoc } from "@/lib/types";
 
 function hojeIsoLocal() {
   const hoje = new Date();
@@ -67,11 +68,12 @@ function partesDataEvento(valor: string) {
 export default function DashboardPage() {
   const { atleta, isPreview, withPreview } = useAthleteView();
   const { show } = useToast();
+  const athleteDirectory = useAthleteDirectoryCollection();
   const modalidade = modalidadeFromEquipe(atleta.equipe);
   const waitlisted = isWaitlisted(atleta.equipe);
   const ModalidadeIcon = modalidade === "bicicleta" ? Bike : Footprints;
 
-  const [companheiros, setCompanheiros] = useState<AtletaDoc[] | null>(() => (modalidade ? null : []));
+  const [companheiros, setCompanheiros] = useState<AtletaPublicoDoc[] | null>(() => (modalidade ? null : []));
   const [meusLancamentos, setMeusLancamentos] = useState<HistoricoPontoDoc[] | null>(null);
   const [proximoEvento, setProximoEvento] = useState<EventoDoc[] | null>(null);
   const [noticias, setNoticias] = useState<NoticiaDoc[] | null>(null);
@@ -79,10 +81,10 @@ export default function DashboardPage() {
   const [erroDados, setErroDados] = useState(false);
 
   useEffect(() => {
-    if (!modalidade) return;
+    if (!modalidade || !athleteDirectory) return;
     const unsubscribe = onSnapshot(
-      query(collection(db, "atletas"), where("equipe", "==", atleta.equipe), orderBy("pontuacaoTotal", "desc")),
-      (snap) => setCompanheiros(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)),
+      query(collection(db, athleteDirectory), where("equipe", "==", atleta.equipe), orderBy("pontuacaoTotal", "desc")),
+      (snap) => setCompanheiros(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaPublicoDoc)),
       () => {
         setCompanheiros([]);
         setErroDados(true);
@@ -90,7 +92,7 @@ export default function DashboardPage() {
     );
     return unsubscribe;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- modalidade deriva de atleta.equipe, mesma dependência
-  }, [atleta.equipe]);
+  }, [athleteDirectory, atleta.equipe, modalidade]);
 
   useEffect(() => {
     let active = true;

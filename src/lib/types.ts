@@ -34,6 +34,11 @@ export interface AtletaDoc {
   ordemFila?: number;
 }
 
+export type AtletaPublicoDoc = Pick<
+  AtletaDoc,
+  "id" | "nome" | "equipe" | "ativo" | "pontuacaoTotal"
+>;
+
 /** usuarios/{uid} — ponteiro auth -> atleta, escrito só por staff (nunca pelo próprio usuário). */
 export interface UsuarioDoc {
   uid: string;

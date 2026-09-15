@@ -5,6 +5,7 @@ import { collection, onSnapshot, orderBy, query, where } from "firebase/firestor
 import { AlertCircle, RefreshCw, Search, Trophy } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useAthleteView } from "@/lib/session/AthleteViewProvider";
+import { useAthleteDirectoryCollection } from "@/lib/session/useAthleteDirectory";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { SportBadge } from "@/components/ui/SportBadge";
@@ -14,36 +15,38 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
-import type { AtletaDoc, Modalidade } from "@/lib/types";
+import type { AtletaPublicoDoc, Modalidade } from "@/lib/types";
 
-interface RankedAtleta extends AtletaDoc {
+interface RankedAtleta extends AtletaPublicoDoc {
   rank: number;
 }
 
 export default function RankingPage() {
   const { atleta: myAtleta } = useAthleteView();
+  const athleteDirectory = useAthleteDirectoryCollection();
   
   const initialModality = (myAtleta.equipe === "corrida" || myAtleta.equipe === "bicicleta") 
     ? myAtleta.equipe 
     : "corrida";
 
   const [modalidade, setModalidade] = useState<Modalidade>(initialModality);
-  const [corredores, setCorredores] = useState<AtletaDoc[] | null>(null);
-  const [ciclistas, setCiclistas] = useState<AtletaDoc[] | null>(null);
+  const [corredores, setCorredores] = useState<AtletaPublicoDoc[] | null>(null);
+  const [ciclistas, setCiclistas] = useState<AtletaPublicoDoc[] | null>(null);
   const [search, setSearch] = useState("");
   const [erroCorrida, setErroCorrida] = useState(false);
   const [erroBicicleta, setErroBicicleta] = useState(false);
 
   useEffect(() => {
+    if (!athleteDirectory) return;
     const q = query(
-      collection(db, "atletas"),
+      collection(db, athleteDirectory),
       where("equipe", "==", "corrida"),
       orderBy("pontuacaoTotal", "desc")
     );
     const unsubscribe = onSnapshot(
       q,
       (snap) => {
-        setCorredores(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc));
+        setCorredores(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaPublicoDoc));
         setErroCorrida(false);
       },
       () => {
@@ -52,18 +55,19 @@ export default function RankingPage() {
       }
     );
     return unsubscribe;
-  }, []);
+  }, [athleteDirectory]);
 
   useEffect(() => {
+    if (!athleteDirectory) return;
     const q = query(
-      collection(db, "atletas"),
+      collection(db, athleteDirectory),
       where("equipe", "==", "bicicleta"),
       orderBy("pontuacaoTotal", "desc")
     );
     const unsubscribe = onSnapshot(
       q,
       (snap) => {
-        setCiclistas(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc));
+        setCiclistas(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaPublicoDoc));
         setErroBicicleta(false);
       },
       () => {
@@ -72,7 +76,7 @@ export default function RankingPage() {
       }
     );
     return unsubscribe;
-  }, []);
+  }, [athleteDirectory]);
 
   const atletasAtuais = modalidade === "corrida" ? corredores : ciclistas;
   const erroAtual = modalidade === "corrida" ? erroCorrida : erroBicicleta;

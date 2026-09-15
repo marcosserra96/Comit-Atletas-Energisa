@@ -1,9 +1,10 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { doc, serverTimestamp, writeBatch } from "firebase/firestore";
 import { User, MapPin, Cake, UserCircle, Shield, Mail, Zap } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { atletaPublicoRef } from "@/lib/publicAthletes";
 import { useAthleteView } from "@/lib/session/AthleteViewProvider";
 import { useToast } from "@/components/ui/Toast";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -32,13 +33,16 @@ export default function PerfilPage() {
     if (isPreview) return;
     setSaving(true);
     try {
-      await updateDoc(doc(db, "atletas", atleta.id), {
+      const batch = writeBatch(db);
+      batch.update(doc(db, "atletas", atleta.id), {
         nome,
         localidade,
         dataNascimento,
         sexo,
         atualizadoEm: serverTimestamp(),
       });
+      batch.set(atletaPublicoRef(atleta.id), { nome }, { merge: true });
+      await batch.commit();
       show("success", "Perfil atualizado.");
     } catch {
       show("error", "Não foi possível salvar agora. Tente novamente.");

@@ -1,5 +1,6 @@
 import { collection, doc, increment, serverTimestamp, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { atletaPublicoRef } from "@/lib/publicAthletes";
 import { logAudit } from "@/lib/audit";
 import type { AtletaDoc, TipoLancamento } from "@/lib/types";
 import type { LinhaDuplicada, LinhaImportacao } from "@/app/gestao/pontuacao/RevisarImportacaoModal";
@@ -102,6 +103,7 @@ export async function gravarLancamentos(params: {
         pontuacaoTotal: increment(pontos),
         atualizadoEm: serverTimestamp(),
       });
+      batch.set(atletaPublicoRef(atletaId), { pontuacaoTotal: increment(pontos) }, { merge: true });
     });
     await batch.commit();
   }
