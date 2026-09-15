@@ -130,15 +130,16 @@ export default function DashboardPage() {
     if (rankingIndisponivel) return;
 
     const unsubscribe = onSnapshot(
-      query(
-        collection(db, athleteDirectory),
-        where("equipe", "==", modalidade),
-        orderBy("pontuacaoTotal", "desc"),
-      ),
+      query(collection(db, athleteDirectory), where("equipe", "==", modalidade)),
       (snap) => {
-        setCompanheiros(
-          snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaPublicoDoc),
-        );
+        const lista = snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }) as AtletaPublicoDoc)
+          .sort(
+            (a, b) =>
+              b.pontuacaoTotal - a.pontuacaoTotal ||
+              a.nome.localeCompare(b.nome, "pt-BR"),
+          );
+        setCompanheiros(lista);
         setErroRanking(false);
       },
       () => {
