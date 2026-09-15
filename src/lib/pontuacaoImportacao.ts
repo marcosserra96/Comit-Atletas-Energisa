@@ -5,7 +5,8 @@ import { logAudit } from "@/lib/audit";
 import type { AtletaDoc, TipoLancamento } from "@/lib/types";
 import type { LinhaDuplicada, LinhaImportacao } from "@/app/gestao/pontuacao/RevisarImportacaoModal";
 
-export const TAMANHO_LOTE = 400;
+// Cada atleta pode gerar duas escritas (privada + pública) no mesmo batch.
+export const TAMANHO_LOTE = 200;
 
 export interface LinhaParaGravar extends LinhaImportacao {
   equipe: AtletaDoc["equipe"];

@@ -10,6 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "tsx --test tests/*.test.ts",
     "emulators": "firebase emulators:start --project atletas-energisa-dev",
     "seed": "tsx scripts/seed.ts"
   },
