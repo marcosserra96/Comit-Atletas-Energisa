@@ -91,7 +91,6 @@ export default function DashboardPage() {
       },
     );
     return unsubscribe;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- modalidade deriva de atleta.equipe, mesma dependência
   }, [athleteDirectory, atleta.equipe, modalidade]);
 
   useEffect(() => {

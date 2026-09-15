@@ -65,16 +65,6 @@ export function RequestCard({
         atualizadoEm: serverTimestamp(),
       });
       batch.set(atletaPublicoRef(atletaSelecionado), { ativo: true }, { merge: true });
-      batch.set(
-        atletaPublicoRef(novoAtleta.id),
-        {
-          id: novoAtleta.id,
-          nome: solicitacao.nome,
-          equipe: roleEscolhida === "atleta" ? "nenhuma" : "comite",
-          ativo: true,
-          pontuacaoTotal: 0,
-        },
-      );
       batch.set(doc(db, "usuarios", solicitacao.uid), {
         uid: solicitacao.uid,
         role: roleEscolhida,
@@ -124,6 +114,16 @@ export function RequestCard({
         atualizadoEm: serverTimestamp(),
         criadoPor: adminUid,
       });
+      batch.set(
+        atletaPublicoRef(novoAtleta.id),
+        {
+          id: novoAtleta.id,
+          nome: solicitacao.nome,
+          equipe: roleEscolhida === "atleta" ? "nenhuma" : "comite",
+          ativo: true,
+          pontuacaoTotal: 0,
+        },
+      );
       batch.set(doc(db, "usuarios", solicitacao.uid), {
         uid: solicitacao.uid,
         role: roleEscolhida,
