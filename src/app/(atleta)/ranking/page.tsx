@@ -435,60 +435,83 @@ export default function RankingPage() {
                 />
               </div>
             ) : (
-              <ul className="flex flex-col divide-y divide-border">
-                {filteredAtletas?.map((atleta) => {
-                  const isMe = atleta.id === myAtleta.id;
-                  const isTop3 = atleta.rank <= 3;
-                  return (
-                    <li
-                      key={atleta.id}
-                      className={cn(
-                        "flex items-center gap-3 border-l-4 px-4 py-3 transition-colors hover:bg-bg-inset sm:px-5 sm:py-4",
-                        isMe
-                          ? "border-l-primary bg-[var(--color-primary-subtle)]"
-                          : "border-l-transparent",
-                      )}
-                    >
-                      <RankingPosition
-                        position={atleta.rank}
-                        size={isTop3 ? "md" : "sm"}
-                        className={cn(!isTop3 && "bg-bg text-text-muted")}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <span
-                          className={cn(
-                            "block truncate text-sm font-medium text-text sm:text-base",
-                            isMe && "font-bold text-primary",
-                          )}
+              <>
+                <div className="hidden items-center border-b border-border bg-bg/50 px-5 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-muted sm:flex">
+                  <span className="flex-1 pl-11">Atleta</span>
+                  <div className="grid w-[280px] shrink-0 grid-cols-3 text-center">
+                    <span>Treinos</span>
+                    <span>Km</span>
+                    <span>Pontos</span>
+                  </div>
+                </div>
+                <ul className="flex flex-col divide-y divide-border">
+                  {filteredAtletas?.map((atleta) => {
+                    const isMe = atleta.id === myAtleta.id;
+                    const isTop3 = atleta.rank <= 3;
+                    return (
+                      <li
+                        key={atleta.id}
+                        className={cn(
+                          "flex flex-col gap-3 border-l-4 px-3 py-3 transition-colors hover:bg-bg-inset sm:flex-row sm:items-center sm:gap-4 sm:px-5 sm:py-4",
+                          isMe
+                            ? "border-l-primary bg-[var(--color-primary-subtle)]"
+                            : "border-l-transparent",
+                        )}
+                      >
+                        <div className="flex w-full min-w-0 items-center gap-3 sm:flex-1">
+                          <RankingPosition
+                            position={atleta.rank}
+                            size={isTop3 ? "md" : "sm"}
+                            className={cn(!isTop3 && "bg-bg text-text-muted")}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <span
+                              className={cn(
+                                "block truncate text-sm font-medium text-text sm:text-base",
+                                isMe && "font-bold text-primary",
+                              )}
+                            >
+                              {atleta.nome}
+                              {isMe ? (
+                                <span className="ml-1 text-xs font-normal">(você)</span>
+                              ) : null}
+                            </span>
+                          </div>
+                        </div>
+                        <div
+                          className="grid w-full grid-cols-3 divide-x divide-border rounded-[var(--radius)] border border-border bg-bg py-2 text-center sm:w-[280px] sm:shrink-0 sm:border-0 sm:bg-transparent sm:py-0"
+                          aria-label={`Desempenho de ${atleta.nome}`}
                         >
-                          {atleta.nome}
-                          {isMe ? <span className="ml-1 text-xs font-normal">(você)</span> : null}
-                        </span>
-                      </div>
-                      <div className="grid shrink-0 grid-cols-3 gap-2 text-right sm:gap-5">
-                        <div>
-                          <strong className="block text-sm text-text">
-                            {atleta.treinos ?? "—"}
-                          </strong>
-                          <span className="text-[10px] text-text-muted">treinos</span>
+                          <div className="px-2">
+                            <strong className="block text-sm tabular-nums text-text">
+                              {atleta.treinos ?? "—"}
+                            </strong>
+                            <span className="mt-0.5 block text-[11px] text-text-muted sm:hidden">
+                              treinos
+                            </span>
+                          </div>
+                          <div className="px-2">
+                            <strong className="block text-sm tabular-nums text-text">
+                              {atleta.km === undefined ? "—" : atleta.km.toFixed(1)}
+                            </strong>
+                            <span className="mt-0.5 block text-[11px] text-text-muted sm:hidden">
+                              km
+                            </span>
+                          </div>
+                          <div className="px-2">
+                            <strong className="block text-sm tabular-nums text-text sm:text-base">
+                              {atleta.pontuacaoTotal}
+                            </strong>
+                            <span className="mt-0.5 block text-[11px] text-text-muted sm:hidden">
+                              pontos
+                            </span>
+                          </div>
                         </div>
-                        <div>
-                          <strong className="block text-sm text-text">
-                            {atleta.km === undefined ? "—" : atleta.km.toFixed(1)}
-                          </strong>
-                          <span className="text-[10px] text-text-muted">km</span>
-                        </div>
-                        <div>
-                          <strong className="block text-sm text-text sm:text-base">
-                            {atleta.pontuacaoTotal}
-                          </strong>
-                          <span className="text-[10px] text-text-muted">pontos</span>
-                        </div>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
             )}
 
             {myRankAtleta && !search && myRankAtleta.rank > 3 ? (
