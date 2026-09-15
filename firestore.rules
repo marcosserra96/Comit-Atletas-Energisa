@@ -37,6 +37,37 @@ service cloud.firestore {
       return meuUsuario().atletaId;
     }
 
+    function minhaModalidade() {
+      let equipe = get(/databases/$(database)/documents/atletas/$(meuAtletaId())).data.equipe;
+      return equipe == "corrida" || equipe == "fila_corrida"
+        ? "corrida"
+        : equipe == "bicicleta" || equipe == "fila_bicicleta"
+          ? "bicicleta"
+          : null;
+    }
+
+    function rankingCorridaLiberado() {
+      let path = /databases/$(database)/documents/configuracoes/ranking_visibilidade;
+      return !exists(path) ||
+        !get(path).data.corrida.ativo ||
+        request.time < get(path).data.corrida.inicioEm ||
+        request.time > get(path).data.corrida.fimEm;
+    }
+
+    function rankingBicicletaLiberado() {
+      let path = /databases/$(database)/documents/configuracoes/ranking_visibilidade;
+      return !exists(path) ||
+        !get(path).data.bicicleta.ativo ||
+        request.time < get(path).data.bicicleta.inicioEm ||
+        request.time > get(path).data.bicicleta.fimEm;
+    }
+
+    function rankingLiberado(equipe) {
+      return equipe == "corrida"
+        ? rankingCorridaLiberado()
+        : equipe == "bicicleta" && rankingBicicletaLiberado();
+    }
+
     function minhasPermissoes() {
       return meuUsuario().get("permissoes", ["inicio"]);
     }
@@ -84,7 +115,12 @@ service cloud.firestore {
     }
 
     match /atletas_publicos/{atletaId} {
-      allow read: if hasUsuario();
+      // Gestão vê as duas modalidades. O atleta só lê documentos da própria
+      // modalidade e apenas fora dos períodos de fechamento programados.
+      allow read: if isStaff() ||
+        (hasUsuario() &&
+          resource.data.equipe == minhaModalidade() &&
+          rankingLiberado(resource.data.equipe));
       allow create, delete: if isAdmin() || comitePode("atletas") || comitePode("registrar");
       allow update: if isAdmin() || comitePode("atletas") || comitePode("registrar") ||
         (hasUsuario() && meuAtletaId() == atletaId &&

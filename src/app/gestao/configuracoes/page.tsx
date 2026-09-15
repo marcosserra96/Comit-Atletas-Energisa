@@ -9,6 +9,7 @@ import { UsuariosTab } from "./UsuariosTab";
 import { IdentidadeVisualTab } from "./IdentidadeVisualTab";
 import { InformativoTab } from "./InformativoTab";
 import { InformativoLayoutTab } from "./InformativoLayoutTab";
+import { RankingVisibilityTab } from "./RankingVisibilityTab";
 import { ConsistenciaTab } from "./ConsistenciaTab";
 import { DiagnosticoTab } from "./DiagnosticoTab";
 import { AuditoriaTab } from "./AuditoriaTab";
@@ -18,6 +19,7 @@ type Tab =
   | "identidade"
   | "informativo"
   | "informativo_layout"
+  | "ranking"
   | "consistencia"
   | "diagnostico"
   | "auditoria";
@@ -33,6 +35,8 @@ function conteudoDaAba(tab: Tab) {
       return <InformativoTab />;
     case "informativo_layout":
       return <InformativoLayoutTab />;
+    case "ranking":
+      return <RankingVisibilityTab />;
     case "consistencia":
       return <ConsistenciaTab />;
     case "diagnostico":
@@ -67,6 +71,7 @@ export default function ConfigurarPortalPage() {
           { value: "identidade", label: "Identidade visual" },
           { value: "informativo", label: "Informativo do ranking" },
           { value: "informativo_layout", label: "Layout do informativo" },
+          { value: "ranking", label: "Visibilidade do ranking" },
           { value: "consistencia", label: "Consistência" },
           { value: "diagnostico", label: "Diagnóstico e dados" },
           { value: "auditoria", label: "Auditoria" },

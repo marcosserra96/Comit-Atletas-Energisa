@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { consolidarAtividades } from "../src/lib/activityConsolidation";
 import { dataIsoLocal } from "../src/lib/date";
+import { modalidadeDoAtleta, rankingOcultoAgora } from "../src/lib/rankingVisibility";
+import type { RankingVisibilityConfigDoc } from "../src/lib/types";
 import type { HistoricoPontoDoc } from "../src/lib/types";
 
 function lancamento(
@@ -58,4 +60,34 @@ test("ignora estornos e falta justificada como atividade realizada", () => {
 
 test("formata a data civil usando os componentes locais", () => {
   assert.equal(dataIsoLocal(new Date(2026, 8, 14, 23, 30)), "2026-09-14");
+});
+
+
+const visibilidade: RankingVisibilityConfigDoc = {
+  corrida: {
+    ativo: true,
+    inicio: "2026-09-10",
+    fim: "2026-09-20",
+    mensagem: "Fechamento",
+  },
+  bicicleta: {
+    ativo: false,
+    inicio: "",
+    fim: "",
+    mensagem: "",
+  },
+};
+
+test("oculta o ranking apenas dentro do período inclusivo", () => {
+  assert.equal(rankingOcultoAgora(visibilidade, "corrida", "2026-09-09"), false);
+  assert.equal(rankingOcultoAgora(visibilidade, "corrida", "2026-09-10"), true);
+  assert.equal(rankingOcultoAgora(visibilidade, "corrida", "2026-09-20"), true);
+  assert.equal(rankingOcultoAgora(visibilidade, "corrida", "2026-09-21"), false);
+  assert.equal(rankingOcultoAgora(visibilidade, "bicicleta", "2026-09-15"), false);
+});
+
+test("converte equipes e filas para a modalidade do atleta", () => {
+  assert.equal(modalidadeDoAtleta("corrida"), "corrida");
+  assert.equal(modalidadeDoAtleta("fila_bicicleta"), "bicicleta");
+  assert.equal(modalidadeDoAtleta("comite"), null);
 });

@@ -221,6 +221,24 @@ export interface BrandingDoc {
 export type AlertaCriterio = "sem_treino_mes" | "sem_treino_30d" | "ate_x_treinos" | "ate_x_pontos";
 
 /** configuracoes/informativo — padrão do Informativo do Ranking, definido pelo Administrador. */
+export interface RankingVisibilityPeriodConfig {
+  ativo: boolean;
+  /** Datas civis inclusivas no formato yyyy-mm-dd. */
+  inicio: string;
+  fim: string;
+  mensagem: string;
+  /** Timestamps equivalentes usados pelas regras do Firestore. */
+  inicioEm?: unknown;
+  fimEm?: unknown;
+}
+
+export interface RankingVisibilityConfigDoc {
+  corrida: RankingVisibilityPeriodConfig;
+  bicicleta: RankingVisibilityPeriodConfig;
+  atualizadoEm?: unknown;
+  atualizadoPor?: string;
+}
+
 export interface InformativoConfigDoc {
   modalidade: "todos" | Modalidade;
   limite: number;

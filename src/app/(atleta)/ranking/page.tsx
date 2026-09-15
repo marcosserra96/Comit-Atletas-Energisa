@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { collection, onSnapshot, orderBy, query, where } from "firebase/firestore";
-import { AlertCircle, RefreshCw, Search, Trophy } from "lucide-react";
+import { collection, doc, onSnapshot, orderBy, query, where } from "firebase/firestore";
+import { AlertCircle, EyeOff, RefreshCw, Search, Trophy } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useAthleteView } from "@/lib/session/AthleteViewProvider";
+import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useAthleteDirectoryCollection } from "@/lib/session/useAthleteDirectory";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
@@ -15,7 +16,16 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
-import type { AtletaPublicoDoc, Modalidade } from "@/lib/types";
+import {
+  modalidadeDoAtleta,
+  normalizarRankingVisibility,
+  rankingOcultoAgora,
+} from "@/lib/rankingVisibility";
+import type {
+  AtletaPublicoDoc,
+  Modalidade,
+  RankingVisibilityConfigDoc,
+} from "@/lib/types";
 
 interface RankedAtleta extends AtletaPublicoDoc {
   rank: number;
@@ -23,21 +33,54 @@ interface RankedAtleta extends AtletaPublicoDoc {
 
 export default function RankingPage() {
   const { atleta: myAtleta } = useAthleteView();
+  const { usuario } = useActiveSession();
   const athleteDirectory = useAthleteDirectoryCollection();
-  
-  const initialModality = (myAtleta.equipe === "corrida" || myAtleta.equipe === "bicicleta") 
-    ? myAtleta.equipe 
-    : "corrida";
-
-  const [modalidade, setModalidade] = useState<Modalidade>(initialModality);
+  const isStaff = usuario.role === "administrador" || usuario.role === "comite";
+  const athleteModality = modalidadeDoAtleta(myAtleta.equipe);
+  const [modalidade, setModalidade] = useState<Modalidade>(athleteModality ?? "corrida");
   const [corredores, setCorredores] = useState<AtletaPublicoDoc[] | null>(null);
   const [ciclistas, setCiclistas] = useState<AtletaPublicoDoc[] | null>(null);
   const [search, setSearch] = useState("");
   const [erroCorrida, setErroCorrida] = useState(false);
   const [erroBicicleta, setErroBicicleta] = useState(false);
+  const [visibility, setVisibility] = useState<RankingVisibilityConfigDoc | null | undefined>(
+    undefined,
+  );
+  const [erroVisibility, setErroVisibility] = useState(false);
 
   useEffect(() => {
-    if (!athleteDirectory) return;
+    const unsubscribe = onSnapshot(
+      doc(db, "configuracoes", "ranking_visibilidade"),
+      (snap) => {
+        setVisibility(
+          snap.exists()
+            ? normalizarRankingVisibility(snap.data() as Partial<RankingVisibilityConfigDoc>)
+            : null,
+        );
+        setErroVisibility(false);
+      },
+      () => {
+        setVisibility(null);
+        setErroVisibility(true);
+      },
+    );
+    return unsubscribe;
+  }, []);
+
+  const corridaOculta =
+    !isStaff && visibility ? rankingOcultoAgora(visibility, "corrida") : false;
+  const bicicletaOculta =
+    !isStaff && visibility ? rankingOcultoAgora(visibility, "bicicleta") : false;
+  const rankingOcultoAtual = modalidade === "corrida" ? corridaOculta : bicicletaOculta;
+  const mensagemOcultacao =
+    visibility?.[modalidade].mensagem.trim() ||
+    "O ranking está em fechamento para conferência dos resultados e premiações.";
+
+  useEffect(() => {
+    const podeConsultar = isStaff || athleteModality === "corrida";
+    if (!athleteDirectory || (!isStaff && (visibility === undefined || erroVisibility)) || !podeConsultar || corridaOculta) {
+      return;
+    }
     const q = query(
       collection(db, athleteDirectory),
       where("equipe", "==", "corrida"),
@@ -55,10 +98,13 @@ export default function RankingPage() {
       }
     );
     return unsubscribe;
-  }, [athleteDirectory]);
+  }, [athleteDirectory, athleteModality, corridaOculta, erroVisibility, isStaff, visibility]);
 
   useEffect(() => {
-    if (!athleteDirectory) return;
+    const podeConsultar = isStaff || athleteModality === "bicicleta";
+    if (!athleteDirectory || (!isStaff && (visibility === undefined || erroVisibility)) || !podeConsultar || bicicletaOculta) {
+      return;
+    }
     const q = query(
       collection(db, athleteDirectory),
       where("equipe", "==", "bicicleta"),
@@ -76,7 +122,7 @@ export default function RankingPage() {
       }
     );
     return unsubscribe;
-  }, [athleteDirectory]);
+  }, [athleteDirectory, athleteModality, bicicletaOculta, erroVisibility, isStaff, visibility]);
 
   const atletasAtuais = modalidade === "corrida" ? corredores : ciclistas;
   const erroAtual = modalidade === "corrida" ? erroCorrida : erroBicicleta;
@@ -174,22 +220,59 @@ export default function RankingPage() {
     <div className="flex flex-col gap-6 pb-10">
       <PageHeader
         title="Ranking"
-        subtitle="Classificação atual dos atletas por modalidade."
+        subtitle={
+          isStaff
+            ? "Classificação atual dos atletas por modalidade."
+            : "Classificação atual da sua modalidade."
+        }
         icon={Trophy}
         badge={<SportBadge modalidade={modalidade} size="md" />}
         actions={
-          <SegmentedControl
-            value={modalidade}
-            onChange={(val) => setModalidade(val as Modalidade)}
-            options={[
-              { value: "corrida", label: "Corrida" },
-              { value: "bicicleta", label: "Ciclismo" },
-            ]}
-          />
+          isStaff ? (
+            <SegmentedControl
+              value={modalidade}
+              onChange={(val) => {
+                setModalidade(val as Modalidade);
+                setSearch("");
+              }}
+              options={[
+                { value: "corrida", label: "Corrida" },
+                { value: "bicicleta", label: "Ciclismo" },
+              ]}
+            />
+          ) : undefined
         }
       />
 
-      {atletasAtuais === null ? (
+      {!isStaff && !athleteModality ? (
+        <EmptyState
+          icon={Trophy}
+          title="Modalidade não definida"
+          description="Seu cadastro ainda não está vinculado a uma modalidade de corrida ou ciclismo."
+        />
+      ) : !isStaff && visibility === undefined ? (
+        <Card className="h-72 animate-pulse" />
+      ) : !isStaff && erroVisibility ? (
+        <Card className="flex flex-col items-center gap-4 py-10 text-center">
+          <AlertCircle className="size-8 text-danger" />
+          <div>
+            <h2 className="font-bold text-text">Não foi possível verificar o ranking</h2>
+            <p className="mt-1 text-sm text-text-light">Confira sua conexão e tente novamente.</p>
+          </div>
+          <Button variant="secondary" onClick={() => window.location.reload()}>
+            <RefreshCw className="size-4" />
+            Tentar novamente
+          </Button>
+        </Card>
+      ) : rankingOcultoAtual ? (
+        <Card>
+          <EmptyState
+            icon={EyeOff}
+            title="Ranking temporariamente oculto"
+            description={mensagemOcultacao}
+          />
+        </Card>
+      ) : atletasAtuais === null ? (
         <div className="space-y-8">
           <div className="flex items-end justify-center gap-2 sm:gap-4 h-56 sm:h-64 px-2">
             <Skeleton className="w-1/3 max-w-[120px] h-[75%] rounded-t-[var(--radius-lg)] rounded-b-none" />
