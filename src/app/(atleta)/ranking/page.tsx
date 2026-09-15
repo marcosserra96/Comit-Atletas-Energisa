@@ -41,72 +41,74 @@ interface RankedAtleta extends RankingEntry {
   rank: number;
 }
 
+function Place({
+  atleta,
+  position,
+  height,
+  maxWidth,
+}: {
+  atleta?: RankedAtleta;
+  position: 1 | 2 | 3;
+  height: string;
+  maxWidth: string;
+}) {
+  const color =
+    position === 1
+      ? "var(--color-ranking-gold)"
+      : position === 2
+        ? "var(--color-ranking-silver)"
+        : "var(--color-ranking-bronze)";
+  const background =
+    position === 1
+      ? "var(--color-ranking-gold-bg)"
+      : position === 2
+        ? "var(--color-ranking-silver-bg)"
+        : "var(--color-ranking-bronze-bg)";
+
+  return (
+    <div
+      className="relative flex w-1/3 flex-col items-center justify-end"
+      style={{ height, maxWidth }}
+    >
+      {atleta ? (
+        <>
+          <div className="mb-2 flex w-full flex-col items-center px-1 text-center">
+            <RankingPosition
+              position={position}
+              size={position === 1 ? "lg" : "md"}
+              className={position === 1 ? "mb-2 scale-110 shadow-md sm:scale-125" : "mb-2"}
+            />
+            <span className="w-full truncate text-xs font-bold text-text sm:text-sm">
+              {atleta.nome}
+            </span>
+            <span className="text-xs font-extrabold sm:text-sm" style={{ color }}>
+              {atleta.pontuacaoTotal} pts
+            </span>
+            {atleta.treinos !== undefined ? (
+              <span className="mt-0.5 text-[10px] text-text-muted">
+                {atleta.treinos} treinos · {atleta.km?.toFixed(1)} km
+              </span>
+            ) : null}
+          </div>
+          <div
+            className="relative h-full w-full overflow-hidden rounded-t-[var(--radius-lg)] border-2 shadow-sm"
+            style={{ backgroundColor: background, borderColor: color }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent" />
+          </div>
+        </>
+      ) : (
+        <div className="h-full w-full rounded-t-[var(--radius-lg)] border-2 border-dashed border-border bg-bg-inset opacity-50" />
+      )}
+    </div>
+  );
+}
+
 function Podium({ atletas }: { atletas: RankedAtleta[] }) {
   if (atletas.length === 0) return null;
   const [primeiro, segundo, terceiro] = atletas;
 
-  function Place({
-    atleta,
-    position,
-    height,
-    maxWidth,
-  }: {
-    atleta?: RankedAtleta;
-    position: 1 | 2 | 3;
-    height: string;
-    maxWidth: string;
-  }) {
-    const color =
-      position === 1
-        ? "var(--color-ranking-gold)"
-        : position === 2
-          ? "var(--color-ranking-silver)"
-          : "var(--color-ranking-bronze)";
-    const background =
-      position === 1
-        ? "var(--color-ranking-gold-bg)"
-        : position === 2
-          ? "var(--color-ranking-silver-bg)"
-          : "var(--color-ranking-bronze-bg)";
 
-    return (
-      <div
-        className="relative flex w-1/3 flex-col items-center justify-end"
-        style={{ height, maxWidth }}
-      >
-        {atleta ? (
-          <>
-            <div className="mb-2 flex w-full flex-col items-center px-1 text-center">
-              <RankingPosition
-                position={position}
-                size={position === 1 ? "lg" : "md"}
-                className={position === 1 ? "mb-2 scale-110 shadow-md sm:scale-125" : "mb-2"}
-              />
-              <span className="w-full truncate text-xs font-bold text-text sm:text-sm">
-                {atleta.nome}
-              </span>
-              <span className="text-xs font-extrabold sm:text-sm" style={{ color }}>
-                {atleta.pontuacaoTotal} pts
-              </span>
-              {atleta.treinos !== undefined ? (
-                <span className="mt-0.5 text-[10px] text-text-muted">
-                  {atleta.treinos} treinos · {atleta.km?.toFixed(1)} km
-                </span>
-              ) : null}
-            </div>
-            <div
-              className="relative h-full w-full overflow-hidden rounded-t-[var(--radius-lg)] border-2 shadow-sm"
-              style={{ backgroundColor: background, borderColor: color }}
-            >
-              <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent" />
-            </div>
-          </>
-        ) : (
-          <div className="h-full w-full rounded-t-[var(--radius-lg)] border-2 border-dashed border-border bg-bg-inset opacity-50" />
-        )}
-      </div>
-    );
-  }
 
   return (
     <div className="mb-12 mt-12 flex h-56 items-end justify-center gap-2 px-2 sm:h-64 sm:gap-4">
