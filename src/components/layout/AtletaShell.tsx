@@ -44,7 +44,7 @@ function AtletaShellInner({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
         )}
-        <main className="min-w-0 flex-1 bg-bg p-4 pb-24 sm:p-6 lg:pb-6">{children}</main>
+        <main className="min-w-0 flex-1 bg-bg p-4 pb-28 sm:p-6 lg:pb-6">{children}</main>
         <MobileBottomNav items={mobileItems} />
       </div>
     </div>
