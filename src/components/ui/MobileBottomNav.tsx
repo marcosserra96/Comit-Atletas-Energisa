@@ -67,7 +67,7 @@ export function MobileBottomNav({ items, className }: MobileBottomNavProps) {
                 </span>
                 <span
                   className={cn(
-                    "max-w-full truncate text-[10px] leading-none",
+                    "max-w-full truncate text-[11px] leading-none",
                     isActive ? "font-bold" : "font-medium",
                   )}
                 >
