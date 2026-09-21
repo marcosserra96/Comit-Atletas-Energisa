@@ -16,6 +16,11 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
     const [visible, setVisible] = useState(false);
     const isPassword = type === "password";
     const resolvedType = isPassword ? (visible ? "text" : "password") : type;
+    const errorId = `${inputId}-error`;
+    const describedBy = props["aria-describedby"];
+    const inputDescribedBy = error
+      ? [describedBy, errorId].filter(Boolean).join(" ")
+      : describedBy;
 
     return (
       <div className="flex flex-col gap-1.5">
@@ -44,23 +49,29 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
             id={inputId}
             type={resolvedType}
             className={cn(
-              "h-11 w-full bg-transparent text-sm text-text placeholder:text-text-muted outline-none",
+              "h-11 w-full bg-transparent text-base text-text placeholder:text-text-muted outline-none sm:text-sm",
               className,
             )}
             {...props}
+            aria-invalid={error ? true : props["aria-invalid"]}
+            aria-describedby={inputDescribedBy}
           />
           {isPassword && (
             <button
               type="button"
               onClick={() => setVisible((v) => !v)}
               aria-label={visible ? "Ocultar senha" : "Mostrar senha"}
-              className="shrink-0 text-text-muted hover:text-text-light transition-colors"
+              className="-mr-3 flex min-h-11 min-w-11 shrink-0 items-center justify-center text-text-muted transition-colors hover:text-text-light focus-visible:outline-none focus-visible:text-primary"
             >
               {visible ? <EyeOff className="size-[18px]" /> : <Eye className="size-[18px]" />}
             </button>
           )}
         </div>
-        {error && <span className="text-xs font-medium text-danger">{error}</span>}
+        {error && (
+          <span id={errorId} role="alert" className="text-xs font-medium text-danger">
+            {error}
+          </span>
+        )}
       </div>
     );
   },
