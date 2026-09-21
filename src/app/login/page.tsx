@@ -23,10 +23,12 @@ import {
 import { auth } from "@/lib/firebase";
 import { TextField } from "@/components/ui/TextField";
 import { Button } from "@/components/ui/Button";
+import { FullScreenLoader } from "@/components/ui/FullScreenLoader";
 import { useToast } from "@/components/ui/Toast";
 import { firebaseErrorCode, mapFirebaseError } from "@/lib/firebaseErrors";
 import { useSession } from "@/lib/session/SessionProvider";
 import { homeForRole } from "@/lib/session/routing";
+import { souTambemAtleta } from "@/lib/session/dualRole";
 import { ForgotPasswordModal } from "./ForgotPasswordModal";
 
 type Mode = "login" | "solicitar";
@@ -53,9 +55,22 @@ export default function LoginPage() {
   const [regPassword, setRegPassword] = useState("");
 
   useEffect(() => {
-    if (session.status === "active") {
-      router.replace(homeForRole(session.usuario.role));
+    if (session.status !== "active") return;
+
+    let destino = homeForRole(session.usuario.role);
+    if (souTambemAtleta(session.usuario, session.atleta)) {
+      const areaSalva = window.sessionStorage.getItem(
+        "atletas-energisa:area:" + session.uid,
+      );
+      destino =
+        areaSalva === "atleta"
+          ? "/dashboard"
+          : areaSalva === "comite"
+            ? "/gestao"
+            : "/escolher-area";
     }
+
+    router.replace(destino);
   }, [session, router]);
 
   async function handleLogin(e: FormEvent) {
@@ -87,6 +102,10 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (session.status === "active") {
+    return <FullScreenLoader message="Acesso reconhecido. Entrando..." />;
   }
 
   return (
