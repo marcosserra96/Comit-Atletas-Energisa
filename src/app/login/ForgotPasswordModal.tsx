@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { Mail } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
@@ -21,17 +21,31 @@ export function ForgotPasswordModal({
 }) {
   const { show } = useToast();
   const [email, setEmail] = useState(initialEmail);
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setEmail(initialEmail);
+      setError("");
+    }
+  }, [initialEmail, open]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    setError("");
     setLoading(true);
+
     try {
-      await sendPasswordResetEmail(auth, email);
+      const normalizedEmail = email.trim().toLowerCase();
+      await sendPasswordResetEmail(auth, normalizedEmail, {
+        url: `${window.location.origin}/login`,
+        handleCodeInApp: false,
+      });
       show("success", "Enviamos um link de redefinição para o seu e-mail.");
       onClose();
-    } catch (error) {
-      show("error", mapFirebaseError(firebaseErrorCode(error)));
+    } catch (requestError) {
+      setError(mapFirebaseError(firebaseErrorCode(requestError)));
     } finally {
       setLoading(false);
     }
@@ -51,7 +65,13 @@ export function ForgotPasswordModal({
           icon={<Mail className="size-[18px]" />}
           placeholder="voce@energisa.com.br"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(event) => {
+            setEmail(event.target.value);
+            setError("");
+          }}
+          error={error}
+          autoComplete="email"
+          inputMode="email"
           required
           autoFocus
         />
