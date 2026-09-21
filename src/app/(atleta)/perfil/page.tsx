@@ -54,7 +54,7 @@ export default function PerfilPage() {
   const modalidade = modalidadeFromEquipe(atleta.equipe);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4 sm:gap-6">
       <PageHeader 
         icon={UserCircle} 
         title="Perfil" 
@@ -62,17 +62,17 @@ export default function PerfilPage() {
       />
 
       {/* HERO SECTION */}
-      <Card className="flex flex-col sm:flex-row items-center sm:items-start gap-6 p-6 sm:p-8 bg-gradient-to-br from-bg to-bg-inset border-border">
-        <span className="flex size-24 shrink-0 items-center justify-center rounded-full bg-primary/10 text-4xl font-black text-primary shadow-sm">
+      <Card className="flex flex-row items-center gap-4 bg-gradient-to-br from-bg to-bg-inset p-4 sm:items-start sm:gap-6 sm:p-8 border-border">
+        <span className="flex size-16 shrink-0 items-center justify-center rounded-full bg-primary/10 text-2xl font-black text-primary shadow-sm sm:size-24 sm:text-4xl">
           {atleta.nome.trim().charAt(0).toUpperCase()}
         </span>
-        <div className="flex flex-col items-center sm:items-start gap-3 w-full">
-          <div className="text-center sm:text-left">
-            <h2 className="text-2xl font-extrabold text-text">{atleta.nome}</h2>
-            <p className="text-text-light text-sm">{atleta.email || "E-mail não informado"}</p>
+        <div className="flex min-w-0 w-full flex-col items-start gap-2 sm:gap-3">
+          <div className="min-w-0 text-left">
+            <h2 className="truncate text-lg font-extrabold text-text sm:text-2xl">{atleta.nome}</h2>
+            <p className="truncate text-xs text-text-light sm:text-sm">{atleta.email || "E-mail não informado"}</p>
           </div>
           
-          <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-2">
+          <div className="mt-1 flex flex-wrap justify-start gap-2 sm:mt-2">
             <Badge tone={isWaitlisted(atleta.equipe) ? "warning" : atleta.ativo ? "success" : "neutral"} className="px-3 py-1">
               {isWaitlisted(atleta.equipe) ? "Na fila de espera" : atleta.ativo ? "Atleta Ativo" : "Atleta Inativo"}
             </Badge>
@@ -86,10 +86,10 @@ export default function PerfilPage() {
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-12">
         
         {/* COLUNA ESQUERDA - DADOS E VINCULO */}
-        <div className="xl:col-span-7 flex flex-col gap-6">
+        <div className="flex flex-col gap-4 sm:gap-6 xl:col-span-7">
           
           <Card>
             <SectionHeader title="Dados Pessoais" />
@@ -181,7 +181,7 @@ export default function PerfilPage() {
         </div>
 
         {/* COLUNA DIREITA - CONFIGURAÇÕES */}
-        <div className="xl:col-span-5 flex flex-col gap-6">
+        <div className="flex flex-col gap-4 sm:gap-6 xl:col-span-5">
           {isPreview ? (
             <Card className="border-amber-200 bg-amber-50/60">
               <div className="flex items-start gap-3">
