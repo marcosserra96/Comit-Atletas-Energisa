@@ -1,10 +1,10 @@
-const CACHE_VERSION = "atletas-energisa-v2";
+const CACHE_VERSION = "atletas-energisa-v3";
 const OFFLINE_URL = "/offline.html";
 const PRECACHE_URLS = [
   OFFLINE_URL,
-  "/icon-atletas.svg",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
+  "/icons/icon-maskable-512.png",
   "/icons/apple-touch-icon.png",
 ];
 
