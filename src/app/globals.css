@@ -269,6 +269,15 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
+/* Evita o zoom automático do Safari/iOS ao focar campos com fonte menor que 16px. */
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 /* Remove as setinhas nativas de incremento/decremento em todo input numérico do app. */
 input[type="number"] {
   appearance: textfield;
