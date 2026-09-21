@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useAthleteView } from "@/lib/session/AthleteViewProvider";
+import { useActiveSession } from "@/lib/session/SessionProvider";
+import { souTambemAtleta } from "@/lib/session/dualRole";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -35,7 +37,9 @@ export function AtletaSidebar({
 }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
-  const { withPreview } = useAthleteView();
+  const { usuario, atleta: sessionAtleta } = useActiveSession();
+  const { withPreview, isPreview } = useAthleteView();
+  const tambemComite = !isPreview && souTambemAtleta(usuario, sessionAtleta);
 
   return (
     <>
@@ -92,6 +96,24 @@ export function AtletaSidebar({
             );
           })}
         </nav>
+
+        {tambemComite && (
+          <div className="border-t border-white/10 p-3">
+            <Link
+              href="/gestao"
+              onClick={onCloseMobile}
+              className={cn(
+                "flex min-h-11 items-center gap-3 rounded-[var(--radius)] bg-primary/15 px-3 py-2.5 text-sm font-bold text-primary transition-colors",
+                "hover:bg-primary/25 focus-visible:ring-2 focus-visible:ring-primary",
+                collapsed && "lg:justify-center lg:px-0",
+              )}
+              title={collapsed ? "Área do comitê" : undefined}
+            >
+              <LayoutDashboard className="size-[18px] shrink-0" />
+              <span className={cn(collapsed && "lg:hidden")}>Área do comitê</span>
+            </Link>
+          </div>
+        )}
 
         <button
           onClick={() => setCollapsed((c) => !c)}
