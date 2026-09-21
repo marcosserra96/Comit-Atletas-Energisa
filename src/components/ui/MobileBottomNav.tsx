@@ -24,7 +24,7 @@ export function MobileBottomNav({ items, className }: MobileBottomNavProps) {
         aria-label="Navegação principal"
         className={cn(
           "w-full border-t border-border-subtle bg-bg-card/95 shadow-[var(--shadow-elevated)] backdrop-blur-xl",
-          "pb-[env(safe-area-inset-bottom)]",
+          "pb-[calc(env(safe-area-inset-bottom)+8px)]",
           className,
         )}
       >
