@@ -161,13 +161,16 @@ export default function LoginPage() {
       <div className="flex flex-1 items-center justify-center bg-bg px-6 py-12">
         <div className="w-full max-w-[400px] rounded-3xl border border-border/60 bg-bg-card p-9 shadow-2xl">
           <div className="mb-8 flex justify-center lg:hidden">
-            <Image
-              src="/logos/logo-comite-colorida.png"
-              alt="Atletas Energisa"
-              width={180}
-              height={60}
-              className="w-[160px] h-auto"
-            />
+            <div className="rounded-2xl bg-navy px-5 py-3 shadow-sm">
+              <Image
+                src="/logos/logo-comite-branca-trim.png"
+                alt="Atletas Energisa"
+                width={180}
+                height={60}
+                priority
+                className="h-auto w-[160px]"
+              />
+            </div>
           </div>
 
           <AnimatePresence mode="wait">

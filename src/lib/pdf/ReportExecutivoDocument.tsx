@@ -29,7 +29,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: NAVY,
   },
-  headerLogo: { width: 84, height: 28, objectFit: "contain" },
+  headerLogoWrap: {
+    width: 92,
+    height: 32,
+    borderRadius: 4,
+    backgroundColor: NAVY,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerLogo: { width: 78, height: 24, objectFit: "contain" },
   headerTitleBlock: { flex: 1, marginLeft: 14 },
   headerTitle: { fontSize: 15, fontFamily: "Helvetica-Bold", color: NAVY },
   headerSub: { fontSize: 8.5, color: TEXT_LIGHT, marginTop: 2 },
@@ -74,8 +82,10 @@ function PageHeader({ titulo, subtitulo, logo }: { titulo: string; subtitulo: st
   return (
     <View style={styles.header} fixed>
       {logo ? (
-        // eslint-disable-next-line jsx-a11y/alt-text -- Image aqui é do @react-pdf/renderer, não um <img> HTML.
-        <Image src={logo} style={styles.headerLogo} />
+        <View style={styles.headerLogoWrap}>
+          {/* eslint-disable-next-line jsx-a11y/alt-text -- Image aqui é do @react-pdf/renderer, não um <img> HTML. */}
+          <Image src={logo} style={styles.headerLogo} />
+        </View>
       ) : (
         <Text style={{ fontSize: 12, fontFamily: "Helvetica-Bold", color: NAVY }}>Atletas Energisa</Text>
       )}

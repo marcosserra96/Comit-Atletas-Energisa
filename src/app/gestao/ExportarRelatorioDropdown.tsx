@@ -58,7 +58,7 @@ export function ExportarRelatorioDropdown({
     setGerando("pdf");
     try {
       const branding = getStoredBranding();
-      const logo = `${window.location.origin}/logos/logo-comite-colorida.png`;
+      const logo = `${window.location.origin}/logos/logo-comite-branca-trim.png`;
       const ultimosLancamentos = agruparUltimosLancamentos(lancamentos);
       const documento = (
         <ReportExecutivoDocument

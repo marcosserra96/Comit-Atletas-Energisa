@@ -67,14 +67,16 @@ export default function EscolherAreaPage() {
 
       <section className="relative w-full max-w-4xl rounded-[var(--radius-xl)] border border-border bg-bg-card p-4 shadow-[var(--shadow-elevated)] sm:p-10">
         <header className="mx-auto max-w-xl text-center">
-          <Image
-            src="/logos/logo-comite-colorida.png"
-            alt="Atletas Energisa"
-            width={180}
-            height={60}
-            priority
-            className="mx-auto h-auto w-[112px] sm:w-[170px]"
-          />
+          <div className="mx-auto flex w-fit rounded-2xl bg-navy px-4 py-2.5 shadow-sm sm:px-5 sm:py-3">
+            <Image
+              src="/logos/logo-comite-branca-trim.png"
+              alt="Atletas Energisa"
+              width={180}
+              height={60}
+              priority
+              className="h-auto w-[112px] sm:w-[170px]"
+            />
+          </div>
           <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.16em] text-primary sm:mt-6 sm:text-xs sm:tracking-[0.18em]">
             Bem-vindo, {primeiroNome}
           </p>
