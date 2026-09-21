@@ -459,7 +459,7 @@ export default function RankingPage() {
                   placeholder="Buscar atleta por nome..."
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  className="block w-full rounded-[var(--radius)] border border-border bg-bg py-2.5 pl-9 pr-3 text-sm text-text outline-none placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/50"
+                  className="block w-full rounded-[var(--radius)] border border-border bg-bg py-2.5 pl-9 pr-3 text-base text-text outline-none placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/50 sm:text-sm"
                 />
               </div>
             </div>
