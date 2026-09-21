@@ -23,7 +23,7 @@ import {
 import { auth } from "@/lib/firebase";
 import { TextField } from "@/components/ui/TextField";
 import { Button } from "@/components/ui/Button";
-import { FullScreenLoader } from "@/components/ui/FullScreenLoader";
+import { AppSplash } from "@/components/ui/AppSplash";
 import { useToast } from "@/components/ui/Toast";
 import { firebaseErrorCode, mapFirebaseError } from "@/lib/firebaseErrors";
 import { useSession } from "@/lib/session/SessionProvider";
@@ -105,7 +105,7 @@ export default function LoginPage() {
   }
 
   if (session.status === "active") {
-    return <FullScreenLoader message="Acesso reconhecido. Entrando..." />;
+    return <AppSplash message="Acesso reconhecido. Entrando..." />;
   }
 
   return (

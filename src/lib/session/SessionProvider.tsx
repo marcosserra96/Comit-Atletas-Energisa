@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged, sendEmailVerification, signOut, type User } from "firebase/auth";
 import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
-import { FullScreenLoader } from "@/components/ui/FullScreenLoader";
+import { AppSplash } from "@/components/ui/AppSplash";
 import { EmailVerificationScreen } from "@/components/session/EmailVerificationScreen";
 import { PendingScreen } from "@/components/session/PendingScreen";
 import { RecusadoScreen } from "@/components/session/RecusadoScreen";
@@ -148,7 +148,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       value={{ session, logout, confirmarVerificacaoEmail, reenviarVerificacaoEmail }}
     >
       {session.status === "loading" ? (
-        <FullScreenLoader />
+        <AppSplash />
       ) : session.status === "email-nao-verificado" ? (
         <EmailVerificationScreen
           email={session.email}
