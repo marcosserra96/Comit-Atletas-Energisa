@@ -111,7 +111,7 @@ function Podium({ atletas }: { atletas: RankedAtleta[] }) {
 
 
   return (
-    <div className="mb-12 mt-12 flex h-56 items-end justify-center gap-2 px-2 sm:h-64 sm:gap-4">
+    <div className="mb-6 mt-6 flex h-40 items-end justify-center gap-2 px-2 sm:mb-10 sm:mt-10 sm:h-64 sm:gap-4">
       <Place atleta={segundo} position={2} height="75%" maxWidth="120px" />
       <Place atleta={primeiro} position={1} height="100%" maxWidth="140px" />
       <Place atleta={terceiro} position={3} height="60%" maxWidth="120px" />
@@ -409,6 +409,44 @@ export default function RankingPage() {
         />
       ) : (
         <div className="flex flex-col">
+          {myRankAtleta ? (
+            <div className="mb-1 flex items-center gap-3 rounded-[var(--radius-lg)] border border-primary/20 bg-primary-subtle p-3 sm:p-4">
+              <RankingPosition
+                position={myRankAtleta.rank}
+                size="md"
+                className="shrink-0 bg-bg-card text-primary shadow-sm"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold uppercase tracking-wide text-primary">
+                  Sua posição
+                </p>
+                <p className="truncate text-sm font-bold text-text sm:text-base">
+                  {myRankAtleta.rank}º lugar no ranking
+                </p>
+              </div>
+              <div className="grid shrink-0 grid-cols-3 gap-3 text-center">
+                <div>
+                  <strong className="block text-sm tabular-nums text-text">
+                    {myRankAtleta.pontuacaoTotal}
+                  </strong>
+                  <span className="text-[10px] text-text-muted">pontos</span>
+                </div>
+                <div>
+                  <strong className="block text-sm tabular-nums text-text">
+                    {myRankAtleta.treinos ?? 0}
+                  </strong>
+                  <span className="text-[10px] text-text-muted">treinos</span>
+                </div>
+                <div>
+                  <strong className="block text-sm tabular-nums text-text">
+                    {(myRankAtleta.km ?? 0).toFixed(1)}
+                  </strong>
+                  <span className="text-[10px] text-text-muted">km</span>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           {!search.trim() ? <Podium atletas={top3} /> : null}
 
           <Card className="flex flex-col overflow-hidden p-0">
@@ -514,13 +552,6 @@ export default function RankingPage() {
               </>
             )}
 
-            {myRankAtleta && !search && myRankAtleta.rank > 3 ? (
-              <div className="border-t border-border bg-bg-inset p-3 text-center text-xs text-text-muted sm:text-sm">
-                Sua posição é <strong className="text-text">{myRankAtleta.rank}º lugar</strong> com{" "}
-                {myRankAtleta.pontuacaoTotal} pontos, {myRankAtleta.treinos ?? 0} treinos e{" "}
-                {(myRankAtleta.km ?? 0).toFixed(1)} km.
-              </div>
-            ) : null}
           </Card>
 
           {!possuiResultadosPublicados && isStaff ? (
