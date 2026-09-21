@@ -1,10 +1,9 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { LucideIcon } from 'lucide-react';
-import { cn } from '@/lib/cn';
+import type { LucideIcon } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/cn";
 
 export interface MobileBottomNavProps {
   items: {
@@ -17,53 +16,61 @@ export interface MobileBottomNavProps {
 
 export function MobileBottomNav({ items, className }: MobileBottomNavProps) {
   const pathname = usePathname();
-  
-  // Max 5 items as requested
   const displayItems = items.slice(0, 5);
 
   return (
-    <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 pointer-events-none">
+    <div className="fixed inset-x-0 bottom-0 z-50 lg:hidden">
       <nav
+        aria-label="Navegação principal"
         className={cn(
-          "pointer-events-auto",
-          "bg-bg-card/90 backdrop-blur-xl border-t border-border-subtle shadow-[var(--shadow-elevated)]",
-          "pb-[env(safe-area-inset-bottom)]", // iOS safe area
-          className
+          "w-full border-t border-border-subtle bg-bg-card/95 shadow-[var(--shadow-elevated)] backdrop-blur-xl",
+          "pb-[env(safe-area-inset-bottom)]",
+          className,
         )}
       >
-        <div className="flex justify-around items-center h-16 px-2">
+        <div className="grid h-[72px] grid-cols-5 items-stretch px-1">
           {displayItems.map((item) => {
             const hrefPath = item.href.split("?")[0];
-            const isActive = pathname === hrefPath || pathname?.startsWith(`${hrefPath}/`);
+            const isActive =
+              pathname === hrefPath || pathname?.startsWith(`${hrefPath}/`);
             const Icon = item.icon;
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                aria-current={isActive ? 'page' : undefined}
+                aria-label={item.label}
+                aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "flex flex-col items-center justify-center w-full h-full gap-1 transition-colors relative",
+                  "relative flex min-w-0 touch-manipulation select-none flex-col items-center justify-center gap-1 px-1 py-2",
+                  "transition-colors duration-150 active:bg-primary/10",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary",
                   isActive
-                    ? "text-[var(--color-primary)]"
-                    : "text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
+                    ? "text-primary"
+                    : "text-text-muted hover:text-text-light",
                 )}
               >
-                {isActive && (
-                  <span className="absolute top-1 w-12 h-1 bg-[var(--color-primary-subtle)] rounded-full" />
-                )}
-                <div 
+                {isActive ? (
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-x-3 top-0 h-1 rounded-b-full bg-primary"
+                  />
+                ) : null}
+                <span
+                  aria-hidden="true"
                   className={cn(
-                    "flex items-center justify-center rounded-full p-1.5 transition-colors",
-                    isActive ? "bg-[var(--color-primary-subtle)]" : "bg-transparent"
+                    "flex size-9 items-center justify-center rounded-full transition-colors",
+                    isActive ? "bg-primary-subtle" : "bg-transparent",
                   )}
                 >
-                  <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
-                </div>
-                <span className={cn(
-                  "text-[10px] font-medium leading-none",
-                  isActive ? "font-semibold" : "font-medium"
-                )}>
+                  <Icon size={21} strokeWidth={isActive ? 2.5 : 2} />
+                </span>
+                <span
+                  className={cn(
+                    "max-w-full truncate text-[10px] leading-none",
+                    isActive ? "font-bold" : "font-medium",
+                  )}
+                >
                   {item.label}
                 </span>
               </Link>
