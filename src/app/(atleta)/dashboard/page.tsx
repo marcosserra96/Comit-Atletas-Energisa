@@ -18,7 +18,6 @@ import {
   Trophy,
   Bike,
   Activity,
-  UserCircle,
   ChevronRight,
   Footprints,
   History,
@@ -278,51 +277,6 @@ export default function DashboardPage() {
                    : insights?.posicao === 3 ? "var(--color-ranking-bronze)" 
                    : "var(--color-text-muted)";
 
-  const mobileActions = [
-    {
-      href: withPreview("/desempenho"),
-      label: "Meu desempenho",
-      description: "Evolução e análises",
-      icon: Activity,
-      iconClass: "text-secondary",
-    },
-    {
-      href: withPreview("/ranking"),
-      label: "Ranking",
-      description: rankingOcultoAtual ? "Fechamento em andamento" : "Ver classificação",
-      icon: Trophy,
-      iconClass: "text-accent",
-    },
-    {
-      href: withPreview("/eventos"),
-      label: "Próximos eventos",
-      description: "Agenda do programa",
-      icon: CalendarCheck,
-      iconClass: "text-primary",
-    },
-    {
-      href: `${withPreview("/desempenho")}#historico`,
-      label: "Meu histórico",
-      description: "Treinos e pontos",
-      icon: History,
-      iconClass: "text-success",
-    },
-    {
-      href: withPreview("/noticias"),
-      label: "Notícias",
-      description: "Novidades do programa",
-      icon: Newspaper,
-      iconClass: "text-secondary",
-    },
-    {
-      href: withPreview("/perfil"),
-      label: "Meu perfil",
-      description: "Dados cadastrais",
-      icon: UserCircle,
-      iconClass: "text-accent",
-    },
-  ];
-
   return (
     <>
       <div className="-mx-4 -mt-4 sm:hidden">
@@ -388,24 +342,6 @@ export default function DashboardPage() {
               <p>Não foi possível carregar: {fontesComErro.join(", ")}.</p>
             </div>
           ) : null}
-
-          <nav className="grid grid-cols-2 gap-3" aria-label="Acessos rápidos">
-            {mobileActions.map(({ href, label, description, icon: Icon, iconClass }) => (
-              <Link
-                key={label}
-                href={href}
-                className="group flex min-h-32 flex-col items-center justify-center rounded-[var(--radius-lg)] border border-white/5 bg-navy px-3 py-4 text-center text-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-navy-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]"
-              >
-                <span className="flex size-12 items-center justify-center rounded-2xl bg-white/10 transition-colors group-hover:bg-white/15">
-                  <Icon className={cn("size-6", iconClass)} />
-                </span>
-                <span className="mt-3 text-sm font-bold leading-tight">{label}</span>
-                <span className="mt-1 text-[11px] leading-tight text-white/55">
-                  {description}
-                </span>
-              </Link>
-            ))}
-          </nav>
 
           <section className="mt-5 rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-sm">
             <div className="flex items-center justify-between">
@@ -511,6 +447,55 @@ export default function DashboardPage() {
               <p className="mt-3 rounded-[var(--radius)] bg-bg-inset p-4 text-center text-sm text-text-muted">
                 Nenhum evento agendado no momento.
               </p>
+            )}
+          </section>
+
+          <section className="mt-5 rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-text-muted">
+                  Novidades
+                </p>
+                <h2 className="mt-0.5 text-lg font-extrabold text-text">Últimas notícias</h2>
+              </div>
+              <Link
+                href={withPreview("/noticias")}
+                className="flex min-h-11 items-center gap-1 rounded-full px-2 text-xs font-bold text-primary"
+              >
+                Ver todas
+                <ChevronRight className="size-4" />
+              </Link>
+            </div>
+
+            {noticias === null ? (
+              <div className="mt-3 h-20 animate-pulse rounded-[var(--radius)] bg-bg-inset" />
+            ) : noticias.length === 0 ? (
+              <p className="mt-3 rounded-[var(--radius)] bg-bg-inset p-4 text-center text-sm text-text-muted">
+                Nenhuma notícia publicada no momento.
+              </p>
+            ) : (
+              <div className="mt-3 flex flex-col divide-y divide-border">
+                {noticias.slice(0, 2).map((noticia) => (
+                  <Link
+                    key={noticia.id}
+                    href={withPreview(`/noticias/${noticia.id}`)}
+                    className="group flex min-h-16 items-center gap-3 py-3 first:pt-0 last:pb-0"
+                  >
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
+                      <Newspaper className="size-5" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <strong className="block truncate text-sm text-text group-active:text-primary">
+                        {noticia.titulo}
+                      </strong>
+                      <span className="mt-0.5 block truncate text-xs text-text-muted">
+                        {noticia.resumo}
+                      </span>
+                    </span>
+                    <ChevronRight className="size-4 shrink-0 text-text-muted" />
+                  </Link>
+                ))}
+              </div>
             )}
           </section>
         </div>
