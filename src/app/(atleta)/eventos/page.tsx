@@ -11,7 +11,7 @@ import {
   query,
   updateDoc,
 } from "firebase/firestore";
-import { AlertCircle, CalendarCheck, Check, MapPin, RefreshCw, Users } from "lucide-react";
+import { AlertCircle, CalendarCheck, CalendarPlus, Check, MapPin, Navigation, RefreshCw, Users } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useAthleteView } from "@/lib/session/AthleteViewProvider";
 import { useToast } from "@/components/ui/Toast";
@@ -40,6 +40,40 @@ function partesData(valor: string) {
     mes: data.toLocaleDateString("pt-BR", { month: "short" }).replace(".", ""),
     dia: String(data.getDate()).padStart(2, "0"),
   };
+}
+
+function escaparIcs(valor: string) {
+  return valor.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
+}
+
+function baixarEventoCalendario(evento: EventoDoc) {
+  const inicio = evento.data.replaceAll("-", "");
+  const fimData = new Date(evento.data + "T12:00:00");
+  fimData.setDate(fimData.getDate() + 1);
+  const fim = [
+    fimData.getFullYear(),
+    String(fimData.getMonth() + 1).padStart(2, "0"),
+    String(fimData.getDate()).padStart(2, "0"),
+  ].join("");
+  const conteudo = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Atletas Energisa//Eventos//PT-BR",
+    "BEGIN:VEVENT",
+    "UID:" + evento.id + "@atletas-energisa",
+    "DTSTART;VALUE=DATE:" + inicio,
+    "DTEND;VALUE=DATE:" + fim,
+    "SUMMARY:" + escaparIcs(evento.titulo),
+    "LOCATION:" + escaparIcs(evento.local),
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+  const url = URL.createObjectURL(new Blob([conteudo], { type: "text/calendar;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = evento.titulo.toLocaleLowerCase("pt-BR").replace(/[^a-z0-9]+/g, "-") + ".ics";
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 export default function EventosAtletaPage() {
@@ -192,11 +226,28 @@ export default function EventosAtletaPage() {
                           )}
                         </div>
 
-                        <div className="mt-4 sm:mt-auto sm:flex sm:justify-end sm:pt-4">
+                        <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-auto sm:pt-4">
+                          <a
+                            href={"https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(evento.local)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius)] border border-border bg-bg-card px-3 text-xs font-bold text-text-light transition-colors hover:bg-bg-inset hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                          >
+                            <Navigation className="size-4 text-primary" />
+                            Abrir no Maps
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => baixarEventoCalendario(evento)}
+                            className="flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius)] border border-border bg-bg-card px-3 text-xs font-bold text-text-light transition-colors hover:bg-bg-inset hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                          >
+                            <CalendarPlus className="size-4 text-secondary" />
+                            Calendário
+                          </button>
                           <Button
                             size="sm"
                             variant={confirmado ? "secondary" : "primary"}
-                            className="w-full justify-center sm:w-auto"
+                            className="col-span-2 min-h-11 w-full justify-center"
                             loading={alterandoId === evento.id}
                             disabled={isPreview || (alterandoId !== null && alterandoId !== evento.id)}
                             onClick={() => alternarPresenca(evento)}
