@@ -103,7 +103,7 @@ export function StaffSidebar({
           </span>
         )}
 
-        <nav className="mt-2 flex flex-1 flex-col gap-1 px-3" aria-label="Menu de gestão">
+        <nav className="mt-2 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3 pb-3" aria-label="Menu de gestão">
           {items.map(({ href, label, icon: Icon }) => {
             const active = pathname === href;
             return (
@@ -125,15 +125,13 @@ export function StaffSidebar({
               </Link>
             );
           })}
-        </nav>
 
-        {tambemAtleta && (
-          <div className="border-t border-white/10 p-3">
+          {tambemAtleta && (
             <Link
               href="/dashboard"
               onClick={onCloseMobile}
               className={cn(
-                "flex min-h-11 items-center gap-3 rounded-[var(--radius)] bg-secondary/15 px-3 py-2.5 text-sm font-bold text-secondary transition-colors",
+                "mt-2 flex min-h-11 shrink-0 items-center gap-3 rounded-[var(--radius)] bg-secondary/15 px-3 py-2.5 text-sm font-bold text-secondary transition-colors",
                 "hover:bg-secondary/25 focus-visible:ring-2 focus-visible:ring-secondary",
                 collapsed && "lg:justify-center lg:px-0",
               )}
@@ -142,8 +140,8 @@ export function StaffSidebar({
               <IconModalidade className="size-[18px] shrink-0" />
               <span className={cn(collapsed && "lg:hidden")}>Área do atleta</span>
             </Link>
-          </div>
-        )}
+          )}
+        </nav>
 
         <button
           onClick={() => setCollapsed((c) => !c)}
