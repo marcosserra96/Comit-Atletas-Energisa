@@ -16,10 +16,14 @@ import {
   UserCog,
   ChevronsLeft,
   ChevronsRight,
+  Bike,
+  Footprints,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { temPermissao, type PermissaoChave } from "@/lib/permissoes";
 import type { Role } from "@/lib/types";
+import { useActiveSession } from "@/lib/session/SessionProvider";
+import { souTambemAtleta } from "@/lib/session/dualRole";
 
 const baseItems: { href: string; label: string; icon: typeof LayoutDashboard; permissao?: PermissaoChave }[] = [
   { href: "/gestao", label: "Início", icon: LayoutDashboard, permissao: "inicio" },
@@ -49,7 +53,10 @@ export function StaffSidebar({
   onCloseMobile: () => void;
 }) {
   const pathname = usePathname();
+  const { usuario, atleta } = useActiveSession();
   const [collapsed, setCollapsed] = useState(false);
+  const tambemAtleta = souTambemAtleta(usuario, atleta);
+  const IconModalidade = atleta.equipe === "bicicleta" ? Bike : Footprints;
   const items = [
     ...baseItems.filter(
       (item) => !item.permissao || temPermissao({ role, permissoes }, item.permissao),
@@ -119,6 +126,24 @@ export function StaffSidebar({
             );
           })}
         </nav>
+
+        {tambemAtleta && (
+          <div className="border-t border-white/10 p-3">
+            <Link
+              href="/dashboard"
+              onClick={onCloseMobile}
+              className={cn(
+                "flex min-h-11 items-center gap-3 rounded-[var(--radius)] bg-secondary/15 px-3 py-2.5 text-sm font-bold text-secondary transition-colors",
+                "hover:bg-secondary/25 focus-visible:ring-2 focus-visible:ring-secondary",
+                collapsed && "lg:justify-center lg:px-0",
+              )}
+              title={collapsed ? "Área do atleta" : undefined}
+            >
+              <IconModalidade className="size-[18px] shrink-0" />
+              <span className={cn(collapsed && "lg:hidden")}>Área do atleta</span>
+            </Link>
+          </div>
+        )}
 
         <button
           onClick={() => setCollapsed((c) => !c)}
