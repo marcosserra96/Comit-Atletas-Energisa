@@ -469,7 +469,7 @@ export default function DesempenhoPage() {
             </Card>
           </div>
 
-          <Card className="overflow-hidden p-0">
+          <Card id="historico" className="scroll-mt-24 overflow-hidden p-0">
             <div className="flex flex-col gap-4 border-b border-border p-5 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <h2 className="text-lg font-bold text-text">Histórico detalhado</h2>
