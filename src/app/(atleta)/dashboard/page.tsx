@@ -17,6 +17,9 @@ import {
 import {
   Trophy,
   Bike,
+  Activity,
+  UserCircle,
+  ChevronRight,
   Footprints,
   History,
   CalendarCheck,
@@ -27,6 +30,7 @@ import {
   Award,
   AlertCircle,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
 import { consolidarAtividades } from "@/lib/activityConsolidation";
@@ -274,8 +278,238 @@ export default function DashboardPage() {
                    : insights?.posicao === 3 ? "var(--color-ranking-bronze)" 
                    : "var(--color-text-muted)";
 
+  const mobileActions = [
+    {
+      href: withPreview("/desempenho"),
+      label: "Meu desempenho",
+      description: "Evolução e análises",
+      icon: Activity,
+      iconClass: "text-secondary",
+    },
+    {
+      href: withPreview("/ranking"),
+      label: "Ranking",
+      description: rankingOcultoAtual ? "Fechamento em andamento" : "Ver classificação",
+      icon: Trophy,
+      iconClass: "text-accent",
+    },
+    {
+      href: withPreview("/eventos"),
+      label: "Próximos eventos",
+      description: "Agenda do programa",
+      icon: CalendarCheck,
+      iconClass: "text-primary",
+    },
+    {
+      href: `${withPreview("/desempenho")}#historico`,
+      label: "Meu histórico",
+      description: "Treinos e pontos",
+      icon: History,
+      iconClass: "text-success",
+    },
+    {
+      href: withPreview("/noticias"),
+      label: "Notícias",
+      description: "Novidades do programa",
+      icon: Newspaper,
+      iconClass: "text-secondary",
+    },
+    {
+      href: withPreview("/perfil"),
+      label: "Meu perfil",
+      description: "Dados cadastrais",
+      icon: UserCircle,
+      iconClass: "text-accent",
+    },
+  ];
+
   return (
-    <div className="flex flex-col">
+    <>
+      <div className="-mx-4 -mt-4 sm:hidden">
+        <section className="relative isolate overflow-hidden bg-navy px-4 pb-9 pt-5 text-white">
+          <div
+            className="absolute inset-0 -z-20 bg-cover bg-center opacity-40"
+            style={{
+              backgroundImage: `url(${
+                modalidade === "bicicleta"
+                  ? "/informativo-fundo-bike.png"
+                  : "/informativo-fundo-corrida.png"
+              })`,
+            }}
+          />
+          <div className="absolute inset-0 -z-10 bg-gradient-to-b from-navy/40 via-navy/80 to-navy" />
+
+          <div className="flex items-start justify-between gap-4">
+            <Image
+              src="/logos/logo-comite-branca-trim.png"
+              alt="Atletas Energisa"
+              width={156}
+              height={48}
+              priority
+              className="h-10 w-auto"
+            />
+            <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[11px] font-bold backdrop-blur-sm">
+              {waitlisted ? "Fila de espera" : atleta.ativo ? "Ativo" : "Inativo"}
+            </span>
+          </div>
+
+          <div className="mt-12">
+            <p className="text-sm font-medium text-white/75">Olá,</p>
+            <h1 className="mt-0.5 text-3xl font-black tracking-tight">
+              {atleta.nome.split(" ")[0]}
+            </h1>
+            <div className="mt-3 flex items-center gap-2 text-sm text-white/80">
+              <ModalidadeIcon className="size-4 text-secondary" />
+              <span>
+                {modalidade === "bicicleta"
+                  ? "Ciclismo"
+                  : modalidade === "corrida"
+                    ? "Corrida"
+                    : "Modalidade não definida"}
+              </span>
+            </div>
+            <p className="mt-6 text-xs font-bold uppercase tracking-[0.24em] text-primary">
+              Movimento que conecta
+            </p>
+          </div>
+        </section>
+
+        <div className="-mt-4 rounded-t-[28px] bg-bg px-4 pb-4 pt-6">
+          {erroDados ? (
+            <div className="mb-4 flex items-start gap-3 rounded-[var(--radius)] border border-danger/20 bg-danger/5 p-3 text-sm text-text-light">
+              <AlertCircle className="mt-0.5 size-5 shrink-0 text-danger" />
+              <p>Não foi possível carregar: {fontesComErro.join(", ")}.</p>
+            </div>
+          ) : null}
+
+          <nav className="grid grid-cols-2 gap-3" aria-label="Acessos rápidos">
+            {mobileActions.map(({ href, label, description, icon: Icon, iconClass }) => (
+              <Link
+                key={label}
+                href={href}
+                className="group flex min-h-32 flex-col items-center justify-center rounded-[var(--radius-lg)] border border-white/5 bg-navy px-3 py-4 text-center text-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-navy-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]"
+              >
+                <span className="flex size-12 items-center justify-center rounded-2xl bg-white/10 transition-colors group-hover:bg-white/15">
+                  <Icon className={cn("size-6", iconClass)} />
+                </span>
+                <span className="mt-3 text-sm font-bold leading-tight">{label}</span>
+                <span className="mt-1 text-[11px] leading-tight text-white/55">
+                  {description}
+                </span>
+              </Link>
+            ))}
+          </nav>
+
+          <section className="mt-5 rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-text-muted">
+                  Seu mês
+                </p>
+                <h2 className="mt-0.5 text-lg font-extrabold text-text">Resumo de desempenho</h2>
+              </div>
+              <Link
+                href={withPreview("/desempenho")}
+                className="flex min-h-11 items-center gap-1 rounded-full px-2 text-xs font-bold text-primary"
+              >
+                Ver análise
+                <ChevronRight className="size-4" />
+              </Link>
+            </div>
+
+            {insights ? (
+              <div className="mt-4 grid grid-cols-3 divide-x divide-border rounded-[var(--radius)] bg-bg-inset py-3 text-center">
+                <div className="px-2">
+                  <strong className="block text-xl font-black tabular-nums text-text">
+                    {insights.treinosMes}
+                  </strong>
+                  <span className="text-[11px] text-text-muted">treinos</span>
+                </div>
+                <div className="px-2">
+                  <strong className="block text-xl font-black tabular-nums text-text">
+                    {insights.kmMes.toFixed(1)}
+                  </strong>
+                  <span className="text-[11px] text-text-muted">km</span>
+                </div>
+                <div className="px-2">
+                  <strong className="block text-xl font-black tabular-nums text-text">
+                    {insights.pontosMes}
+                  </strong>
+                  <span className="text-[11px] text-text-muted">pontos</span>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 h-20 animate-pulse rounded-[var(--radius)] bg-bg-inset" />
+            )}
+          </section>
+
+          <section className="mt-5 rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-text-muted">
+                  Próximo evento
+                </p>
+                <h2 className="mt-0.5 text-lg font-extrabold text-text">Na sua agenda</h2>
+              </div>
+              <Link
+                href={withPreview("/eventos")}
+                className="flex min-h-11 items-center gap-1 rounded-full px-2 text-xs font-bold text-primary"
+              >
+                Ver todos
+                <ChevronRight className="size-4" />
+              </Link>
+            </div>
+
+            {proximoEvento === null ? (
+              <div className="mt-3 h-24 animate-pulse rounded-[var(--radius)] bg-bg-inset" />
+            ) : evento ? (
+              <div className="mt-3">
+                <div className="flex items-center gap-3 rounded-[var(--radius)] bg-bg-inset p-3">
+                  <div className="flex size-14 shrink-0 flex-col items-center justify-center rounded-[var(--radius)] bg-bg-card shadow-sm">
+                    <span className="text-[10px] font-bold uppercase text-primary">
+                      {dataEvento?.mes}
+                    </span>
+                    <span className="text-xl font-black leading-none text-text">
+                      {dataEvento?.dia}
+                    </span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-text">{evento.titulo}</p>
+                    <p className="mt-1 flex items-center gap-1 text-xs text-text-muted">
+                      <MapPin className="size-3.5 shrink-0" />
+                      <span className="truncate">{evento.local}</span>
+                    </p>
+                  </div>
+                  {jaConfirmado ? (
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-success-subtle text-success">
+                      <Check className="size-4" />
+                    </span>
+                  ) : null}
+                </div>
+                <Button
+                  variant={jaConfirmado ? "secondary" : "primary"}
+                  className="mt-3 min-h-11 w-full justify-center"
+                  onClick={handleRsvp}
+                  loading={inscrevendo}
+                  disabled={isPreview}
+                >
+                  {isPreview
+                    ? "Somente visualização"
+                    : jaConfirmado
+                      ? "Cancelar presença"
+                      : "Confirmar presença"}
+                </Button>
+              </div>
+            ) : (
+              <p className="mt-3 rounded-[var(--radius)] bg-bg-inset p-4 text-center text-sm text-text-muted">
+                Nenhum evento agendado no momento.
+              </p>
+            )}
+          </section>
+        </div>
+      </div>
+
+      <div className="hidden flex-col sm:flex">
       <PageHeader
         title={`Olá, ${atleta.nome.split(" ")[0]} 👋`}
         subtitle={insights?.leitura || formatLongDate(new Date())}
@@ -600,5 +834,6 @@ export default function DashboardPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
