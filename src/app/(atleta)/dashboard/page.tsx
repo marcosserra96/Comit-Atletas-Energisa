@@ -326,7 +326,7 @@ export default function DashboardPage() {
   return (
     <>
       <div className="-mx-4 -mt-4 sm:hidden">
-        <section className="relative isolate overflow-hidden bg-navy px-4 pb-9 pt-5 text-white">
+        <section className="relative isolate overflow-hidden bg-navy px-4 pb-7 pt-4 text-white">
           <div className="absolute inset-0 -z-20 bg-gradient-to-br from-navy via-navy-light to-navy" />
           <div
             aria-hidden="true"
@@ -353,19 +353,19 @@ export default function DashboardPage() {
               width={156}
               height={48}
               priority
-              className="h-10 w-auto"
+              className="h-9 w-auto"
             />
             <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[11px] font-bold backdrop-blur-sm">
               {waitlisted ? "Fila de espera" : atleta.ativo ? "Ativo" : "Inativo"}
             </span>
           </div>
 
-          <div className="mt-12">
+          <div className="mt-8">
             <p className="text-sm font-medium text-white/75">Olá,</p>
             <h1 className="mt-0.5 text-3xl font-black tracking-tight">
               {atleta.nome.split(" ")[0]}
             </h1>
-            <div className="mt-3 flex items-center gap-2 text-sm text-white/80">
+            <div className="mt-2 flex items-center gap-2 text-sm text-white/80">
               <ModalidadeIcon className="size-4 text-secondary" />
               <span>
                 {modalidade === "bicicleta"
@@ -375,7 +375,7 @@ export default function DashboardPage() {
                     : "Modalidade não definida"}
               </span>
             </div>
-            <p className="mt-6 text-xs font-bold uppercase tracking-[0.24em] text-primary">
+            <p className="mt-4 text-xs font-bold uppercase tracking-[0.24em] text-primary">
               Movimento que conecta
             </p>
           </div>
