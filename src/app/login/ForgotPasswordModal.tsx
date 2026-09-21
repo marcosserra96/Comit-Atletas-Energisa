@@ -38,10 +38,7 @@ export function ForgotPasswordModal({
 
     try {
       const normalizedEmail = email.trim().toLowerCase();
-      await sendPasswordResetEmail(auth, normalizedEmail, {
-        url: `${window.location.origin}/login`,
-        handleCodeInApp: false,
-      });
+      await sendPasswordResetEmail(auth, normalizedEmail);
       show("success", "Enviamos um link de redefinição para o seu e-mail.");
       onClose();
     } catch (requestError) {
