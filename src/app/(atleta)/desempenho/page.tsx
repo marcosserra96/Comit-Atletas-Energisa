@@ -510,7 +510,7 @@ export default function DesempenhoPage() {
                       value={busca}
                       onChange={(evento) => setBusca(evento.target.value)}
                       placeholder="Regra ou atividade"
-                      className="h-11 w-full rounded-[var(--radius)] border border-border bg-bg-card pl-9 pr-3 text-sm text-text outline-none transition-colors placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/15"
+                      className="h-11 w-full rounded-[var(--radius)] border border-border bg-bg-card pl-9 pr-3 text-base text-text outline-none transition-colors placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/15 sm:text-sm"
                     />
                   </span>
                 </label>
