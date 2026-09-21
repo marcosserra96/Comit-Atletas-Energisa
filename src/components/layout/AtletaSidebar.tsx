@@ -73,7 +73,7 @@ export function AtletaSidebar({
           )}
         </div>
 
-        <nav className="mt-2 flex flex-1 flex-col gap-1 px-3" aria-label="Menu do atleta">
+        <nav className="mt-2 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3 pb-3" aria-label="Menu do atleta">
           {navItems.map(({ href, label, icon: Icon }) => {
             const active = pathname === href;
             return (
@@ -95,15 +95,13 @@ export function AtletaSidebar({
               </Link>
             );
           })}
-        </nav>
 
-        {tambemComite && (
-          <div className="border-t border-white/10 p-3">
+          {tambemComite && (
             <Link
               href="/gestao"
               onClick={onCloseMobile}
               className={cn(
-                "flex min-h-11 items-center gap-3 rounded-[var(--radius)] bg-primary/15 px-3 py-2.5 text-sm font-bold text-primary transition-colors",
+                "mt-2 flex min-h-11 shrink-0 items-center gap-3 rounded-[var(--radius)] bg-primary/15 px-3 py-2.5 text-sm font-bold text-primary transition-colors",
                 "hover:bg-primary/25 focus-visible:ring-2 focus-visible:ring-primary",
                 collapsed && "lg:justify-center lg:px-0",
               )}
@@ -112,8 +110,8 @@ export function AtletaSidebar({
               <LayoutDashboard className="size-[18px] shrink-0" />
               <span className={cn(collapsed && "lg:hidden")}>Área do comitê</span>
             </Link>
-          </div>
-        )}
+          )}
+        </nav>
 
         <button
           onClick={() => setCollapsed((c) => !c)}
