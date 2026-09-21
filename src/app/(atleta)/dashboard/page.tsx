@@ -327,17 +327,24 @@ export default function DashboardPage() {
     <>
       <div className="-mx-4 -mt-4 sm:hidden">
         <section className="relative isolate overflow-hidden bg-navy px-4 pb-9 pt-5 text-white">
+          <div className="absolute inset-0 -z-20 bg-gradient-to-br from-navy via-navy-light to-navy" />
           <div
-            className="absolute inset-0 -z-20 bg-cover bg-center opacity-40"
-            style={{
-              backgroundImage: `url(${
-                modalidade === "bicicleta"
-                  ? "/informativo-fundo-bike.png"
-                  : "/informativo-fundo-corrida.png"
-              })`,
-            }}
+            aria-hidden="true"
+            className="absolute -right-20 -top-24 -z-10 size-64 rounded-full border-[32px] border-primary/10"
           />
-          <div className="absolute inset-0 -z-10 bg-gradient-to-b from-navy/40 via-navy/80 to-navy" />
+          <div
+            aria-hidden="true"
+            className="absolute -bottom-28 -left-20 -z-10 size-56 rounded-full border-[28px] border-secondary/10"
+          />
+          <ModalidadeIcon
+            aria-hidden="true"
+            className="absolute -bottom-5 -right-8 -z-10 size-44 text-white/[0.05]"
+            strokeWidth={1}
+          />
+          <div
+            aria-hidden="true"
+            className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-primary via-secondary to-accent"
+          />
 
           <div className="flex items-start justify-between gap-4">
             <Image
