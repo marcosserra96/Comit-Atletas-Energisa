@@ -8,6 +8,8 @@ import {
   BarChart3,
   CalendarCheck,
   CalendarDays,
+  ChevronDown,
+  ChevronUp,
   Footprints,
   Gauge,
   Map,
@@ -182,6 +184,7 @@ export default function DesempenhoPage() {
   const [metricaVolume, setMetricaVolume] = useState<MetricaVolume>("km");
   const [busca, setBusca] = useState("");
   const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>("todos");
+  const [mostrarAnalisesExtras, setMostrarAnalisesExtras] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -307,7 +310,8 @@ export default function DesempenhoPage() {
               iconColor="var(--color-accent)"
               subtitle="no período selecionado"
             />
-            <MetricCard
+            <div className={mostrarAnalisesExtras ? "contents" : "hidden sm:contents"}>
+              <MetricCard
               label="Média mensal"
               value={formatarNumero(analise.mediaTreinosMes, 1)}
               icon={Gauge}
@@ -319,17 +323,37 @@ export default function DesempenhoPage() {
               icon={Target}
               subtitle="considerando treinos com e sem KM"
             />
-            <MetricCard
-              label="Mês mais ativo"
-              value={analise.melhorMes ? analise.melhorMes.rotuloCurto : "—"}
-              icon={CalendarDays}
-              subtitle={
-                analise.melhorMes
-                  ? analise.melhorMes.treinos + " treino(s)"
-                  : "sem treinos no período"
-              }
-            />
+              <MetricCard
+                label="Mês mais ativo"
+                value={analise.melhorMes ? analise.melhorMes.rotuloCurto : "—"}
+                icon={CalendarDays}
+                subtitle={
+                  analise.melhorMes
+                    ? analise.melhorMes.treinos + " treino(s)"
+                    : "sem treinos no período"
+                }
+              />
+            </div>
           </div>
+
+          <Button
+            variant="secondary"
+            className="w-full justify-center sm:hidden"
+            onClick={() => setMostrarAnalisesExtras((valor) => !valor)}
+            aria-expanded={mostrarAnalisesExtras}
+          >
+            {mostrarAnalisesExtras ? (
+              <>
+                Mostrar menos
+                <ChevronUp className="size-4" />
+              </>
+            ) : (
+              <>
+                Ver mais análises
+                <ChevronDown className="size-4" />
+              </>
+            )}
+          </Button>
 
           <div className="grid gap-6 lg:grid-cols-5">
             <Card className="lg:col-span-3">
@@ -354,7 +378,7 @@ export default function DesempenhoPage() {
               />
             </Card>
 
-            <Card className="flex flex-col lg:col-span-2">
+            <Card className={(mostrarAnalisesExtras ? "flex" : "hidden sm:flex") + " flex-col lg:col-span-2"}>
               <SectionHeader title="Consistência" icon={Sparkles} />
               <div className="mt-5 grid grid-cols-2 gap-3">
                 <div className="rounded-[var(--radius)] bg-bg-inset p-4">
@@ -401,7 +425,7 @@ export default function DesempenhoPage() {
             </Card>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className={(mostrarAnalisesExtras ? "grid" : "hidden sm:grid") + " gap-6 lg:grid-cols-2"}>
             <Card>
               <SectionHeader
                 title="Volume mensal"
