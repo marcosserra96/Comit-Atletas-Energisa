@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
+import { cn } from "@/lib/cn";
 
 const SIZES = {
   sm: "max-w-sm",
@@ -20,12 +21,22 @@ interface ModalProps {
   children: ReactNode;
   footer?: ReactNode;
   size?: keyof typeof SIZES;
+  mobileSheet?: boolean;
 }
 
 const FOCUSABLE =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-export function Modal({ open, onClose, title, description, children, footer, size = "sm" }: ModalProps) {
+export function Modal({
+  open,
+  onClose,
+  title,
+  description,
+  children,
+  footer,
+  size = "sm",
+  mobileSheet = false,
+}: ModalProps) {
   useLockBodyScroll(open);
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -81,13 +92,21 @@ export function Modal({ open, onClose, title, description, children, footer, siz
     <AnimatePresence>
       {open ? (
         <motion.div
-          className="fixed inset-0 z-[90] overflow-y-auto bg-navy/50 backdrop-blur-sm px-4 py-6"
+          className={cn(
+            "fixed inset-0 z-[90] overflow-y-auto bg-navy/50 backdrop-blur-sm",
+            mobileSheet ? "px-0 py-0 sm:px-4 sm:py-6" : "px-4 py-6",
+          )}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
         >
-          <div className="flex min-h-full items-center justify-center">
+          <div
+            className={cn(
+              "flex min-h-full justify-center",
+              mobileSheet ? "items-end sm:items-center" : "items-center",
+            )}
+          >
             <motion.div
               ref={dialogRef}
               role="dialog"
@@ -100,7 +119,13 @@ export function Modal({ open, onClose, title, description, children, footer, siz
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 8, scale: 0.97 }}
               transition={{ duration: 0.18 }}
-              className={`w-full ${SIZES[size]} rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-[var(--shadow-modal)] sm:p-6`}
+              className={cn(
+                "w-full border border-border bg-bg-card p-4 shadow-[var(--shadow-modal)] sm:p-6",
+                SIZES[size],
+                mobileSheet
+                  ? "rounded-t-[var(--radius-2xl)] border-b-0 pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-[var(--radius-lg)] sm:border-b"
+                  : "rounded-[var(--radius-lg)]",
+              )}
             >
               <div className="mb-1 flex items-start justify-between gap-3">
                 <h2 id={titleId} className="text-lg font-bold text-text">

@@ -28,6 +28,8 @@ import {
   TrendingUp,
   Award,
   AlertCircle,
+  Navigation,
+  Users,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -40,6 +42,7 @@ import { useToast } from "@/components/ui/Toast";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { MetricCard } from "@/components/ui/MetricCard";
@@ -94,6 +97,7 @@ export default function DashboardPage() {
   const [proximoEvento, setProximoEvento] = useState<EventoDoc[] | null>(null);
   const [noticias, setNoticias] = useState<NoticiaDoc[] | null>(null);
   const [inscrevendo, setInscrevendo] = useState(false);
+  const [eventoAbertoId, setEventoAbertoId] = useState<string | null>(null);
   const [rankingVisibility, setRankingVisibility] = useState<
     RankingVisibilityConfigDoc | null | undefined
   >(undefined);
@@ -246,15 +250,18 @@ export default function DashboardPage() {
   const eventosPosteriores = eventosDoAtleta.slice(1, 4);
   const dataEvento = evento ? partesDataEvento(evento.data) : null;
   const jaConfirmado = !!evento?.inscritos?.includes(atleta.id);
+  const eventoAberto = eventosDoAtleta.find((item) => item.id === eventoAbertoId);
+  const eventoAbertoConfirmado = !!eventoAberto?.inscritos?.includes(atleta.id);
 
-  async function handleRsvp() {
-    if (!evento || isPreview) return;
+  async function handleRsvp(eventoAlvo = evento) {
+    if (!eventoAlvo || isPreview) return;
+    const confirmado = !!eventoAlvo.inscritos?.includes(atleta.id);
     setInscrevendo(true);
     try {
-      await updateDoc(doc(db, "agenda_eventos", evento.id), {
-        inscritos: jaConfirmado ? arrayRemove(atleta.id) : arrayUnion(atleta.id),
+      await updateDoc(doc(db, "agenda_eventos", eventoAlvo.id), {
+        inscritos: confirmado ? arrayRemove(atleta.id) : arrayUnion(atleta.id),
       });
-      show("success", jaConfirmado ? "Presença cancelada." : "Presença confirmada!");
+      show("success", confirmado ? "Presença cancelada." : "Presença confirmada!");
     } catch {
       show("error", "Não foi possível atualizar agora. Tente novamente.");
     } finally {
@@ -407,7 +414,12 @@ export default function DashboardPage() {
               <div className="mt-3 h-24 animate-pulse rounded-[var(--radius)] bg-bg-inset" />
             ) : evento ? (
               <div className="mt-3">
-                <div className="flex items-center gap-3 rounded-[var(--radius)] bg-bg-inset p-3">
+                <button
+                  type="button"
+                  aria-haspopup="dialog"
+                  onClick={() => setEventoAbertoId(evento.id)}
+                  className="flex min-h-20 w-full items-center gap-3 rounded-[var(--radius)] bg-bg-inset p-3 text-left transition-colors active:bg-border-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
                   <div className="flex size-14 shrink-0 flex-col items-center justify-center rounded-[var(--radius)] bg-bg-card shadow-sm">
                     <span className="text-[10px] font-bold uppercase text-primary">
                       {dataEvento?.mes}
@@ -427,12 +439,14 @@ export default function DashboardPage() {
                     <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-success-subtle text-success">
                       <Check className="size-4" />
                     </span>
-                  ) : null}
-                </div>
+                  ) : (
+                    <ChevronRight className="size-5 shrink-0 text-text-muted" aria-hidden="true" />
+                  )}
+                </button>
                 <Button
                   variant={jaConfirmado ? "secondary" : "primary"}
                   className="mt-3 min-h-11 w-full justify-center"
-                  onClick={handleRsvp}
+                  onClick={() => handleRsvp()}
                   loading={inscrevendo}
                   disabled={isPreview}
                 >
@@ -699,7 +713,13 @@ export default function DashboardPage() {
             ) : (
               <div className="mt-4 flex flex-col">
                 <div className="rounded-[var(--radius-lg)] border border-primary/15 bg-gradient-to-br from-primary/10 via-bg-card to-secondary/10 p-4">
-                  <div className="flex items-start gap-4">
+                  <button
+                    type="button"
+                    aria-haspopup="dialog"
+                    onClick={() => setEventoAbertoId(evento.id)}
+                    className="w-full rounded-[var(--radius)] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    <div className="flex items-start gap-4">
                     <div className="flex size-18 shrink-0 flex-col items-center justify-center rounded-[var(--radius)] bg-bg-card shadow-sm">
                       <span className="text-xs font-bold uppercase tracking-wide text-primary">
                         {dataEvento?.mes}
@@ -731,10 +751,15 @@ export default function DashboardPage() {
                       </div>
                     </div>
                   </div>
+                    <span className="mt-3 flex items-center justify-end gap-1 text-xs font-semibold text-primary">
+                      Ver detalhes
+                      <ChevronRight className="size-4" aria-hidden="true" />
+                    </span>
+                  </button>
                   <Button
                     variant={jaConfirmado ? "secondary" : "primary"}
                     className="mt-4 w-full justify-center"
-                    onClick={handleRsvp}
+                    onClick={() => handleRsvp()}
                     loading={inscrevendo}
                     disabled={isPreview}
                   >
@@ -826,6 +851,103 @@ export default function DashboardPage() {
         </div>
       </div>
     </div>
+
+      <Modal
+        open={Boolean(eventoAberto)}
+        onClose={() => setEventoAbertoId(null)}
+        title={eventoAberto?.titulo ?? "Detalhes do evento"}
+        description={eventoAberto ? formatShortDate(eventoAberto.data) : undefined}
+        size="md"
+        mobileSheet
+      >
+        {eventoAberto ? (
+          <div className="flex flex-col gap-5">
+            <div className="grid gap-3 rounded-[var(--radius-lg)] bg-bg-inset p-4">
+              <div className="flex items-start gap-3">
+                <CalendarCheck className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Data</p>
+                  <p className="mt-0.5 text-sm font-semibold text-text">
+                    {formatShortDate(eventoAberto.data)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <MapPin className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Local</p>
+                  <p className="mt-0.5 break-words text-sm font-semibold text-text">
+                    {eventoAberto.local}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <ModalidadeIcon className="mt-0.5 size-5 shrink-0 text-secondary" aria-hidden="true" />
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Modalidade</p>
+                  <p className="mt-0.5 text-sm font-semibold text-text">
+                    {eventoAberto.modalidade === "ambas"
+                      ? "Corrida e ciclismo"
+                      : eventoAberto.modalidade === "bicicleta"
+                        ? "Ciclismo"
+                        : "Corrida"}
+                    {eventoAberto.km ? ` · ${eventoAberto.km} km` : ""}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <Users className="mt-0.5 size-5 shrink-0 text-accent" aria-hidden="true" />
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Participação</p>
+                  <p className="mt-0.5 text-sm font-semibold text-text">
+                    {eventoAberto.inscritos?.length ?? 0} confirmado(s)
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {eventoAbertoConfirmado ? (
+              <div className="flex items-center gap-2 rounded-[var(--radius)] bg-success-subtle px-3 py-2.5 text-sm font-semibold text-success">
+                <Check className="size-4 shrink-0" aria-hidden="true" />
+                Sua presença está confirmada
+              </div>
+            ) : null}
+
+            <div className="grid grid-cols-2 gap-2">
+              <a
+                href={"https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(eventoAberto.local)}
+                target="_blank"
+                rel="noreferrer"
+                className="flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius)] border border-border px-3 text-sm font-semibold text-text-light transition-colors hover:bg-bg-inset focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <Navigation className="size-4 text-primary" aria-hidden="true" />
+                Abrir no Maps
+              </a>
+              <Link
+                href={withPreview("/eventos")}
+                onClick={() => setEventoAbertoId(null)}
+                className="flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius)] border border-border px-3 text-sm font-semibold text-text-light transition-colors hover:bg-bg-inset focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                Agenda completa
+              </Link>
+            </div>
+
+            <Button
+              variant={eventoAbertoConfirmado ? "secondary" : "primary"}
+              className="min-h-11 w-full justify-center"
+              onClick={() => handleRsvp(eventoAberto)}
+              loading={inscrevendo}
+              disabled={isPreview}
+            >
+              {isPreview
+                ? "Somente visualização"
+                : eventoAbertoConfirmado
+                  ? "Cancelar presença"
+                  : "Confirmar presença"}
+            </Button>
+          </div>
+        ) : null}
+      </Modal>
     </>
   );
 }
