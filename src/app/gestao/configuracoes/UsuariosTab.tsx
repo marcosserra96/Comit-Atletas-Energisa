@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { collection, doc, onSnapshot, query, updateDoc, where, writeBatch } from "firebase/firestore";
-import { KeyRound, Link2, ShieldCheck, TestTube2 } from "lucide-react";
-import { db } from "@/lib/firebase";
+import { CloudDownload, KeyRound, Link2, ShieldCheck, TestTube2 } from "lucide-react";
+import { auth, db } from "@/lib/firebase";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
 import { Card } from "@/components/ui/Card";
@@ -18,6 +18,15 @@ import { TestarPermissoesModal } from "./TestarPermissoesModal";
 import { CorrigirVinculoModal } from "./CorrigirVinculoModal";
 import type { AtletaDoc, Equipe, Role } from "@/lib/types";
 
+interface ResultadoSincronizacao {
+  total: number;
+  adicionadas: number;
+  jaVinculadas: number;
+  jaSolicitadas: number;
+  semEmail: number;
+  desativadas: number;
+}
+
 export function UsuariosTab() {
   const { uid: adminUid, atleta: adminAtleta } = useActiveSession();
   const { show } = useToast();
@@ -27,6 +36,9 @@ export function UsuariosTab() {
   const [testandoPermissoes, setTestandoPermissoes] = useState<AtletaDoc | null>(null);
   const [corrigindoVinculo, setCorrigindoVinculo] = useState<AtletaDoc | null>(null);
   const [salvandoIds, setSalvandoIds] = useState<Set<string>>(new Set());
+  const [sincronizando, setSincronizando] = useState(false);
+  const [resultadoSincronizacao, setResultadoSincronizacao] =
+    useState<ResultadoSincronizacao | null>(null);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "atletas"), (snap) => {
@@ -81,6 +93,41 @@ export function UsuariosTab() {
     [staff],
   );
 
+  async function handleSincronizarContas() {
+    const user = auth.currentUser;
+    if (!user) {
+      show("error", "Sua sessão terminou. Entre novamente para continuar.");
+      return;
+    }
+
+    setSincronizando(true);
+    setResultadoSincronizacao(null);
+    try {
+      const token = await user.getIdToken(true);
+      const response = await fetch("/api/admin/sincronizar-solicitacoes", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = (await response.json()) as ResultadoSincronizacao & { error?: string };
+      if (!response.ok) throw new Error(data.error || "Não foi possível sincronizar as contas.");
+
+      setResultadoSincronizacao(data);
+      show(
+        "success",
+        data.adicionadas > 0
+          ? `${data.adicionadas} conta(s) enviada(s) para aprovação.`
+          : "Todas as contas já estavam tratadas.",
+      );
+    } catch (error) {
+      show(
+        "error",
+        error instanceof Error ? error.message : "Não foi possível sincronizar as contas.",
+      );
+    } finally {
+      setSincronizando(false);
+    }
+  }
+
   async function handleChangeRole(pessoa: AtletaDoc, novaRole: Role) {
     if (pessoa.role === "administrador" && novaRole !== "administrador" && totalAdministradores <= 1) {
       show("error", "Não é possível remover o último administrador do programa.");
@@ -116,6 +163,56 @@ export function UsuariosTab() {
 
   return (
     <div className="flex flex-col gap-4">
+      <Card className="border-primary/20 bg-primary-subtle/30">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <CloudDownload className="size-5" aria-hidden="true" />
+            </span>
+            <div>
+              <h3 className="text-sm font-bold text-text">Sincronizar contas do Firebase</h3>
+              <p className="mt-1 max-w-2xl text-xs leading-relaxed text-text-light">
+                Localiza contas ainda sem vínculo e cria os pedidos pendentes automaticamente,
+                sem depender de um novo acesso do atleta.
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            className="w-full shrink-0 sm:w-auto"
+            onClick={handleSincronizarContas}
+            loading={sincronizando}
+          >
+            <CloudDownload className="size-4" aria-hidden="true" />
+            Sincronizar contas
+          </Button>
+        </div>
+
+        {resultadoSincronizacao && (
+          <div
+            className="mt-4 grid grid-cols-2 gap-2 border-t border-primary/15 pt-4 text-xs sm:grid-cols-4"
+            aria-live="polite"
+          >
+            <p className="rounded-[var(--radius-sm)] bg-bg-card px-3 py-2 text-text-light">
+              <strong className="block text-base text-primary">{resultadoSincronizacao.adicionadas}</strong>
+              adicionadas
+            </p>
+            <p className="rounded-[var(--radius-sm)] bg-bg-card px-3 py-2 text-text-light">
+              <strong className="block text-base text-text">{resultadoSincronizacao.jaVinculadas}</strong>
+              já vinculadas
+            </p>
+            <p className="rounded-[var(--radius-sm)] bg-bg-card px-3 py-2 text-text-light">
+              <strong className="block text-base text-text">{resultadoSincronizacao.jaSolicitadas}</strong>
+              já solicitadas
+            </p>
+            <p className="rounded-[var(--radius-sm)] bg-bg-card px-3 py-2 text-text-light">
+              <strong className="block text-base text-text">{resultadoSincronizacao.total}</strong>
+              contas analisadas
+            </p>
+          </div>
+        )}
+      </Card>
+
       <p className="text-sm text-text-light">
         {staff === null ? "Carregando…" : `${staff.length} usuários com acesso ao portal.`}
       </p>
