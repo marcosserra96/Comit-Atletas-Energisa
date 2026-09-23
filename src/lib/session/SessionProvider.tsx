@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged, sendEmailVerification, signOut, type User } from "firebase/auth";
-import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, onSnapshot, runTransaction, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { AppSplash } from "@/components/ui/AppSplash";
 import { EmailVerificationScreen } from "@/components/session/EmailVerificationScreen";
@@ -27,21 +27,23 @@ interface SessionContextValue {
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
-async function criarSolicitacaoSeNecessario(user: User) {
+export async function criarSolicitacaoSeNecessario(user: User, nomeInformado?: string) {
   const solicitacaoRef = doc(db, "solicitacoes_acesso", user.uid);
-  const existente = await getDoc(solicitacaoRef);
-  if (existente.exists()) return;
-
   const email = user.email?.trim().toLowerCase();
   if (!email) throw new Error("Usuário sem e-mail.");
 
   await user.getIdToken(true);
-  await setDoc(solicitacaoRef, {
-    uid: user.uid,
-    nome: user.displayName?.trim() || email.split("@")[0],
-    email,
-    status: "pendente",
-    criadoEm: serverTimestamp(),
+  await runTransaction(db, async (transaction) => {
+    const existente = await transaction.get(solicitacaoRef);
+    if (existente.exists()) return;
+
+    transaction.set(solicitacaoRef, {
+      uid: user.uid,
+      nome: nomeInformado?.trim() || user.displayName?.trim() || email.split("@")[0],
+      email,
+      status: "pendente",
+      criadoEm: serverTimestamp(),
+    });
   });
 }
 
@@ -73,15 +75,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         unsubAtleta?.();
 
         if (!usuarioSnap.exists()) {
-          if (!user.emailVerified) {
-            setSession({ status: "email-nao-verificado", email: user.email ?? "" });
-            return;
-          }
-
           try {
             await criarSolicitacaoSeNecessario(user);
           } catch {
-            setSession({ status: "email-nao-verificado", email: user.email ?? "" });
+            if (!user.emailVerified) {
+              setSession({ status: "email-nao-verificado", email: user.email ?? "" });
+            } else {
+              setSession({ status: "pending" });
+            }
             return;
           }
 

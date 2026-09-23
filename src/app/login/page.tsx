@@ -26,7 +26,10 @@ import { Button } from "@/components/ui/Button";
 import { AppSplash } from "@/components/ui/AppSplash";
 import { useToast } from "@/components/ui/Toast";
 import { firebaseErrorCode, mapFirebaseError } from "@/lib/firebaseErrors";
-import { useSession } from "@/lib/session/SessionProvider";
+import {
+  criarSolicitacaoSeNecessario,
+  useSession,
+} from "@/lib/session/SessionProvider";
 import { homeForRole } from "@/lib/session/routing";
 import { souTambemAtleta } from "@/lib/session/dualRole";
 import { ForgotPasswordModal } from "./ForgotPasswordModal";
@@ -111,8 +114,14 @@ export default function LoginPage() {
         regPassword,
       );
       await updateProfile(credential.user, { displayName: regNome.trim() });
-      await sendEmailVerification(credential.user);
-      show("success", "Enviamos um link para confirmar seu e-mail.");
+      try {
+        await criarSolicitacaoSeNecessario(credential.user, regNome.trim());
+        show("success", "Cadastro enviado para aprovação.");
+      } catch {
+        // Compatibilidade temporária enquanto a nova regra do Firestore não for publicada.
+        await sendEmailVerification(credential.user);
+        show("success", "Enviamos um link para confirmar seu e-mail.");
+      }
     } catch (error) {
       setRegisterError(mapFirebaseError(firebaseErrorCode(error)));
     } finally {
