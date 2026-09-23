@@ -62,10 +62,15 @@ service cloud.firestore {
         request.time > get(path).data.bicicleta.fimEm;
     }
 
+    function rankingPortalAtletasAtivo() {
+      let path = /databases/$(database)/documents/configuracoes/ranking_visibilidade;
+      return !exists(path) || get(path).data.get("exibirParaAtletas", true);
+    }
+
     function rankingLiberado(equipe) {
-      return equipe == "corrida"
+      return rankingPortalAtletasAtivo() && (equipe == "corrida"
         ? rankingCorridaLiberado()
-        : equipe == "bicicleta" && rankingBicicletaLiberado();
+        : equipe == "bicicleta" && rankingBicicletaLiberado());
     }
 
     function minhasPermissoes() {

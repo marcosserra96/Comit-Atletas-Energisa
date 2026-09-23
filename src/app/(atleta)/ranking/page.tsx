@@ -182,6 +182,7 @@ export default function RankingPage() {
     !isStaff && visibility ? rankingOcultoAgora(visibility, "corrida") : false;
   const bicicletaOculta =
     !isStaff && visibility ? rankingOcultoAgora(visibility, "bicicleta") : false;
+  const rankingDesativado = !isStaff && visibility?.exibirParaAtletas === false;
   const rankingOcultoAtual = modalidade === "corrida" ? corridaOculta : bicicletaOculta;
   const mensagemOcultacao =
     visibility?.[modalidade].mensagem.trim() ||
@@ -193,6 +194,7 @@ export default function RankingPage() {
       !possuiResultadosPublicados ||
       !periods?.geracaoPublicada ||
       !podeConsultar ||
+      rankingDesativado ||
       rankingOcultoAtual ||
       (!isStaff && (visibility === undefined || erroConfig))
     ) {
@@ -225,6 +227,7 @@ export default function RankingPage() {
     periodoEfetivo,
     periods?.geracaoPublicada,
     possuiResultadosPublicados,
+    rankingDesativado,
     rankingOcultoAtual,
     visibility,
   ]);
@@ -235,6 +238,7 @@ export default function RankingPage() {
       periods === undefined ||
       !athleteDirectory ||
       !podeConsultar ||
+      rankingDesativado ||
       rankingOcultoAtual ||
       (!isStaff && (visibility === undefined || erroConfig))
     ) {
@@ -266,6 +270,7 @@ export default function RankingPage() {
     periods,
     podeConsultar,
     possuiResultadosPublicados,
+    rankingDesativado,
     rankingOcultoAtual,
     visibility,
   ]);
@@ -356,7 +361,15 @@ export default function RankingPage() {
         </div>
       ) : null}
 
-      {!isStaff && !athleteModality ? (
+      {rankingDesativado ? (
+        <Card>
+          <EmptyState
+            icon={EyeOff}
+            title="Ranking indisponível"
+            description="A consulta ao ranking está temporariamente desativada pelo administrador."
+          />
+        </Card>
+      ) : !isStaff && !athleteModality ? (
         <EmptyState
           icon={Trophy}
           title="Modalidade não definida"

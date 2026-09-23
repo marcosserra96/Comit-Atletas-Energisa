@@ -31,9 +31,11 @@ const navItems = [
 export function AtletaSidebar({
   mobileOpen,
   onCloseMobile,
+  rankingDisponivel,
 }: {
   mobileOpen: boolean;
   onCloseMobile: () => void;
+  rankingDisponivel: boolean;
 }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
@@ -74,7 +76,7 @@ export function AtletaSidebar({
         </div>
 
         <nav className="mt-2 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3 pb-3" aria-label="Menu do atleta">
-          {navItems.map(({ href, label, icon: Icon }) => {
+          {navItems.filter(({ href }) => rankingDisponivel || href !== "/ranking").map(({ href, label, icon: Icon }) => {
             const active = pathname === href;
             return (
               <Link

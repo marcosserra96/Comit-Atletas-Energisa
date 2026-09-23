@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { doc, getDoc, Timestamp, writeBatch } from "firebase/firestore";
-import { Bike, CalendarClock, Footprints, Save } from "lucide-react";
+import { Bike, CalendarClock, Eye, EyeOff, Footprints, Save } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { addAuditToBatch } from "@/lib/audit";
 import { useActiveSession } from "@/lib/session/SessionProvider";
@@ -152,6 +152,7 @@ export function RankingVisibilityTab() {
     try {
       const batch = writeBatch(db);
       batch.set(doc(db, "configuracoes", "ranking_visibilidade"), {
+        exibirParaAtletas: config.exibirParaAtletas,
         corrida: {
           ...config.corrida,
           inicioEm: timestampInicio(config.corrida.inicio),
@@ -170,6 +171,7 @@ export function RankingVisibilityTab() {
         entidade: "configuracoes",
         entidadeId: "ranking_visibilidade",
         dados: {
+          exibirParaAtletas: config.exibirParaAtletas,
           corrida: config.corrida,
           bicicleta: config.bicicleta,
         },
@@ -177,7 +179,7 @@ export function RankingVisibilityTab() {
         criadoPorNome: atleta.nome,
       });
       await batch.commit();
-      show("success", "Períodos de ocultação do ranking salvos.");
+      show("success", "Configurações de visibilidade do ranking salvas.");
     } catch {
       show("error", "Não foi possível salvar agora. Tente novamente.");
     } finally {
@@ -189,6 +191,60 @@ export function RankingVisibilityTab() {
 
   return (
     <div className="flex flex-col gap-4">
+      <Card className="border-primary/20">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex min-w-0 items-start gap-3">
+            <div className={`flex size-11 shrink-0 items-center justify-center rounded-full ${
+              config.exibirParaAtletas ? "bg-success-subtle text-success" : "bg-bg-inset text-text-muted"
+            }`}>
+              {config.exibirParaAtletas ? (
+                <Eye className="size-5" aria-hidden="true" />
+              ) : (
+                <EyeOff className="size-5" aria-hidden="true" />
+              )}
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-sm font-bold text-text">Ranking no portal dos atletas</h3>
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                  config.exibirParaAtletas
+                    ? "bg-success-subtle text-success"
+                    : "bg-bg-inset text-text-muted"
+                }`}>
+                  {config.exibirParaAtletas ? "Visível" : "Oculto"}
+                </span>
+              </div>
+              <p className="mt-1 text-xs leading-relaxed text-text-light">
+                {config.exibirParaAtletas
+                  ? "O botão e a página do ranking estão disponíveis para os atletas."
+                  : "O botão some da navegação e o acesso direto fica bloqueado. Administradores e Comitê continuam com acesso."}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-label="Exibir ranking no portal dos atletas"
+            aria-checked={config.exibirParaAtletas}
+            onClick={() =>
+              setConfig((atual) => ({
+                ...atual,
+                exibirParaAtletas: !atual.exibirParaAtletas,
+              }))
+            }
+            className="flex min-h-11 min-w-14 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          >
+            <span className={`relative h-7 w-12 rounded-full transition-colors ${
+              config.exibirParaAtletas ? "bg-success" : "bg-border"
+            }`}>
+              <span className={`absolute left-1 top-1 size-5 rounded-full bg-white shadow transition-transform ${
+                config.exibirParaAtletas ? "translate-x-5" : "translate-x-0"
+              }`} />
+            </span>
+          </button>
+        </div>
+      </Card>
+
       <div className="flex items-start gap-3 rounded-[var(--radius-lg)] border border-primary/20 bg-primary-subtle p-4">
         <CalendarClock className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
         <div>
@@ -217,7 +273,7 @@ export function RankingVisibilityTab() {
       <div className="flex justify-end">
         <Button onClick={handleSalvar} loading={saving}>
           <Save className="size-4" aria-hidden="true" />
-          Salvar períodos
+          Salvar visibilidade
         </Button>
       </div>
     </div>

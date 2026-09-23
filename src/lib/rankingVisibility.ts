@@ -7,6 +7,7 @@ import type {
 } from "@/lib/types";
 
 export const RANKING_VISIBILITY_DEFAULT: RankingVisibilityConfigDoc = {
+  exibirParaAtletas: true,
   corrida: { ativo: false, inicio: "", fim: "", mensagem: "" },
   bicicleta: { ativo: false, inicio: "", fim: "", mensagem: "" },
 };
@@ -28,6 +29,7 @@ export function normalizarRankingVisibility(
   value?: Partial<RankingVisibilityConfigDoc>,
 ): RankingVisibilityConfigDoc {
   return {
+    exibirParaAtletas: value?.exibirParaAtletas !== false,
     corrida: normalizarPeriodo(value?.corrida),
     bicicleta: normalizarPeriodo(value?.bicicleta),
     atualizadoEm: value?.atualizadoEm,

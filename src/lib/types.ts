@@ -256,6 +256,8 @@ export interface RankingVisibilityPeriodConfig {
 }
 
 export interface RankingVisibilityConfigDoc {
+  /** Controle geral da presença do ranking no portal dos atletas. */
+  exibirParaAtletas: boolean;
   corrida: RankingVisibilityPeriodConfig;
   bicicleta: RankingVisibilityPeriodConfig;
   atualizadoEm?: unknown;

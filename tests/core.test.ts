@@ -65,6 +65,7 @@ test("formata a data civil usando os componentes locais", () => {
 
 
 const visibilidade: RankingVisibilityConfigDoc = {
+  exibirParaAtletas: true,
   corrida: {
     ativo: true,
     inicio: "2026-09-10",

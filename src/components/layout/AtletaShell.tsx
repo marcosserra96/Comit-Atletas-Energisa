@@ -9,6 +9,7 @@ import { AtletaSidebar } from "@/components/layout/AtletaSidebar";
 import { AtletaTopbar } from "@/components/layout/AtletaTopbar";
 import { MobileBottomNav } from "@/components/ui/MobileBottomNav";
 import { AthleteViewProvider, useAthleteView } from "@/lib/session/AthleteViewProvider";
+import { useRankingAvailability } from "@/lib/session/useRankingAvailability";
 
 const bottomNavItems = [
   { href: "/dashboard", label: "Início", icon: LayoutDashboard },
@@ -21,11 +22,18 @@ const bottomNavItems = [
 function AtletaShellInner({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { atleta, isPreview, withPreview } = useAthleteView();
-  const mobileItems = bottomNavItems.map((item) => ({ ...item, href: withPreview(item.href) }));
+  const { rankingDisponivel } = useRankingAvailability();
+  const mobileItems = bottomNavItems
+    .filter((item) => rankingDisponivel || item.href !== "/ranking")
+    .map((item) => ({ ...item, href: withPreview(item.href) }));
 
   return (
     <div className="flex min-h-screen">
-      <AtletaSidebar mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
+      <AtletaSidebar
+        mobileOpen={mobileOpen}
+        onCloseMobile={() => setMobileOpen(false)}
+        rankingDisponivel={rankingDisponivel}
+      />
       <div className="flex min-w-0 flex-1 flex-col">
         <AtletaTopbar onOpenMobileNav={() => setMobileOpen(true)} />
         {isPreview && (

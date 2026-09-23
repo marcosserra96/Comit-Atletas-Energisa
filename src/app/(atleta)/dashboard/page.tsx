@@ -17,7 +17,6 @@ import {
 import {
   Trophy,
   Bike,
-  Activity,
   ChevronRight,
   Footprints,
   History,
@@ -112,7 +111,10 @@ export default function DashboardPage() {
       rankingVisibility &&
       rankingOcultoAgora(rankingVisibility, modalidade),
   );
-  const rankingIndisponivel = rankingOcultoAtual || waitlisted;
+  const rankingDesativado = Boolean(
+    !isStaff && rankingVisibility?.exibirParaAtletas === false,
+  );
+  const rankingIndisponivel = rankingDesativado || rankingOcultoAtual || waitlisted;
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -211,16 +213,15 @@ export default function DashboardPage() {
     return unsubscribe;
   }, []);
 
-  const companheirosParaInsights = rankingIndisponivel ? [] : companheiros;
-
   const insights = useMemo(() => {
+    const companheirosParaInsights = rankingIndisponivel ? [] : companheiros;
     if (companheirosParaInsights === null || meusLancamentos === null) return null;
     return calcularInsightsAtleta({
       atleta,
       companheiros: companheirosParaInsights,
       meusLancamentos,
     });
-  }, [atleta, companheirosParaInsights, meusLancamentos]);
+  }, [atleta, companheiros, meusLancamentos, rankingIndisponivel]);
 
   const ultimosLancamentos = useMemo(
     () => [...(meusLancamentos ?? [])].sort((a, b) => b.dataTreino.localeCompare(a.dataTreino)).slice(0, 5),
@@ -559,7 +560,9 @@ export default function DashboardPage() {
             <MetricCard
               label="Posição no ranking"
               value={
-                rankingOcultoAtual
+                rankingDesativado
+                  ? "Indisponível"
+                  : rankingOcultoAtual
                   ? "Oculto"
                   : !modalidade || waitlisted
                     ? "—"
@@ -568,9 +571,11 @@ export default function DashboardPage() {
                       : "…"
               }
               icon={Award}
-              iconColor={!rankingOcultoAtual && isTop3 ? medalColor : undefined}
+              iconColor={!rankingIndisponivel && isTop3 ? medalColor : undefined}
               subtitle={
-                rankingOcultoAtual
+                rankingDesativado
+                  ? "Desativado pelo administrador"
+                  : rankingOcultoAtual
                   ? "Fechamento em andamento"
                   : modalidade && insights?.totalNoRanking
                     ? `de ${insights.totalNoRanking} atletas`
