@@ -264,6 +264,24 @@ export interface RankingVisibilityConfigDoc {
   atualizadoPor?: string;
 }
 
+export interface TermosProgramaDoc {
+  titulo: string;
+  conteudo: string;
+  ativo: boolean;
+  versao: number;
+  atualizadoEm?: unknown;
+  atualizadoPor?: string;
+}
+
+export interface AceiteTermosDoc {
+  uid: string;
+  atletaId: string;
+  nome: string;
+  email: string;
+  versao: number;
+  aceitoEm: unknown;
+}
+
 export interface InformativoConfigDoc {
   modalidade: "todos" | Modalidade;
   limite: number;

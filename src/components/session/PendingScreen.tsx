@@ -12,8 +12,8 @@ export function PendingScreen({ onLogout }: { onLogout: () => void }) {
         </span>
         <h1 className="mb-2 text-lg font-bold text-text">Acesso em análise</h1>
         <p className="mb-7 text-sm leading-relaxed text-text-light">
-          Sua solicitação foi enviada e está aguardando aprovação do administrador do programa.
-          Volte ao portal mais tarde para consultar o status do seu acesso.
+          Seu cadastro foi enviado para o Comitê. Assim que o acesso for liberado, entraremos em
+          contato.
         </p>
         <Button variant="secondary" className="w-full" onClick={onLogout}>
           <LogOut className="size-4" />

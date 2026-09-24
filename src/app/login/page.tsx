@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import {
   createUserWithEmailAndPassword,
-  sendEmailVerification,
   signInWithEmailAndPassword,
   updateProfile,
 } from "firebase/auth";
@@ -116,11 +115,15 @@ export default function LoginPage() {
       await updateProfile(credential.user, { displayName: regNome.trim() });
       try {
         await criarSolicitacaoSeNecessario(credential.user, regNome.trim());
-        show("success", "Cadastro enviado para aprovação.");
+        show(
+          "success",
+          "Cadastro enviado para o Comitê. Entraremos em contato após a liberação.",
+        );
       } catch {
-        // Compatibilidade temporária enquanto a nova regra do Firestore não for publicada.
-        await sendEmailVerification(credential.user);
-        show("success", "Enviamos um link para confirmar seu e-mail.");
+        show(
+          "info",
+          "Sua conta foi criada. O Comitê fará a inclusão na lista de aprovação.",
+        );
       }
     } catch (error) {
       setRegisterError(mapFirebaseError(firebaseErrorCode(error)));

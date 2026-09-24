@@ -13,6 +13,7 @@ import { RankingVisibilityTab } from "./RankingVisibilityTab";
 import { ConsistenciaTab } from "./ConsistenciaTab";
 import { DiagnosticoTab } from "./DiagnosticoTab";
 import { AuditoriaTab } from "./AuditoriaTab";
+import { TermosProgramaTab } from "./TermosProgramaTab";
 
 type Tab =
   | "usuarios"
@@ -20,6 +21,7 @@ type Tab =
   | "informativo"
   | "informativo_layout"
   | "ranking"
+  | "termos"
   | "consistencia"
   | "diagnostico"
   | "auditoria";
@@ -37,6 +39,8 @@ function conteudoDaAba(tab: Tab) {
       return <InformativoLayoutTab />;
     case "ranking":
       return <RankingVisibilityTab />;
+    case "termos":
+      return <TermosProgramaTab />;
     case "consistencia":
       return <ConsistenciaTab />;
     case "diagnostico":
@@ -72,6 +76,7 @@ export default function ConfigurarPortalPage() {
           { value: "informativo", label: "Informativo do ranking" },
           { value: "informativo_layout", label: "Layout do informativo" },
           { value: "ranking", label: "Visibilidade do ranking" },
+          { value: "termos", label: "Termos do programa" },
           { value: "consistencia", label: "Consistência" },
           { value: "diagnostico", label: "Diagnóstico e dados" },
           { value: "auditoria", label: "Auditoria" },
