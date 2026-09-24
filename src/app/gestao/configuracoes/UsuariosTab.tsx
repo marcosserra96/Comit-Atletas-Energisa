@@ -103,12 +103,42 @@ export function UsuariosTab() {
     setSincronizando(true);
     setResultadoSincronizacao(null);
     try {
-      const token = await user.getIdToken(true);
-      const response = await fetch("/api/admin/sincronizar-solicitacoes", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = (await response.json()) as ResultadoSincronizacao & { error?: string };
+      let token: string;
+      try {
+        token = await user.getIdToken();
+      } catch {
+        throw new Error("Não foi possível validar sua sessão. Saia e entre novamente.");
+      }
+
+      let response: Response;
+      try {
+        const endpoint = new URL(
+          "/api/admin/sincronizar-solicitacoes",
+          window.location.origin,
+        ).toString();
+        response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      } catch {
+        throw new Error("Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.");
+      }
+
+      const responseText = await response.text();
+      let data: ResultadoSincronizacao & { error?: string };
+      try {
+        data = responseText
+          ? (JSON.parse(responseText) as ResultadoSincronizacao & { error?: string })
+          : ({ error: "O servidor retornou uma resposta vazia." } as ResultadoSincronizacao & {
+              error?: string;
+            });
+      } catch {
+        throw new Error("O servidor retornou uma resposta inválida. Atualize o aplicativo e tente novamente.");
+      }
+
       if (!response.ok) throw new Error(data.error || "Não foi possível sincronizar as contas.");
 
       setResultadoSincronizacao(data);
