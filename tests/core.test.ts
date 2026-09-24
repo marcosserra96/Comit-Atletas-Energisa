@@ -11,6 +11,12 @@ import {
   justificativaAbrangeData,
   periodosAusenciaSobrepostos,
 } from "../src/lib/justificativasAusencia";
+import {
+  DOCUMENTOS_POR_MODALIDADE,
+  aceiteDocumentoProgramaId,
+  documentoProgramaComFallback,
+  modalidadeDocumentoDaEquipe,
+} from "../src/lib/termosPrograma";
 import type { RankingVisibilityConfigDoc } from "../src/lib/types";
 import type { AtletaDoc, HistoricoPontoDoc } from "../src/lib/types";
 
@@ -198,4 +204,35 @@ test("aplica automaticamente apenas justificativa aprovada dentro do período", 
   assert.equal(justificativaAbrangeData({ ...base, status: "aprovada" }, "2026-09-20"), true);
   assert.equal(justificativaAbrangeData({ ...base, status: "aprovada" }, "2026-09-21"), false);
   assert.equal(justificativaAbrangeData({ ...base, status: "pendente" }, "2026-09-15"), false);
+});
+
+test("seleciona apenas os dois documentos da modalidade do atleta", () => {
+  assert.deepEqual(DOCUMENTOS_POR_MODALIDADE.corrida, [
+    "corrida_regulamento",
+    "corrida_termo_responsabilidade",
+  ]);
+  assert.deepEqual(DOCUMENTOS_POR_MODALIDADE.bicicleta, [
+    "bicicleta_regulamento",
+    "bicicleta_termo_responsabilidade",
+  ]);
+  assert.equal(modalidadeDocumentoDaEquipe("fila_corrida"), "corrida");
+  assert.equal(modalidadeDocumentoDaEquipe("bicicleta"), "bicicleta");
+  assert.equal(modalidadeDocumentoDaEquipe("comite"), null);
+});
+
+test("versiona cada documento e aceite de forma independente", () => {
+  const regulamento = documentoProgramaComFallback("corrida_regulamento", {
+    titulo: "Regulamento atualizado",
+    versao: 3,
+    ativo: false,
+  });
+  const termo = documentoProgramaComFallback("corrida_termo_responsabilidade");
+
+  assert.equal(regulamento.versao, 3);
+  assert.equal(regulamento.ativo, false);
+  assert.equal(termo.versao, 1);
+  assert.equal(
+    aceiteDocumentoProgramaId("uid-1", "corrida_regulamento"),
+    "uid-1__corrida_regulamento",
+  );
 });

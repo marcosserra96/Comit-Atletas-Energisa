@@ -11,8 +11,11 @@ import { TermosAceiteScreen } from "@/components/session/TermosAceiteScreen";
 import { TermosErroScreen } from "@/components/session/TermosErroScreen";
 import type {
   AtletaDoc,
+  DocumentoProgramaDoc,
+  DocumentoProgramaId,
+  Modalidade,
   SolicitacaoAcessoDoc,
-  TermosProgramaDoc,
+  TipoDocumentoPrograma,
   UsuarioDoc,
 } from "@/lib/types";
 
@@ -23,7 +26,11 @@ type Session =
   | { status: "signed-out" }
   | { status: "pending" }
   | { status: "recusado"; motivo?: string }
-  | ({ status: "termos-pendentes"; termos: TermosProgramaDoc } & ActiveSessionData)
+  | ({
+      status: "termos-pendentes";
+      documentos: DocumentoProgramaDoc[];
+      modalidade: Modalidade;
+    } & ActiveSessionData)
   | ({ status: "erro-termos" } & ActiveSessionData)
   | ({ status: "active" } & ActiveSessionData);
 
@@ -77,17 +84,25 @@ async function consultarTermos(user: User, dados: ActiveSessionData): Promise<Se
     throw new Error(typeof body.error === "string" ? body.error : "Falha ao verificar os termos.");
   }
 
-  if (body.exigido === true && body.termos && typeof body.termos === "object") {
-    const termos = body.termos as Record<string, unknown>;
+  if (body.exigido === true && Array.isArray(body.documentos) && body.documentos.length > 0) {
+    const modalidade: Modalidade = body.modalidade === "bicicleta" ? "bicicleta" : "corrida";
+    const documentos = body.documentos.map((item) => {
+      const documento = item as Record<string, unknown>;
+      return {
+        id: String(documento.id) as DocumentoProgramaId,
+        modalidade,
+        tipo: String(documento.tipo) as TipoDocumentoPrograma,
+        titulo: String(documento.titulo || "Documento do Programa"),
+        conteudo: String(documento.conteudo || ""),
+        versao: Number(documento.versao) || 1,
+        ativo: true,
+      };
+    });
     return {
       status: "termos-pendentes",
       ...dados,
-      termos: {
-        titulo: String(termos.titulo || "Termos do Programa"),
-        conteudo: String(termos.conteudo || ""),
-        versao: Number(termos.versao) || 1,
-        ativo: true,
-      },
+      documentos,
+      modalidade,
     };
   }
 
@@ -204,10 +219,24 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     const token = await user.getIdToken();
     const response = await fetch("/api/termos/aceitar", {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        documentos: session.documentos.map((documento) => ({
+          id: documento.id,
+          versao: documento.versao,
+        })),
+      }),
     });
     const body = await respostaJson(response);
     if (!response.ok) {
+      if (response.status === 409) {
+        const dados = { uid: session.uid, usuario: session.usuario, atleta: session.atleta };
+        setSession(await consultarTermos(user, dados));
+        return;
+      }
       throw new Error(
         typeof body.error === "string" ? body.error : "Não foi possível registrar o aceite.",
       );
@@ -232,9 +261,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         <RecusadoScreen motivo={session.motivo} onLogout={logout} />
       ) : session.status === "termos-pendentes" ? (
         <TermosAceiteScreen
-          titulo={session.termos.titulo}
-          conteudo={session.termos.conteudo}
-          versao={session.termos.versao}
+          documentos={session.documentos}
+          modalidade={session.modalidade}
           nome={session.atleta.nome}
           email={session.atleta.email || auth.currentUser?.email || ""}
           onAceitar={aceitarTermos}

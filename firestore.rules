@@ -158,6 +158,16 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Aceites contêm identidade, e-mail, texto integral e evidência da versão.
+    // A consulta e a gravação ocorrem apenas pelas APIs autenticadas do servidor.
+    match /aceites_documentos_programa/{id} {
+      allow read, write: if false;
+
+      match /historico/{versao} {
+        allow read, write: if false;
+      }
+    }
+
     match /regras_pontuacao/{id} {
       allow read: if hasUsuario();
       allow write: if isAdmin() || comitePode("regras");

@@ -328,6 +328,43 @@ export interface TermosProgramaDoc {
   atualizadoPor?: string;
 }
 
+export type TipoDocumentoPrograma = "regulamento" | "termo_responsabilidade";
+
+export type DocumentoProgramaId =
+  | "corrida_regulamento"
+  | "corrida_termo_responsabilidade"
+  | "bicicleta_regulamento"
+  | "bicicleta_termo_responsabilidade";
+
+/** Documento jurídico/operacional versionado e específico de uma modalidade. */
+export interface DocumentoProgramaDoc {
+  id: DocumentoProgramaId;
+  modalidade: Modalidade;
+  tipo: TipoDocumentoPrograma;
+  titulo: string;
+  conteudo: string;
+  ativo: boolean;
+  versao: number;
+  atualizadoEm?: unknown;
+  atualizadoPor?: string;
+}
+
+/** Aceite individual de uma versão exata de um documento do programa. */
+export interface AceiteDocumentoProgramaDoc {
+  uid: string;
+  atletaId: string;
+  nome: string;
+  email: string;
+  documentoId: DocumentoProgramaId;
+  modalidade: Modalidade;
+  tipo: TipoDocumentoPrograma;
+  titulo: string;
+  conteudo: string;
+  hashConteudo: string;
+  versao: number;
+  aceitoEm: unknown;
+}
+
 export interface AceiteTermosDoc {
   uid: string;
   atletaId: string;

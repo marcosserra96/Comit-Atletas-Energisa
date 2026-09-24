@@ -80,7 +80,7 @@ export default function ConfigurarPortalPage() {
           { value: "informativo", label: "Informativo do ranking" },
           { value: "informativo_layout", label: "Layout do informativo" },
           { value: "ranking", label: "Visibilidade do ranking" },
-          { value: "termos", label: "Termos do programa" },
+          { value: "termos", label: "Documentos e aceites" },
           { value: "perfis_ocultos", label: "Perfis ocultos" },
           { value: "consistencia", label: "Consistência" },
           { value: "diagnostico", label: "Diagnóstico e dados" },

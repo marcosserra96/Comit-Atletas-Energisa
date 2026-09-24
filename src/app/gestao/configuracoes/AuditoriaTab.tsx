@@ -24,6 +24,9 @@ const acaoLabel: Record<string, string> = {
   cancelar_justificativa_ausencia: "Cancelamento de justificativa",
   aprovar_justificativa_ausencia: "Aprovação de justificativa",
   recusar_justificativa_ausencia: "Recusa de justificativa",
+  documento_programa_nova_versao: "Nova versão de documento",
+  documento_programa_status_alterado: "Status de documento",
+  documento_programa_aceito: "Aceite de documento",
 };
 
 export function AuditoriaTab() {

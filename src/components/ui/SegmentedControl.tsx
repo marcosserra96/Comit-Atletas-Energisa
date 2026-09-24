@@ -31,7 +31,7 @@ export function SegmentedControl<T extends string>({
           aria-pressed={value === opt.value}
           onClick={() => onChange(opt.value)}
           className={cn(
-            "flex items-center gap-1.5 rounded-[calc(var(--radius)-2px)] px-3.5 py-2 text-sm font-medium transition-colors",
+            "flex min-h-11 cursor-pointer items-center gap-1.5 rounded-[calc(var(--radius)-2px)] px-3.5 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
             value === opt.value
               ? "bg-bg-card font-semibold text-primary shadow-sm"
               : "text-text-light hover:text-text",

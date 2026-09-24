@@ -2,9 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Bike,
+  BookOpenCheck,
   CheckCircle2,
   Clock3,
   FileCheck2,
+  Footprints,
   RefreshCw,
   Save,
   ShieldCheck,
@@ -13,31 +16,54 @@ import {
 import { auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
+import type {
+  DocumentoProgramaDoc,
+  DocumentoProgramaId,
+  Modalidade,
+  TipoDocumentoPrograma,
+} from "@/lib/types";
 
-interface TermosConfig {
-  titulo: string;
-  conteudo: string;
-  ativo: boolean;
-  versao: number;
+interface DocumentoConfig
+  extends Omit<DocumentoProgramaDoc, "atualizadoEm"> {
   atualizadoEm?: string | null;
 }
 
-interface AceiteTermos {
+interface AceiteDocumento {
   uid: string;
   atletaId: string;
   nome: string;
   email: string;
+  documentoId: DocumentoProgramaId;
+  modalidade: Modalidade;
+  tipo: TipoDocumentoPrograma;
+  titulo: string;
   versao: number;
   aceitoEm: string | null;
 }
 
-const TERMOS_INICIAIS: TermosConfig = {
-  titulo: "Termos do Programa",
-  conteudo: "",
-  ativo: false,
-  versao: 0,
+const DOCUMENTOS: Record<
+  Modalidade,
+  Array<{ id: DocumentoProgramaId; tipo: TipoDocumentoPrograma; label: string }>
+> = {
+  corrida: [
+    { id: "corrida_regulamento", tipo: "regulamento", label: "Regulamento" },
+    {
+      id: "corrida_termo_responsabilidade",
+      tipo: "termo_responsabilidade",
+      label: "Termo de responsabilidade",
+    },
+  ],
+  bicicleta: [
+    { id: "bicicleta_regulamento", tipo: "regulamento", label: "Regulamento" },
+    {
+      id: "bicicleta_termo_responsabilidade",
+      tipo: "termo_responsabilidade",
+      label: "Termo de responsabilidade",
+    },
+  ],
 };
 
 async function apiAutenticada(path: string, init?: RequestInit) {
@@ -76,11 +102,22 @@ function formatarDataHora(valor: string | null | undefined) {
   }).format(new Date(valor));
 }
 
+function documentoAlterado(atual: DocumentoConfig, salvo: DocumentoConfig | undefined) {
+  if (!salvo) return false;
+  return (
+    atual.titulo.trim() !== salvo.titulo ||
+    atual.conteudo.trim() !== salvo.conteudo ||
+    atual.ativo !== salvo.ativo
+  );
+}
+
 export function TermosProgramaTab() {
   const { show } = useToast();
-  const [termos, setTermos] = useState<TermosConfig>(TERMOS_INICIAIS);
-  const [salvo, setSalvo] = useState<TermosConfig>(TERMOS_INICIAIS);
-  const [aceites, setAceites] = useState<AceiteTermos[]>([]);
+  const [documentos, setDocumentos] = useState<DocumentoConfig[]>([]);
+  const [salvos, setSalvos] = useState<DocumentoConfig[]>([]);
+  const [aceites, setAceites] = useState<AceiteDocumento[]>([]);
+  const [modalidade, setModalidade] = useState<Modalidade>("corrida");
+  const [tipo, setTipo] = useState<TipoDocumentoPrograma>("regulamento");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -88,12 +125,15 @@ export function TermosProgramaTab() {
     setLoading(true);
     try {
       const body = await apiAutenticada("/api/admin/termos");
-      const config = (body.termos || TERMOS_INICIAIS) as TermosConfig;
-      setTermos(config);
-      setSalvo(config);
-      setAceites((body.aceites || []) as AceiteTermos[]);
+      const configs = (body.documentos || []) as DocumentoConfig[];
+      setDocumentos(configs);
+      setSalvos(configs);
+      setAceites((body.aceites || []) as AceiteDocumento[]);
     } catch (error) {
-      show("error", error instanceof Error ? error.message : "Não foi possível carregar os termos.");
+      show(
+        "error",
+        error instanceof Error ? error.message : "Não foi possível carregar os documentos.",
+      );
     } finally {
       setLoading(false);
     }
@@ -104,18 +144,50 @@ export function TermosProgramaTab() {
     return () => window.clearTimeout(timeout);
   }, [carregar]);
 
-  const textoAlterado = useMemo(
-    () => termos.titulo.trim() !== salvo.titulo || termos.conteudo.trim() !== salvo.conteudo,
-    [salvo, termos],
+  const metaSelecionado = DOCUMENTOS[modalidade].find((item) => item.tipo === tipo)!;
+  const documento = documentos.find((item) => item.id === metaSelecionado.id);
+  const salvo = salvos.find((item) => item.id === metaSelecionado.id);
+  const alterado = documento && salvo ? documentoAlterado(documento, salvo) : false;
+  const idsAlterados = useMemo(
+    () =>
+      new Set(
+        documentos
+          .filter((item) => documentoAlterado(item, salvos.find((salvoItem) => salvoItem.id === item.id)))
+          .map((item) => item.id),
+      ),
+    [documentos, salvos],
   );
+  const aceitesSelecionados = useMemo(
+    () => aceites.filter((aceite) => aceite.documentoId === metaSelecionado.id),
+    [aceites, metaSelecionado.id],
+  );
+  const aceitesVersaoAtual = documento
+    ? aceitesSelecionados.filter((aceite) => aceite.versao === documento.versao).length
+    : 0;
+
+  useEffect(() => {
+    if (idsAlterados.size === 0) return;
+    const avisarSaida = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", avisarSaida);
+    return () => window.removeEventListener("beforeunload", avisarSaida);
+  }, [idsAlterados]);
+
+  function atualizarDocumento(patch: Partial<DocumentoConfig>) {
+    setDocumentos((atuais) =>
+      atuais.map((item) => (item.id === metaSelecionado.id ? { ...item, ...patch } : item)),
+    );
+  }
 
   async function salvar() {
-    if (!termos.titulo.trim()) {
-      show("info", "Informe o título dos termos.");
+    if (!documento) return;
+    if (!documento.titulo.trim()) {
+      show("info", "Informe o título do documento.");
       return;
     }
-    if (termos.ativo && termos.conteudo.trim().length < 20) {
-      show("info", "Inclua o texto completo antes de ativar a obrigatoriedade.");
+    if (documento.ativo && documento.conteudo.trim().length < 20) {
+      show("info", "Inclua o texto completo antes de ativar o documento.");
       return;
     }
 
@@ -124,20 +196,24 @@ export function TermosProgramaTab() {
       const body = await apiAutenticada("/api/admin/termos", {
         method: "PUT",
         body: JSON.stringify({
-          titulo: termos.titulo,
-          conteudo: termos.conteudo,
-          ativo: termos.ativo,
+          id: documento.id,
+          titulo: documento.titulo,
+          conteudo: documento.conteudo,
+          ativo: documento.ativo,
         }),
       });
-      const versao = Number(body.versao) || termos.versao;
-      const atualizado = { ...termos, titulo: termos.titulo.trim(), conteudo: termos.conteudo.trim(), versao };
-      setTermos(atualizado);
-      setSalvo(atualizado);
+      const atualizado = body.documento as DocumentoConfig;
+      setDocumentos((atuais) =>
+        atuais.map((item) => (item.id === atualizado.id ? atualizado : item)),
+      );
+      setSalvos((atuais) =>
+        atuais.map((item) => (item.id === atualizado.id ? atualizado : item)),
+      );
       show(
         "success",
         body.novaVersao === true
-          ? `Nova versão ${versao} salva com sucesso.`
-          : "Configuração dos termos atualizada.",
+          ? `Nova versão ${atualizado.versao} publicada.`
+          : "Configuração do documento atualizada.",
       );
     } catch (error) {
       show("error", error instanceof Error ? error.message : "Não foi possível salvar agora.");
@@ -146,27 +222,97 @@ export function TermosProgramaTab() {
     }
   }
 
-  if (loading) return <Card className="h-80 animate-pulse" />;
+  if (loading) return <Card className="h-96 animate-pulse" />;
+  if (!documento || !salvo) {
+    return (
+      <Card>
+        <p className="text-sm text-danger">
+          A configuração dos documentos não pôde ser carregada. Atualize a página e tente novamente.
+        </p>
+      </Card>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4">
       <Card className="border-primary/20">
         <div className="flex flex-col gap-5">
+          <div className="flex items-start gap-3">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary-subtle text-primary">
+              <BookOpenCheck className="size-5" aria-hidden="true" />
+            </span>
+            <div>
+              <h3 className="font-bold text-text">Documentos e aceites do programa</h3>
+              <p className="mt-1 max-w-3xl text-sm leading-relaxed text-text-light">
+                Regulamento e termo de responsabilidade são independentes por modalidade. Uma nova
+                versão exige novo aceite somente do documento alterado.
+              </p>
+            </div>
+          </div>
+
+          <SegmentedControl
+            value={modalidade}
+            onChange={(value) => setModalidade(value)}
+            options={[
+              { value: "corrida", label: "Corrida", icon: Footprints },
+              { value: "bicicleta", label: "Mountain Bike", icon: Bike },
+            ]}
+            className="w-full sm:w-fit"
+          />
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            {DOCUMENTOS[modalidade].map((item) => {
+              const config = documentos.find((documentoItem) => documentoItem.id === item.id);
+              const selecionado = tipo === item.tipo;
+              const sujo = idsAlterados.has(item.id);
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setTipo(item.tipo)}
+                  aria-pressed={selecionado}
+                  className={`min-h-16 cursor-pointer rounded-xl border px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                    selecionado
+                      ? "border-primary bg-primary-subtle"
+                      : "border-border bg-bg-card hover:border-primary/40"
+                  }`}
+                >
+                  <span className="flex items-center justify-between gap-3">
+                    <span>
+                      <span className="block text-sm font-bold text-text">{item.label}</span>
+                      <span className="mt-0.5 block text-xs text-text-light">
+                        Versão {config?.versao || 1} · {config?.ativo ? "Ativo" : "Inativo"}
+                      </span>
+                    </span>
+                    {sujo ? (
+                      <span className="rounded-full bg-warning/15 px-2 py-1 text-[11px] font-bold text-warning">
+                        Não salvo
+                      </span>
+                    ) : null}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </Card>
+
+      <Card>
+        <div className="flex flex-col gap-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex items-start gap-3">
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary-subtle text-primary">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
                 <FileCheck2 className="size-5" aria-hidden="true" />
               </span>
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-bold text-text">Termos do programa</h3>
+                  <h3 className="font-bold text-text">{metaSelecionado.label}</h3>
                   <span className="rounded-full bg-bg-inset px-2.5 py-1 text-xs font-bold text-text-light">
-                    {termos.versao ? `Versão ${termos.versao}` : "Ainda não publicado"}
+                    Versão {documento.versao}
                   </span>
                 </div>
-                <p className="mt-1 max-w-2xl text-sm leading-relaxed text-text-light">
-                  Quando ativo, o atleta precisa aceitar a versão vigente antes de acessar qualquer
-                  área do portal.
+                <p className="mt-1 text-sm text-text-light">
+                  {modalidade === "corrida" ? "Corrida" : "Mountain Bike"}
                 </p>
               </div>
             </div>
@@ -175,19 +321,27 @@ export function TermosProgramaTab() {
               <span>
                 <span className="block text-sm font-bold text-text">Exigir aceite</span>
                 <span className="block text-xs text-text-light">
-                  {termos.ativo ? "Ativado" : "Desativado"}
+                  {documento.ativo ? "Ativado" : "Desativado"}
                 </span>
               </span>
               <button
                 type="button"
                 role="switch"
-                aria-label="Exigir aceite dos termos"
-                aria-checked={termos.ativo}
-                onClick={() => setTermos((atual) => ({ ...atual, ativo: !atual.ativo }))}
-                className="flex min-h-11 min-w-14 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                aria-label={`Exigir aceite de ${metaSelecionado.label}`}
+                aria-checked={documento.ativo}
+                onClick={() => atualizarDocumento({ ativo: !documento.ativo })}
+                className="flex min-h-11 min-w-14 cursor-pointer items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
-                <span className={`relative h-7 w-12 rounded-full transition-colors ${termos.ativo ? "bg-success" : "bg-border"}`}>
-                  <span className={`absolute left-1 top-1 size-5 rounded-full bg-white shadow transition-transform ${termos.ativo ? "translate-x-5" : "translate-x-0"}`} />
+                <span
+                  className={`relative h-7 w-12 rounded-full transition-colors ${
+                    documento.ativo ? "bg-success" : "bg-border"
+                  }`}
+                >
+                  <span
+                    className={`absolute left-1 top-1 size-5 rounded-full bg-white shadow transition-transform ${
+                      documento.ativo ? "translate-x-5" : "translate-x-0"
+                    }`}
+                  />
                 </span>
               </button>
             </label>
@@ -195,44 +349,45 @@ export function TermosProgramaTab() {
 
           <TextField
             label="Título"
-            value={termos.titulo}
-            maxLength={120}
-            onChange={(event) => setTermos((atual) => ({ ...atual, titulo: event.target.value }))}
+            value={documento.titulo}
+            maxLength={160}
+            onChange={(event) => atualizarDocumento({ titulo: event.target.value })}
           />
 
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between gap-3">
-              <label htmlFor="conteudo-termos" className="text-sm font-medium text-text">
+              <label htmlFor="conteudo-documento" className="text-sm font-medium text-text">
                 Texto completo
               </label>
-              <span className="text-xs text-text-muted">{termos.conteudo.length.toLocaleString("pt-BR")} / 50.000</span>
+              <span className="text-xs text-text-muted">
+                {documento.conteudo.length.toLocaleString("pt-BR")} / 50.000
+              </span>
             </div>
             <textarea
-              id="conteudo-termos"
-              value={termos.conteudo}
-              onChange={(event) => setTermos((atual) => ({ ...atual, conteudo: event.target.value }))}
-              rows={14}
+              id="conteudo-documento"
+              value={documento.conteudo}
+              onChange={(event) => atualizarDocumento({ conteudo: event.target.value })}
+              rows={16}
               maxLength={50000}
-              placeholder="Cole aqui o texto dos termos que você enviará. Parágrafos e quebras de linha serão preservados."
-              className="w-full resize-y rounded-[var(--radius)] border border-border bg-bg px-4 py-3 text-base leading-6 text-text outline-none placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/15 sm:text-sm"
+              className="w-full resize-y rounded-[var(--radius)] border border-border bg-bg px-4 py-3 text-base leading-6 text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 sm:text-sm"
             />
           </div>
 
-          {textoAlterado && salvo.versao > 0 && (
+          {alterado && (documento.titulo.trim() !== salvo.titulo || documento.conteudo.trim() !== salvo.conteudo) ? (
             <div className="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm leading-relaxed text-text">
-              Salvar alterações no título ou texto criará a versão {salvo.versao + 1}. Todos os
-              usuários precisarão aceitar novamente no próximo acesso.
+              Salvar alterações no título ou texto criará a versão {salvo.versao + 1}. Os atletas
+              desta modalidade precisarão aceitar novamente apenas este documento.
             </div>
-          )}
+          ) : null}
 
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="flex items-center gap-2 text-xs text-text-light">
               <ShieldCheck className="size-4 text-success" aria-hidden="true" />
-              Nome, e-mail, versão e horário são registrados pelo servidor.
+              Nome, e-mail, conteúdo, versão, hash e horário ficam registrados.
             </p>
-            <Button onClick={salvar} loading={saving}>
-              {!saving && <Save className="size-4" aria-hidden="true" />}
-              Salvar configuração
+            <Button onClick={salvar} loading={saving} disabled={!alterado}>
+              {!saving ? <Save className="size-4" aria-hidden="true" /> : null}
+              Salvar documento
             </Button>
           </div>
         </div>
@@ -243,24 +398,35 @@ export function TermosProgramaTab() {
           <div>
             <h3 className="flex items-center gap-2 font-bold text-text">
               <Users className="size-5 text-primary" aria-hidden="true" />
-              Aceites registrados
+              Aceites de {metaSelecionado.label.toLowerCase()}
             </h3>
             <p className="mt-1 text-sm text-text-light">
-              {aceites.length} usuário(s) com aceite registrado na versão mais recente de cada um.
+              {aceitesVersaoAtual} aceite(s) na versão atual · {aceitesSelecionados.length} registro(s)
+              mais recente(s).
             </p>
           </div>
-          <Button variant="secondary" size="sm" onClick={() => void carregar()}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => void carregar()}
+            disabled={idsAlterados.size > 0}
+            title={
+              idsAlterados.size > 0
+                ? "Salve as alterações antes de atualizar os registros."
+                : undefined
+            }
+          >
             <RefreshCw className="size-4" aria-hidden="true" />
             Atualizar
           </Button>
         </div>
 
-        {aceites.length === 0 ? (
+        {aceitesSelecionados.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border px-5 py-10 text-center">
             <CheckCircle2 className="mx-auto size-7 text-text-muted" aria-hidden="true" />
-            <p className="mt-2 text-sm font-semibold text-text">Nenhum aceite registrado ainda</p>
+            <p className="mt-2 text-sm font-semibold text-text">Nenhum aceite registrado</p>
             <p className="mt-1 text-xs text-text-light">
-              Os registros aparecerão aqui após os primeiros acessos.
+              Os registros aparecerão após os atletas acessarem o portal.
             </p>
           </div>
         ) : (
@@ -272,14 +438,22 @@ export function TermosProgramaTab() {
               <span>Data e hora</span>
             </div>
             <ul className="divide-y divide-border">
-              {aceites.map((aceite) => (
+              {aceitesSelecionados.map((aceite) => (
                 <li
-                  key={aceite.uid}
+                  key={`${aceite.uid}-${aceite.documentoId}`}
                   className="grid gap-2 px-4 py-3 text-sm md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_90px_150px] md:items-center md:gap-4"
                 >
                   <span className="truncate font-semibold text-text">{aceite.nome}</span>
-                  <span className="truncate text-text-light">{aceite.email || "E-mail indisponível"}</span>
-                  <span className="w-fit rounded-full bg-primary-subtle px-2.5 py-1 text-xs font-bold text-primary">
+                  <span className="truncate text-text-light">
+                    {aceite.email || "E-mail indisponível"}
+                  </span>
+                  <span
+                    className={`w-fit rounded-full px-2.5 py-1 text-xs font-bold ${
+                      aceite.versao === documento.versao
+                        ? "bg-success/10 text-success"
+                        : "bg-warning/10 text-warning"
+                    }`}
+                  >
                     Versão {aceite.versao}
                   </span>
                   <span className="flex items-center gap-1.5 text-xs text-text-light">

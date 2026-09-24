@@ -1,8 +1,19 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { doc, serverTimestamp, writeBatch } from "firebase/firestore";
-import { User, MapPin, Cake, UserCircle, Shield, Mail, Zap } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpenCheck,
+  User,
+  MapPin,
+  Cake,
+  UserCircle,
+  Shield,
+  Mail,
+  Zap,
+} from "lucide-react";
 import { db } from "@/lib/firebase";
 import { atletaPublicoRef } from "@/lib/publicAthletes";
 import { useAthleteView } from "@/lib/session/AthleteViewProvider";
@@ -20,7 +31,7 @@ import { SenhaCard } from "@/components/account/SenhaCard";
 import { equipeLabel, isWaitlisted, modalidadeFromEquipe } from "@/lib/labels";
 
 export default function PerfilPage() {
-  const { atleta, isPreview } = useAthleteView();
+  const { atleta, isPreview, withPreview } = useAthleteView();
   const { show } = useToast();
   const [nome, setNome] = useState(atleta.nome);
   const [localidade, setLocalidade] = useState(atleta.localidade ?? "");
@@ -182,6 +193,29 @@ export default function PerfilPage() {
 
         {/* COLUNA DIREITA - CONFIGURAÇÕES */}
         <div className="flex flex-col gap-4 sm:gap-6 xl:col-span-5">
+          {modalidade ? (
+            <Card padding="none" className="overflow-hidden">
+              <Link
+                href={withPreview("/documentos")}
+                className="group flex min-h-20 items-center gap-3 p-5 transition-colors hover:bg-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+              >
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary-subtle text-primary">
+                  <BookOpenCheck className="size-5" aria-hidden="true" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-bold text-text">Documentos do programa</span>
+                  <span className="mt-0.5 block text-sm text-text-light">
+                    Consulte seu regulamento e termo de responsabilidade.
+                  </span>
+                </span>
+                <ArrowRight
+                  className="size-5 shrink-0 text-text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-primary"
+                  aria-hidden="true"
+                />
+              </Link>
+            </Card>
+          ) : null}
+
           {isPreview ? (
             <Card className="border-amber-200 bg-amber-50/60">
               <div className="flex items-start gap-3">

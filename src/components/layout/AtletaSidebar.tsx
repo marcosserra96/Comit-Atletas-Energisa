@@ -10,6 +10,7 @@ import {
   Activity,
   CalendarCheck,
   CalendarOff,
+  BookOpenCheck,
   Newspaper,
   Trophy,
   ChevronsLeft,
@@ -26,6 +27,7 @@ const navItems = [
   { href: "/desempenho", label: "Desempenho", icon: Activity },
   { href: "/eventos", label: "Eventos", icon: CalendarCheck },
   { href: "/justificativas", label: "Justificativas", icon: CalendarOff },
+  { href: "/documentos", label: "Documentos", icon: BookOpenCheck },
   { href: "/noticias", label: "Notícias", icon: Newspaper },
   { href: "/ranking", label: "Ranking", icon: Trophy },
 ];
