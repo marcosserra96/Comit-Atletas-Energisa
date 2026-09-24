@@ -13,7 +13,7 @@ export const PERMISSAO_LABEL: Record<PermissaoChave, string> = {
   inicio: "Início (visão estratégica)",
   atletas: "Atletas (gestão de base)",
   regras: "Critérios de pontuação",
-  registrar: "Registrar (lançamento de pontos)",
+  registrar: "Registrar (pontos e justificativas)",
   eventos: "Eventos",
   noticias: "Notícias",
   financeiro: "Financeiro (acesso e edição)",

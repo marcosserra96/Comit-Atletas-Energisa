@@ -19,6 +19,11 @@ const acaoLabel: Record<string, string> = {
   editar_atleta: "Edição de atleta",
   estornar_lancamento: "Estorno de lançamento",
   alterar_perfil_usuario: "Alteração de perfil",
+  solicitar_justificativa_ausencia: "Solicitação de ausência",
+  editar_justificativa_ausencia: "Edição de justificativa",
+  cancelar_justificativa_ausencia: "Cancelamento de justificativa",
+  aprovar_justificativa_ausencia: "Aprovação de justificativa",
+  recusar_justificativa_ausencia: "Recusa de justificativa",
 };
 
 export function AuditoriaTab() {

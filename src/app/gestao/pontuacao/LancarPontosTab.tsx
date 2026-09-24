@@ -14,7 +14,7 @@ import {
   where,
   writeBatch,
 } from "firebase/firestore";
-import { Activity, CalendarCheck, PlusCircle, Target } from "lucide-react";
+import { Activity, AlertCircle, CalendarCheck, PlusCircle, Target } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { atletaPublicoRef } from "@/lib/publicAthletes";
 import { useActiveSession } from "@/lib/session/SessionProvider";
@@ -27,8 +27,20 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { formatShortDate } from "@/lib/format";
 import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
+import {
+  justificativaAbrangeData,
+  motivoAusenciaLabel,
+  resumoJustificativa,
+} from "@/lib/justificativasAusencia";
 import { ImportarPontuacoesCard } from "./ImportarPontuacoesCard";
-import type { AtletaDoc, EventoDoc, Modalidade, RegraPontuacaoDoc, TipoLancamento } from "@/lib/types";
+import type {
+  AtletaDoc,
+  EventoDoc,
+  JustificativaAusenciaDoc,
+  Modalidade,
+  RegraPontuacaoDoc,
+  TipoLancamento,
+} from "@/lib/types";
 
 const tipoOptions: { value: TipoLancamento; label: string; icon: typeof Activity }[] = [
   { value: "treino", label: "Treino", icon: Activity },
@@ -36,7 +48,13 @@ const tipoOptions: { value: TipoLancamento; label: string; icon: typeof Activity
   { value: "avulso", label: "Avulso", icon: PlusCircle },
 ];
 
-export function LancarPontosTab() {
+export function LancarPontosTab({
+  justificativas,
+  erroJustificativas,
+}: {
+  justificativas: JustificativaAusenciaDoc[];
+  erroJustificativas: boolean;
+}) {
   const { uid, atleta: autor } = useActiveSession();
   const { show } = useToast();
 
@@ -52,6 +70,9 @@ export function LancarPontosTab() {
   const [eventosJaLancados, setEventosJaLancados] = useState<Set<string>>(new Set());
   const [marcados, setMarcados] = useState<Record<string, Set<string>>>({});
   const [faltosos, setFaltosos] = useState<Set<string>>(new Set());
+  const [faltasAutomaticasIgnoradas, setFaltasAutomaticasIgnoradas] = useState<Set<string>>(
+    new Set(),
+  );
   const [observacoes, setObservacoes] = useState<Record<string, string>>({});
   const [kmPorAtleta, setKmPorAtleta] = useState<Record<string, string>>({});
   const [salvando, setSalvando] = useState(false);
@@ -124,9 +145,32 @@ export function LancarPontosTab() {
     );
   }, [regras, modalidade, tipo]);
 
+  const justificativaPorAtleta = useMemo(() => {
+    const mapa = new Map<string, JustificativaAusenciaDoc>();
+    if (!dataTreino || tipo === "avulso") return mapa;
+    for (const justificativa of justificativas) {
+      if (
+        !mapa.has(justificativa.atletaId) &&
+        justificativaAbrangeData(justificativa, dataTreino)
+      ) {
+        mapa.set(justificativa.atletaId, justificativa);
+      }
+    }
+    return mapa;
+  }, [dataTreino, justificativas, tipo]);
+
+  const faltososEfetivos = useMemo(() => {
+    const ids = new Set(faltosos);
+    for (const atletaId of justificativaPorAtleta.keys()) {
+      if (!faltasAutomaticasIgnoradas.has(atletaId)) ids.add(atletaId);
+    }
+    return ids;
+  }, [faltasAutomaticasIgnoradas, faltosos, justificativaPorAtleta]);
+
   function resetSelecao() {
     setMarcados({});
     setFaltosos(new Set());
+    setFaltasAutomaticasIgnoradas(new Set());
     setObservacoes({});
     setKmPorAtleta({});
   }
@@ -162,6 +206,7 @@ export function LancarPontosTab() {
     if (!evento) return;
     setDescricaoLote(evento.titulo);
     setDataTreino(evento.data);
+    setFaltasAutomaticasIgnoradas(new Set());
     if (evento.km) setKmLote(String(evento.km));
     if (evento.modalidade !== "ambas" && evento.modalidade !== modalidade) {
       setModalidade(evento.modalidade);
@@ -198,6 +243,21 @@ export function LancarPontosTab() {
   }
 
   function toggleFalta(atletaId: string) {
+    if (justificativaPorAtleta.has(atletaId)) {
+      const estaMarcado = faltososEfetivos.has(atletaId);
+      setFaltasAutomaticasIgnoradas((prev) => {
+        const next = new Set(prev);
+        if (estaMarcado) next.add(atletaId);
+        else next.delete(atletaId);
+        return next;
+      });
+      setFaltosos((prev) => {
+        const next = new Set(prev);
+        next.delete(atletaId);
+        return next;
+      });
+      return;
+    }
     setFaltosos((prev) => {
       const next = new Set(prev);
       if (next.has(atletaId)) next.delete(atletaId);
@@ -208,8 +268,14 @@ export function LancarPontosTab() {
 
   function toggleFaltaTodos() {
     if (!atletas) return;
-    const todosMarcados = atletas.every((a) => faltosos.has(a.id));
-    setFaltosos(todosMarcados ? new Set() : new Set(atletas.map((a) => a.id)));
+    const todosMarcados = atletas.every((a) => faltososEfetivos.has(a.id));
+    if (todosMarcados) {
+      setFaltosos(new Set());
+      setFaltasAutomaticasIgnoradas(new Set(justificativaPorAtleta.keys()));
+    } else {
+      setFaltosos(new Set(atletas.map((a) => a.id)));
+      setFaltasAutomaticasIgnoradas(new Set());
+    }
   }
 
   function pontosDoAtleta(atletaId: string) {
@@ -221,7 +287,7 @@ export function LancarPontosTab() {
   }
 
   const totalAtletasEnvolvidos = atletas?.filter(
-    (a) => faltosos.has(a.id) || pontosDoAtleta(a.id) > 0,
+    (a) => faltososEfetivos.has(a.id) || pontosDoAtleta(a.id) > 0,
   ).length ?? 0;
 
   async function handleSalvar() {
@@ -261,7 +327,7 @@ export function LancarPontosTab() {
       };
 
       for (const atletaDoc of atletas) {
-        const isFalta = faltosos.has(atletaDoc.id);
+        const isFalta = faltososEfetivos.has(atletaDoc.id);
         const marcadas = marcados[atletaDoc.id];
         const temPontos = !isFalta && marcadas && marcadas.size > 0;
         if (!isFalta && !temPontos) continue;
@@ -269,6 +335,15 @@ export function LancarPontosTab() {
         let totalAtleta = 0;
         const kmOverride = kmPorAtleta[atletaDoc.id]?.trim();
         const kmPercorrido = kmOverride ? Number(kmOverride.replace(",", ".")) || 0 : kmLoteNum;
+        const justificativa = justificativaPorAtleta.get(atletaDoc.id);
+        const justificativaAplicada =
+          isFalta && justificativa && !faltasAutomaticasIgnoradas.has(atletaDoc.id)
+            ? justificativa
+            : null;
+        const observacaoAutomatica = justificativaAplicada
+          ? resumoJustificativa(justificativaAplicada)
+          : "";
+        const observacao = (observacoes[atletaDoc.id] ?? observacaoAutomatica).trim();
 
         if (isFalta) {
           const lancamentoRef = doc(collection(db, "historico_pontos"));
@@ -281,6 +356,16 @@ export function LancarPontosTab() {
             regraDesc: "Falta justificada",
             pontos: 0,
             kmPercorrido: 0,
+            ...(observacao ? { observacao } : {}),
+            ...(justificativaAplicada
+              ? {
+                  justificativaAusenciaId: justificativaAplicada.id,
+                  justificativaMotivo: justificativaAplicada.motivo,
+                  justificativaDescricao: justificativaAplicada.descricao,
+                  justificativaInicio: justificativaAplicada.inicio,
+                  justificativaFim: justificativaAplicada.fim,
+                }
+              : {}),
             ...dadosLote,
           });
         } else {
@@ -298,6 +383,7 @@ export function LancarPontosTab() {
               regraDesc: regra.descricao,
               pontos: regra.pontos,
               ...(kmPercorrido > 0 ? { kmPercorrido } : {}),
+              ...(observacao ? { observacao } : {}),
               ...dadosLote,
             });
           }
@@ -319,7 +405,7 @@ export function LancarPontosTab() {
       const dataFormatada = formatShortDate(dataTreino);
       for (const [atletaId, texto] of Object.entries(observacoes)) {
         if (!texto.trim()) continue;
-        const envolvido = faltosos.has(atletaId) || (marcados[atletaId]?.size ?? 0) > 0;
+        const envolvido = faltososEfetivos.has(atletaId) || (marcados[atletaId]?.size ?? 0) > 0;
         if (!envolvido) continue;
         const comentarioRef = doc(collection(db, "comentarios_atletas"));
         batch.set(comentarioRef, {
@@ -334,7 +420,7 @@ export function LancarPontosTab() {
       await batch.commit();
 
       const atletaIds = atletas
-        .filter((item) => faltosos.has(item.id) || (marcados[item.id]?.size ?? 0) > 0)
+        .filter((item) => faltososEfetivos.has(item.id) || (marcados[item.id]?.size ?? 0) > 0)
         .map((item) => item.id);
       const rankingAtualizado = await atualizarRankingAutomaticamente(
         atletaIds,
@@ -357,6 +443,15 @@ export function LancarPontosTab() {
   return (
     <div className="flex flex-col gap-5">
       <ImportarPontuacoesCard />
+
+      {erroJustificativas ? (
+        <div className="flex items-start gap-3 rounded-[var(--radius)] border border-warning/25 bg-warning/10 p-3 text-sm text-text-light">
+          <AlertCircle className="mt-0.5 size-5 shrink-0 text-ranking-gold-text" aria-hidden="true" />
+          <p>
+            As justificativas aprovadas não puderam ser carregadas. O lançamento manual continua disponível, mas confira a aba Justificativas antes de salvar.
+          </p>
+        </div>
+      ) : null}
 
       <Card className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
@@ -431,7 +526,10 @@ export function LancarPontosTab() {
               type="date"
               value={dataTreino}
               max={dataIsoLocal()}
-              onChange={(e) => setDataTreino(e.target.value)}
+              onChange={(e) => {
+                setDataTreino(e.target.value);
+                setFaltasAutomaticasIgnoradas(new Set());
+              }}
               className="h-10 rounded-[var(--radius)] border border-border bg-bg-card px-3 text-sm text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
             />
           </div>
@@ -494,7 +592,8 @@ export function LancarPontosTab() {
                   <label className="mt-1 flex items-center justify-center gap-1.5 font-normal normal-case text-text-muted">
                     <input
                       type="checkbox"
-                      checked={atletas.length > 0 && atletas.every((a) => faltosos.has(a.id))}
+                      aria-label="Marcar falta justificada para todo o time"
+                      checked={atletas.length > 0 && atletas.every((a) => faltososEfetivos.has(a.id))}
                       onChange={toggleFaltaTodos}
                       className="size-3.5 rounded border-border accent-accent"
                     />
@@ -509,7 +608,15 @@ export function LancarPontosTab() {
             </thead>
             <tbody>
               {atletas.map((a) => {
-                const isFalta = faltosos.has(a.id);
+                const isFalta = faltososEfetivos.has(a.id);
+                const justificativa = justificativaPorAtleta.get(a.id);
+                const justificativaAplicada =
+                  justificativa && !faltasAutomaticasIgnoradas.has(a.id)
+                    ? justificativa
+                    : null;
+                const observacaoAutomatica = justificativaAplicada
+                  ? resumoJustificativa(justificativaAplicada)
+                  : "";
                 const temMarcacao = isFalta || (marcados[a.id]?.size ?? 0) > 0;
                 return (
                   <tr key={a.id} className="border-b border-border last:border-0">
@@ -520,6 +627,7 @@ export function LancarPontosTab() {
                       <td key={r.id} className="px-3 py-3 text-center">
                         <input
                           type="checkbox"
+                          aria-label={`Marcar ${r.descricao} para ${a.nome}`}
                           disabled={isFalta}
                           checked={marcados[a.id]?.has(r.id) ?? false}
                           onChange={() => toggleRegra(a.id, r.id)}
@@ -545,17 +653,33 @@ export function LancarPontosTab() {
                       )}
                     </td>
                     <td className="border-l border-border px-3 py-3 text-center">
-                      <input
-                        type="checkbox"
-                        checked={isFalta}
-                        onChange={() => toggleFalta(a.id)}
-                        className="size-4 rounded border-border accent-accent"
-                      />
+                      <div className="flex min-w-32 flex-col items-center gap-1.5">
+                        <input
+                          type="checkbox"
+                          aria-label={`Marcar falta justificada para ${a.nome}`}
+                          checked={isFalta}
+                          onChange={() => toggleFalta(a.id)}
+                          className="size-4 rounded border-border accent-accent"
+                        />
+                        {justificativa ? (
+                          <span
+                            className={
+                              justificativaAplicada
+                                ? "text-[10px] font-semibold text-success"
+                                : "text-[10px] font-semibold text-text-muted"
+                            }
+                          >
+                            {justificativaAplicada
+                              ? `${motivoAusenciaLabel[justificativa.motivo]} · aprovada`
+                              : "Aprovada · não aplicada"}
+                          </span>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="w-[180px] border-l border-border px-3 py-3">
                       {temMarcacao ? (
                         <input
-                          value={observacoes[a.id] ?? ""}
+                          value={observacoes[a.id] ?? observacaoAutomatica}
                           onChange={(e) =>
                             setObservacoes((prev) => ({ ...prev, [a.id]: e.target.value }))
                           }

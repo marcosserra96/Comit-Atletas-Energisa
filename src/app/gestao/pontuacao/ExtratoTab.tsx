@@ -338,7 +338,19 @@ export function ExtratoTab() {
                       </td>
                     )}
                     <td className="px-4 py-3 font-medium text-text">{l.atletaNome}</td>
-                    <td className="px-3 py-3 text-text-light">{l.regraDesc}</td>
+                    <td className="px-3 py-3 text-text-light">
+                      <span>{l.regraDesc}</span>
+                      {l.observacao ? (
+                        <span className="mt-0.5 block max-w-72 whitespace-pre-wrap text-xs text-text-muted">
+                          {l.observacao}
+                        </span>
+                      ) : null}
+                      {l.justificativaAusenciaId ? (
+                        <Badge tone="primary" className="mt-1.5">
+                          Solicitada pelo atleta
+                        </Badge>
+                      ) : null}
+                    </td>
                     <td className="px-3 py-3 text-text-light">{formatDataTreino(l.dataTreino, l.dataAproximada)}</td>
                     <td className="px-3 py-3 text-right font-semibold text-text">
                       {l.estornado ? (

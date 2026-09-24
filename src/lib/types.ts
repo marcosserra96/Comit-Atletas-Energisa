@@ -98,6 +98,49 @@ export interface HistoricoPontoDoc {
   estornadoEm?: unknown;
   estornadoPor?: string;
   motivoEstorno?: string;
+  /** Observação vinculada ao lançamento para não depender apenas da ficha do atleta. */
+  observacao?: string;
+  /** Solicitação aprovada que originou uma falta justificada, quando houver. */
+  justificativaAusenciaId?: string;
+  justificativaMotivo?: MotivoAusencia;
+  justificativaDescricao?: string;
+  justificativaInicio?: string;
+  justificativaFim?: string;
+}
+
+export type MotivoAusencia =
+  | "viagem"
+  | "doenca"
+  | "lesao"
+  | "trabalho"
+  | "pessoal"
+  | "outro";
+
+export type StatusJustificativaAusencia =
+  | "pendente"
+  | "aprovada"
+  | "recusada"
+  | "cancelada";
+
+/** Solicitação privada: somente o atleta e a gestão autorizada acessam pela API. */
+export interface JustificativaAusenciaDoc {
+  id: string;
+  atletaId: string;
+  atletaNome: string;
+  equipe: Equipe;
+  motivo: MotivoAusencia;
+  descricao: string;
+  inicio: string;
+  fim: string;
+  status: StatusJustificativaAusencia;
+  criadoPor: string;
+  criadoEm: unknown;
+  atualizadoEm?: unknown;
+  analisadoPor?: string;
+  analisadoPorNome?: string;
+  analisadoEm?: unknown;
+  observacaoComite?: string;
+  canceladoEm?: unknown;
 }
 
 export interface RegraPontuacaoDoc {

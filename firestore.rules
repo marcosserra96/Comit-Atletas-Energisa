@@ -151,6 +151,13 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Contém informações potencialmente sensíveis (doença, lesão e descrição).
+    // Todo acesso passa pelas rotas autenticadas do servidor, que limitam a
+    // leitura ao próprio atleta ou à equipe autorizada de pontuação.
+    match /justificativas_ausencia/{id} {
+      allow read, write: if false;
+    }
+
     match /regras_pontuacao/{id} {
       allow read: if hasUsuario();
       allow write: if isAdmin() || comitePode("regras");

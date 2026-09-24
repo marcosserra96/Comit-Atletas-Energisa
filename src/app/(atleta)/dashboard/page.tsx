@@ -29,6 +29,7 @@ import {
   AlertCircle,
   Navigation,
   Users,
+  CalendarOff,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -396,6 +397,22 @@ export default function DashboardPage() {
             )}
           </section>
 
+          <Link
+            href={withPreview("/justificativas")}
+            className="mt-5 flex min-h-20 items-center gap-3 rounded-[var(--radius-lg)] border border-secondary/20 bg-gradient-to-r from-secondary/10 to-bg-card p-4 shadow-sm transition-colors active:bg-secondary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary/15 text-secondary">
+              <CalendarOff className="size-5" aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <strong className="block text-sm text-text">Vai ficar sem treinar?</strong>
+              <span className="mt-0.5 block text-xs text-text-muted">
+                Informe o período e acompanhe a análise do Comitê.
+              </span>
+            </span>
+            <ChevronRight className="size-5 shrink-0 text-text-muted" aria-hidden="true" />
+          </Link>
+
           <section className="mt-5 rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -684,6 +701,11 @@ export default function DashboardPage() {
                         </span>
                       </div>
                       <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">{formatDataTreino(item.dataTreino, item.dataAproximada)}</p>
+                      {item.observacao ? (
+                        <p className="mt-1 line-clamp-2 text-xs text-text-muted">
+                          {item.observacao}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                 ))}
@@ -820,6 +842,26 @@ export default function DashboardPage() {
                 )}
               </div>
             )}
+          </Card>
+
+          <Card padding="sm">
+            <Link
+              href={withPreview("/justificativas")}
+              className="group flex min-h-20 items-center gap-3 rounded-[var(--radius)] p-2 transition-colors hover:bg-bg-inset focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary/10 text-secondary">
+                <CalendarOff className="size-5" aria-hidden="true" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <strong className="block text-sm text-text transition-colors group-hover:text-primary">
+                  Justificar uma ausência
+                </strong>
+                <span className="mt-0.5 block text-xs text-text-muted">
+                  Envie o período ao Comitê e acompanhe a análise.
+                </span>
+              </span>
+              <ChevronRight className="size-5 shrink-0 text-text-muted" aria-hidden="true" />
+            </Link>
           </Card>
 
           {/* NEWS PREVIEW */}

@@ -221,7 +221,7 @@ export default function DesempenhoPage() {
       .filter((item) => filtroTipo === "todos" || item.tipoLancamento === filtroTipo)
       .filter((item) => {
         if (!termo) return true;
-        return [item.regraDesc, item.descricaoLote, tipoLabel[item.tipoLancamento]]
+        return [item.regraDesc, item.descricaoLote, item.observacao, tipoLabel[item.tipoLancamento]]
           .filter(Boolean)
           .some((valor) => String(valor).toLocaleLowerCase("pt-BR").includes(termo));
       })
@@ -577,6 +577,11 @@ export default function DesempenhoPage() {
                                 {lancamento.descricaoLote}
                               </p>
                             )}
+                            {lancamento.observacao && (
+                              <p className="mt-1 max-w-md whitespace-pre-wrap text-xs text-text-light">
+                                {lancamento.observacao}
+                              </p>
+                            )}
                           </td>
                           <td className="px-3 py-4">
                             <Badge tone="neutral">{tipoLabel[lancamento.tipoLancamento]}</Badge>
@@ -631,6 +636,11 @@ export default function DesempenhoPage() {
                           {lancamento.descricaoLote && (
                             <p className="mt-0.5 truncate text-xs text-text-muted">
                               {lancamento.descricaoLote}
+                            </p>
+                          )}
+                          {lancamento.observacao && (
+                            <p className="mt-1 line-clamp-2 text-xs text-text-light">
+                              {lancamento.observacao}
                             </p>
                           )}
                         </div>

@@ -9,6 +9,7 @@ import {
   UserCircle,
   Activity,
   CalendarCheck,
+  CalendarOff,
   Newspaper,
   Trophy,
   ChevronsLeft,
@@ -24,6 +25,7 @@ const navItems = [
   { href: "/perfil", label: "Perfil", icon: UserCircle },
   { href: "/desempenho", label: "Desempenho", icon: Activity },
   { href: "/eventos", label: "Eventos", icon: CalendarCheck },
+  { href: "/justificativas", label: "Justificativas", icon: CalendarOff },
   { href: "/noticias", label: "Notícias", icon: Newspaper },
   { href: "/ranking", label: "Ranking", icon: Trophy },
 ];

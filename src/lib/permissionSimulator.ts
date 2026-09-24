@@ -78,6 +78,13 @@ const CENARIOS: CenarioDef[] = [
     avaliar: (u) => temPermissao(u, "registrar"),
   },
   {
+    chave: "analisar_justificativas",
+    categoria: "Pontuação",
+    label: "Analisar justificativas de ausência",
+    regra: "Requer a permissão \"Registrar\".",
+    avaliar: (u) => temPermissao(u, "registrar"),
+  },
+  {
     chave: "atualizar_pontuacao_total",
     categoria: "Pontuação",
     label: "Atualizar a pontuação total do atleta",

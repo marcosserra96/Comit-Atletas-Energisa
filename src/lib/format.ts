@@ -30,6 +30,10 @@ export function formatDataTreino(dataTreino: string, dataAproximada?: boolean) {
 function toDate(value: unknown): Date | null {
   if (!value) return null;
   if (value instanceof Date) return value;
+  if (typeof value === "string" || typeof value === "number") {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
   if (typeof value === "object" && "toDate" in value) {
     return (value as { toDate: () => Date }).toDate();
   }

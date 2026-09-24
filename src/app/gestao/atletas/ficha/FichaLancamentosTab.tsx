@@ -115,12 +115,20 @@ export function FichaLancamentosTab({ atleta }: { atleta: AtletaDoc }) {
                 {formatDataTreino(l.dataTreino, l.dataAproximada)}
                 {l.kmPercorrido ? ` · ${l.kmPercorrido} km` : ""}
               </p>
+              {l.observacao ? (
+                <p className="mt-1 max-w-xl whitespace-pre-wrap text-xs text-text-light">
+                  {l.observacao}
+                </p>
+              ) : null}
             </div>
             <div className="flex shrink-0 items-center gap-2.5">
               <span className={`text-sm font-bold ${l.estornado ? "text-text-muted line-through" : "text-success"}`}>
                 +{l.pontos}
               </span>
               <Badge tone={l.estornado ? "danger" : "success"}>{l.estornado ? "Estornado" : "Válido"}</Badge>
+              {l.justificativaAusenciaId ? (
+                <Badge tone="primary">Solicitada pelo atleta</Badge>
+              ) : null}
               {!l.estornado && (
                 <button
                   onClick={() => setAlvo(l)}

@@ -5,6 +5,12 @@ import { dataIsoLocal } from "../src/lib/date";
 import { modalidadeDoAtleta, rankingOcultoAgora } from "../src/lib/rankingVisibility";
 import { calcularResultadosRanking } from "../src/lib/rankingPeriods";
 import { perfilAtletaVisivel } from "../src/lib/athleteVisibility";
+import {
+  diasNoIntervalo,
+  intervaloAusenciaValido,
+  justificativaAbrangeData,
+  periodosAusenciaSobrepostos,
+} from "../src/lib/justificativasAusencia";
 import type { RankingVisibilityConfigDoc } from "../src/lib/types";
 import type { AtletaDoc, HistoricoPontoDoc } from "../src/lib/types";
 
@@ -166,4 +172,30 @@ test("não publica perfil oculto no ranking", () => {
   );
 
   assert.deepEqual(resultados, []);
+});
+
+test("valida e calcula períodos civis de ausência", () => {
+  assert.equal(intervaloAusenciaValido("2026-09-20", "2026-09-22"), true);
+  assert.equal(intervaloAusenciaValido("2026-09-22", "2026-09-20"), false);
+  assert.equal(intervaloAusenciaValido("2026-02-30", "2026-03-01"), false);
+  assert.equal(diasNoIntervalo("2026-09-20", "2026-09-22"), 3);
+});
+
+test("detecta sobreposição inclusiva entre justificativas", () => {
+  assert.equal(
+    periodosAusenciaSobrepostos("2026-09-10", "2026-09-15", "2026-09-15", "2026-09-20"),
+    true,
+  );
+  assert.equal(
+    periodosAusenciaSobrepostos("2026-09-10", "2026-09-14", "2026-09-15", "2026-09-20"),
+    false,
+  );
+});
+
+test("aplica automaticamente apenas justificativa aprovada dentro do período", () => {
+  const base = { inicio: "2026-09-10", fim: "2026-09-20" };
+  assert.equal(justificativaAbrangeData({ ...base, status: "aprovada" }, "2026-09-10"), true);
+  assert.equal(justificativaAbrangeData({ ...base, status: "aprovada" }, "2026-09-20"), true);
+  assert.equal(justificativaAbrangeData({ ...base, status: "aprovada" }, "2026-09-21"), false);
+  assert.equal(justificativaAbrangeData({ ...base, status: "pendente" }, "2026-09-15"), false);
 });
