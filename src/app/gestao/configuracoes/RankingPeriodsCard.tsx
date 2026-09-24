@@ -1,38 +1,35 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  serverTimestamp,
-  Timestamp,
-  writeBatch,
-} from "firebase/firestore";
-import { BarChart3, RefreshCw } from "lucide-react";
+import { doc, getDoc } from "firebase/firestore";
+import { BarChart3, CheckCircle2, RefreshCw } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { addAuditToBatch } from "@/lib/audit";
-import { TAMANHO_LOTE } from "@/lib/pontuacaoImportacao";
 import {
   RANKING_PERIODS_DEFAULT,
-  calcularResultadosRanking,
   normalizarRankingPeriods,
 } from "@/lib/rankingPeriods";
-import { useActiveSession } from "@/lib/session/SessionProvider";
+import { recalcularEPublicarRanking } from "@/lib/rankingAutoUpdate";
 import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { TextField } from "@/components/ui/TextField";
-import type {
-  AtletaDoc,
-  HistoricoPontoDoc,
-  RankingPeriodsConfigDoc,
-  RankingResultadoDoc,
-} from "@/lib/types";
+import type { RankingPeriodsConfigDoc } from "@/lib/types";
+
+function formatarAtualizacao(value: unknown) {
+  if (!value) return null;
+  let data: Date | null = null;
+  if (typeof value === "string") data = new Date(value);
+  if (typeof value === "object" && value && "toDate" in value) {
+    data = (value as { toDate: () => Date }).toDate();
+  }
+  if (!data || Number.isNaN(data.getTime())) return null;
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(data);
+}
 
 export function RankingPeriodsCard() {
-  const { uid, atleta } = useActiveSession();
   const { show } = useToast();
   const [config, setConfig] = useState<RankingPeriodsConfigDoc>(RANKING_PERIODS_DEFAULT);
   const [loading, setLoading] = useState(true);
@@ -73,90 +70,27 @@ export function RankingPeriodsCard() {
 
     setProcessing(true);
     try {
-      const [atletasSnap, historicoSnap, resultadosAntigosSnap] = await Promise.all([
-        getDocs(collection(db, "atletas")),
-        getDocs(collection(db, "historico_pontos")),
-        getDocs(collection(db, "ranking_resultados")),
-      ]);
-      const atletas = atletasSnap.docs.map(
-        (item) => ({ id: item.id, ...item.data() }) as AtletaDoc,
-      );
-      const historico = historicoSnap.docs.map(
-        (item) => ({ id: item.id, ...item.data() }) as HistoricoPontoDoc,
-      );
-      const geracaoId = doc(collection(db, "ranking_resultados")).id;
-      const geradoEm = Timestamp.now();
-      const geral = calcularResultadosRanking(atletas, historico, "geral");
-      const trimestral = trimestre.ativo
-        ? calcularResultadosRanking(
-            atletas,
-            historico,
-            "trimestre",
-            trimestre.inicio,
-            trimestre.fim,
-          )
-        : [];
-      const resultados: RankingResultadoDoc[] = [...geral, ...trimestral].map(
-        (resultado) => ({ ...resultado, geracaoId, geradoEm }),
-      );
-
-      for (let i = 0; i < resultados.length; i += TAMANHO_LOTE) {
-        const batch = writeBatch(db);
-        resultados.slice(i, i + TAMANHO_LOTE).forEach((resultado) => {
-          batch.set(
-            doc(
-              db,
-              "ranking_resultados",
-              `${geracaoId}_${resultado.periodoId}_${resultado.atletaId}`,
-            ),
-            resultado,
-          );
-        });
-        await batch.commit();
-      }
-
-      const finalBatch = writeBatch(db);
-      finalBatch.set(doc(db, "configuracoes", "ranking_periodos"), {
-        trimestre: {
-          ...trimestre,
-          nome: trimestre.nome.trim(),
-        },
-        geracaoPublicada: geracaoId,
-        atualizadoEm: serverTimestamp(),
-        atualizadoPor: uid,
+      const resultado = await recalcularEPublicarRanking({
+        ...trimestre,
+        nome: trimestre.nome.trim(),
       });
-      addAuditToBatch(finalBatch, {
-        acao: "ranking_periodos_publicados",
-        entidade: "configuracoes",
-        entidadeId: "ranking_periodos",
-        dados: {
-          trimestre,
-          atletas: geral.length,
-          resultados: resultados.length,
-          geracaoId,
-        },
-        criadoPor: uid,
-        criadoPorNome: atleta.nome,
-      });
-      await finalBatch.commit();
-
-      for (let i = 0; i < resultadosAntigosSnap.docs.length; i += TAMANHO_LOTE) {
-        const batch = writeBatch(db);
-        resultadosAntigosSnap.docs.slice(i, i + TAMANHO_LOTE).forEach((item) => {
-          batch.delete(item.ref);
-        });
-        await batch.commit();
-      }
-
-      setConfig((atual) => ({ ...atual, geracaoPublicada: geracaoId }));
+      setConfig((atual) => ({
+        ...atual,
+        trimestre: { ...trimestre, nome: trimestre.nome.trim() },
+        geracaoPublicada: resultado.geracaoId,
+        rankingAtualizadoEm: resultado.atualizadoEm,
+        rankingAtualizacaoModo: "manual",
+      }));
       show(
         "success",
-        `Ranking publicado com ${geral.length} atletas${trimestre.ativo ? " nos períodos Geral e Trimestre" : ""}.`,
+        `Ranking publicado com ${resultado.atletas} atletas${trimestre.ativo ? " nos períodos Geral e Trimestre" : ""}.`,
       );
-    } catch {
+    } catch (error) {
       show(
         "error",
-        "Não foi possível gerar o ranking. Verifique as regras do Firebase e tente novamente.",
+        error instanceof Error
+          ? error.message
+          : "Não foi possível gerar o ranking. Tente novamente.",
       );
     } finally {
       setProcessing(false);
@@ -234,21 +168,32 @@ export function RankingPeriodsCard() {
         />
       </div>
 
-      <div className="mt-4 rounded-[var(--radius)] bg-accent/10 p-3 text-xs text-text-light">
-        Após novos lançamentos ou estornos, use o botão abaixo para atualizar os pontos, treinos e
-        quilômetros que os atletas enxergam. Isso também permite conferir os números antes da
-        publicação.
+      <div className="mt-4 flex items-start gap-2 rounded-[var(--radius)] bg-success-subtle p-3 text-xs text-text-light">
+        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
+        <span>
+          Pontos, treinos e quilômetros são atualizados automaticamente após lançamentos,
+          importações, estornos e exclusões. Use o botão apenas para alterar o período ou forçar
+          uma reconstrução completa.
+        </span>
       </div>
 
       <div className="mt-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-        <span className="text-xs text-text-muted">
-          {config.geracaoPublicada
-            ? "Há uma versão publicada para os atletas."
-            : "Ainda não há resultados consolidados publicados."}
-        </span>
+        <div className="text-xs text-text-muted">
+          <span className="block">
+            {config.geracaoPublicada
+              ? "Há uma versão publicada para os atletas."
+              : "Ainda não há resultados consolidados publicados."}
+          </span>
+          {formatarAtualizacao(config.rankingAtualizadoEm) ? (
+            <span className="mt-1 block">
+              Última atualização: {formatarAtualizacao(config.rankingAtualizadoEm)}
+              {config.rankingAtualizacaoModo === "automatico" ? " · automática" : ""}
+            </span>
+          ) : null}
+        </div>
         <Button onClick={handlePublicar} loading={processing}>
           <RefreshCw className="size-4" aria-hidden="true" />
-          Recalcular e publicar ranking
+          Recalcular agora
         </Button>
       </div>
     </Card>

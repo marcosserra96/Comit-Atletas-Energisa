@@ -254,7 +254,7 @@ export function ImportarControleAntigoModal({ open, onClose }: { open: boolean; 
         .map((v) => mapaGravar.get(v.numeroLinha))
         .filter((v): v is LinhaParaGravar => !!v);
 
-      await gravarLancamentos({
+      const { rankingAtualizado } = await gravarLancamentos({
         linhas,
         uid,
         autorNome: autor.nome,
@@ -262,7 +262,12 @@ export function ImportarControleAntigoModal({ open, onClose }: { open: boolean; 
         dadosAudit: { aba: abaEscolhida?.nome, ano, duplicadasIncluidas: duplicadasSelecionadas.length },
       });
 
-      show("success", `${linhas.length} lançamento(s) importado(s) com sucesso.`);
+      show(
+        rankingAtualizado ? "success" : "info",
+        rankingAtualizado
+          ? `${linhas.length} lançamento(s) importado(s). Ranking atualizado.`
+          : `${linhas.length} lançamento(s) importado(s), mas o ranking automático não atualizou. Use "Recalcular agora".`,
+      );
       setResultado(null);
       handleClose();
     } catch {

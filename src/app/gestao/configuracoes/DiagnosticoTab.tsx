@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { logAudit } from "@/lib/audit";
 import { ConfirmarPerigoModal } from "@/components/ui/ConfirmarPerigoModal";
+import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
 
 type ZonaPerigo = "historico_pontos" | "agenda_eventos" | "regras_pontuacao" | "comentarios_atletas";
 
@@ -37,7 +38,23 @@ export function DiagnosticoTab() {
         criadoPor: uid,
         criadoPorNome: atleta.nome,
       });
-      show("success", `${snap.size} registro(s) apagados de "${zonaAlvo}".`);
+      const atletaIds =
+        zonaAlvo === "historico_pontos"
+          ? [
+              ...new Set(
+                snap.docs
+                  .map((item) => item.data().atletaId)
+                  .filter((id): id is string => typeof id === "string"),
+              ),
+            ]
+          : [];
+      const rankingAtualizado =
+        zonaAlvo !== "historico_pontos" ||
+        (await atualizarRankingAutomaticamente(atletaIds, "manutencao_historico"));
+      show(
+        rankingAtualizado ? "success" : "info",
+        `${snap.size} registro(s) apagados de "${zonaAlvo}".${rankingAtualizado ? "" : " O ranking automático não atualizou; use \"Recalcular agora\"."}`,
+      );
       setZonaAlvo(null);
     } catch {
       show("error", "Não foi possível apagar agora. Tente novamente.");

@@ -115,8 +115,8 @@ export function ConsistenciaTab() {
         autorNome: atleta.nome,
       });
       show(
-        "success",
-        `Mesclado. ${resultado.lancamentosMigrados} lançamento(s), ${resultado.comentariosMigrados} comentário(s) e ${resultado.eventosAtualizados} inscrição(ões) migrados.`,
+        resultado.rankingAtualizado ? "success" : "info",
+        `Mesclado. ${resultado.lancamentosMigrados} lançamento(s), ${resultado.comentariosMigrados} comentário(s) e ${resultado.eventosAtualizados} inscrição(ões) migrados.${resultado.rankingAtualizado ? " Ranking atualizado." : " O ranking automático não atualizou; use \"Recalcular agora\"."}`,
       );
       setAlvoFusao(null);
     } catch (err) {

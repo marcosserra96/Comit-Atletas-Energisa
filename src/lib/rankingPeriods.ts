@@ -27,6 +27,9 @@ export function normalizarRankingPeriods(
       fim: value?.trimestre?.fim ?? "",
     },
     geracaoPublicada: value?.geracaoPublicada,
+    rankingAtualizadoEm: value?.rankingAtualizadoEm,
+    rankingAtualizacaoModo: value?.rankingAtualizacaoModo,
+    rankingAtualizacaoOrigem: value?.rankingAtualizacaoOrigem,
     atualizadoEm: value?.atualizadoEm,
     atualizadoPor: value?.atualizadoPor,
   };

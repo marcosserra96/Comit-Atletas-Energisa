@@ -26,6 +26,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmarPerigoModal } from "@/components/ui/ConfirmarPerigoModal";
 import { logAudit } from "@/lib/audit";
 import { formatDataTreino, formatDateTime } from "@/lib/format";
+import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
 import { EstornarModal } from "./EstornarModal";
 import type { AtletaDoc, HistoricoPontoDoc } from "@/lib/types";
 
@@ -129,7 +130,16 @@ export function ExtratoTab() {
         criadoPor: uid,
         criadoPorNome: atleta.nome,
       });
-      show("success", "Lançamento estornado.");
+      const rankingAtualizado = await atualizarRankingAutomaticamente(
+        [alvo.atletaId],
+        "estorno_lancamento",
+      );
+      show(
+        rankingAtualizado ? "success" : "info",
+        rankingAtualizado
+          ? "Lançamento estornado. Ranking atualizado."
+          : "Lançamento estornado, mas o ranking automático não atualizou. Use \"Recalcular agora\".",
+      );
       setAlvo(null);
     } catch {
       show("error", "Não foi possível estornar agora. Tente novamente.");
@@ -190,11 +200,17 @@ export function ExtratoTab() {
         criadoPorNome: atleta.nome,
       });
 
+      const rankingAtualizado = await atualizarRankingAutomaticamente(
+        [...new Set(alvoExclusao.map((item) => item.atletaId))],
+        "exclusao_lancamento",
+      );
       show(
-        "success",
-        alvoExclusao.length === 1
-          ? "Lançamento excluído permanentemente."
-          : `${alvoExclusao.length} lançamentos excluídos permanentemente.`,
+        rankingAtualizado ? "success" : "info",
+        `${
+          alvoExclusao.length === 1
+            ? "Lançamento excluído permanentemente."
+            : `${alvoExclusao.length} lançamentos excluídos permanentemente.`
+        }${rankingAtualizado ? " Ranking atualizado." : " O ranking automático não atualizou; use \"Recalcular agora\"."}`,
       );
       setSelecionados(new Set());
       setAlvoExclusao(null);

@@ -25,6 +25,7 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatShortDate } from "@/lib/format";
+import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
 import { ImportarPontuacoesCard } from "./ImportarPontuacoesCard";
 import type { AtletaDoc, EventoDoc, Modalidade, RegraPontuacaoDoc, TipoLancamento } from "@/lib/types";
 
@@ -331,7 +332,19 @@ export function LancarPontosTab() {
 
       await batch.commit();
 
-      show("success", `Lançamento registrado para ${totalAtletasEnvolvidos} atleta(s).`);
+      const atletaIds = atletas
+        .filter((item) => faltosos.has(item.id) || (marcados[item.id]?.size ?? 0) > 0)
+        .map((item) => item.id);
+      const rankingAtualizado = await atualizarRankingAutomaticamente(
+        atletaIds,
+        "lancamento_manual",
+      );
+      show(
+        rankingAtualizado ? "success" : "info",
+        rankingAtualizado
+          ? `Lançamento registrado para ${totalAtletasEnvolvidos} atleta(s). Ranking atualizado.`
+          : `Lançamento registrado para ${totalAtletasEnvolvidos} atleta(s), mas o ranking automático não atualizou. Use "Recalcular agora".`,
+      );
       resetFormulario();
     } catch {
       show("error", "Não foi possível salvar o lançamento agora. Tente novamente.");

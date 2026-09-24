@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { logAudit } from "@/lib/audit";
 import { formatDataTreino } from "@/lib/format";
+import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
 import { EstornarModal } from "../../pontuacao/EstornarModal";
 import type { AtletaDoc, HistoricoPontoDoc } from "@/lib/types";
 
@@ -70,7 +71,16 @@ export function FichaLancamentosTab({ atleta }: { atleta: AtletaDoc }) {
         criadoPor: uid,
         criadoPorNome: autor.nome,
       });
-      show("success", "Lançamento estornado.");
+      const rankingAtualizado = await atualizarRankingAutomaticamente(
+        [alvo.atletaId],
+        "estorno_ficha_atleta",
+      );
+      show(
+        rankingAtualizado ? "success" : "info",
+        rankingAtualizado
+          ? "Lançamento estornado. Ranking atualizado."
+          : "Lançamento estornado, mas o ranking automático não atualizou. Use \"Recalcular agora\".",
+      );
       setAlvo(null);
     } catch {
       show("error", "Não foi possível estornar agora. Tente novamente.");

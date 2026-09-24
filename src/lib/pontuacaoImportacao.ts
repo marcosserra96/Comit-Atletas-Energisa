@@ -2,6 +2,7 @@ import { collection, doc, increment, serverTimestamp, writeBatch } from "firebas
 import { db } from "@/lib/firebase";
 import { atletaPublicoRef } from "@/lib/publicAthletes";
 import { logAudit } from "@/lib/audit";
+import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
 import type { AtletaDoc, TipoLancamento } from "@/lib/types";
 import type { LinhaDuplicada, LinhaImportacao } from "@/app/gestao/pontuacao/RevisarImportacaoModal";
 
@@ -119,4 +120,11 @@ export async function gravarLancamentos(params: {
       criadoPorNome: autorNome,
     });
   }
+
+  return {
+    rankingAtualizado: await atualizarRankingAutomaticamente(
+      [...incrementoPorAtleta.keys()],
+      acaoAudit,
+    ),
+  };
 }

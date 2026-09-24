@@ -16,6 +16,7 @@ import { db } from "@/lib/firebase";
 import { logAudit } from "@/lib/audit";
 import { TAMANHO_LOTE } from "@/lib/pontuacaoImportacao";
 import { atletaPublicoRef, dadosAtletaPublico } from "@/lib/publicAthletes";
+import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
 import type { AtletaDoc, HistoricoPontoDoc } from "@/lib/types";
 
 /** Remove acentos, colapsa espaços e baixa a caixa — pra comparar nomes ignorando diferenças de digitação. */
@@ -134,6 +135,7 @@ export interface ResultadoFusao {
   comentariosMigrados: number;
   eventosAtualizados: number;
   nomesRemovidos: string[];
+  rankingAtualizado: boolean;
 }
 
 /**
@@ -262,5 +264,16 @@ export async function mesclarAtletas(params: {
     criadoPorNome: autorNome,
   });
 
-  return { lancamentosMigrados, comentariosMigrados, eventosAtualizados, nomesRemovidos };
+  const rankingAtualizado = await atualizarRankingAutomaticamente(
+    [canonicalId, ...perdedoresIds],
+    "mesclar_atletas",
+  );
+
+  return {
+    lancamentosMigrados,
+    comentariosMigrados,
+    eventosAtualizados,
+    nomesRemovidos,
+    rankingAtualizado,
+  };
 }

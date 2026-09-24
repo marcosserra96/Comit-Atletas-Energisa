@@ -231,6 +231,9 @@ export interface RankingPeriodsConfigDoc {
     fim: string;
   };
   geracaoPublicada?: string;
+  rankingAtualizadoEm?: unknown;
+  rankingAtualizacaoModo?: "automatico" | "manual";
+  rankingAtualizacaoOrigem?: string;
   atualizadoEm?: unknown;
   atualizadoPor?: string;
 }
