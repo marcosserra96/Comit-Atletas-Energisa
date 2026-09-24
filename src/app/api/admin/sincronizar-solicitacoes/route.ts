@@ -26,12 +26,29 @@ function gruposDe<T>(itens: T[], tamanho: number) {
 }
 
 export async function POST(request: Request) {
+  let adminFirestoreModule: typeof import("firebase-admin/firestore");
+  let firebaseAdminModule: typeof import("@/lib/firebaseAdmin");
+
   try {
-    const [{ FieldValue }, { getFirebaseAdmin }] = await Promise.all([
+    [adminFirestoreModule, firebaseAdminModule] = await Promise.all([
       import("firebase-admin/firestore"),
       import("@/lib/firebaseAdmin"),
     ]);
+  } catch (error) {
+    const detalhe = error instanceof Error ? error.message : "Erro desconhecido";
+    console.error("Falha ao carregar o Firebase Admin:", error);
+    return Response.json(
+      {
+        error: "A integração administrativa não conseguiu iniciar no servidor.",
+        detalhe: detalhe.slice(0, 300),
+      },
+      { status: 500 },
+    );
+  }
 
+  try {
+    const { FieldValue } = adminFirestoreModule;
+    const { getFirebaseAdmin } = firebaseAdminModule;
     const token = tokenDaRequisicao(request);
     if (!token) {
       return Response.json({ error: "Sessão não informada." }, { status: 401 });
