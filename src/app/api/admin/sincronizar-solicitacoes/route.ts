@@ -1,9 +1,3 @@
-import { FieldValue } from "firebase-admin/firestore";
-import {
-  FirebaseAdminConfigError,
-  getFirebaseAdmin,
-} from "@/lib/firebaseAdmin";
-
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -33,6 +27,11 @@ function gruposDe<T>(itens: T[], tamanho: number) {
 
 export async function POST(request: Request) {
   try {
+    const [{ FieldValue }, { getFirebaseAdmin }] = await Promise.all([
+      import("firebase-admin/firestore"),
+      import("@/lib/firebaseAdmin"),
+    ]);
+
     const token = tokenDaRequisicao(request);
     if (!token) {
       return Response.json({ error: "Sessão não informada." }, { status: 401 });
@@ -123,7 +122,7 @@ export async function POST(request: Request) {
 
     return Response.json(resultado);
   } catch (error) {
-    if (error instanceof FirebaseAdminConfigError) {
+    if (error instanceof Error && error.name === "FirebaseAdminConfigError") {
       return Response.json({ error: error.message }, { status: 503 });
     }
 
