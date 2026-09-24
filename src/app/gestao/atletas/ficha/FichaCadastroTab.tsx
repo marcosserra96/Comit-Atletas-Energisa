@@ -12,6 +12,7 @@ import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { ConfirmarPerigoModal } from "@/components/ui/ConfirmarPerigoModal";
 import { logAudit } from "@/lib/audit";
+import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import type { AtletaDoc, Equipe } from "@/lib/types";
 
 const equipeOptions: Equipe[] = ["corrida", "bicicleta", "fila_corrida", "fila_bicicleta"];
@@ -57,7 +58,12 @@ export function FichaCadastroTab({ atleta, onSaved }: { atleta: AtletaDoc; onSav
       });
       batch.set(
         atletaPublicoRef(atleta.id),
-        { nome, equipe, ativo: ativoAtualizado },
+        {
+          nome,
+          equipe,
+          ativo: ativoAtualizado,
+          visivelNasListas: perfilAtletaVisivel(atleta),
+        },
         { merge: true },
       );
       await batch.commit();

@@ -25,6 +25,15 @@ export interface AtletaDoc {
   role: Role | null;
   equipe: Equipe;
   ativo: boolean;
+  /**
+   * Controla se o perfil participa das visões coletivas do portal. Ausente ou
+   * true mantém compatibilidade com os cadastros anteriores; false reserva o
+   * perfil para testes/manutenção e o deixa apenas na área administrativa de
+   * perfis ocultos.
+   */
+  visivelNasListas?: boolean;
+  ocultadoEm?: unknown;
+  ocultadoPor?: string;
   pontuacaoTotal: number;
   authUid: string | null;
   criadoEm: unknown;
@@ -37,7 +46,7 @@ export interface AtletaDoc {
 export type AtletaPublicoDoc = Pick<
   AtletaDoc,
   "id" | "nome" | "equipe" | "ativo" | "pontuacaoTotal"
->;
+> & Pick<AtletaDoc, "visivelNasListas">;
 
 /** usuarios/{uid} — ponteiro auth -> atleta, escrito só por staff (nunca pelo próprio usuário). */
 export interface UsuarioDoc {

@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { equipeLabel, competeAtivamente } from "@/lib/labels";
 import { exportToExcel } from "@/lib/excel";
 import { cn } from "@/lib/cn";
+import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import type { AtletaDoc, HistoricoPontoDoc } from "@/lib/types";
 
 const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -84,7 +85,10 @@ export function ConsolidadoTab() {
   const linhas = useMemo(() => {
     if (!atletas || !historico) return [];
     const elegiveis = atletas.filter(
-      (a) => competeAtivamente(a.equipe) && (!equipeFiltro || a.equipe === equipeFiltro),
+      (a) =>
+        perfilAtletaVisivel(a) &&
+        competeAtivamente(a.equipe) &&
+        (!equipeFiltro || a.equipe === equipeFiltro),
     );
     const historicoAno = historico.filter((h) => !h.estornado && h.dataTreino.startsWith(ano));
 

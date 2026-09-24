@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmarPerigoModal } from "@/components/ui/ConfirmarPerigoModal";
 import { PrivacidadeAtletasCard } from "./PrivacidadeAtletasCard";
 import { equipeLabel } from "@/lib/labels";
+import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import {
   carregarParesIgnorados,
   detectarGruposDuplicados,
@@ -52,7 +53,12 @@ export function ConsistenciaTab() {
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, "atletas"),
-      (snap) => setAtletas(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)),
+      (snap) =>
+        setAtletas(
+          snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)
+            .filter(perfilAtletaVisivel),
+        ),
       () => setAtletas([]),
     );
     return unsubscribe;

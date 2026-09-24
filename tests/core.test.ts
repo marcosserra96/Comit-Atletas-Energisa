@@ -4,6 +4,7 @@ import { consolidarAtividades } from "../src/lib/activityConsolidation";
 import { dataIsoLocal } from "../src/lib/date";
 import { modalidadeDoAtleta, rankingOcultoAgora } from "../src/lib/rankingVisibility";
 import { calcularResultadosRanking } from "../src/lib/rankingPeriods";
+import { perfilAtletaVisivel } from "../src/lib/athleteVisibility";
 import type { RankingVisibilityConfigDoc } from "../src/lib/types";
 import type { AtletaDoc, HistoricoPontoDoc } from "../src/lib/types";
 
@@ -149,4 +150,20 @@ test("respeita datas personalizadas do ranking trimestral", () => {
   assert.equal(resultados[0].pontuacaoTotal, 10);
   assert.equal(resultados[0].treinos, 2);
   assert.equal(resultados[0].km, 20);
+});
+
+test("mantém cadastros antigos visíveis e respeita a ocultação explícita", () => {
+  assert.equal(perfilAtletaVisivel(atletaRanking()), true);
+  assert.equal(perfilAtletaVisivel(atletaRanking({ visivelNasListas: true })), true);
+  assert.equal(perfilAtletaVisivel(atletaRanking({ visivelNasListas: false })), false);
+});
+
+test("não publica perfil oculto no ranking", () => {
+  const resultados = calcularResultadosRanking(
+    [atletaRanking({ visivelNasListas: false })],
+    [lancamento()],
+    "geral",
+  );
+
+  assert.deepEqual(resultados, []);
 });

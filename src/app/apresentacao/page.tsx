@@ -12,6 +12,7 @@ import { getStoredBranding, loginBackground } from "@/lib/branding";
 import { normalizarInformativoConfig } from "@/lib/informativoConfig";
 import { atletaEstaEmAlerta, calcularResumoRankingMensal, ordenarRankingMensal, type ResumoAtletaMensal } from "@/lib/rankingMensal";
 import { formatShortDate } from "@/lib/format";
+import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import type { AtletaDoc, BrandingDoc, EventoDoc, HistoricoPontoDoc, InformativoConfigDoc } from "@/lib/types";
 
 const MEDAL_COR = ["#facc15", "#cbd5e1", "#d97706"];
@@ -28,7 +29,11 @@ function useDadosApresentacao() {
 
   useEffect(() => {
     const unsubAtletas = onSnapshot(collection(db, "atletas"), (snap) => {
-      setAtletas(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc));
+      setAtletas(
+        snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)
+          .filter(perfilAtletaVisivel),
+      );
     });
     getDocs(collection(db, "historico_pontos")).then((snap) => {
       setLancamentos(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as HistoricoPontoDoc));

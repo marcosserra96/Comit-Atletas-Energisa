@@ -108,6 +108,7 @@ export function RequestCard({
         role: roleEscolhida,
         equipe: roleEscolhida === "atleta" ? "nenhuma" : "comite",
         ativo: true,
+        visivelNasListas: true,
         pontuacaoTotal: 0,
         authUid: solicitacao.uid,
         criadoEm: serverTimestamp(),
@@ -121,6 +122,7 @@ export function RequestCard({
           nome: solicitacao.nome,
           equipe: roleEscolhida === "atleta" ? "nenhuma" : "comite",
           ativo: true,
+          visivelNasListas: true,
           pontuacaoTotal: 0,
         },
       );

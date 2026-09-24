@@ -7,6 +7,7 @@ import { db } from "@/lib/firebase";
 import { useAthleteView } from "@/lib/session/AthleteViewProvider";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useAthleteDirectoryCollection } from "@/lib/session/useAthleteDirectory";
+import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { SportBadge } from "@/components/ui/SportBadge";
@@ -210,7 +211,11 @@ export default function RankingPage() {
     const unsubscribe = onSnapshot(
       q,
       (snap) => {
-        setResultados(snap.docs.map((item) => item.data() as RankingResultadoDoc));
+        setResultados(
+          snap.docs
+            .map((item) => item.data() as RankingResultadoDoc)
+            .filter(perfilAtletaVisivel),
+        );
         setErroRanking(false);
       },
       () => {
@@ -253,7 +258,11 @@ export default function RankingPage() {
     const unsubscribe = onSnapshot(
       q,
       (snap) => {
-        setLegacy(snap.docs.map((item) => ({ id: item.id, ...item.data() }) as AtletaPublicoDoc));
+        setLegacy(
+          snap.docs
+            .map((item) => ({ id: item.id, ...item.data() }) as AtletaPublicoDoc)
+            .filter(perfilAtletaVisivel),
+        );
         setErroRanking(false);
       },
       () => {

@@ -1,4 +1,5 @@
 import { consolidarAtividades } from "@/lib/activityConsolidation";
+import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import type {
   AtletaDoc,
   HistoricoPontoDoc,
@@ -54,6 +55,7 @@ export function calcularResultadosRanking(
 
   return atletas.flatMap((atleta) => {
     if (
+      !perfilAtletaVisivel(atleta) ||
       !atleta.ativo ||
       (atleta.equipe !== "corrida" && atleta.equipe !== "bicicleta")
     ) {

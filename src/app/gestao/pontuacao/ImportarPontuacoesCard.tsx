@@ -12,6 +12,7 @@ import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { baixarModeloImportacao, readExcelFile } from "@/lib/excel";
 import { modalidadeFromEquipe } from "@/lib/labels";
+import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import {
   analisarDuplicidade,
   chaveDuplicidade,
@@ -63,7 +64,9 @@ export function ImportarPontuacoesCard() {
       ]);
       const atletas = atletasSnap.docs.map((d) => d.data() as AtletaDoc);
       const atletasDoModelo = atletas
-        .filter((a) => !equipeModelo || a.equipe === equipeModelo)
+        .filter(
+          (a) => perfilAtletaVisivel(a) && (!equipeModelo || a.equipe === equipeModelo),
+        )
         .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
       const nomesAtletas = atletasDoModelo.map((a) => a.nome);
       const descricoesRegras = [
@@ -136,7 +139,9 @@ export function ImportarPontuacoesCard() {
         getDocs(collection(db, "historico_pontos")),
       ]);
 
-      const atletas = atletasSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc);
+      const atletas = atletasSnap.docs
+        .map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)
+        .filter(perfilAtletaVisivel);
       const regras = regrasSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as RegraPontuacaoDoc);
       const atletaPorNome = new Map(atletas.map((a) => [a.nome.trim().toLowerCase(), a]));
 

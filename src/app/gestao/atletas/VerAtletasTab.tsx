@@ -29,6 +29,7 @@ import { equipeLabel, isWaitlisted, ehMembroDoElenco } from "@/lib/labels";
 import { formatShortDate } from "@/lib/format";
 import { exportToExcel } from "@/lib/excel";
 import { cn } from "@/lib/cn";
+import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { FichaAtletaModal } from "./ficha/FichaAtletaModal";
 import type { AtletaDoc, Equipe, HistoricoPontoDoc } from "@/lib/types";
 
@@ -60,7 +61,7 @@ export function VerAtletasTab() {
         setAtletas(
           snap.docs
             .map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)
-            .filter((a) => ehMembroDoElenco(a.equipe)),
+            .filter((a) => perfilAtletaVisivel(a) && ehMembroDoElenco(a.equipe)),
         );
       },
       () => setAtletas([]),

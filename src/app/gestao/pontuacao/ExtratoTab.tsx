@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import {
   collection,
   doc,
-  getDocs,
   increment,
   limit,
   onSnapshot,
@@ -27,6 +26,7 @@ import { ConfirmarPerigoModal } from "@/components/ui/ConfirmarPerigoModal";
 import { logAudit } from "@/lib/audit";
 import { formatDataTreino, formatDateTime } from "@/lib/format";
 import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
+import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { EstornarModal } from "./EstornarModal";
 import type { AtletaDoc, HistoricoPontoDoc } from "@/lib/types";
 
@@ -45,22 +45,28 @@ export function ExtratoTab() {
   const [alvoExclusao, setAlvoExclusao] = useState<HistoricoPontoDoc[] | null>(null);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [ultimoIndice, setUltimoIndice] = useState<number | null>(null);
+  const atletaFiltroEfetivo =
+    atletaFiltro && atletas?.some((item) => item.id === atletaFiltro) ? atletaFiltro : "";
 
   useEffect(() => {
-    getDocs(collection(db, "atletas")).then((snap) => {
+    const unsubscribe = onSnapshot(collection(db, "atletas"), (snap) => {
       setAtletas(
         snap.docs
           .map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)
+          .filter(perfilAtletaVisivel)
           .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
       );
     });
+    return unsubscribe;
   }, []);
 
   useEffect(() => {
-    const q = atletaFiltro
+    if (atletas === null) return;
+    const atletaIdsVisiveis = new Set(atletas.map((item) => item.id));
+    const q = atletaFiltroEfetivo
       ? query(
           collection(db, "historico_pontos"),
-          where("atletaId", "==", atletaFiltro),
+          where("atletaId", "==", atletaFiltroEfetivo),
           orderBy("criadoEm", "desc"),
           limit(LIMITE_POR_ATLETA),
         )
@@ -68,11 +74,16 @@ export function ExtratoTab() {
 
     const unsubscribe = onSnapshot(
       q,
-      (snap) => setLancamentos(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as HistoricoPontoDoc)),
+      (snap) =>
+        setLancamentos(
+          snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }) as HistoricoPontoDoc)
+            .filter((item) => atletaIdsVisiveis.has(item.atletaId)),
+        ),
       () => setLancamentos([]),
     );
     return unsubscribe;
-  }, [atletaFiltro]);
+  }, [atletaFiltroEfetivo, atletas]);
 
   function toggleSelecionado(id: string, indice: number, shiftKey: boolean) {
     setSelecionados((prev) => {
@@ -229,7 +240,7 @@ export function ExtratoTab() {
           <Select
             className="w-56"
             searchable
-            value={atletaFiltro}
+            value={atletaFiltroEfetivo}
             onChange={(e) => {
               setAtletaFiltro(e.target.value);
               setSelecionados(new Set());
@@ -280,7 +291,7 @@ export function ExtratoTab() {
             icon={History}
             title="Nenhum lançamento encontrado"
             description={
-              atletaFiltro
+              atletaFiltroEfetivo
                 ? "Esse atleta ainda não tem lançamentos registrados."
                 : "Os lançamentos de pontos aparecem aqui assim que forem registrados."
             }
@@ -371,7 +382,7 @@ export function ExtratoTab() {
               </tbody>
             </table>
           </Card>
-          {!atletaFiltro && (
+          {!atletaFiltroEfetivo && (
             <p className="text-xs text-text-muted">
               Mostrando os {LIMITE_GERAL} lançamentos mais recentes. Filtre por atleta pra ver o histórico completo dele.
             </p>

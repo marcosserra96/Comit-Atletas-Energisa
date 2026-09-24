@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { logAudit } from "@/lib/audit";
 import { roleLabel } from "@/lib/labels";
+import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { GerenciarAcessosModal } from "./GerenciarAcessosModal";
 import { TestarPermissoesModal } from "./TestarPermissoesModal";
 import { CorrigirVinculoModal } from "./CorrigirVinculoModal";
@@ -45,7 +46,7 @@ export function UsuariosTab() {
       setStaff(
         snap.docs
           .map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)
-          .filter((a) => Boolean(a.authUid)),
+          .filter((a) => Boolean(a.authUid) && perfilAtletaVisivel(a)),
       );
     });
     return unsubscribe;
@@ -54,7 +55,12 @@ export function UsuariosTab() {
   useEffect(() => {
     const unsubscribe = onSnapshot(
       query(collection(db, "atletas"), where("authUid", "==", null)),
-      (snap) => setAtletasSemVinculo(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)),
+      (snap) =>
+        setAtletasSemVinculo(
+          snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)
+            .filter(perfilAtletaVisivel),
+        ),
     );
     return unsubscribe;
   }, []);

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { ArrowLeft, FileSpreadsheet, History, Table2, Upload } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
 import { Modal } from "@/components/ui/Modal";
@@ -136,7 +137,9 @@ export function ImportarControleAntigoModal({ open, onClose }: { open: boolean; 
         getDocs(collection(db, "atletas")),
         getDocs(collection(db, "historico_pontos")),
       ]);
-      const atletas = atletasSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc);
+      const atletas = atletasSnap.docs
+        .map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)
+        .filter(perfilAtletaVisivel);
       const atletaPorNome = new Map(atletas.map((a) => [a.nome.trim().toLowerCase(), a]));
       const chavesExistentes = new Set(
         historicoSnap.docs

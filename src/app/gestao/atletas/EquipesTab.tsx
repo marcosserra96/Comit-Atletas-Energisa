@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { logAudit } from "@/lib/audit";
 import { GripVertical, MessageSquare, Users } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { FichaAtletaModal } from "./ficha/FichaAtletaModal";
 import { MotivoMovimentacaoModal } from "./MotivoMovimentacaoModal";
 import type { AtletaDoc, Equipe } from "@/lib/types";
@@ -23,7 +24,12 @@ function useAtletasPorEquipe(equipe: Equipe, ordenarPorFila = false) {
       : [where("equipe", "==", equipe)];
     const unsubscribe = onSnapshot(
       query(collection(db, "atletas"), ...restricoes),
-      (snap) => setAtletas(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)),
+      (snap) =>
+        setAtletas(
+          snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)
+            .filter(perfilAtletaVisivel),
+        ),
       () => setAtletas([]),
     );
     return unsubscribe;

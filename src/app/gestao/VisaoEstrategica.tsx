@@ -27,6 +27,7 @@ import { db } from "@/lib/firebase";
 import { formatBRL, formatShortDate } from "@/lib/format";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { calcularEstatisticasDashboard } from "@/lib/dashboardStats";
+import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { ExportarRelatorioDropdown } from "./ExportarRelatorioDropdown";
 import type {
   AtletaDoc,
@@ -66,7 +67,12 @@ export function VisaoEstrategica() {
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, "atletas"),
-      (snap) => setAtletas(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)),
+      (snap) =>
+        setAtletas(
+          snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)
+            .filter(perfilAtletaVisivel),
+        ),
       () => setAtletas([]),
     );
     return unsubscribe;
@@ -126,6 +132,12 @@ export function VisaoEstrategica() {
     [atletas, lancamentos, despesas, eventos, regras],
   );
 
+  const lancamentosVisiveis = useMemo(() => {
+    if (!atletas || !lancamentos) return [];
+    const atletaIds = new Set(atletas.map((item) => item.id));
+    return lancamentos.filter((item) => atletaIds.has(item.atletaId));
+  }, [atletas, lancamentos]);
+
   const proximosEventos = useMemo(
     () => (eventos ?? []).filter((e) => e.data >= dataIsoLocal()).slice(0, 5),
     [eventos],
@@ -149,7 +161,7 @@ export function VisaoEstrategica() {
           <ExportarRelatorioDropdown
             stats={stats}
             eventos={eventos ?? []}
-            lancamentos={lancamentos ?? []}
+            lancamentos={lancamentosVisiveis}
             atletas={atletas ?? []}
           />
         )}

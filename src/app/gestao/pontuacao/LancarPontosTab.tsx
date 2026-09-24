@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatShortDate } from "@/lib/format";
 import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
+import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { ImportarPontuacoesCard } from "./ImportarPontuacoesCard";
 import type { AtletaDoc, EventoDoc, Modalidade, RegraPontuacaoDoc, TipoLancamento } from "@/lib/types";
 
@@ -62,7 +63,7 @@ export function LancarPontosTab() {
         setAtletas(
           snap.docs
             .map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)
-            .filter((a) => a.ativo)
+            .filter((a) => a.ativo && perfilAtletaVisivel(a))
             .sort((a, b) => a.nome.localeCompare(b.nome)),
         );
       },

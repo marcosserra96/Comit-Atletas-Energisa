@@ -109,7 +109,10 @@ service cloud.firestore {
           !exists(/databases/$(database)/documents/configuracoes/privacidade_atletas));
       allow create: if isAdmin() || comitePode("atletas");
       allow update: if isAdmin() ||
-        (comitePode("atletas") && !("role" in request.resource.data.diff(resource.data).affectedKeys())) ||
+        (comitePode("atletas") &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            "role", "visivelNasListas", "ocultadoEm", "ocultadoPor"
+          ])) ||
         (comitePode("registrar") &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(["pontuacaoTotal", "atualizadoEm"])) ||
         (hasUsuario() && meuAtletaId() == atletaId &&

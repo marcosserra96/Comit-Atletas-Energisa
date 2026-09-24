@@ -52,6 +52,7 @@ import { cn } from "@/lib/cn";
 import { isWaitlisted, modalidadeFromEquipe } from "@/lib/labels";
 import { formatDataTreino, formatLongDate, formatShortDate } from "@/lib/format";
 import { calcularInsightsAtleta } from "@/lib/athleteStats";
+import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import {
   normalizarRankingVisibility,
   rankingOcultoAgora,
@@ -143,6 +144,7 @@ export default function DashboardPage() {
       (snap) => {
         const lista = snap.docs
           .map((d) => ({ id: d.id, ...d.data() }) as AtletaPublicoDoc)
+          .filter(perfilAtletaVisivel)
           .sort(
             (a, b) =>
               b.pontuacaoTotal - a.pontuacaoTotal ||

@@ -6,6 +6,7 @@ import { UserCheck } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { RequestCard } from "./RequestCard";
 import { RejectedRequestCard } from "./RejectedRequestCard";
 import type { AtletaDoc, SolicitacaoAcessoDoc } from "@/lib/types";
@@ -46,7 +47,11 @@ export function PendentesTab() {
     const unsubscribe = onSnapshot(
       query(collection(db, "atletas"), where("authUid", "==", null)),
       (snap) => {
-        setAtletasSemVinculo(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc));
+        setAtletasSemVinculo(
+          snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)
+            .filter(perfilAtletaVisivel),
+        );
       },
     );
     return unsubscribe;

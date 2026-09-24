@@ -1,5 +1,6 @@
 import { dataIsoLocal } from "@/lib/date";
 import { ehMembroDoElenco } from "@/lib/labels";
+import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import type {
   AtletaDoc,
   DespesaDoc,
@@ -62,13 +63,18 @@ export function calcularEstatisticasDashboard(params: {
   const ha30dias = new Date(hoje.getTime() - 30 * 24 * 60 * 60 * 1000);
   const iso30 = dataIsoLocal(ha30dias);
 
-  const atletasProgram = atletas.filter((a) => ehMembroDoElenco(a.equipe));
+  const atletasProgram = atletas.filter(
+    (a) => perfilAtletaVisivel(a) && ehMembroDoElenco(a.equipe),
+  );
+  const atletaIdsVisiveis = new Set(atletasProgram.map((atleta) => atleta.id));
   // Atleta na fila de espera ainda não entrou no programa — não conta como
   // ativo em nenhuma estatística (engajamento, pódio, ranking, etc.), mesmo
   // que o campo "ativo" esteja com valor incorreto para ele.
   const ativos = atletasProgram.filter((a) => a.ativo && a.equipe !== "fila_bicicleta" && a.equipe !== "fila_corrida");
 
-  const validos = lancamentos.filter((l) => !l.estornado);
+  const validos = lancamentos.filter(
+    (l) => !l.estornado && atletaIdsVisiveis.has(l.atletaId),
+  );
   const lotesPorAtleta = new Map<string, Set<string>>();
   const kmPorAtleta = new Map<string, number>();
   const pontosPorAtleta = new Map<string, number>();

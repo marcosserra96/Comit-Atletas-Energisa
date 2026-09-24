@@ -128,6 +128,7 @@ export function ImportarAtletasCard() {
           equipe,
           // Na fila de espera o atleta ainda não entrou no programa de fato.
           ativo: !equipe.startsWith("fila_"),
+          visivelNasListas: true,
           ordemFila: equipe.startsWith("fila_") ? Date.now() : null,
           pontuacaoTotal: 0,
           authUid: null,
