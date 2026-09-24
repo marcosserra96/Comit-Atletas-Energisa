@@ -35,13 +35,9 @@ export async function POST(request: Request) {
       import("@/lib/firebaseAdmin"),
     ]);
   } catch (error) {
-    const detalhe = error instanceof Error ? error.message : "Erro desconhecido";
     console.error("Falha ao carregar o Firebase Admin:", error);
     return Response.json(
-      {
-        error: "A integração administrativa não conseguiu iniciar no servidor.",
-        detalhe: detalhe.slice(0, 300),
-      },
+      { error: "A integração administrativa não conseguiu iniciar no servidor." },
       { status: 500 },
     );
   }
