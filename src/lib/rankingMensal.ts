@@ -75,9 +75,7 @@ export function calcularResumoRankingPeriodo(params: {
 export function ordenarRankingMensal(a: ResumoAtletaMensal, b: ResumoAtletaMensal) {
   return (
     b.pontosMes - a.pontosMes ||
-    b.treinosMes - a.treinosMes ||
-    b.kmMes - a.kmMes ||
-    a.nome.localeCompare(b.nome)
+    a.nome.localeCompare(b.nome, "pt-BR")
   );
 }
 

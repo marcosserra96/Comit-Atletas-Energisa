@@ -255,7 +255,7 @@ export function TermosProgramaTab() {
             onChange={(value) => setModalidade(value)}
             options={[
               { value: "corrida", label: "Corrida", icon: Footprints },
-              { value: "bicicleta", label: "Mountain Bike", icon: Bike },
+              { value: "bicicleta", label: "Bike", icon: Bike },
             ]}
             className="w-full sm:w-fit"
           />
@@ -312,7 +312,7 @@ export function TermosProgramaTab() {
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-text-light">
-                  {modalidade === "corrida" ? "Corrida" : "Mountain Bike"}
+                  {modalidade === "corrida" ? "Corrida" : "Bike"}
                 </p>
               </div>
             </div>

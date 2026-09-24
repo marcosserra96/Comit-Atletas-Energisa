@@ -2,6 +2,7 @@ import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/render
 import type { ReactNode } from "react";
 import type { Modalidade } from "@/lib/types";
 import type { ResumoAtletaMensal } from "@/lib/rankingMensal";
+import { calcularPosicoesRanking } from "@/lib/rankingPosition";
 import {
   CAMPOS_INFO,
   COR_POSICAO,
@@ -14,6 +15,10 @@ const PAGE_W = 1672;
 const PAGE_H = 941;
 const BG = "#010a17";
 const WHITE = "#ffffff";
+
+interface ResumoAtletaClassificado extends ResumoAtletaMensal {
+  posicao: number;
+}
 
 function formatarNumero(valor: number, casas = 0) {
   return valor.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas });
@@ -145,6 +150,55 @@ function PodiumSlotView({
   );
 }
 
+function PodiumCompartilhadoView({ atletas }: { atletas: ResumoAtletaClassificado[] }) {
+  const cores = ["#eab308", "#94a3b8", "#f37021"];
+  return (
+    <>
+      <View style={abs(204, 14, 548, { height: 466, backgroundColor: BG })} />
+      <Text
+        style={abs(222, 38, 500, {
+          color: "#cfe3f2",
+          fontSize: 12,
+          fontFamily: "Helvetica-Bold",
+          textAlign: "center",
+        })}
+      >
+        PÓDIO COM EMPATE POR PONTOS
+      </Text>
+      {atletas.map((atleta, indice) => {
+        const cor = cores[Math.min(atleta.posicao, 3) - 1];
+        return (
+          <View
+            key={atleta.id}
+            style={abs(262 + indice * 116, 42, 492, {
+              height: 92,
+              borderWidth: 2,
+              borderColor: cor,
+              borderRadius: 10,
+              backgroundColor: "#07192d",
+              flexDirection: "row",
+              alignItems: "center",
+              paddingHorizontal: 18,
+            })}
+          >
+            <Text style={{ width: 56, color: cor, fontSize: 22, fontFamily: "Helvetica-Bold" }}>
+              {atleta.posicao}º
+            </Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: WHITE, fontSize: 12, fontFamily: "Helvetica-Bold" }}>
+                {atleta.nome}
+              </Text>
+              <Text style={{ marginTop: 7, color: "#cfe3f2", fontSize: 9 }}>
+                {formatarNumero(atleta.pontosMes)} pts · {formatarNumero(atleta.treinosMes)} treinos · {formatarNumero(atleta.kmMes, 2)} km
+              </Text>
+            </View>
+          </View>
+        );
+      })}
+    </>
+  );
+}
+
 // ---------- Ranking geral (duas colunas de 19 linhas) ----------
 
 interface RankingColSpec {
@@ -194,17 +248,13 @@ function RankingColuna({
   lista,
   spec,
   layout,
-  primeiraPosicao,
 }: {
-  lista: ResumoAtletaMensal[];
+  lista: ResumoAtletaClassificado[];
   spec: RankingColSpec;
   layout: LayoutInformativo;
-  /** Colocação do primeiro item desta coluna. Quando não bate com o número já impresso na arte, redesenhamos a coluna de posição. */
-  primeiraPosicao: number;
 }) {
   const row1Y = layout.campos.rankRow1.y;
   const rowH = layout.extras.rankingRowHeight;
-  const renumerar = primeiraPosicao !== spec.posicaoImpressa;
   return (
     <>
       {Array.from({ length: RANKING_ROWS_POR_COLUNA }, (_, i) => {
@@ -223,20 +273,16 @@ function RankingColuna({
         }
         return (
           <View key={i}>
-            {renumerar && (
-              <>
-                {/* tampa só a célula de posição (sem encostar nas linhas divisórias) e escreve a colocação certa */}
-                <View
-                  style={abs(row1Y + offsetY - rowH / 2, spec.posCoverX, spec.posCoverW, {
-                    height: rowH,
-                    backgroundColor: BG,
-                  })}
-                />
-                <Campo campo={spec.campos.posicao} layout={layout} offsetY={offsetY} cor={COR_POSICAO}>
-                  {primeiraPosicao + i}º
-                </Campo>
-              </>
-            )}
+            {/* A posição é sempre redesenhada porque pode haver empate. */}
+            <View
+              style={abs(row1Y + offsetY - rowH / 2, spec.posCoverX, spec.posCoverW, {
+                height: rowH,
+                backgroundColor: BG,
+              })}
+            />
+            <Campo campo={spec.campos.posicao} layout={layout} offsetY={offsetY} cor={COR_POSICAO}>
+              {atleta.posicao}º
+            </Campo>
             <Campo campo={spec.campos.nome} layout={layout} offsetY={offsetY}>
               {atleta.nome}
             </Campo>
@@ -265,6 +311,7 @@ function DestaqueCard({
   lista,
   formatar,
   layout,
+  posicoes,
 }: {
   tituloCampo: CampoId;
   linhaCampo: CampoId;
@@ -272,6 +319,7 @@ function DestaqueCard({
   lista: ResumoAtletaMensal[];
   formatar: (a: ResumoAtletaMensal) => string;
   layout: LayoutInformativo;
+  posicoes?: ReadonlyMap<string, number>;
 }) {
   const l = layout.campos[linhaCampo];
   const gap = layout.extras.destaqueLinhaGap;
@@ -298,7 +346,7 @@ function DestaqueCard({
               textOverflow: "ellipsis",
             }}
           >
-            {i + 1}º {a.nome}
+            {posicoes?.get(a.id) ?? i + 1}º {a.nome}
           </Text>
           <Text
             style={{
@@ -344,17 +392,19 @@ function PaginaModalidade({
   ocultarTop3: boolean;
 }) {
   // Os KPIs e os destaques consideram o time todo; o corte só afeta quantos entram na tabela.
-  const lista = dados.slice(0, limite);
+  const dadosLimitados = dados.slice(0, limite);
+  const posicoes = calcularPosicoesRanking(dadosLimitados.map((atleta) => atleta.pontosMes));
+  const lista: ResumoAtletaClassificado[] = dadosLimitados.map((atleta, indice) => ({
+    ...atleta,
+    posicao: posicoes[indice],
+  }));
+  const posicoesPorId = new Map(lista.map((atleta) => [atleta.id, atleta.posicao]));
   const totalPontos = lista.reduce((s, a) => s + a.pontosMes, 0);
   const totalTreinos = lista.reduce((s, a) => s + a.treinosMes, 0);
   const totalKm = lista.reduce((s, a) => s + a.kmMes, 0);
 
   const [primeiro, segundo, terceiro] = lista;
 
-  // Por padrão o pódio é destaque, não recorte: o top 3 aparece nele E como 1º/2º/3º
-  // da tabela, que é como a numeração já impressa na arte fecha. Com "ocultarTop3"
-  // a tabela começa no 4º e a coluna de posição é reescrita por cima da impressa.
-  const primeiraPosicao = ocultarTop3 ? 4 : 1;
   const paraTabela = (ocultarTop3 ? lista.slice(3) : lista).slice(0, RANKING_ROWS_POR_COLUNA * 2);
   const colEsquerda = paraTabela.slice(0, RANKING_ROWS_POR_COLUNA);
   const colDireita = paraTabela.slice(RANKING_ROWS_POR_COLUNA, RANKING_ROWS_POR_COLUNA * 2);
@@ -362,6 +412,9 @@ function PaginaModalidade({
   const maiorKm = [...lista].sort((a, b) => b.kmMes - a.kmMes).slice(0, 3);
   const maisTreinos = [...lista].sort((a, b) => b.treinosMes - a.treinosMes).slice(0, 3);
   const maiorPontuacao = lista.slice(0, 3);
+  const haEmpateNoPodio = lista
+    .slice(0, 3)
+    .some((atleta, indice) => atleta.posicao !== indice + 1);
 
   return (
     <Page size={{ width: PAGE_W, height: PAGE_H }} style={styles.page}>
@@ -382,21 +435,25 @@ function PaginaModalidade({
       <Campo campo="kpi3" layout={layout}>{`${formatarNumero(totalKm, 2)} km`}</Campo>
       <Campo campo="kpi4" layout={layout}>{formatarNumero(lista.length)}</Campo>
 
-      <PodiumSlotView posicao={2} atleta={segundo} layout={layout} />
-      <PodiumSlotView posicao={1} atleta={primeiro} layout={layout} />
-      <PodiumSlotView posicao={3} atleta={terceiro} layout={layout} />
+      {haEmpateNoPodio ? (
+        <PodiumCompartilhadoView atletas={lista.slice(0, 3)} />
+      ) : (
+        <>
+          <PodiumSlotView posicao={2} atleta={segundo} layout={layout} />
+          <PodiumSlotView posicao={1} atleta={primeiro} layout={layout} />
+          <PodiumSlotView posicao={3} atleta={terceiro} layout={layout} />
+        </>
+      )}
 
       <RankingColuna
         lista={colEsquerda}
         spec={RANKING_COLS[0]}
         layout={layout}
-        primeiraPosicao={primeiraPosicao}
       />
       <RankingColuna
         lista={colDireita}
         spec={RANKING_COLS[1]}
         layout={layout}
-        primeiraPosicao={primeiraPosicao + RANKING_ROWS_POR_COLUNA}
       />
 
       <DestaqueCard
@@ -422,6 +479,7 @@ function PaginaModalidade({
         lista={maiorPontuacao}
         formatar={(a) => `${formatarNumero(a.pontosMes)} pts`}
         layout={layout}
+        posicoes={posicoesPorId}
       />
     </Page>
   );

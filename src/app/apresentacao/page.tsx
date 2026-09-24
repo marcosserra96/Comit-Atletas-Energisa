@@ -13,6 +13,7 @@ import { normalizarInformativoConfig } from "@/lib/informativoConfig";
 import { atletaEstaEmAlerta, calcularResumoRankingMensal, ordenarRankingMensal, type ResumoAtletaMensal } from "@/lib/rankingMensal";
 import { formatShortDate } from "@/lib/format";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
+import { calcularPosicoesRanking } from "@/lib/rankingPosition";
 import type { AtletaDoc, BrandingDoc, EventoDoc, HistoricoPontoDoc, InformativoConfigDoc } from "@/lib/types";
 
 const MEDAL_COR = ["#facc15", "#cbd5e1", "#d97706"];
@@ -107,6 +108,8 @@ function SlideHero({
 }
 
 function Top3Card({ titulo, icon: Icon, lista }: { titulo: string; icon: typeof Bike; lista: ResumoAtletaMensal[] }) {
+  const exibidos = lista.slice(0, 3);
+  const posicoes = calcularPosicoesRanking(exibidos.map((atleta) => atleta.pontosMes));
   return (
     <div
       className="rounded-3xl border p-8"
@@ -120,9 +123,10 @@ function Top3Card({ titulo, icon: Icon, lista }: { titulo: string; icon: typeof 
         <p className="text-lg text-white/50">Sem dados neste mês.</p>
       ) : (
         <div className="flex flex-col">
-          {lista.slice(0, 3).map((a, i) => (
+          {exibidos.map((a, i) => (
             <div key={a.id} className="flex items-center gap-3.5 border-b border-white/10 py-3.5 text-xl last:border-0">
-              <Medal className="size-6 shrink-0" style={{ color: MEDAL_COR[i] }} />
+              <Medal className="size-6 shrink-0" style={{ color: MEDAL_COR[Math.min(posicoes[i], 3) - 1] }} />
+              <span className="w-7 shrink-0 font-extrabold text-white/70">{posicoes[i]}º</span>
               <strong className="min-w-0 flex-1 truncate text-white">{a.nome}</strong>
               <em className="font-extrabold not-italic" style={{ color: "var(--color-primary)" }}>
                 {formatarNumero(a.pontosMes)} pts

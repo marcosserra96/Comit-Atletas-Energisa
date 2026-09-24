@@ -4,6 +4,7 @@ import { consolidarAtividades } from "../src/lib/activityConsolidation";
 import { dataIsoLocal } from "../src/lib/date";
 import { modalidadeDoAtleta, rankingOcultoAgora } from "../src/lib/rankingVisibility";
 import { calcularResultadosRanking } from "../src/lib/rankingPeriods";
+import { calcularPosicoesRanking } from "../src/lib/rankingPosition";
 import { perfilAtletaVisivel } from "../src/lib/athleteVisibility";
 import {
   diasNoIntervalo,
@@ -16,6 +17,7 @@ import {
   aceiteDocumentoProgramaId,
   documentoProgramaComFallback,
   modalidadeDocumentoDaEquipe,
+  modalidadeDocumentoLabel,
 } from "../src/lib/termosPrograma";
 import type { RankingVisibilityConfigDoc } from "../src/lib/types";
 import type { AtletaDoc, HistoricoPontoDoc } from "../src/lib/types";
@@ -164,6 +166,11 @@ test("respeita datas personalizadas do ranking trimestral", () => {
   assert.equal(resultados[0].km, 20);
 });
 
+test("atribui a mesma posição a pontuações empatadas sem critério de desempate", () => {
+  assert.deepEqual(calcularPosicoesRanking([50, 40, 40, 25]), [1, 2, 2, 4]);
+  assert.deepEqual(calcularPosicoesRanking([50, 50, 50, 25]), [1, 1, 1, 4]);
+});
+
 test("mantém cadastros antigos visíveis e respeita a ocultação explícita", () => {
   assert.equal(perfilAtletaVisivel(atletaRanking()), true);
   assert.equal(perfilAtletaVisivel(atletaRanking({ visivelNasListas: true })), true);
@@ -235,4 +242,17 @@ test("versiona cada documento e aceite de forma independente", () => {
     aceiteDocumentoProgramaId("uid-1", "corrida_regulamento"),
     "uid-1__corrida_regulamento",
   );
+});
+
+test("migra a nomenclatura antiga de Mountain Bike para Bike", () => {
+  const documento = documentoProgramaComFallback("bicicleta_regulamento", {
+    titulo: "Regulamento — Mountain Bike",
+    conteudo: "Regulamento do Programa de Montain Bike Atletas Energisa.",
+    versao: 1,
+  });
+
+  assert.equal(documento.titulo, "Regulamento — Bike");
+  assert.equal(documento.conteudo, "Regulamento do Programa de Bike Atletas Energisa.");
+  assert.equal(documento.versao, 2);
+  assert.equal(modalidadeDocumentoLabel("bicicleta"), "Bike");
 });

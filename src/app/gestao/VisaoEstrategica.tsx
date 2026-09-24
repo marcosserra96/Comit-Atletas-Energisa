@@ -28,6 +28,7 @@ import { formatBRL, formatShortDate } from "@/lib/format";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { calcularEstatisticasDashboard } from "@/lib/dashboardStats";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
+import { calcularPosicoesRanking } from "@/lib/rankingPosition";
 import { ExportarRelatorioDropdown } from "./ExportarRelatorioDropdown";
 import type {
   AtletaDoc,
@@ -671,6 +672,7 @@ function PodiumColumn({
     { bg: "var(--color-ranking-silver-bg)", border: "var(--color-ranking-silver)", color: "var(--color-ranking-silver-text)" },
     { bg: "var(--color-ranking-bronze-bg)", border: "var(--color-ranking-bronze)", color: "var(--color-ranking-bronze-text)" },
   ];
+  const posicoes = calcularPosicoesRanking(atletas.map((atleta) => atleta.pontuacaoTotal));
   return (
     <div>
       <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-text-light">
@@ -683,27 +685,31 @@ function PodiumColumn({
         </p>
       ) : (
         <ul className="flex flex-col gap-1.5">
-          {atletas.map((a, i) => (
-            <li
-              key={a.id}
-              className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-border bg-bg px-2.5 py-1.5"
-            >
-              <span
-                className="flex size-6 shrink-0 items-center justify-center rounded-full text-[.7rem] font-bold"
-                style={{
-                  backgroundColor: medalStyles[i].bg,
-                  borderColor: medalStyles[i].border,
-                  color: medalStyles[i].color,
-                  borderWidth: 1,
-                  borderStyle: "solid",
-                }}
+          {atletas.map((a, i) => {
+            const posicao = posicoes[i];
+            const medalStyle = medalStyles[Math.min(posicao, 3) - 1];
+            return (
+              <li
+                key={a.id}
+                className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-border bg-bg px-2.5 py-1.5"
               >
-                {i + 1}
-              </span>
-              <span className="min-w-0 flex-1 truncate text-[.83rem] font-semibold text-text">{a.nome}</span>
-              <span className="shrink-0 text-[.83rem] font-bold text-primary">{a.pontuacaoTotal}</span>
-            </li>
-          ))}
+                <span
+                  className="flex size-6 shrink-0 items-center justify-center rounded-full text-[.7rem] font-bold"
+                  style={{
+                    backgroundColor: medalStyle.bg,
+                    borderColor: medalStyle.border,
+                    color: medalStyle.color,
+                    borderWidth: 1,
+                    borderStyle: "solid",
+                  }}
+                >
+                  {posicao}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[.83rem] font-semibold text-text">{a.nome}</span>
+                <span className="shrink-0 text-[.83rem] font-bold text-primary">{a.pontuacaoTotal}</span>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

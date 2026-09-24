@@ -113,7 +113,12 @@ export function calcularEstatisticasDashboard(params: {
     const participacoes = grupo.reduce((s, a) => s + (lotesPorAtleta.get(a.id)?.size ?? 0), 0);
     const pontos = grupo.reduce((s, a) => s + (pontosPorAtleta.get(a.id) ?? 0), 0);
     const km = grupo.reduce((s, a) => s + (kmPorAtleta.get(a.id) ?? 0), 0);
-    const top = [...grupo].sort((a, b) => b.pontuacaoTotal - a.pontuacaoTotal).find((a) => a.pontuacaoTotal > 0);
+    const top = [...grupo]
+      .sort(
+        (a, b) =>
+          b.pontuacaoTotal - a.pontuacaoTotal || a.nome.localeCompare(b.nome, "pt-BR"),
+      )
+      .find((a) => a.pontuacaoTotal > 0);
     const inativos = grupo.filter((a) => {
       const ultimo = ultimoPorAtleta.get(a.id);
       return !ultimo || ultimo < iso30;
@@ -138,7 +143,10 @@ export function calcularEstatisticasDashboard(params: {
   const podio = (mod: Modalidade) =>
     [...ativos]
       .filter((a) => a.equipe === mod && a.pontuacaoTotal > 0)
-      .sort((a, b) => b.pontuacaoTotal - a.pontuacaoTotal)
+      .sort(
+        (a, b) =>
+          b.pontuacaoTotal - a.pontuacaoTotal || a.nome.localeCompare(b.nome, "pt-BR"),
+      )
       .slice(0, 3);
 
   const custoParticipacao = participacoesTotal > 0 ? investimentoTotal / participacoesTotal : 0;

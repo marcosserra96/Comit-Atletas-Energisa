@@ -1,6 +1,7 @@
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 import type { Modalidade, BrandingDoc, AlertaCriterio } from "@/lib/types";
 import { atletaEstaEmAlerta, type ResumoAtletaMensal } from "@/lib/rankingMensal";
+import { calcularPosicoesRanking } from "@/lib/rankingPosition";
 
 /* ═══════════════════════════════════════════════════════════
    Report por Time — Estilo Painel Esportivo (fundo escuro)
@@ -181,8 +182,15 @@ function TeamPage({
   const totalKm = lista.reduce((s, a) => s + a.kmMes, 0);
   const totalAtletas = lista.length;
 
+  const posicoes = calcularPosicoesRanking(lista.map((atleta) => atleta.pontosMes));
+  const posicaoPorId = new Map(lista.map((atleta, indice) => [atleta.id, posicoes[indice]]));
   const top3 = lista.slice(0, 3);
-  const podiumOrder = top3.length >= 3 ? [top3[1], top3[0], top3[2]] : top3;
+  const semEmpateNoPodio =
+    top3.length >= 3 &&
+    posicaoPorId.get(top3[0].id) === 1 &&
+    posicaoPorId.get(top3[1].id) === 2 &&
+    posicaoPorId.get(top3[2].id) === 3;
+  const podiumOrder = semEmpateNoPodio ? [top3[1], top3[0], top3[2]] : top3;
 
   // Destaques: maior KM, mais treinos, maior pontuação
   const porKm = [...lista].sort((a, b) => b.kmMes - a.kmMes).slice(0, 3);
@@ -253,9 +261,9 @@ function TeamPage({
           <Text style={s.sectionTitle}>Pódio do Mês</Text>
           <View style={s.podiumRow}>
             {podiumOrder.map((a, visualIdx) => {
-              const realIdx = top3.indexOf(a);
-              const medal = medalColors[realIdx];
-              const heights = [70, 85, 60]; // 2nd, 1st, 3rd visual heights
+              const posicao = posicaoPorId.get(a.id) ?? visualIdx + 1;
+              const medal = medalColors[Math.min(posicao, 3) - 1];
+              const altura = posicao === 1 ? 85 : posicao === 2 ? 70 : 60;
               return (
                 <View
                   key={a.id}
@@ -263,14 +271,14 @@ function TeamPage({
                     s.podiumItem,
                     {
                       width: 72,
-                      minHeight: heights[visualIdx],
+                      minHeight: altura,
                       backgroundColor: medal.bg,
                       borderColor: medal.border,
                     },
                   ]}
                 >
                   <View style={[s.podiumPosition, { backgroundColor: medal.border }]}>
-                    <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: NAVY }}>{realIdx + 1}</Text>
+                    <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: NAVY }}>{posicao}</Text>
                   </View>
                   <Text style={s.podiumName}>{a.nome}</Text>
                   <View style={s.podiumStats}>
@@ -320,7 +328,9 @@ function TeamPage({
               <Text style={[s.destaqueTitle, { color: cor }]}>Maior Pontuação</Text>
               {porPontos.map((a, i) => (
                 <View key={a.id} style={s.destaqueItem}>
-                  <Text style={[s.destaquePos, { color: medalColors[i]?.text ?? TEXT_DIM }]}>{i + 1}º</Text>
+                  <Text style={[s.destaquePos, { color: medalColors[Math.min(posicaoPorId.get(a.id) ?? i + 1, 3) - 1]?.text ?? TEXT_DIM }]}>
+                    {posicaoPorId.get(a.id) ?? i + 1}º
+                  </Text>
                   <Text style={s.destaqueName}>{a.nome}</Text>
                   <Text style={s.destaqueValue}>{a.pontosMes} pts</Text>
                 </View>
@@ -343,7 +353,7 @@ function TeamPage({
                 <Text style={[s.tableCell, { width: 42, textAlign: "right", fontSize: 6, fontFamily: "Helvetica-Bold", color: TEXT_DIM }]}>KM</Text>
               </View>
               {colEsquerda.map((a, i) => {
-                const pos = i + 1;
+                const pos = posicaoPorId.get(a.id) ?? i + 1;
                 const isTop3 = pos <= 3;
                 const emAlerta = atletaEstaEmAlerta(a, alertaCriterio, alertaValor);
                 const rowBg = isTop3 ? `${medalColors[pos - 1].bg}` : emAlerta ? "#3d1515" : i % 2 === 0 ? CARD_BG : PANEL_BG;
@@ -372,7 +382,7 @@ function TeamPage({
                   <Text style={[s.tableCell, { width: 42, textAlign: "right", fontSize: 6, fontFamily: "Helvetica-Bold", color: TEXT_DIM }]}>KM</Text>
                 </View>
                 {colDireita.map((a, i) => {
-                  const pos = metade + i + 1;
+                  const pos = posicaoPorId.get(a.id) ?? metade + i + 1;
                   const emAlerta = atletaEstaEmAlerta(a, alertaCriterio, alertaValor);
                   const rowBg = emAlerta ? "#3d1515" : i % 2 === 0 ? CARD_BG : PANEL_BG;
                   const leftBorder = emAlerta ? ORANGE : "transparent";

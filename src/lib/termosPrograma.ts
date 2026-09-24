@@ -69,7 +69,7 @@ const REGULAMENTO_BICICLETA = `1. Para fazer parte do programa Atletas Energisa,
 
 8. Caso o participante/colaborador/atleta não se enquadre no regulamento será desligado do Programa Atletas Energisa e deve devolver o uniforme e outros materiais que a empresa possa ter fornecido.
 
-Li, compreendi, aceito e me submeto integralmente a todos os termos do regulamento do Programa de Montain Bike Atletas Energisa e estou ciente da possível desclassificação que posso sofrer caso descumpra o regulamento.
+Li, compreendi, aceito e me submeto integralmente a todos os termos do regulamento do Programa de Bike Atletas Energisa e estou ciente da possível desclassificação que posso sofrer caso descumpra o regulamento.
 
 Por fim, declaro estar ciente que o programa Atletas Energisa é voluntário, e a participação das atividades semanais, possíveis eventos e provas, não devem ser confundidos com a prestação de serviços, tampouco considerados como jornada de trabalho, possuindo o colaborador pela liberdade e adesão;`;
 
@@ -89,7 +89,7 @@ Li, compreendi, aceito e me submeto integralmente a todos os termos acima.`;
 
 const TERMO_BICICLETA = `1. Estou ciente que o Atletas Energisa se trata de um programa voluntário, e a participação das atividades semanais, eventos e provas não devem ser confundidos com a prestação de serviços, tampouco considerados como jornada de trabalho, possuindo o colaborador pela liberdade e adesão;
 
-2. Também estou ciente de que serei treinado para estar apto a participar de treinos, eventos e provas na modalidade bicicleta (mountain biking);
+2. Também estou ciente de que serei treinado para estar apto a participar de treinos, eventos e provas na modalidade Bike;
 
 3. Declaro, que estou em plenas condições físicas e psicológicas de participar deste treinamento, e que não possuo nenhuma recomendação/ restrição médica que me impeça de praticar atividades físicas;
 
@@ -124,19 +124,19 @@ export const DOCUMENTOS_PROGRAMA_PADRAO: Record<DocumentoProgramaId, DocumentoPr
     id: "bicicleta_regulamento",
     modalidade: "bicicleta",
     tipo: "regulamento",
-    titulo: "Regulamento do Programa Atletas Energisa — Mountain Bike",
+    titulo: "Regulamento do Programa Atletas Energisa — Bike",
     conteudo: REGULAMENTO_BICICLETA,
     ativo: true,
-    versao: 1,
+    versao: 2,
   },
   bicicleta_termo_responsabilidade: {
     id: "bicicleta_termo_responsabilidade",
     modalidade: "bicicleta",
     tipo: "termo_responsabilidade",
-    titulo: "Termo de Responsabilidade — Mountain Bike",
+    titulo: "Termo de Responsabilidade — Bike",
     conteudo: TERMO_BICICLETA,
     ativo: true,
-    versao: 1,
+    versao: 2,
   },
 };
 
@@ -163,19 +163,38 @@ export function documentoProgramaComFallback(
   data?: Partial<DocumentoProgramaDoc>,
 ): DocumentoProgramaDoc {
   const padrao = DOCUMENTOS_PROGRAMA_PADRAO[id];
+  const tituloOriginal =
+    typeof data?.titulo === "string" && data.titulo.trim() ? data.titulo : padrao.titulo;
+  const conteudoOriginal =
+    typeof data?.conteudo === "string" && data.conteudo.trim()
+      ? data.conteudo
+      : padrao.conteudo;
+  const documentoBike = padrao.modalidade === "bicicleta";
+  const normalizarBike = (texto: string) =>
+    documentoBike
+      ? texto
+          .replace(/modalidade bicicleta \(mountain biking\)/gi, "modalidade Bike")
+          .replace(/Montain Bike/gi, "Bike")
+          .replace(/Mountain Bike/gi, "Bike")
+      : texto;
+  const titulo = normalizarBike(tituloOriginal);
+  const conteudo = normalizarBike(conteudoOriginal);
+  const versaoInformada = Number(data?.versao) || padrao.versao;
+  const textoLegadoNormalizado = titulo !== tituloOriginal || conteudo !== conteudoOriginal;
+
   return {
     ...padrao,
     ...data,
     id,
     modalidade: padrao.modalidade,
     tipo: padrao.tipo,
-    titulo: typeof data?.titulo === "string" && data.titulo.trim() ? data.titulo : padrao.titulo,
-    conteudo:
-      typeof data?.conteudo === "string" && data.conteudo.trim()
-        ? data.conteudo
-        : padrao.conteudo,
+    titulo,
+    conteudo,
     ativo: typeof data?.ativo === "boolean" ? data.ativo : padrao.ativo,
-    versao: Math.max(1, Number(data?.versao) || padrao.versao),
+    versao: Math.max(
+      padrao.versao,
+      textoLegadoNormalizado ? versaoInformada + 1 : versaoInformada,
+    ),
   };
 }
 
@@ -188,5 +207,5 @@ export function tipoDocumentoLabel(tipo: TipoDocumentoPrograma) {
 }
 
 export function modalidadeDocumentoLabel(modalidade: Modalidade) {
-  return modalidade === "corrida" ? "Corrida" : "Mountain Bike";
+  return modalidade === "corrida" ? "Corrida" : "Bike";
 }

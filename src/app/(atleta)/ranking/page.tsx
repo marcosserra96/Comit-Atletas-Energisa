@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { formatShortDate } from "@/lib/format";
 import { normalizarRankingPeriods } from "@/lib/rankingPeriods";
+import { calcularPosicoesRanking } from "@/lib/rankingPosition";
 import {
   modalidadeDoAtleta,
   normalizarRankingVisibility,
@@ -42,17 +43,10 @@ interface RankedAtleta extends RankingEntry {
   rank: number;
 }
 
-function Place({
-  atleta,
-  position,
-  height,
-  maxWidth,
-}: {
-  atleta?: RankedAtleta;
-  position: 1 | 2 | 3;
-  height: string;
-  maxWidth: string;
-}) {
+function Place({ atleta }: { atleta?: RankedAtleta }) {
+  const position = atleta?.rank ?? 3;
+  const height = position === 1 ? "100%" : position === 2 ? "75%" : "60%";
+  const maxWidth = position === 1 ? "140px" : "120px";
   const color =
     position === 1
       ? "var(--color-ranking-gold)"
@@ -107,15 +101,23 @@ function Place({
 
 function Podium({ atletas }: { atletas: RankedAtleta[] }) {
   if (atletas.length === 0) return null;
-  const [primeiro, segundo, terceiro] = atletas;
+  const exibidos = atletas.slice(0, 3);
+  const semEmpateNoPodio =
+    exibidos[0]?.rank === 1 &&
+    exibidos[1]?.rank === 2 &&
+    (!exibidos[2] || exibidos[2].rank === 3);
+  const ordem: Array<RankedAtleta | undefined> = semEmpateNoPodio
+    ? [exibidos[1], exibidos[0], exibidos[2]]
+    : [...exibidos];
+  while (ordem.length < 3) ordem.push(undefined);
 
 
 
   return (
     <div className="mb-6 mt-6 flex h-40 items-end justify-center gap-2 px-2 sm:mb-10 sm:mt-10 sm:h-64 sm:gap-4">
-      <Place atleta={segundo} position={2} height="75%" maxWidth="120px" />
-      <Place atleta={primeiro} position={1} height="100%" maxWidth="140px" />
-      <Place atleta={terceiro} position={3} height="60%" maxWidth="120px" />
+      {ordem.map((atleta, index) => (
+        <Place key={atleta?.id ?? `podio-vazio-${index}`} atleta={atleta} />
+      ))}
     </div>
   );
 }
@@ -290,15 +292,16 @@ export default function RankingPage() {
     return [...lista].sort(
       (a, b) =>
         b.pontuacaoTotal - a.pontuacaoTotal ||
-        (b.treinos ?? 0) - (a.treinos ?? 0) ||
-        (b.km ?? 0) - (a.km ?? 0) ||
         a.nome.localeCompare(b.nome, "pt-BR"),
     );
   }, [legacy, possuiResultadosPublicados, resultados]);
 
   const atletasComRank = useMemo<RankedAtleta[] | null>(() => {
     if (!atletasAtuais) return null;
-    return atletasAtuais.map((atleta, index) => ({ ...atleta, rank: index + 1 }));
+    const posicoes = calcularPosicoesRanking(
+      atletasAtuais.map((atleta) => atleta.pontuacaoTotal),
+    );
+    return atletasAtuais.map((atleta, index) => ({ ...atleta, rank: posicoes[index] }));
   }, [atletasAtuais]);
 
   const filteredAtletas = useMemo(() => {

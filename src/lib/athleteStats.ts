@@ -1,5 +1,6 @@
 import { consolidarAtividades } from "@/lib/activityConsolidation";
 import { dataIsoLocal } from "@/lib/date";
+import { calcularPosicoesRanking } from "@/lib/rankingPosition";
 import type { AtletaDoc, AtletaPublicoDoc, HistoricoPontoDoc } from "@/lib/types";
 
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
@@ -35,11 +36,27 @@ export function calcularInsightsAtleta(params: {
   const hoje = new Date();
 
   const idx = companheiros.findIndex((a) => a.id === atleta.id);
-  const posicao = idx >= 0 ? idx + 1 : null;
+  const posicoes = calcularPosicoesRanking(
+    companheiros.map((companheiro) => companheiro.pontuacaoTotal),
+  );
+  const posicao = idx >= 0 ? posicoes[idx] : null;
   const totalNoRanking = companheiros.length;
   const mediaEquipe = totalNoRanking > 0 ? companheiros.reduce((s, a) => s + a.pontuacaoTotal, 0) / totalNoRanking : 0;
   const vsMediaEquipePct = mediaEquipe > 0 ? Math.round(((atleta.pontuacaoTotal - mediaEquipe) / mediaEquipe) * 100) : null;
-  const pontosProximaPosicao = idx > 0 ? companheiros[idx - 1].pontuacaoTotal - atleta.pontuacaoTotal : idx === 0 ? 0 : null;
+  let indicePosicaoAcima = idx - 1;
+  while (
+    indicePosicaoAcima >= 0 &&
+    companheiros[indicePosicaoAcima].pontuacaoTotal === atleta.pontuacaoTotal
+  ) {
+    indicePosicaoAcima -= 1;
+  }
+  const pontosProximaPosicao =
+    idx < 0
+      ? null
+      : indicePosicaoAcima >= 0
+        ? companheiros[indicePosicaoAcima].pontuacaoTotal - atleta.pontuacaoTotal
+        : 0;
+  const posicaoAcima = indicePosicaoAcima >= 0 ? posicoes[indicePosicaoAcima] : null;
 
   const validos = meusLancamentos.filter((l) => !l.estornado);
   const ano = hoje.getFullYear();
@@ -72,7 +89,13 @@ export function calcularInsightsAtleta(params: {
     return { label: MESES[ref.getMonth()], pontos };
   });
 
-  const leitura = montarLeitura({ posicao, totalNoRanking, pontosProximaPosicao, treinosSemana });
+  const leitura = montarLeitura({
+    posicao,
+    posicaoAcima,
+    totalNoRanking,
+    pontosProximaPosicao,
+    treinosSemana,
+  });
 
   return {
     posicao,
@@ -91,18 +114,23 @@ export function calcularInsightsAtleta(params: {
 
 function montarLeitura(params: {
   posicao: number | null;
+  posicaoAcima: number | null;
   totalNoRanking: number;
   pontosProximaPosicao: number | null;
   treinosSemana: number;
 }): string {
-  const { posicao, totalNoRanking, pontosProximaPosicao, treinosSemana } = params;
+  const { posicao, posicaoAcima, totalNoRanking, pontosProximaPosicao, treinosSemana } = params;
 
   let rankingClause = "";
   if (posicao !== null && totalNoRanking > 1) {
     if (posicao === 1) {
       rankingClause = "Você está em 1º lugar na sua modalidade";
-    } else if (pontosProximaPosicao !== null && pontosProximaPosicao > 0) {
-      rankingClause = `Você está a ${pontosProximaPosicao} ${pontosProximaPosicao === 1 ? "ponto" : "pontos"} do ${posicao - 1}º lugar`;
+    } else if (
+      posicaoAcima !== null &&
+      pontosProximaPosicao !== null &&
+      pontosProximaPosicao > 0
+    ) {
+      rankingClause = `Você está a ${pontosProximaPosicao} ${pontosProximaPosicao === 1 ? "ponto" : "pontos"} do ${posicaoAcima}º lugar`;
     } else {
       rankingClause = `Você está em ${posicao}º lugar na sua modalidade`;
     }

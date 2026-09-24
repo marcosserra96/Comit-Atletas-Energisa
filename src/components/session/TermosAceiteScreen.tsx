@@ -44,7 +44,7 @@ export function TermosAceiteScreen({
   const marcouAtual = documento ? concordouCom.has(documento.id) : false;
   const todosMarcados = documentos.every((item) => concordouCom.has(item.id));
   const ModalidadeIcon = modalidade === "bicicleta" ? Bike : Footprints;
-  const modalidadeLabel = modalidade === "bicicleta" ? "Mountain Bike" : "Corrida";
+  const modalidadeLabel = modalidade === "bicicleta" ? "Bike" : "Corrida";
 
   function alternarConcordancia() {
     if (!documento) return;
@@ -77,13 +77,13 @@ export function TermosAceiteScreen({
   return (
     <main className="flex min-h-dvh items-center justify-center bg-bg px-3 py-3 [padding-bottom:max(0.75rem,env(safe-area-inset-bottom))] [padding-top:max(0.75rem,env(safe-area-inset-top))] sm:px-6 sm:py-6">
       <section className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-border bg-bg-card shadow-[var(--shadow-modal)] sm:max-h-[calc(100dvh-3rem)]">
-        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-7 sm:py-4">
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-navy px-4 py-3 sm:px-7 sm:py-4">
           <Image
-            src="/logos/logo-comite-colorida.png"
+            src="/logos/logo-atletas-transparente.png"
             alt="Atletas Energisa"
-            width={154}
-            height={48}
-            className="h-auto w-[116px] sm:w-[132px]"
+            width={160}
+            height={53}
+            className="h-auto w-[116px] object-contain sm:w-[132px]"
             priority
           />
           <span className="flex items-center gap-1.5 rounded-full bg-primary-subtle px-3 py-1.5 text-xs font-bold text-primary">

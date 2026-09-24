@@ -4,6 +4,7 @@ import type { EventoDoc } from "@/lib/types";
 import type { EstatisticasDashboard, LoteResumo } from "@/lib/dashboardStats";
 import type { BrandingDoc } from "@/lib/types";
 import { formatShortDate } from "@/lib/format";
+import { calcularPosicoesRanking } from "@/lib/rankingPosition";
 
 const NAVY = "#07192d";
 const BORDER = "#e2e8f0";
@@ -264,13 +265,16 @@ function Tabela({
 
 function Podio({ titulo, atletas, cor }: { titulo: string; atletas: { nome: string; pontuacaoTotal: number }[]; cor: string }) {
   const medalhas = ["#eab308", "#94a3b8", "#f37021"];
+  const posicoes = calcularPosicoesRanking(atletas.map((atleta) => atleta.pontuacaoTotal));
   return (
     <View style={{ flex: 1 }}>
       <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: TEXT_LIGHT, marginBottom: 5 }}>{titulo}</Text>
       {atletas.length === 0 ? (
         <Text style={{ fontSize: 8, color: TEXT_MUTED }}>Sem dados ainda.</Text>
       ) : (
-        atletas.map((a, i) => (
+        atletas.map((a, i) => {
+          const posicao = posicoes[i];
+          return (
           <View
             key={a.nome + i}
             style={{
@@ -289,18 +293,19 @@ function Podio({ titulo, atletas, cor }: { titulo: string; atletas: { nome: stri
                 width: 14,
                 height: 14,
                 borderRadius: 7,
-                backgroundColor: medalhas[i],
+                backgroundColor: medalhas[Math.min(posicao, 3) - 1],
                 alignItems: "center",
                 justifyContent: "center",
                 marginRight: 6,
               }}
             >
-              <Text style={{ fontSize: 6.5, fontFamily: "Helvetica-Bold", color: "#fff" }}>{i + 1}</Text>
+              <Text style={{ fontSize: 6.5, fontFamily: "Helvetica-Bold", color: "#fff" }}>{posicao}</Text>
             </View>
             <Text style={{ fontSize: 8.5, flex: 1, color: TEXT }}>{a.nome}</Text>
             <Text style={{ fontSize: 8.5, fontFamily: "Helvetica-Bold", color: cor }}>{a.pontuacaoTotal} pts</Text>
           </View>
-        ))
+          );
+        })
       )}
     </View>
   );
