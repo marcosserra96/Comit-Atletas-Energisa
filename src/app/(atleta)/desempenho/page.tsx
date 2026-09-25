@@ -9,6 +9,7 @@ import {
   CalendarCheck,
   CalendarDays,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   Footprints,
   Gauge,
@@ -31,6 +32,7 @@ import { SkeletonCard } from "@/components/ui/Skeleton";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Select } from "@/components/ui/Select";
+import { Modal } from "@/components/ui/Modal";
 import { formatDataTreino } from "@/lib/format";
 import {
   calcularDesempenhoAtleta,
@@ -50,6 +52,7 @@ const tipoLabel: Record<TipoLancamento, string> = {
 
 type MetricaVolume = "km" | "pontos";
 type FiltroTipo = "todos" | TipoLancamento;
+type KpiDetalhe = "treinos" | "km" | "pontos" | "mediaMensal" | "mediaTreino" | "melhorMes";
 
 function formatarNumero(valor: number, casas = 0) {
   return new Intl.NumberFormat("pt-BR", {
@@ -87,10 +90,10 @@ function GraficoMensal({
   }
 
   return (
-    <div className="overflow-x-auto pb-2">
+    <div className="min-w-0 pb-2">
       <div
-        className="flex h-64 items-end gap-3 pt-8"
-        style={{ minWidth: Math.max(420, serie.length * 68) }}
+        className="grid h-64 items-end gap-1 pt-8 sm:gap-2"
+        style={{ gridTemplateColumns: `repeat(${serie.length}, minmax(0, 1fr))` }}
         role="img"
         aria-label="Gráfico mensal de desempenho"
       >
@@ -99,7 +102,7 @@ function GraficoMensal({
           const altura = valor > 0 ? Math.max(5, (valor / maximo) * 100) : 0;
           return (
             <div key={item.chave} className="flex h-full min-w-0 flex-1 flex-col items-center gap-2">
-              <span className="h-5 text-xs font-bold text-text">
+              <span className="h-5 max-w-full truncate text-[10px] font-bold text-text sm:text-xs">
                 {valor > 0 ? formatarValor(valor) : ""}
               </span>
               <div className="flex w-full flex-1 items-end justify-center rounded-t-lg bg-bg-inset/60 px-1">
@@ -112,8 +115,9 @@ function GraficoMensal({
                   title={item.rotulo + ": " + formatarValor(valor)}
                 />
               </div>
-              <span className="whitespace-nowrap text-[11px] font-semibold uppercase text-text-muted">
-                {item.rotuloCurto}
+              <span className="max-w-full truncate text-[10px] font-semibold uppercase text-text-muted sm:text-[11px]" title={item.rotulo}>
+                <span className="sm:hidden">{item.rotuloCurto.slice(0, 3)}</span>
+                <span className="hidden sm:inline">{item.rotuloCurto}</span>
               </span>
             </div>
           );
@@ -176,6 +180,177 @@ function textoComparacao(analise: AnaliseDesempenho) {
   );
 }
 
+function periodoLabel(periodo: PeriodoDesempenho) {
+  if (periodo === "6m") return "Últimos 6 meses";
+  if (periodo === "12m") return "Últimos 12 meses";
+  return "Este ano";
+}
+
+function KpiDetalheModal({
+  detalhe,
+  analise,
+  periodo,
+  onClose,
+  onAbrirHistorico,
+}: {
+  detalhe: KpiDetalhe | null;
+  analise: AnaliseDesempenho;
+  periodo: PeriodoDesempenho;
+  onClose: () => void;
+  onAbrirHistorico: () => void;
+}) {
+  const maiorCriterio = analise.pontosPorRegra[0];
+  const configuracao = detalhe ? {
+    treinos: {
+      titulo: "Treinos no período",
+      descricao: "Cada treino é contado uma única vez, mesmo quando possui mais de um critério de pontuação.",
+      itens: [
+        ["Total", `${analise.totalTreinos} treino(s)`],
+        ["Mês atual", `${analise.treinosMesAtual} treino(s)`],
+        ["Mês anterior", `${analise.treinosMesAnterior} treino(s)`],
+        ["Dias ativos", String(analise.diasAtivos)],
+      ],
+    },
+    km: {
+      titulo: "Quilômetros registrados",
+      descricao: "Soma dos quilômetros consolidados por participação, sem duplicar atividades com vários critérios.",
+      itens: [
+        ["Total", `${formatarNumero(analise.totalKm, 1)} km`],
+        ["Somente treinos", `${formatarNumero(analise.kmTreinos, 1)} km`],
+        ["Participações", String(analise.totalParticipacoes)],
+        ["Média por treino", `${formatarNumero(analise.mediaKmTreino, 1)} km`],
+      ],
+    },
+    pontos: {
+      titulo: "Pontos conquistados",
+      descricao: "Resultado líquido dos lançamentos válidos. Registros estornados não entram no cálculo.",
+      itens: [
+        ["Total", `${formatarNumero(analise.totalPontos)} pts`],
+        ["Critérios pontuados", String(analise.pontosPorRegra.length)],
+        ["Maior impacto", maiorCriterio?.regra ?? "Sem pontuação"],
+        ["Valor do impacto", maiorCriterio ? `${maiorCriterio.pontos > 0 ? "+" : ""}${maiorCriterio.pontos} pts` : "—"],
+      ],
+    },
+    mediaMensal: {
+      titulo: "Média mensal de treinos",
+      descricao: "Média calculada considerando todos os meses exibidos, inclusive aqueles sem treino registrado.",
+      itens: [
+        ["Média", `${formatarNumero(analise.mediaTreinosMes, 1)} treino(s)`],
+        ["Meses analisados", String(analise.serieMensal.length)],
+        ["Meses ativos", String(analise.mesesAtivos)],
+        ["Total de treinos", String(analise.totalTreinos)],
+      ],
+    },
+    mediaTreino: {
+      titulo: "Média de quilômetros por treino",
+      descricao: "Divide os quilômetros de treino pelo total de treinos, incluindo treinos cadastrados sem quilometragem.",
+      itens: [
+        ["Média", `${formatarNumero(analise.mediaKmTreino, 1)} km`],
+        ["KM de treinos", `${formatarNumero(analise.kmTreinos, 1)} km`],
+        ["Total de treinos", String(analise.totalTreinos)],
+        ["Todas as participações", String(analise.totalParticipacoes)],
+      ],
+    },
+    melhorMes: {
+      titulo: "Mês mais ativo",
+      descricao: "O mês com mais treinos no período. Em caso de empate, vence o mês com mais pontos.",
+      itens: [
+        ["Mês", analise.melhorMes ? nomeMesCapitalizado(analise.melhorMes.rotulo) : "Sem treinos"],
+        ["Treinos", String(analise.melhorMes?.treinos ?? 0)],
+        ["Quilômetros", `${formatarNumero(analise.melhorMes?.km ?? 0, 1)} km`],
+        ["Pontos", `${formatarNumero(analise.melhorMes?.pontos ?? 0)} pts`],
+      ],
+    },
+  }[detalhe] : null;
+
+  return (
+    <Modal
+      open={Boolean(detalhe)}
+      onClose={onClose}
+      title={configuracao?.titulo ?? "Detalhes do indicador"}
+      description={periodoLabel(periodo)}
+      size="md"
+      mobileSheet
+    >
+      {configuracao ? (
+        <div className="flex flex-col gap-5">
+          <p className="text-sm leading-relaxed text-text-light">{configuracao.descricao}</p>
+          <div className="grid grid-cols-2 gap-3">
+            {configuracao.itens.map(([rotulo, valor]) => (
+              <div key={rotulo} className="min-w-0 rounded-[var(--radius)] bg-bg-inset p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">{rotulo}</p>
+                <p className="mt-1 break-words text-sm font-bold text-text">{valor}</p>
+              </div>
+            ))}
+          </div>
+          <Button variant="secondary" className="w-full justify-center" onClick={onAbrirHistorico}>
+            Ver lançamentos do período
+            <ChevronRight className="size-4" aria-hidden="true" />
+          </Button>
+        </div>
+      ) : null}
+    </Modal>
+  );
+}
+
+function LancamentoDetalheModal({
+  lancamento,
+  onClose,
+}: {
+  lancamento: HistoricoPontoDoc | null;
+  onClose: () => void;
+}) {
+  return (
+    <Modal
+      open={Boolean(lancamento)}
+      onClose={onClose}
+      title={lancamento?.regraDesc ?? "Detalhes do lançamento"}
+      description={lancamento ? formatDataTreino(lancamento.dataTreino, lancamento.dataAproximada) : undefined}
+      size="md"
+      mobileSheet
+    >
+      {lancamento ? (
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-2 gap-3 rounded-[var(--radius-lg)] bg-bg-inset p-4">
+            <div>
+              <p className="text-xs font-semibold uppercase text-text-muted">Tipo</p>
+              <p className="mt-1 text-sm font-bold text-text">{tipoLabel[lancamento.tipoLancamento]}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase text-text-muted">Pontos</p>
+              <p className={lancamento.pontos < 0 ? "mt-1 text-sm font-bold text-danger" : "mt-1 text-sm font-bold text-success"}>
+                {lancamento.pontos > 0 ? "+" : ""}{lancamento.pontos} pts
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase text-text-muted">Quilômetros</p>
+              <p className="mt-1 text-sm font-bold text-text">
+                {lancamento.kmPercorrido ? `${formatarNumero(lancamento.kmPercorrido, 1)} km` : "Não informado"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase text-text-muted">Situação</p>
+              <p className="mt-1 text-sm font-bold text-text">{lancamento.estornado ? "Estornado" : "Válido"}</p>
+            </div>
+          </div>
+          {lancamento.descricaoLote ? (
+            <div>
+              <p className="text-xs font-semibold uppercase text-text-muted">Atividade</p>
+              <p className="mt-1 whitespace-pre-wrap text-sm text-text">{lancamento.descricaoLote}</p>
+            </div>
+          ) : null}
+          {lancamento.observacao ? (
+            <div>
+              <p className="text-xs font-semibold uppercase text-text-muted">Observação</p>
+              <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-text-light">{lancamento.observacao}</p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </Modal>
+  );
+}
+
 export default function DesempenhoPage() {
   const { atleta } = useAthleteView();
   const [lancamentos, setLancamentos] = useState<HistoricoPontoDoc[] | null>(null);
@@ -185,6 +360,8 @@ export default function DesempenhoPage() {
   const [busca, setBusca] = useState("");
   const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>("todos");
   const [mostrarAnalisesExtras, setMostrarAnalisesExtras] = useState(false);
+  const [kpiDetalhe, setKpiDetalhe] = useState<KpiDetalhe | null>(null);
+  const [lancamentoDetalhe, setLancamentoDetalhe] = useState<HistoricoPontoDoc | null>(null);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -232,7 +409,8 @@ export default function DesempenhoPage() {
   const maximoCriterio = Math.max(0, ...criteriosPrincipais.map((item) => Math.abs(item.pontos)));
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="min-w-0 overflow-x-hidden">
+      <div className="flex min-w-0 flex-col gap-6">
       <PageHeader
         icon={Activity}
         title="Meu desempenho"
@@ -246,7 +424,7 @@ export default function DesempenhoPage() {
               { value: "12m", label: "12 meses" },
               { value: "ano", label: "Este ano" },
             ]}
-            className="max-w-full overflow-x-auto"
+            className="w-full max-w-full [&>button]:min-w-0 [&>button]:flex-1 [&>button]:px-2 sm:w-fit sm:[&>button]:flex-none sm:[&>button]:px-3.5"
           />
         }
       />
@@ -295,6 +473,7 @@ export default function DesempenhoPage() {
                   ? analise.treinosMesAnterior + " no mês anterior"
                   : undefined
               }
+              onClick={() => setKpiDetalhe("treinos")}
             />
             <MetricCard
               label="KM registrados"
@@ -302,6 +481,7 @@ export default function DesempenhoPage() {
               icon={Map}
               iconColor="var(--color-primary)"
               subtitle={analise.totalParticipacoes + " participações"}
+              onClick={() => setKpiDetalhe("km")}
             />
             <MetricCard
               label="Pontos"
@@ -309,6 +489,7 @@ export default function DesempenhoPage() {
               icon={Trophy}
               iconColor="var(--color-accent)"
               subtitle="no período selecionado"
+              onClick={() => setKpiDetalhe("pontos")}
             />
             <div className={mostrarAnalisesExtras ? "contents" : "hidden sm:contents"}>
               <MetricCard
@@ -316,12 +497,14 @@ export default function DesempenhoPage() {
               value={formatarNumero(analise.mediaTreinosMes, 1)}
               icon={Gauge}
               subtitle="treinos por mês"
+              onClick={() => setKpiDetalhe("mediaMensal")}
             />
             <MetricCard
               label="Média por treino"
               value={formatarNumero(analise.mediaKmTreino, 1) + " km"}
               icon={Target}
               subtitle="considerando treinos com e sem KM"
+              onClick={() => setKpiDetalhe("mediaTreino")}
             />
               <MetricCard
                 label="Mês mais ativo"
@@ -332,6 +515,7 @@ export default function DesempenhoPage() {
                     ? analise.melhorMes.treinos + " treino(s)"
                     : "sem treinos no período"
                 }
+                onClick={() => setKpiDetalhe("melhorMes")}
               />
             </div>
           </div>
@@ -540,15 +724,15 @@ export default function DesempenhoPage() {
               </div>
             ) : (
               <>
-                <div className="hidden overflow-x-auto md:block">
-                  <table className="w-full text-sm">
+                <div className="hidden lg:block">
+                  <table className="w-full table-fixed text-sm">
                     <thead>
                       <tr className="border-b border-border bg-bg-inset text-left text-xs uppercase text-text-muted">
-                        <th className="px-5 py-3 font-semibold">Atividade</th>
-                        <th className="px-3 py-3 font-semibold">Tipo</th>
-                        <th className="px-3 py-3 font-semibold">Data</th>
-                        <th className="px-3 py-3 text-right font-semibold">KM</th>
-                        <th className="px-5 py-3 text-right font-semibold">Pontos</th>
+                        <th className="w-[42%] px-5 py-3 font-semibold">Atividade</th>
+                        <th className="w-[16%] px-3 py-3 font-semibold">Tipo</th>
+                        <th className="w-[18%] px-3 py-3 font-semibold">Data</th>
+                        <th className="w-[11%] px-3 py-3 text-right font-semibold">KM</th>
+                        <th className="w-[13%] px-5 py-3 text-right font-semibold">Pontos</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -556,9 +740,18 @@ export default function DesempenhoPage() {
                         <tr
                           key={lancamento.id}
                           className={
-                            "border-b border-border transition-colors last:border-0 hover:bg-bg-inset " +
+                            "cursor-pointer border-b border-border transition-colors last:border-0 hover:bg-bg-inset focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary " +
                             (lancamento.estornado ? "opacity-60" : "")
                           }
+                          tabIndex={0}
+                          role="button"
+                          onClick={() => setLancamentoDetalhe(lancamento)}
+                          onKeyDown={(evento) => {
+                            if (evento.key === "Enter" || evento.key === " ") {
+                              evento.preventDefault();
+                              setLancamentoDetalhe(lancamento);
+                            }
+                          }}
                         >
                           <td className="px-5 py-4">
                             <div className="flex items-center gap-2">
@@ -614,14 +807,23 @@ export default function DesempenhoPage() {
                   </table>
                 </div>
 
-                <div className="flex flex-col gap-3 p-4 md:hidden">
+                <div className="flex flex-col gap-3 p-4 lg:hidden">
                   {historicoFiltrado.map((lancamento) => (
                     <div
                       key={lancamento.id}
                       className={
-                        "rounded-[var(--radius)] border border-border bg-bg-card p-4 " +
+                        "cursor-pointer rounded-[var(--radius)] border border-border bg-bg-card p-4 transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary " +
                         (lancamento.estornado ? "opacity-65" : "")
                       }
+                      tabIndex={0}
+                      role="button"
+                      onClick={() => setLancamentoDetalhe(lancamento)}
+                      onKeyDown={(evento) => {
+                        if (evento.key === "Enter" || evento.key === " ") {
+                          evento.preventDefault();
+                          setLancamentoDetalhe(lancamento);
+                        }
+                      }}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -678,6 +880,20 @@ export default function DesempenhoPage() {
           </Card>
         </>
       )}
+      </div>
+      {analise ? (
+        <KpiDetalheModal
+          detalhe={kpiDetalhe}
+          analise={analise}
+          periodo={periodo}
+          onClose={() => setKpiDetalhe(null)}
+          onAbrirHistorico={() => {
+            setKpiDetalhe(null);
+            requestAnimationFrame(() => document.getElementById("historico")?.scrollIntoView({ behavior: "smooth" }));
+          }}
+        />
+      ) : null}
+      <LancamentoDetalheModal lancamento={lancamentoDetalhe} onClose={() => setLancamentoDetalhe(null)} />
     </div>
   );
 }

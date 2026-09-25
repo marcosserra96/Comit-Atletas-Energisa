@@ -43,8 +43,10 @@ export default function FirebaseActionPage() {
       return;
     }
 
-    setMessage("Este link é inválido ou está incompleto. Solicite um novo link.");
-    setState("error");
+    queueMicrotask(() => {
+      setMessage("Este link é inválido ou está incompleto. Solicite um novo link.");
+      setState("error");
+    });
   }, []);
 
   if (state === "checking") {
