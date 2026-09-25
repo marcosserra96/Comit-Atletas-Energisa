@@ -1,5 +1,5 @@
 import React from "react";
-import { LucideIcon, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { ChevronRight, LucideIcon, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 export interface MetricCardProps {
@@ -10,6 +10,8 @@ export interface MetricCardProps {
   trend?: { value: number; label?: string };
   subtitle?: string;
   className?: string;
+  onClick?: () => void;
+  detailLabel?: string;
 }
 
 export function MetricCard({
@@ -20,15 +22,11 @@ export function MetricCard({
   trend,
   subtitle,
   className,
+  onClick,
+  detailLabel = "Ver detalhes",
 }: MetricCardProps) {
-  return (
-    <div
-      className={cn(
-        "rounded-[var(--radius-lg)] border border-border-subtle bg-bg-card p-4 shadow-[var(--shadow-card)]",
-        "transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-elevated)]",
-        className,
-      )}
-    >
+  const content = (
+    <>
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-0.5">
           <span className="text-xs font-semibold uppercase tracking-wide text-text-muted">
@@ -80,6 +78,27 @@ export function MetricCard({
           )}
         </div>
       )}
-    </div>
+      {onClick ? (
+        <span className="mt-3 flex items-center justify-end gap-1 border-t border-border-subtle pt-3 text-xs font-semibold text-primary">
+          {detailLabel}
+          <ChevronRight className="size-3.5" aria-hidden="true" />
+        </span>
+      ) : null}
+    </>
+  );
+
+  const classes = cn(
+    "min-w-0 rounded-[var(--radius-lg)] border border-border-subtle bg-bg-card p-4 shadow-[var(--shadow-card)]",
+    "transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-elevated)]",
+    onClick && "cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+    className,
+  );
+
+  return onClick ? (
+    <button type="button" className={classes} onClick={onClick} aria-label={`${detailLabel}: ${label}`}>
+      {content}
+    </button>
+  ) : (
+    <div className={classes}>{content}</div>
   );
 }
