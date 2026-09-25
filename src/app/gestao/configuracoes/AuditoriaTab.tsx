@@ -22,6 +22,7 @@ const acaoLabel: Record<string, string> = {
   solicitar_justificativa_ausencia: "Solicitação de ausência",
   editar_justificativa_ausencia: "Edição de justificativa",
   cancelar_justificativa_ausencia: "Cancelamento de justificativa",
+  encerrar_justificativa_ausencia: "Encerramento de justificativa",
   aprovar_justificativa_ausencia: "Aprovação de justificativa",
   recusar_justificativa_ausencia: "Recusa de justificativa",
   documento_programa_nova_versao: "Nova versão de documento",

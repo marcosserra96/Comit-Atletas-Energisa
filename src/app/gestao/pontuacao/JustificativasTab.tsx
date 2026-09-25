@@ -8,17 +8,24 @@ import {
   CheckCircle2,
   Clock3,
   RefreshCw,
+  Repeat2,
   Search,
+  Square,
   X,
   XCircle,
 } from "lucide-react";
-import { analisarJustificativaAusencia } from "@/lib/justificativasAusenciaClient";
+import {
+  analisarJustificativaAusencia,
+  encerrarJustificativaAusencia,
+} from "@/lib/justificativasAusenciaClient";
 import {
   motivoAusenciaLabel,
+  resumoPeriodicidade,
   statusJustificativaLabel,
 } from "@/lib/justificativasAusencia";
 import { equipeLabel } from "@/lib/labels";
 import { formatDataTreino, formatDateTime } from "@/lib/format";
+import { dataIsoLocal } from "@/lib/date";
 import { useToast } from "@/components/ui/Toast";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -45,6 +52,18 @@ function IconeStatus({ status }: { status: StatusJustificativaAusencia }) {
   if (status === "recusada") return <XCircle className="size-4" aria-hidden="true" />;
   if (status === "pendente") return <Clock3 className="size-4" aria-hidden="true" />;
   return <CalendarOff className="size-4" aria-hidden="true" />;
+}
+
+function periodoJustificativa(item: JustificativaAusenciaDoc) {
+  const inicio = formatDataTreino(item.inicio);
+  if (item.semDataFinal || !item.fim) return `Desde ${inicio} · sem data final`;
+  if (item.fim === item.inicio) return inicio;
+  return `${inicio} a ${formatDataTreino(item.fim)}`;
+}
+
+function podeEncerrar(item: JustificativaAusenciaDoc) {
+  return item.status === "aprovada" &&
+    (item.semDataFinal || !item.fim || item.fim >= dataIsoLocal());
 }
 
 function AnaliseModal({
@@ -95,7 +114,7 @@ function AnaliseModal({
       title={decisao === "aprovada" ? "Aprovar justificativa" : "Recusar justificativa"}
       description={
         alvo
-          ? `${alvo.atletaNome} · ${formatDataTreino(alvo.inicio)}${alvo.fim !== alvo.inicio ? ` a ${formatDataTreino(alvo.fim)}` : ""}`
+          ? `${alvo.atletaNome} · ${periodoJustificativa(alvo)}`
           : undefined
       }
       size="md"
@@ -173,6 +192,8 @@ export function JustificativasTab({
   const [busca, setBusca] = useState("");
   const [alvo, setAlvo] = useState<JustificativaAusenciaDoc | null>(null);
   const [decisao, setDecisao] = useState<"aprovada" | "recusada">("aprovada");
+  const [encerrando, setEncerrando] = useState<JustificativaAusenciaDoc | null>(null);
+  const [salvandoEncerramento, setSalvandoEncerramento] = useState(false);
 
   const filtrados = useMemo(() => {
     const termo = busca.trim().toLocaleLowerCase("pt-BR");
@@ -200,11 +221,30 @@ export function JustificativasTab({
     );
   }
 
+  async function handleEncerrar() {
+    if (!encerrando) return;
+    setSalvandoEncerramento(true);
+    try {
+      const atualizado = await encerrarJustificativaAusencia(encerrando.id);
+      onUpdate(atualizado);
+      setEncerrando(null);
+      show("success", "Justificativa encerrada para os próximos treinos.");
+    } catch (error) {
+      show(
+        "error",
+        error instanceof Error ? error.message : "Não foi possível encerrar agora.",
+      );
+    } finally {
+      setSalvandoEncerramento(false);
+    }
+  }
+
   const filtros: Array<{ value: FiltroStatus; label: string }> = [
     { value: "pendente", label: "Pendentes" },
     { value: "aprovada", label: "Aprovadas" },
     { value: "recusada", label: "Recusadas" },
     { value: "cancelada", label: "Canceladas" },
+    { value: "encerrada", label: "Encerradas" },
     { value: "todas", label: "Todas" },
   ];
 
@@ -301,11 +341,12 @@ export function JustificativasTab({
               <div className="rounded-[var(--radius)] bg-bg-inset p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <strong className="text-sm text-text">{motivoAusenciaLabel[item.motivo]}</strong>
-                  <span className="text-xs font-semibold text-primary">
-                    {formatDataTreino(item.inicio)}
-                    {item.fim !== item.inicio ? ` a ${formatDataTreino(item.fim)}` : ""}
-                  </span>
+                  <span className="text-xs font-semibold text-primary">{periodoJustificativa(item)}</span>
                 </div>
+                <p className="mt-2 flex items-center gap-2 text-xs font-semibold text-text-light">
+                  <Repeat2 className="size-4 shrink-0 text-primary" aria-hidden="true" />
+                  {resumoPeriodicidade(item)}
+                </p>
                 <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-text-light">
                   {item.descricao}
                 </p>
@@ -322,6 +363,12 @@ export function JustificativasTab({
                 </div>
               ) : null}
 
+              {item.status === "encerrada" && item.encerradaAPartirDe ? (
+                <p className="rounded-[var(--radius)] bg-bg-inset p-3 text-xs font-medium text-text-light">
+                  Encerrada a partir de {formatDataTreino(item.encerradaAPartirDe)}. Os lançamentos anteriores permanecem inalterados.
+                </p>
+              ) : null}
+
               {item.status === "pendente" ? (
                 <div className="mt-auto grid grid-cols-2 gap-2">
                   <Button variant="secondary" onClick={() => abrirAnalise(item, "recusada")}>
@@ -333,6 +380,22 @@ export function JustificativasTab({
                     Aprovar
                   </Button>
                 </div>
+              ) : podeEncerrar(item) ? (
+                <div className="mt-auto flex items-center justify-between gap-3">
+                  {item.analisadoPorNome ? (
+                    <p className="text-xs text-text-muted">
+                      Analisada por {item.analisadoPorNome} em {formatDateTime(item.analisadoEm)}
+                    </p>
+                  ) : <span />}
+                  <Button variant="secondary" onClick={() => setEncerrando(item)}>
+                    <Square className="size-4" aria-hidden="true" />
+                    Encerrar
+                  </Button>
+                </div>
+              ) : item.status === "encerrada" && item.encerradoPorNome ? (
+                <p className="mt-auto text-xs text-text-muted">
+                  Encerrada por {item.encerradoPorNome} em {formatDateTime(item.encerradoEm)}
+                </p>
               ) : item.analisadoPorNome ? (
                 <p className="mt-auto text-xs text-text-muted">
                   Analisada por {item.analisadoPorNome} em {formatDateTime(item.analisadoEm)}
@@ -350,6 +413,23 @@ export function JustificativasTab({
         onClose={() => setAlvo(null)}
         onSaved={handleSaved}
       />
+
+      <Modal
+        open={encerrando !== null}
+        onClose={() => setEncerrando(null)}
+        title="Encerrar justificativa"
+        description="Ela deixará de valer para os treinos a partir de hoje. Os lançamentos já registrados continuarão inalterados."
+        mobileSheet
+      >
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button variant="ghost" onClick={() => setEncerrando(null)}>
+            Voltar
+          </Button>
+          <Button variant="danger" loading={salvandoEncerramento} onClick={handleEncerrar}>
+            Encerrar a partir de hoje
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

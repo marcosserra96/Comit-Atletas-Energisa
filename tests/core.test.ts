@@ -10,6 +10,7 @@ import {
   diasNoIntervalo,
   intervaloAusenciaValido,
   justificativaAbrangeData,
+  justificativasAusenciaSobrepostas,
   periodosAusenciaSobrepostos,
 } from "../src/lib/justificativasAusencia";
 import {
@@ -211,6 +212,61 @@ test("aplica automaticamente apenas justificativa aprovada dentro do período", 
   assert.equal(justificativaAbrangeData({ ...base, status: "aprovada" }, "2026-09-20"), true);
   assert.equal(justificativaAbrangeData({ ...base, status: "aprovada" }, "2026-09-21"), false);
   assert.equal(justificativaAbrangeData({ ...base, status: "pendente" }, "2026-09-15"), false);
+});
+
+test("aplica recorrências semanais e mensais apenas nos dias configurados", () => {
+  const semanal = {
+    inicio: "2026-09-01",
+    fim: "2026-10-31",
+    status: "aprovada" as const,
+    periodicidade: "semanal" as const,
+    diasSemana: [2],
+  };
+  assert.equal(justificativaAbrangeData(semanal, "2026-09-22"), true);
+  assert.equal(justificativaAbrangeData(semanal, "2026-09-23"), false);
+
+  const mensal = {
+    inicio: "2026-09-01",
+    fim: "",
+    semDataFinal: true,
+    status: "aprovada" as const,
+    periodicidade: "mensal" as const,
+    diasMes: [15],
+  };
+  assert.equal(justificativaAbrangeData(mensal, "2026-10-15"), true);
+  assert.equal(justificativaAbrangeData(mensal, "2026-10-16"), false);
+});
+
+test("encerramento preserva datas anteriores e bloqueia as futuras", () => {
+  const encerrada = {
+    inicio: "2026-09-01",
+    fim: "",
+    semDataFinal: true,
+    status: "encerrada" as const,
+    periodicidade: "semanal" as const,
+    diasSemana: [2],
+    encerradaAPartirDe: "2026-09-24",
+  };
+  assert.equal(justificativaAbrangeData(encerrada, "2026-09-22"), true);
+  assert.equal(justificativaAbrangeData(encerrada, "2026-09-29"), false);
+});
+
+test("permite recorrências coexistentes quando os dias não coincidem", () => {
+  const base = { inicio: "2026-09-01", fim: "2026-12-31" };
+  assert.equal(
+    justificativasAusenciaSobrepostas(
+      { ...base, periodicidade: "semanal", diasSemana: [1] },
+      { ...base, periodicidade: "semanal", diasSemana: [2] },
+    ),
+    false,
+  );
+  assert.equal(
+    justificativasAusenciaSobrepostas(
+      { ...base, periodicidade: "semanal", diasSemana: [1] },
+      { ...base, periodicidade: "mensal", diasMes: [7] },
+    ),
+    true,
+  );
 });
 
 test("seleciona apenas os dois documentos da modalidade do atleta", () => {

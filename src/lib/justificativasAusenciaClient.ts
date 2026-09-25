@@ -2,6 +2,7 @@ import { auth } from "@/lib/firebase";
 import type {
   JustificativaAusenciaDoc,
   MotivoAusencia,
+  PeriodicidadeAusencia,
   StatusJustificativaAusencia,
 } from "@/lib/types";
 
@@ -10,6 +11,10 @@ type DadosJustificativa = {
   descricao: string;
   inicio: string;
   fim: string;
+  periodicidade: PeriodicidadeAusencia;
+  diasSemana: number[];
+  diasMes: number[];
+  semDataFinal: boolean;
 };
 
 async function requisitar<T>(url: string, init?: RequestInit): Promise<T> {
@@ -90,6 +95,14 @@ export async function cancelarJustificativaAusencia(id: string) {
   const body = await requisitar<{ item: JustificativaAusenciaDoc }>(
     "/api/justificativas",
     { method: "PATCH", body: JSON.stringify({ acao: "cancelar", id }) },
+  );
+  return body.item;
+}
+
+export async function encerrarJustificativaAusencia(id: string) {
+  const body = await requisitar<{ item: JustificativaAusenciaDoc }>(
+    "/api/justificativas",
+    { method: "PATCH", body: JSON.stringify({ acao: "encerrar", id }) },
   );
   return body.item;
 }

@@ -1,13 +1,15 @@
 import {
+  dataCivilValida,
   diasNoIntervalo,
   intervaloAusenciaValido,
+  justificativasAusenciaSobrepostas,
   motivosAusenciaValidos,
-  periodosAusenciaSobrepostos,
 } from "@/lib/justificativasAusencia";
 import type {
   AtletaDoc,
   JustificativaAusenciaDoc,
   MotivoAusencia,
+  PeriodicidadeAusencia,
   StatusJustificativaAusencia,
   UsuarioDoc,
 } from "@/lib/types";
@@ -20,6 +22,13 @@ const STATUS_VALIDOS = new Set<StatusJustificativaAusencia>([
   "aprovada",
   "recusada",
   "cancelada",
+  "encerrada",
+]);
+
+const PERIODICIDADES_VALIDAS = new Set<PeriodicidadeAusencia>([
+  "periodo",
+  "semanal",
+  "mensal",
 ]);
 
 class JustificativaError extends Error {
@@ -50,6 +59,12 @@ function itemApi(
     descricao: String(dados.descricao || ""),
     inicio: String(dados.inicio || ""),
     fim: String(dados.fim || ""),
+    periodicidade: PERIODICIDADES_VALIDAS.has(dados.periodicidade)
+      ? dados.periodicidade
+      : "periodo",
+    diasSemana: Array.isArray(dados.diasSemana) ? dados.diasSemana : [],
+    diasMes: Array.isArray(dados.diasMes) ? dados.diasMes : [],
+    semDataFinal: dados.semDataFinal === true,
     status: dados.status,
     criadoPor: String(dados.criadoPor || ""),
     criadoEm: dataIso(dados.criadoEm),
@@ -61,14 +76,39 @@ function itemApi(
       ? String(dados.observacaoComite)
       : undefined,
     canceladoEm: dataIso(dados.canceladoEm),
+    encerradaAPartirDe: dados.encerradaAPartirDe
+      ? String(dados.encerradaAPartirDe)
+      : undefined,
+    encerradoEm: dataIso(dados.encerradoEm),
+    encerradoPor: dados.encerradoPor ? String(dados.encerradoPor) : undefined,
+    encerradoPorNome: dados.encerradoPorNome
+      ? String(dados.encerradoPorNome)
+      : undefined,
   };
+}
+
+function numerosUnicosValidos(valor: unknown, minimo: number, maximo: number) {
+  if (!Array.isArray(valor)) return [];
+  return [...new Set(valor.filter(
+    (item): item is number => Number.isInteger(item) && item >= minimo && item <= maximo,
+  ))].sort((a, b) => a - b);
 }
 
 function dadosFormulario(body: Record<string, unknown>) {
   const motivo = typeof body.motivo === "string" ? body.motivo : "";
   const descricao = typeof body.descricao === "string" ? body.descricao.trim() : "";
   const inicio = typeof body.inicio === "string" ? body.inicio : "";
-  const fim = typeof body.fim === "string" ? body.fim : "";
+  const periodicidade = PERIODICIDADES_VALIDAS.has(body.periodicidade as PeriodicidadeAusencia)
+    ? (body.periodicidade as PeriodicidadeAusencia)
+    : "periodo";
+  const semDataFinal = body.semDataFinal === true;
+  const fim = semDataFinal ? "" : typeof body.fim === "string" ? body.fim : "";
+  const diasSemana = periodicidade === "semanal"
+    ? numerosUnicosValidos(body.diasSemana, 0, 6)
+    : [];
+  const diasMes = periodicidade === "mensal"
+    ? numerosUnicosValidos(body.diasMes, 1, 31)
+    : [];
 
   if (!motivosAusenciaValidos.has(motivo as MotivoAusencia)) {
     throw new JustificativaError("Selecione um motivo válido.", 400);
@@ -79,14 +119,44 @@ function dadosFormulario(body: Record<string, unknown>) {
       400,
     );
   }
-  if (!intervaloAusenciaValido(inicio, fim)) {
+  if (!dataCivilValida(inicio) || (!semDataFinal && !intervaloAusenciaValido(inicio, fim))) {
     throw new JustificativaError("Informe um período válido para a ausência.", 400);
   }
-  if (diasNoIntervalo(inicio, fim) > 366) {
+  if (!semDataFinal && periodicidade === "periodo" && diasNoIntervalo(inicio, fim) > 366) {
     throw new JustificativaError("O período da solicitação deve ter no máximo 366 dias.", 400);
   }
+  if (!semDataFinal && diasNoIntervalo(inicio, fim) > 3653) {
+    throw new JustificativaError("A recorrência deve ter no máximo 10 anos.", 400);
+  }
+  if (periodicidade === "semanal" && diasSemana.length === 0) {
+    throw new JustificativaError("Selecione pelo menos um dia da semana.", 400);
+  }
+  if (periodicidade === "mensal" && diasMes.length === 0) {
+    throw new JustificativaError("Informe pelo menos um dia do mês.", 400);
+  }
 
-  return { motivo: motivo as MotivoAusencia, descricao, inicio, fim };
+  return {
+    motivo: motivo as MotivoAusencia,
+    descricao,
+    inicio,
+    fim,
+    periodicidade,
+    diasSemana,
+    diasMes,
+    semDataFinal,
+  };
+}
+
+function dataCivilBrasilia() {
+  const partes = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const parte = (tipo: Intl.DateTimeFormatPartTypes) =>
+    partes.find((item) => item.type === tipo)?.value ?? "";
+  return `${parte("year")}-${parte("month")}-${parte("day")}`;
 }
 
 function podeRegistrar(usuario: UsuarioDoc) {
@@ -117,8 +187,7 @@ async function contexto(request: Request) {
 async function verificarSobreposicao(params: {
   db: FirebaseFirestore.Firestore;
   atletaId: string;
-  inicio: string;
-  fim: string;
+  dados: ReturnType<typeof dadosFormulario>;
   ignorarId?: string;
 }) {
   const snap = await params.db
@@ -128,13 +197,24 @@ async function verificarSobreposicao(params: {
   const existe = snap.docs.some((documento) => {
     if (documento.id === params.ignorarId) return false;
     const item = documento.data();
-    if (item.status !== "pendente" && item.status !== "aprovada") return false;
-    return periodosAusenciaSobrepostos(
-      params.inicio,
-      params.fim,
-      String(item.inicio || ""),
-      String(item.fim || ""),
-    );
+    if (
+      item.status !== "pendente" &&
+      item.status !== "aprovada" &&
+      item.status !== "encerrada"
+    ) return false;
+    return justificativasAusenciaSobrepostas(params.dados, {
+      inicio: String(item.inicio || ""),
+      fim: String(item.fim || ""),
+      periodicidade: PERIODICIDADES_VALIDAS.has(item.periodicidade)
+        ? item.periodicidade
+        : "periodo",
+      diasSemana: Array.isArray(item.diasSemana) ? item.diasSemana : [],
+      diasMes: Array.isArray(item.diasMes) ? item.diasMes : [],
+      semDataFinal: item.semDataFinal === true,
+      encerradaAPartirDe: item.encerradaAPartirDe
+        ? String(item.encerradaAPartirDe)
+        : undefined,
+    });
   });
   if (existe) {
     throw new JustificativaError(
@@ -241,8 +321,7 @@ export async function POST(request: Request) {
     await verificarSobreposicao({
       db,
       atletaId: atleta.id,
-      inicio: dados.inicio,
-      fim: dados.fim,
+      dados,
     });
 
     const ref = db.collection("justificativas_ausencia").doc();
@@ -302,8 +381,7 @@ export async function PUT(request: Request) {
     await verificarSobreposicao({
       db,
       atletaId: usuario.atletaId,
-      inicio: dados.inicio,
-      fim: dados.fim,
+      dados,
       ignorarId: id,
     });
 
@@ -343,12 +421,11 @@ export async function PATCH(request: Request) {
     const atual = await ref.get();
     const item = atual.data();
     if (!atual.exists) throw new JustificativaError("Justificativa não encontrada.", 404);
-    if (item?.status !== "pendente") {
-      throw new JustificativaError("Esta justificativa já foi analisada ou cancelada.", 409);
-    }
-
     const batch = db.batch();
     if (acao === "cancelar") {
+      if (item?.status !== "pendente") {
+        throw new JustificativaError("Somente solicitações pendentes podem ser canceladas.", 409);
+      }
       if (item.atletaId !== usuario.atletaId) {
         throw new JustificativaError("Você não pode cancelar esta justificativa.", 403);
       }
@@ -366,7 +443,39 @@ export async function PATCH(request: Request) {
         criadoPorNome: item.atletaNome || decodedToken.name || "Atleta",
         criadoEm: FieldValue.serverTimestamp(),
       });
+    } else if (acao === "encerrar") {
+      if (item?.status !== "aprovada") {
+        throw new JustificativaError("Somente justificativas aprovadas podem ser encerradas.", 409);
+      }
+      if (item.atletaId !== usuario.atletaId && !podeRegistrar(usuario)) {
+        throw new JustificativaError("Você não pode encerrar esta justificativa.", 403);
+      }
+      const encerradaAPartirDe = dataCivilBrasilia();
+      if (!item.semDataFinal && String(item.fim || "") < encerradaAPartirDe) {
+        throw new JustificativaError("Esta justificativa já terminou.", 409);
+      }
+      const autorNome = decodedToken.name || decodedToken.email || "Equipe do programa";
+      batch.update(ref, {
+        status: "encerrada",
+        encerradaAPartirDe,
+        encerradoEm: FieldValue.serverTimestamp(),
+        encerradoPor: decodedToken.uid,
+        encerradoPorNome: autorNome,
+        atualizadoEm: FieldValue.serverTimestamp(),
+      });
+      batch.set(db.collection("auditoria").doc(), {
+        acao: "encerrar_justificativa_ausencia",
+        entidade: "justificativas_ausencia",
+        entidadeId: id,
+        dados: { atletaId: item.atletaId, encerradaAPartirDe },
+        criadoPor: decodedToken.uid,
+        criadoPorNome: autorNome,
+        criadoEm: FieldValue.serverTimestamp(),
+      });
     } else if (acao === "analisar") {
+      if (item?.status !== "pendente") {
+        throw new JustificativaError("Esta justificativa já foi analisada ou cancelada.", 409);
+      }
       if (!podeRegistrar(usuario)) {
         throw new JustificativaError(
           "Você não tem permissão para analisar justificativas.",

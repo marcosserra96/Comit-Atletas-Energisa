@@ -120,7 +120,10 @@ export type StatusJustificativaAusencia =
   | "pendente"
   | "aprovada"
   | "recusada"
-  | "cancelada";
+  | "cancelada"
+  | "encerrada";
+
+export type PeriodicidadeAusencia = "periodo" | "semanal" | "mensal";
 
 /** Solicitação privada: somente o atleta e a gestão autorizada acessam pela API. */
 export interface JustificativaAusenciaDoc {
@@ -132,6 +135,10 @@ export interface JustificativaAusenciaDoc {
   descricao: string;
   inicio: string;
   fim: string;
+  periodicidade?: PeriodicidadeAusencia;
+  diasSemana?: number[];
+  diasMes?: number[];
+  semDataFinal?: boolean;
   status: StatusJustificativaAusencia;
   criadoPor: string;
   criadoEm: unknown;
@@ -141,6 +148,10 @@ export interface JustificativaAusenciaDoc {
   analisadoEm?: unknown;
   observacaoComite?: string;
   canceladoEm?: unknown;
+  encerradaAPartirDe?: string;
+  encerradoEm?: unknown;
+  encerradoPor?: string;
+  encerradoPorNome?: string;
 }
 
 export interface RegraPontuacaoDoc {

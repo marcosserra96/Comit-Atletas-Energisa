@@ -9,7 +9,9 @@ import {
   Edit3,
   Plus,
   RefreshCw,
+  Repeat2,
   Send,
+  Square,
   XCircle,
 } from "lucide-react";
 import { useAthleteView } from "@/lib/session/AthleteViewProvider";
@@ -27,18 +29,25 @@ import {
   cancelarJustificativaAusencia,
   carregarMinhasJustificativas,
   criarJustificativaAusencia,
+  encerrarJustificativaAusencia,
 } from "@/lib/justificativasAusenciaClient";
 import {
+  dataCivilValida,
+  DIAS_SEMANA,
   diasNoIntervalo,
   intervaloAusenciaValido,
   motivoAusenciaLabel,
   MOTIVOS_AUSENCIA,
+  periodicidadeAusenciaLabel,
+  resumoPeriodicidade,
   statusJustificativaLabel,
 } from "@/lib/justificativasAusencia";
 import { formatDataTreino, formatDateTime } from "@/lib/format";
+import { dataIsoLocal } from "@/lib/date";
 import type {
   JustificativaAusenciaDoc,
   MotivoAusencia,
+  PeriodicidadeAusencia,
   StatusJustificativaAusencia,
 } from "@/lib/types";
 
@@ -56,6 +65,18 @@ function IconeStatus({ status }: { status: StatusJustificativaAusencia }) {
   return <CalendarOff className="size-4" aria-hidden="true" />;
 }
 
+function periodoJustificativa(item: JustificativaAusenciaDoc) {
+  const inicio = formatDataTreino(item.inicio);
+  if (item.semDataFinal || !item.fim) return `Desde ${inicio} · sem data final`;
+  if (item.fim === item.inicio) return inicio;
+  return `${inicio} a ${formatDataTreino(item.fim)}`;
+}
+
+function podeEncerrar(item: JustificativaAusenciaDoc) {
+  return item.status === "aprovada" &&
+    (item.semDataFinal || !item.fim || item.fim >= dataIsoLocal());
+}
+
 function SolicitacaoModal({
   open,
   item,
@@ -68,8 +89,14 @@ function SolicitacaoModal({
   onSaved: (item: JustificativaAusenciaDoc) => void;
 }) {
   const [motivo, setMotivo] = useState<MotivoAusencia>(item?.motivo ?? "viagem");
+  const [periodicidade, setPeriodicidade] = useState<PeriodicidadeAusencia>(
+    item?.periodicidade ?? "periodo",
+  );
   const [inicio, setInicio] = useState(item?.inicio ?? "");
   const [fim, setFim] = useState(item?.fim ?? "");
+  const [semDataFinal, setSemDataFinal] = useState(item?.semDataFinal ?? false);
+  const [diasSemana, setDiasSemana] = useState<number[]>(item?.diasSemana ?? []);
+  const [diaMes, setDiaMes] = useState(item?.diasMes?.[0]?.toString() ?? "");
   const [descricao, setDescricao] = useState(item?.descricao ?? "");
   const [erro, setErro] = useState("");
   const [salvando, setSalvando] = useState(false);
@@ -77,12 +104,24 @@ function SolicitacaoModal({
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setErro("");
-    if (!intervaloAusenciaValido(inicio, fim)) {
+    if (!dataCivilValida(inicio) || (!semDataFinal && !intervaloAusenciaValido(inicio, fim))) {
       setErro("Informe um período válido. A data final não pode ser anterior à inicial.");
       return;
     }
-    if (diasNoIntervalo(inicio, fim) > 366) {
+    if (!semDataFinal && periodicidade === "periodo" && diasNoIntervalo(inicio, fim) > 366) {
       setErro("O período deve ter no máximo 366 dias.");
+      return;
+    }
+    if (periodicidade === "semanal" && diasSemana.length === 0) {
+      setErro("Selecione pelo menos um dia da semana.");
+      return;
+    }
+    const diaMensal = Number(diaMes);
+    if (
+      periodicidade === "mensal" &&
+      (!Number.isInteger(diaMensal) || diaMensal < 1 || diaMensal > 31)
+    ) {
+      setErro("Informe um dia do mês entre 1 e 31.");
       return;
     }
     if (descricao.trim().length < 3) {
@@ -92,7 +131,16 @@ function SolicitacaoModal({
 
     setSalvando(true);
     try {
-      const dados = { motivo, inicio, fim, descricao: descricao.trim() };
+      const dados = {
+        motivo,
+        inicio,
+        fim: semDataFinal ? "" : fim,
+        descricao: descricao.trim(),
+        periodicidade,
+        diasSemana: periodicidade === "semanal" ? diasSemana : [],
+        diasMes: periodicidade === "mensal" ? [diaMensal] : [],
+        semDataFinal,
+      };
       const salvo = item
         ? await atualizarJustificativaAusencia(item.id, dados)
         : await criarJustificativaAusencia(dados);
@@ -111,7 +159,7 @@ function SolicitacaoModal({
       open={open}
       onClose={onClose}
       title={item ? "Editar justificativa" : "Informar ausência"}
-      description="Informe o período em que você não poderá treinar. O Comitê analisará antes do lançamento."
+      description="Informe quando você não poderá treinar. O Comitê analisará antes do lançamento."
       size="md"
       mobileSheet
     >
@@ -137,6 +185,66 @@ function SolicitacaoModal({
           </Select>
         </div>
 
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-text">Como a ausência acontece?</label>
+          <Select
+            value={periodicidade}
+            onChange={(event) => setPeriodicidade(event.target.value as PeriodicidadeAusencia)}
+          >
+            {Object.entries(periodicidadeAusenciaLabel).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </Select>
+        </div>
+
+        {periodicidade === "semanal" ? (
+          <fieldset className="flex flex-col gap-2">
+            <legend className="text-sm font-medium text-text">Dias da semana</legend>
+            <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+              {DIAS_SEMANA.map((dia) => {
+                const selecionado = diasSemana.includes(dia.value);
+                return (
+                  <button
+                    key={dia.value}
+                    type="button"
+                    aria-pressed={selecionado}
+                    onClick={() => setDiasSemana((atuais) =>
+                      selecionado
+                        ? atuais.filter((valor) => valor !== dia.value)
+                        : [...atuais, dia.value],
+                    )}
+                    className={`min-h-11 cursor-pointer rounded-[var(--radius)] border px-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                      selecionado
+                        ? "border-primary bg-primary text-white"
+                        : "border-border bg-bg text-text-light hover:bg-bg-inset"
+                    }`}
+                  >
+                    {dia.label}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+        ) : null}
+
+        {periodicidade === "mensal" ? (
+          <div>
+            <TextField
+              label="Dia do mês"
+              type="number"
+              min={1}
+              max={31}
+              inputMode="numeric"
+              value={diaMes}
+              onChange={(event) => setDiaMes(event.target.value)}
+              required
+            />
+            <p className="mt-1.5 text-xs text-text-muted">
+              Se o mês não tiver esse dia, não haverá ocorrência naquele mês.
+            </p>
+          </div>
+        ) : null}
+
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <TextField
             label="Data inicial"
@@ -154,9 +262,23 @@ function SolicitacaoModal({
             min={inicio || undefined}
             value={fim}
             onChange={(event) => setFim(event.target.value)}
-            required
+            required={!semDataFinal}
+            disabled={semDataFinal}
           />
         </div>
+
+        <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-[var(--radius)] border border-border bg-bg px-3 py-2.5 text-sm text-text-light">
+          <input
+            type="checkbox"
+            checked={semDataFinal}
+            onChange={(event) => setSemDataFinal(event.target.checked)}
+            className="size-4 accent-primary"
+          />
+          <span>
+            <strong className="block font-semibold text-text">Sem data final</strong>
+            A justificativa ficará ativa até você encerrá-la.
+          </span>
+        </label>
 
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between gap-3">
@@ -202,7 +324,9 @@ export default function JustificativasPage() {
   const [modalAberto, setModalAberto] = useState(false);
   const [editando, setEditando] = useState<JustificativaAusenciaDoc | null>(null);
   const [cancelando, setCancelando] = useState<JustificativaAusenciaDoc | null>(null);
+  const [encerrando, setEncerrando] = useState<JustificativaAusenciaDoc | null>(null);
   const [salvandoCancelamento, setSalvandoCancelamento] = useState(false);
+  const [salvandoEncerramento, setSalvandoEncerramento] = useState(false);
 
   async function carregar() {
     setErro(false);
@@ -238,7 +362,10 @@ export default function JustificativasPage() {
       pendentes: lista.filter((item) => item.status === "pendente").length,
       aprovadas: lista.filter((item) => item.status === "aprovada").length,
       encerradas: lista.filter(
-        (item) => item.status === "recusada" || item.status === "cancelada",
+        (item) =>
+          item.status === "recusada" ||
+          item.status === "cancelada" ||
+          item.status === "encerrada",
       ).length,
     };
   }, [items]);
@@ -273,6 +400,26 @@ export default function JustificativasPage() {
       );
     } finally {
       setSalvandoCancelamento(false);
+    }
+  }
+
+  async function handleEncerrar() {
+    if (!encerrando) return;
+    setSalvandoEncerramento(true);
+    try {
+      const atualizado = await encerrarJustificativaAusencia(encerrando.id);
+      setItems((atuais) =>
+        (atuais ?? []).map((item) => (item.id === atualizado.id ? atualizado : item)),
+      );
+      setEncerrando(null);
+      show("success", "Justificativa encerrada para os próximos treinos.");
+    } catch (error) {
+      show(
+        "error",
+        error instanceof Error ? error.message : "Não foi possível encerrar agora.",
+      );
+    } finally {
+      setSalvandoEncerramento(false);
     }
   }
 
@@ -319,7 +466,7 @@ export default function JustificativasPage() {
           <strong className="block text-xl font-extrabold text-text-muted">
             {items === null ? "—" : totais.encerradas}
           </strong>
-          <span className="text-xs text-text-muted">encerradas</span>
+          <span className="text-xs text-text-muted">finalizadas</span>
         </Card>
       </div>
 
@@ -365,7 +512,11 @@ export default function JustificativasPage() {
           {items.map((item) => (
             <Card
               key={item.id}
-              className={item.status === "cancelada" ? "opacity-70" : undefined}
+              className={
+                item.status === "cancelada" || item.status === "encerrada"
+                  ? "opacity-80"
+                  : undefined
+              }
             >
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0 flex-1">
@@ -376,10 +527,13 @@ export default function JustificativasPage() {
                       {statusJustificativaLabel[item.status]}
                     </Badge>
                   </div>
-                  <p className="mt-1 text-sm font-semibold text-text-light">
-                    {formatDataTreino(item.inicio)}
-                    {item.fim !== item.inicio ? ` a ${formatDataTreino(item.fim)}` : ""}
-                  </p>
+                  <div className="mt-2 flex flex-col gap-1 text-sm font-semibold text-text-light">
+                    <span className="flex items-center gap-2">
+                      <Repeat2 className="size-4 shrink-0 text-primary" aria-hidden="true" />
+                      {resumoPeriodicidade(item)}
+                    </span>
+                    <span>{periodoJustificativa(item)}</span>
+                  </div>
                   <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-text-light">
                     {item.descricao}
                   </p>
@@ -387,9 +541,18 @@ export default function JustificativasPage() {
                     Enviada em {formatDateTime(item.criadoEm)}
                   </p>
 
-                  {item.status === "aprovada" ? (
+                  {podeEncerrar(item) ? (
                     <p className="mt-3 rounded-[var(--radius)] bg-success/10 p-3 text-xs font-medium text-success">
                       Esta justificativa será sugerida automaticamente nos lançamentos dentro do período aprovado.
+                    </p>
+                  ) : item.status === "aprovada" ? (
+                    <p className="mt-3 rounded-[var(--radius)] bg-bg-inset p-3 text-xs font-medium text-text-light">
+                      O período aprovado já foi concluído e permanece disponível no histórico.
+                    </p>
+                  ) : null}
+                  {item.status === "encerrada" && item.encerradaAPartirDe ? (
+                    <p className="mt-3 rounded-[var(--radius)] bg-bg-inset p-3 text-xs font-medium text-text-light">
+                      Encerrada a partir de {formatDataTreino(item.encerradaAPartirDe)}. Os lançamentos anteriores foram preservados.
                     </p>
                   ) : null}
                   {item.observacaoComite ? (
@@ -421,6 +584,11 @@ export default function JustificativasPage() {
                       Cancelar
                     </Button>
                   </div>
+                ) : !isPreview && podeEncerrar(item) ? (
+                  <Button variant="secondary" onClick={() => setEncerrando(item)}>
+                    <Square className="size-4" aria-hidden="true" />
+                    Encerrar
+                  </Button>
                 ) : null}
               </div>
             </Card>
@@ -451,6 +619,26 @@ export default function JustificativasPage() {
           </Button>
           <Button variant="danger" loading={salvandoCancelamento} onClick={handleCancelar}>
             Cancelar solicitação
+          </Button>
+        </div>
+      </Modal>
+
+      <Modal
+        open={encerrando !== null}
+        onClose={() => setEncerrando(null)}
+        title="Encerrar justificativa"
+        description="Ela deixará de valer para os treinos a partir de hoje. Os lançamentos já registrados continuarão inalterados."
+      >
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button variant="ghost" onClick={() => setEncerrando(null)}>
+            Voltar
+          </Button>
+          <Button
+            variant="danger"
+            loading={salvandoEncerramento}
+            onClick={handleEncerrar}
+          >
+            Encerrar a partir de hoje
           </Button>
         </div>
       </Modal>
