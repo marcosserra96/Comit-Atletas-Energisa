@@ -26,8 +26,10 @@ export default function RedefinirSenhaPage() {
     const actionCode = new URLSearchParams(window.location.search).get("oobCode");
 
     if (!actionCode) {
-      setPageError("Este link de redefinição está incompleto. Solicite um novo link.");
-      setPageState("error");
+      queueMicrotask(() => {
+        setPageError("Este link de redefinição está incompleto. Solicite um novo link.");
+        setPageState("error");
+      });
       return;
     }
 
