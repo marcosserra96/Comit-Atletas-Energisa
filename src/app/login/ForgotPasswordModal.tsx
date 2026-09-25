@@ -25,10 +25,14 @@ export function ForgotPasswordModal({
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
       setEmail(initialEmail);
       setError("");
-    }
+    });
+    return () => { cancelled = true; };
   }, [initialEmail, open]);
 
   async function handleSubmit(e: FormEvent) {
