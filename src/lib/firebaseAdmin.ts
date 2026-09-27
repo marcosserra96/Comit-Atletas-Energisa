@@ -56,9 +56,37 @@ function serviceAccountConfig(): ServiceAccountConfig {
   return { projectId, clientEmail, privateKey };
 }
 
+/** Mesmos valores usados pelo cliente em `src/lib/firebase.ts` e pelo `scripts/seed.ts`. */
+const EMULATOR_PROJECT_ID = "atletas-energisa-dev";
+const EMULATOR_AUTH_HOST = "127.0.0.1:9099";
+const EMULATOR_FIRESTORE_HOST = "127.0.0.1:8080";
+
+/**
+ * No desenvolvimento local com o Firebase Emulator Suite, o Admin SDK não precisa
+ * de credencial: basta apontar para os emuladores. Nunca vale em produção.
+ */
+function usaEmulador() {
+  return (
+    process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === "true" &&
+    process.env.NODE_ENV !== "production"
+  );
+}
+
 function adminApp(): App {
+  if (usaEmulador()) {
+    // O Admin SDK lê estas variáveis a cada chamada, e o `next dev` recarrega o
+    // process.env quando arquivos mudam — por isso elas são reaplicadas sempre,
+    // e não só na criação do app.
+    process.env.FIREBASE_AUTH_EMULATOR_HOST ??= EMULATOR_AUTH_HOST;
+    process.env.FIRESTORE_EMULATOR_HOST ??= EMULATOR_FIRESTORE_HOST;
+  }
+
   const existing = getApps().find((app) => app.name === ADMIN_APP_NAME);
   if (existing) return existing;
+
+  if (usaEmulador()) {
+    return initializeApp({ projectId: EMULATOR_PROJECT_ID }, ADMIN_APP_NAME);
+  }
 
   const config = serviceAccountConfig();
   const publicProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
