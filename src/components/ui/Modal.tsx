@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, type ReactNode } from "react";
+import { useId, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
@@ -13,6 +13,36 @@ const SIZES = {
   lg: "max-w-2xl",
   xl: "max-w-4xl",
 } as const;
+
+// Curvas do design system: modal central com ease-out forte; sheet sobe de baixo
+// e desce pelo mesmo caminho, com a curva de gaveta do iOS.
+const ANIMACAO_MODAL = {
+  initial: { opacity: 0, y: 12, scale: 0.97 },
+  animate: { opacity: 1, y: 0, scale: 1 },
+  exit: { opacity: 0, y: 8, scale: 0.97 },
+  transition: { duration: 0.18, ease: [0.23, 1, 0.32, 1] as const },
+};
+const ANIMACAO_SHEET = {
+  initial: { y: "100%" },
+  animate: { y: 0 },
+  exit: { y: "100%" },
+  transition: { duration: 0.32, ease: [0.32, 0.72, 0, 1] as const },
+};
+
+const CONSULTA_CELULAR = "(max-width: 639px)";
+
+/** Mesmo corte do breakpoint `sm` do Tailwind, que decide se o modal vira sheet. */
+function useEhCelular() {
+  return useSyncExternalStore(
+    (avisar) => {
+      const consulta = window.matchMedia(CONSULTA_CELULAR);
+      consulta.addEventListener("change", avisar);
+      return () => consulta.removeEventListener("change", avisar);
+    },
+    () => window.matchMedia(CONSULTA_CELULAR).matches,
+    () => false,
+  );
+}
 
 interface ModalProps {
   open: boolean;
@@ -41,6 +71,7 @@ export function Modal({
   const descriptionId = useId();
 
   useDialogFocus(open, dialogRef, onClose);
+  const comoSheet = useEhCelular() && mobileSheet;
 
   return (
     <AnimatePresence>
@@ -69,10 +100,7 @@ export function Modal({
               aria-describedby={description ? descriptionId : undefined}
               tabIndex={-1}
               onClick={(event) => event.stopPropagation()}
-              initial={{ opacity: 0, y: 12, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 8, scale: 0.97 }}
-              transition={{ duration: 0.18 }}
+              {...(comoSheet ? ANIMACAO_SHEET : ANIMACAO_MODAL)}
               className={cn(
                 "w-full border border-border bg-bg-card p-4 shadow-[var(--shadow-modal)] sm:p-6",
                 SIZES[size],

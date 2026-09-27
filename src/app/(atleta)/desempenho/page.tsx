@@ -158,6 +158,12 @@ function BarraCriterio({
   );
 }
 
+/** "setembro de 2026" → "Setembro" (o ano aparece no filtro de período). */
+function nomeDoMes(rotuloLongo: string) {
+  const mes = rotuloLongo.split(" de ")[0] ?? rotuloLongo;
+  return mes.charAt(0).toUpperCase() + mes.slice(1);
+}
+
 function textoComparacao(analise: AnaliseDesempenho) {
   if (analise.treinosMesAtual === 0 && analise.treinosMesAnterior === 0) {
     return "Ainda não há treinos registrados neste mês nem no anterior.";
@@ -263,7 +269,7 @@ export default function DesempenhoPage() {
         </Card>
       ) : lancamentos === null || analise === null ? (
         <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
             {Array.from({ length: 6 }, (_, indice) => (
               <SkeletonCard key={indice} className="h-28" />
             ))}
@@ -275,7 +281,7 @@ export default function DesempenhoPage() {
         </>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
             <MetricCard
               label="Treinos"
               value={analise.totalTreinos}
@@ -321,11 +327,11 @@ export default function DesempenhoPage() {
             />
               <MetricCard
                 label="Mês mais ativo"
-                value={analise.melhorMes ? analise.melhorMes.rotuloCurto : "—"}
+                value={analise.melhorMes ? nomeDoMes(analise.melhorMes.rotulo) : "—"}
                 icon={CalendarDays}
                 subtitle={
                   analise.melhorMes
-                    ? plural(analise.melhorMes.treinos, "treino")
+                    ? `${plural(analise.melhorMes.treinos, "treino")} em ${analise.melhorMes.rotulo.split(" de ")[1] ?? ""}`.trim()
                     : "sem treinos no período"
                 }
               />

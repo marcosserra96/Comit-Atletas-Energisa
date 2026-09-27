@@ -520,7 +520,7 @@ function ParcelasEditor({
                   value={p.dataPagamento ?? ""}
                   onChange={(e) => onAtualizarParcela(i, { dataPagamento: e.target.value })}
                   disabled={!p.pago}
-                  className="h-8 w-full min-w-0 rounded-[var(--radius-sm)] border border-border bg-bg px-1.5 text-xs text-text outline-none"
+                  className="h-8 w-full min-w-0 rounded-[var(--radius-sm)] border border-border bg-bg px-1.5 text-xs text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
                 />
               </div>
             </div>

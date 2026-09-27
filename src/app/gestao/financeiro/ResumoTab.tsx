@@ -6,7 +6,7 @@ import { Building2, Calculator, CalendarRange, PieChart, Receipt, TrendingUp, Wa
 import { db } from "@/lib/firebase";
 import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
-import { formatBRL } from "@/lib/format";
+import { formatBRL, plural } from "@/lib/format";
 import type { CategoriaDespesa, DespesaDoc } from "@/lib/types";
 
 const CATEGORIA_COR: Record<CategoriaDespesa, string> = {
@@ -245,7 +245,7 @@ export function ResumoTab() {
         <p className="mb-3 text-xs text-text-light">
           Parcelas de custos recorrentes e despesas com mês definido.
           {semMesDefinido > 0 &&
-            ` ${semMesDefinido} lançamento(s) sem mês definido não entram nessa quebra.`}
+            ` ${plural(semMesDefinido, "lançamento", "lançamentos")} sem mês definido ${semMesDefinido === 1 ? "não entra" : "não entram"} nessa quebra.`}
         </p>
         {despesas === null ? (
           <div className="h-24 animate-pulse rounded-[var(--radius)] bg-bg" />

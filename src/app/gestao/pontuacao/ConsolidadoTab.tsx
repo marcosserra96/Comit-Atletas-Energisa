@@ -183,7 +183,7 @@ export function ConsolidadoTab() {
               className={cn(
                 "rounded-full border px-3 py-1.5 text-xs font-bold transition-colors",
                 mesesSelecionados.size === 12
-                  ? "border-primary bg-primary text-white"
+                  ? "border-primary bg-primary text-on-primary"
                   : "border-border text-text-light hover:text-text",
               )}
             >

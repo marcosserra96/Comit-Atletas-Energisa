@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* ── Focus Visible — apenas para navegação por teclado ──
+   Fica na camada "base" para que componentes com anel de foco próprio
+   (focus-visible:outline-none + ring) consigam substituí-lo sem contorno duplo. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════
    DESIGN SYSTEM — Atletas Energisa
    Tokens semânticos para uma plataforma esportiva corporativa.
@@ -19,6 +29,14 @@
   --color-accent: var(--brand-accent-light, #af5119);
   --color-accent-hover: color-mix(in srgb, var(--color-accent) 84%, black);
   --color-accent-subtle: rgba(243, 112, 33, 0.08);
+
+  /* Texto sobre fundos coloridos (botões, selos cheios). Branco no claro;
+     no escuro as cores ficam mais claras e o texto passa a ser escuro. */
+  --color-on-primary: #ffffff;
+  --color-on-secondary: #ffffff;
+  --color-on-accent: #ffffff;
+  --color-on-danger: #ffffff;
+  --color-on-success: #ffffff;
 
   /* ── Semantic Status ── */
   --color-danger: var(--brand-danger-light, #cc333d);
@@ -147,6 +165,13 @@
   --color-border-subtle: #1e212b;
   --color-border-strong: #3a3f52;
 
+  /* ── Texto sobre fundos coloridos ── */
+  --color-on-primary: #07192d;
+  --color-on-secondary: #07192d;
+  --color-on-accent: #07192d;
+  --color-on-danger: #07192d;
+  --color-on-success: #07192d;
+
   /* ── Brand — variações claras para fundo escuro ── */
   --color-primary: var(--brand-primary-dark, #009bc1);
   --color-secondary: var(--brand-secondary-dark, #00b37e);
@@ -209,6 +234,13 @@
   --color-accent: var(--color-accent);
   --color-accent-hover: var(--color-accent-hover);
   --color-accent-subtle: var(--color-accent-subtle);
+
+  /* Texto sobre cor */
+  --color-on-primary: var(--color-on-primary);
+  --color-on-secondary: var(--color-on-secondary);
+  --color-on-accent: var(--color-on-accent);
+  --color-on-danger: var(--color-on-danger);
+  --color-on-success: var(--color-on-success);
 
   /* Status */
   --color-danger: var(--color-danger);
@@ -278,6 +310,8 @@
    BASE STYLES
    ═══════════════════════════════════════════════════════════ */
 body {
+  /* O app tem estados :active próprios; o flash cinza do toque no iOS/Android sobra. */
+  -webkit-tap-highlight-color: transparent;
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-sans), system-ui, sans-serif;
@@ -321,11 +355,7 @@ input[type="number"]::-webkit-inner-spin-button {
   }
 }
 
-/* ── Focus Visible — apenas para navegação por teclado ── */
-:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
+
 
 /* ── Scrollbar sutil ── */
 ::-webkit-scrollbar {

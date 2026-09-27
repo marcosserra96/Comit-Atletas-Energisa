@@ -181,7 +181,7 @@ export function VerAtletasTab() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr_1fr]">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-semibold text-text">Buscar</label>
-            <div className="flex h-10 items-center gap-2 rounded-[var(--radius)] border border-border bg-bg-card px-3">
+            <div className="flex h-10 items-center gap-2 rounded-[var(--radius)] border border-border bg-bg-card px-3 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
               <Search className="size-4 text-text-muted" />
               <input
                 value={busca}
@@ -324,7 +324,7 @@ export function VerAtletasTab() {
                             href={`/dashboard?visualizarAtleta=${encodeURIComponent(a.id)}`}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex h-8 items-center gap-1.5 rounded-[var(--radius)] bg-primary px-3 text-xs font-semibold text-white transition-colors hover:bg-primary-hover"
+                            className="inline-flex h-8 items-center gap-1.5 rounded-[var(--radius)] bg-primary px-3 text-xs font-semibold text-on-primary transition-colors hover:bg-primary-hover"
                           >
                             <Eye className="size-3.5" />
                             Visualizar

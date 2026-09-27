@@ -274,7 +274,7 @@ export function ExtratoTab() {
               onClick={() =>
                 setAlvoExclusao((lancamentos ?? []).filter((l) => selecionados.has(l.id)))
               }
-              className="inline-flex items-center gap-1.5 rounded-[var(--radius)] bg-danger px-3 py-1.5 text-xs font-bold text-white hover:bg-danger/90"
+              className="inline-flex items-center gap-1.5 rounded-[var(--radius)] bg-danger px-3 py-1.5 text-xs font-bold text-on-danger hover:bg-danger/90"
             >
               <Trash2 className="size-3.5" />
               Excluir selecionados

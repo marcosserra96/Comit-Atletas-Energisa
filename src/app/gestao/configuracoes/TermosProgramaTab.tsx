@@ -26,6 +26,7 @@ import type {
   TipoDocumentoPrograma,
 } from "@/lib/types";
 import { modalidadeLabel } from "@/lib/labels";
+import { plural } from "@/lib/format";
 
 interface DocumentoConfig
   extends Omit<DocumentoProgramaDoc, "atualizadoEm"> {
@@ -402,8 +403,8 @@ export function TermosProgramaTab() {
               Aceites de {metaSelecionado.label.toLowerCase()}
             </h3>
             <p className="mt-1 text-sm text-text-light">
-              {aceitesVersaoAtual} aceite(s) na versão atual · {aceitesSelecionados.length} registro(s)
-              mais recente(s).
+              {plural(aceitesVersaoAtual, "aceite")} na versão atual ·{" "}
+              {plural(aceitesSelecionados.length, "registro mais recente", "registros mais recentes")}.
             </p>
           </div>
           <Button

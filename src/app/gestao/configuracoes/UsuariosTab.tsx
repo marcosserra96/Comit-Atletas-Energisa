@@ -18,6 +18,7 @@ import { GerenciarAcessosModal } from "./GerenciarAcessosModal";
 import { TestarPermissoesModal } from "./TestarPermissoesModal";
 import { CorrigirVinculoModal } from "./CorrigirVinculoModal";
 import type { AtletaDoc, Equipe, Role } from "@/lib/types";
+import { plural } from "@/lib/format";
 
 interface ResultadoSincronizacao {
   total: number;
@@ -151,7 +152,7 @@ export function UsuariosTab() {
       show(
         "success",
         data.adicionadas > 0
-          ? `${data.adicionadas} conta(s) enviada(s) para aprovação.`
+          ? `${plural(data.adicionadas, "conta enviada", "contas enviadas")} para aprovação.`
           : "Todas as contas já estavam tratadas.",
       );
     } catch (error) {

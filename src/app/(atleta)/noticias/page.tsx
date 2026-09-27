@@ -38,7 +38,7 @@ function NoticiaCard({ noticia, destaque = false }: { noticia: NoticiaDoc; desta
               {noticia.titulo}
             </h2>
           </div>
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-bg text-text-muted transition-colors group-hover:bg-primary group-hover:text-white">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-bg text-text-muted transition-colors group-hover:bg-primary group-hover:text-on-primary">
             <ChevronRight className="size-5" />
           </span>
         </div>

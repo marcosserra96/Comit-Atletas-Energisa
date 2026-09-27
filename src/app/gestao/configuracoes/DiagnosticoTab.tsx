@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { logAudit } from "@/lib/audit";
 import { ConfirmarPerigoModal } from "@/components/ui/ConfirmarPerigoModal";
 import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
+import { plural } from "@/lib/format";
 
 type ZonaPerigo = "historico_pontos" | "agenda_eventos" | "regras_pontuacao" | "comentarios_atletas";
 
@@ -53,7 +54,7 @@ export function DiagnosticoTab() {
         (await atualizarRankingAutomaticamente(atletaIds, "manutencao_historico"));
       show(
         rankingAtualizado ? "success" : "info",
-        `${snap.size} registro(s) apagados de "${zonaAlvo}".${rankingAtualizado ? "" : " O ranking automático não atualizou; use \"Recalcular agora\"."}`,
+        `${plural(snap.size, "registro apagado", "registros apagados")} de "${zonaAlvo}".${rankingAtualizado ? "" : " O ranking automático não atualizou; use \"Recalcular agora\"."}`,
       );
       setZonaAlvo(null);
     } catch {

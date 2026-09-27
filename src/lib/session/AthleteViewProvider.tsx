@@ -90,7 +90,7 @@ export function AthleteViewProvider({
           </p>
           <Link
             href="/gestao/atletas?tab=ver"
-            className="mt-5 inline-flex rounded-[var(--radius)] bg-primary px-4 py-2 text-sm font-semibold text-white"
+            className="mt-5 inline-flex rounded-[var(--radius)] bg-primary px-4 py-2 text-sm font-semibold text-on-primary"
           >
             Voltar aos atletas
           </Link>

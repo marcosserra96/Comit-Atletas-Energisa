@@ -28,7 +28,7 @@ function AtletaShellInner({ children }: { children: React.ReactNode }) {
     .map((item) => ({ ...item, href: withPreview(item.href) }));
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-dvh">
       <AtletaSidebar
         mobileOpen={mobileOpen}
         onCloseMobile={() => setMobileOpen(false)}

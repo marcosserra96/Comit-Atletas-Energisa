@@ -116,7 +116,7 @@ export function PwaInstallPrompt() {
         <button
           type="button"
           onClick={install}
-          className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-[var(--radius)] bg-primary px-4 text-sm font-bold text-white transition-colors hover:bg-primary-hover"
+          className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-[var(--radius)] bg-primary px-4 text-sm font-bold text-on-primary transition-colors hover:bg-primary-hover"
         >
           <Download className="size-4" />
           Instalar aplicativo

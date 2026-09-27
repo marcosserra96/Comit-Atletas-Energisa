@@ -274,27 +274,27 @@ export function ImportarPontuacoesCard() {
           <FileSpreadsheet className="size-5" />
         </span>
         <div>
-          <h3 className="font-bold text-text">Importar pontuações</h3>
+          <h3 className="font-bold text-text">Importar de uma planilha</h3>
           <p className="text-sm text-text-light">
-            Baixe o modelo e importe lançamentos em lote a partir de uma planilha.
+            Para muitos lançamentos de uma vez: baixe o modelo, preencha e importe.
           </p>
         </div>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
         <Select
-          className="w-40"
+          className="w-full sm:w-40"
           value={equipeModelo}
           onChange={(e) => setEquipeModelo(e.target.value as EquipeModelo)}
         >
           <option value="">Modelo: todos</option>
           <option value="corrida">Modelo: corrida</option>
-          <option value="bicicleta">Modelo: bicicleta</option>
+          <option value="bicicleta">Modelo: bike</option>
         </Select>
-        <Button variant="secondary" onClick={handleBaixarModelo} loading={baixandoModelo}>
+        <Button variant="secondary" onClick={handleBaixarModelo} loading={baixandoModelo} className="w-full sm:w-auto">
           <FileSpreadsheet className="size-4" />
           Baixar modelo
         </Button>
-        <Button onClick={() => inputRef.current?.click()} loading={importando}>
+        <Button variant="outline" onClick={() => inputRef.current?.click()} loading={importando} className="w-full sm:w-auto">
           <Upload className="size-4" />
           Importar planilha
         </Button>

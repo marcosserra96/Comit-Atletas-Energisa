@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
 import { getStoredBranding } from "@/lib/branding";
-import { formatBRL } from "@/lib/format";
+import { formatBRL, plural } from "@/lib/format";
 import { agruparUltimosLancamentos, type EstatisticasDashboard } from "@/lib/dashboardStats";
 import { calcularResumoRankingPeriodo, diasUteisNoMes } from "@/lib/rankingMensal";
 import { normalizarInformativoConfig } from "@/lib/informativoConfig";
@@ -192,7 +192,7 @@ export function ExportarRelatorioDropdown({
       } else if (sobrando > 0) {
         show(
           "info",
-          `Informativo gerado. ${sobrando} atleta(s) ficaram de fora: só cabem ${cabem} por modalidade na arte — a lista completa está em Lançar pontos › Visão consolidada.`,
+          `Informativo gerado. ${sobrando === 1 ? "1 atleta ficou" : `${sobrando} atletas ficaram`} de fora: só cabem ${cabem} por modalidade na arte — a lista completa está em Lançar pontos › Visão consolidada.`,
         );
       } else {
         show("success", `Informativo de ${labelPeriodo(periodo)} gerado com sucesso.`);

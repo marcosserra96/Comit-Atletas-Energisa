@@ -22,6 +22,7 @@ const EQUIPES_VALIDAS: Record<string, Equipe> = {
   "fila corrida": "fila_corrida",
   fila_bicicleta: "fila_bicicleta",
   "fila bicicleta": "fila_bicicleta",
+  "fila bike": "fila_bicicleta",
 };
 
 const SEXOS_VALIDOS = new Set(["M", "F", "Outro"]);
