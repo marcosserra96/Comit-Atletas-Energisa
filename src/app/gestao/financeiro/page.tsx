@@ -22,7 +22,7 @@ export default function FinanceiroPage() {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-2xl font-extrabold text-text">Financeiro</h2>
+        <h1 className="text-2xl font-extrabold text-text">Financeiro</h1>
         <p className="text-sm text-text-light">
           Acompanhe o orçamento do programa, veja o que foi gasto e o que está
           previsto.

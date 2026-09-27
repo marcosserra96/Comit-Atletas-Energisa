@@ -7,6 +7,8 @@ import { Bike, Footprints, LogOut, Menu, Moon, Search, Sun } from "lucide-react"
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { applyTheme, getStoredTheme, type Theme } from "@/lib/theme";
 import { roleLabel } from "@/lib/labels";
+import { useTituloDaPaginaForaDaTela } from "@/components/layout/useTituloDaPaginaForaDaTela";
+import { cn } from "@/lib/cn";
 import { souTambemAtleta } from "@/lib/session/dualRole";
 
 const titleByPath: Record<string, string> = {
@@ -26,6 +28,7 @@ export function StaffTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }
   const router = useRouter();
   const { atleta, usuario, logout } = useActiveSession();
   const title = titleByPath[pathname] ?? "";
+  const mostrarTitulo = useTituloDaPaginaForaDaTela(pathname);
   const initial = atleta.nome.trim().charAt(0).toUpperCase();
   const [theme, setTheme] = useState<Theme>(() => getStoredTheme());
   const [busca, setBusca] = useState("");
@@ -54,7 +57,15 @@ export function StaffTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }
         <Menu className="size-5" />
       </button>
 
-      <h1 className="hidden shrink-0 text-sm font-bold text-white/90 lg:block">{title}</h1>
+      <p
+        aria-hidden={!mostrarTitulo}
+        className={cn(
+          "hidden shrink-0 text-sm font-bold text-white/90 transition-opacity duration-200 lg:block",
+          mostrarTitulo ? "opacity-100" : "opacity-0",
+        )}
+      >
+        {title}
+      </p>
 
       <form onSubmit={handleBuscar} className="relative flex-1 max-w-[400px]">
         <Search className="pointer-events-none absolute left-[11px] top-1/2 size-[15px] -translate-y-1/2 text-white/40" />
@@ -73,7 +84,7 @@ export function StaffTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }
             className="hidden items-center gap-1.5 rounded-full border border-secondary/30 bg-secondary/15 px-3 py-1.5 text-xs font-bold text-secondary transition-colors hover:bg-secondary/25 sm:flex"
           >
             <IconModalidade className="size-3.5" />
-            Minha Área
+            Minha área
           </Link>
         )}
 
@@ -87,7 +98,7 @@ export function StaffTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }
         </button>
 
         <div className="flex items-center gap-2.5 rounded-full border border-white/10 bg-white/[0.07] py-1 pl-1 pr-3">
-          <span className="flex size-[30px] shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
+          <span className="flex size-[30px] shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-on-primary">
             {initial}
           </span>
           <div className="hidden leading-tight sm:block">

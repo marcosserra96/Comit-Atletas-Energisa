@@ -40,7 +40,7 @@ export default function AtletasPage() {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-2xl font-extrabold text-text">Atletas</h2>
+        <h1 className="text-2xl font-extrabold text-text">Atletas</h1>
         <p className="text-sm text-text-light">
           Veja os atletas do programa, cadastre novos e gerencie as equipes.
         </p>

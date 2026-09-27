@@ -7,6 +7,8 @@ import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useAthleteView } from "@/lib/session/AthleteViewProvider";
 import { souTambemAtleta } from "@/lib/session/dualRole";
 import { roleLabel } from "@/lib/labels";
+import { useTituloDaPaginaForaDaTela } from "@/components/layout/useTituloDaPaginaForaDaTela";
+import { cn } from "@/lib/cn";
 
 const titleByPath: Record<string, string> = {
   "/dashboard": "Início",
@@ -24,6 +26,7 @@ export function AtletaTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
   const { atleta: sessionAtleta, usuario, logout } = useActiveSession();
   const { atleta, isPreview } = useAthleteView();
   const title = titleByPath[pathname] ?? "";
+  const mostrarTitulo = useTituloDaPaginaForaDaTela(pathname);
   const initial = atleta.nome.trim().charAt(0).toUpperCase();
   const tambemComite = !isPreview && souTambemAtleta(usuario, sessionAtleta);
 
@@ -37,7 +40,15 @@ export function AtletaTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
         >
           <Menu className="size-5" />
         </button>
-        <h1 className="text-lg font-bold text-text">{title}</h1>
+        <p
+          aria-hidden={!mostrarTitulo}
+          className={cn(
+            "text-lg font-bold text-text transition-opacity duration-200",
+            mostrarTitulo ? "opacity-100" : "opacity-0",
+          )}
+        >
+          {title}
+        </p>
       </div>
 
       <div className="flex items-center gap-4">

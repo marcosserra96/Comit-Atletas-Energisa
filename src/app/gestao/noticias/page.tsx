@@ -54,7 +54,7 @@ export default function NoticiasPage() {
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-extrabold text-text">Notícias</h2>
+          <h1 className="text-2xl font-extrabold text-text">Notícias</h1>
           <p className="text-sm text-text-light">
             {noticias === null ? "Carregando…" : `${noticias.length} publicações.`}
           </p>

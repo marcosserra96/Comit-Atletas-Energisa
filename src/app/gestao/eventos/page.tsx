@@ -75,7 +75,7 @@ export default function EventosPage() {
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-extrabold text-text">Eventos</h2>
+          <h1 className="text-2xl font-extrabold text-text">Eventos</h1>
           <p className="text-sm text-text-light">
             {eventos === null ? "Carregando…" : `${eventos.length} eventos na agenda.`}
           </p>
