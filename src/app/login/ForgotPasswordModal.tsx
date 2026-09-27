@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { Mail } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
@@ -24,12 +24,17 @@ export function ForgotPasswordModal({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      setEmail(initialEmail);
+  // Ao abrir (ou se o e-mail sugerido mudar com o modal aberto), recomeça do e-mail
+  // digitado no login. Ajuste de estado durante o render, sem efeito em cascata.
+  const chaveAbertura = open ? initialEmail : null;
+  const [chaveAnterior, setChaveAnterior] = useState(chaveAbertura);
+  if (chaveAbertura !== chaveAnterior) {
+    setChaveAnterior(chaveAbertura);
+    if (chaveAbertura !== null) {
+      setEmail(chaveAbertura);
       setError("");
     }
-  }, [initialEmail, open]);
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
