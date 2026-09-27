@@ -90,7 +90,8 @@ function GraficoMensal({
     <div className="overflow-x-auto pb-2">
       <div
         className="flex h-64 items-end gap-3 pt-8"
-        style={{ minWidth: Math.max(420, serie.length * 68) }}
+        /* Até 6 meses as barras cabem no card; acima disso o gráfico rola dentro dele. */
+        style={serie.length > 6 ? { minWidth: serie.length * 56 } : undefined}
         role="img"
         aria-label="Gráfico mensal de desempenho"
       >
@@ -112,7 +113,7 @@ function GraficoMensal({
                   title={item.rotulo + ": " + formatarValor(valor)}
                 />
               </div>
-              <span className="whitespace-nowrap text-[11px] font-semibold uppercase text-text-muted">
+              <span className="text-center text-[11px] font-semibold uppercase leading-tight text-text-muted">
                 {item.rotuloCurto}
               </span>
             </div>
@@ -267,7 +268,7 @@ export default function DesempenhoPage() {
               <SkeletonCard key={indice} className="h-28" />
             ))}
           </div>
-          <div className="grid gap-6 lg:grid-cols-5">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
             <SkeletonCard className="h-80 lg:col-span-3" />
             <SkeletonCard className="h-80 lg:col-span-2" />
           </div>
@@ -350,7 +351,7 @@ export default function DesempenhoPage() {
             )}
           </Button>
 
-          <div className="grid gap-6 lg:grid-cols-5">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
             <Card className="lg:col-span-3">
               <SectionHeader
                 title="Treinos por mês"
