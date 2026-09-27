@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { logAudit } from "@/lib/audit";
-import { applyBranding, BRANDING_PADRAO, loginBackground } from "@/lib/branding";
+import { applyBranding, BRANDING_PADRAO, corLegivelClara, loginBackground } from "@/lib/branding";
 import type { BrandingDoc, LoginBackgroundStyle } from "@/lib/types";
 
 const CORES_PORTAL: { chave: "primary" | "secondary" | "accent" | "danger"; label: string }[] = [
@@ -81,7 +81,8 @@ export function IdentidadeVisualTab() {
             Cores do portal
           </h3>
           <p className="mb-4 text-xs text-text-light">
-            Aplicadas em tempo real aos botões, links e destaques em todo o portal.
+            Aplicadas em tempo real aos botões, links e destaques em todo o portal. Quando uma
+            cor fica difícil de ler, o portal usa automaticamente um tom mais escuro dela.
           </p>
           <div className="grid grid-cols-2 gap-3">
             {CORES_PORTAL.map((c) => (
@@ -96,6 +97,16 @@ export function IdentidadeVisualTab() {
                   />
                   <span className="text-xs text-text-light">{branding[c.chave]}</span>
                 </div>
+                {corLegivelClara(branding[c.chave]) !== branding[c.chave].toLowerCase() ? (
+                  <p className="flex items-center gap-1.5 text-xs text-text-light">
+                    <span
+                      aria-hidden="true"
+                      className="size-3 shrink-0 rounded-full"
+                      style={{ background: corLegivelClara(branding[c.chave]) }}
+                    />
+                    Em textos e botões: {corLegivelClara(branding[c.chave])}
+                  </p>
+                ) : null}
               </div>
             ))}
           </div>
