@@ -1,227 +1,130 @@
-# Design System Master File
+# Design System — Atletas Energisa
 
-> **LOGIC:** When building a specific page, first check `design-system/pages/[page-name].md`.
-> If that file exists, its rules **override** this Master file.
-> If not, strictly follow the rules below.
+> **Fonte da verdade:** os tokens vivem em `src/app/globals.css` e os componentes em
+> `src/components/ui/`. Este arquivo descreve o sistema que existe no código. Se os dois
+> divergirem, o código vale, e este arquivo precisa ser atualizado no mesmo PR.
 
----
-
-**Project:** Atletas Energisa
-**Generated:** 2026-08-04 05:18:02
-**Category:** Fitness/Gym App
-**Design Dials:** Variance 6/10 (Balanced / Modern) | Motion 5/10 (Standard) | Density 6/10 (Standard)
+**Produto:** portal interno do programa de atletas Energisa (corrida e bike). Três perfis:
+atleta, comitê e administrador. É uma ferramenta corporativa de uso recorrente, não uma
+landing page: clareza e consistência valem mais que novidade visual.
 
 ---
 
-## Global Rules
+## Cores
 
-### Color Palette
+Use sempre os tokens (classes Tailwind geradas a partir deles). Nunca escreva hexadecimais
+em componentes.
 
-| Role | Hex | CSS Variable |
-|------|-----|--------------|
-| Primary | `#F97316` | `--color-primary` |
-| On Primary | `#0F172A` | `--color-on-primary` |
-| Secondary | `#FB923C` | `--color-secondary` |
-| Accent/CTA | `#22C55E` | `--color-accent` |
-| Background | `#1F2937` | `--color-background` |
-| Foreground | `#F8FAFC` | `--color-foreground` |
-| Muted | `#37414F` | `--color-muted` |
-| Border | `#374151` | `--color-border` |
-| Destructive | `#EF4444` | `--color-destructive` |
-| Ring | `#F97316` | `--color-ring` |
+### Marca (configurável pelo administrador)
 
-**Color Notes:** Energy orange + success green
+As cores de marca podem ser trocadas em **Configurar portal → Identidade visual**.
+O `src/lib/branding.ts` ajusta cada cor automaticamente para contraste AA (≥ 4,5:1)
+e publica duas variações, `--brand-*-light` e `--brand-*-dark`. O `globals.css` usa a
+certa para cada tema.
 
-### Typography
+| Token (classe) | Uso | Padrão claro | Padrão escuro |
+|---|---|---|---|
+| `primary` | Ações principais, links, item ativo | `#007591` (marca `#009bc1`) | `#009bc1` |
+| `secondary` | Destaques positivos da marca | `#007c57` (marca `#00b37e`) | `#00b37e` |
+| `accent` | Destaque secundário (laranja) | `#af5119` (marca `#f37021`) | `#f37021` |
+| `danger` | Erros e ações destrutivas | `#cc333d` (marca `#e63946`) | `#e84551` |
 
-- **Heading Font:** Barlow Condensed
-- **Body Font:** Barlow
-- **Mood:** sports, fitness, athletic, energetic, condensed, action
-- **Google Fonts:** [Barlow Condensed + Barlow](https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@300;400;500;600;700&display=swap)
+`*-hover` é derivado automaticamente (`color-mix` com preto). `*-subtle` são fundos
+translúcidos para selos e ícones.
 
-**CSS Import:**
-```css
-@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@300;400;500;600;700&display=swap');
-```
+### Status (fixos)
+`success` `#15803d` · `warning` `#b45309` · `info` `#2563eb`. No tema escuro:
+`#22c55e` · `#f1c40f` · `#60a5fa`.
 
-### Spacing Variables
+### Texto
+| Token | Uso | Claro | Escuro |
+|---|---|---|---|
+| `text-text` | Títulos e texto principal | `#1a202c` | `#e8eaf0` |
+| `text-text-secondary` | Subtítulos e parágrafos | `#475569` | `#b0b8cc` |
+| `text-text-light` | Descrições, metadados | `#526074` | `#a0a8c0` |
+| `text-text-muted` | Rótulos pequenos, placeholders, ícones | `#5b6b80` | `#868ea9` |
 
-*Density: 6/10 — Standard*
+Todos passam 4,5:1 sobre o fundo da página. **Não crie tons de cinza mais claros para
+texto.** Para hierarquia, use tamanho e peso, não cores mais apagadas.
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--space-xs` | `4px` / `0.25rem` | Tight gaps |
-| `--space-sm` | `8px` / `0.5rem` | Icon gaps, inline spacing |
-| `--space-md` | `16px` / `1rem` | Standard padding |
-| `--space-lg` | `24px` / `1.5rem` | Section padding |
-| `--space-xl` | `32px` / `2rem` | Large gaps |
-| `--space-2xl` | `48px` / `3rem` | Section margins |
-| `--space-3xl` | `64px` / `4rem` | Hero padding |
+### Superfícies e bordas
+`bg-bg` (página) · `bg-bg-card` (cards) · `bg-bg-elevated` · `bg-bg-subtle` · `bg-bg-inset`
+(áreas rebaixadas, campos). Bordas: `border-border`, `border-border-subtle`,
+`border-border-strong`.
 
-### Shadow Depths
-
-| Level | Value | Usage |
-|-------|-------|-------|
-| `--shadow-sm` | `0 1px 2px rgba(0,0,0,0.05)` | Subtle lift |
-| `--shadow-md` | `0 4px 6px rgba(0,0,0,0.1)` | Cards, buttons |
-| `--shadow-lg` | `0 10px 15px rgba(0,0,0,0.1)` | Modals, dropdowns |
-| `--shadow-xl` | `0 20px 25px rgba(0,0,0,0.15)` | Hero images, featured cards |
+### Modalidades e ranking
+`sport-running` / `sport-cycling` (+ `-subtle`). Ouro, prata e bronze: `ranking-gold|silver|bronze`
+(+ `-bg`, `-text`).
 
 ---
 
-## Component Specs
+## Tipografia
 
-### Buttons
-
-```css
-/* Primary Button */
-.btn-primary {
-  background: #22C55E;
-  color: white;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  transition: all 200ms ease;
-  cursor: pointer;
-}
-
-.btn-primary:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
-
-/* Secondary Button */
-.btn-secondary {
-  background: transparent;
-  color: #F97316;
-  border: 2px solid #F97316;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  transition: all 200ms ease;
-  cursor: pointer;
-}
-```
-
-### Cards
-
-```css
-.card {
-  background: #1F2937;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: var(--shadow-md);
-  transition: all 200ms ease;
-  cursor: pointer;
-}
-
-.card:hover {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
-}
-```
-
-### Inputs
-
-```css
-.input {
-  padding: 12px 16px;
-  border: 1px solid #E2E8F0;
-  border-radius: 8px;
-  font-size: 16px;
-  transition: border-color 200ms ease;
-}
-
-.input:focus {
-  border-color: #F97316;
-  outline: none;
-  box-shadow: 0 0 0 3px #F9731620;
-}
-```
-
-### Modals
-
-```css
-.modal-overlay {
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-}
-
-.modal {
-  background: white;
-  border-radius: 16px;
-  padding: 32px;
-  box-shadow: var(--shadow-xl);
-  max-width: 500px;
-  width: 90%;
-}
-```
+- **Fonte:** Inter (`next/font`), pesos 400–800. Não há fonte de títulos separada.
+- **Escala:** `text-xs` 12 · `text-sm` 13 · `text-base` 14 · `text-md` 15 · `text-lg` 17 ·
+  `text-xl` 20 · `text-2xl` 24 · `text-3xl` 30 · `text-4xl` 36.
+- **Título de página:** `text-2xl font-bold tracking-tight` (via `PageHeader`).
+- **Números:** use `tabular-nums` em métricas, tabelas e rankings.
+- **Tamanho mínimo:** 12px para texto que precisa ser lido. Evite `text-[10px]`/`text-[11px]`.
+- **Maiúsculas:** só a primeira letra da frase ("Dados pessoais", não "Dados Pessoais").
 
 ---
 
-## Style Guidelines
+## Espaçamento, raios e sombras
 
-**Style:** Sales Intelligence Dashboard
-
-**Keywords:** Deal pipeline, sales metrics, territory performance, sales rep leaderboard, win-loss analysis, quota tracking, forecast accuracy
-
-**Best For:** CRM dashboards, sales management, opportunity tracking, performance management, quota planning
-
-**Key Effects:** Deal movement animations, metric updates, leaderboard ranking changes, gauge needle movements, status change highlights
-
-### Page Pattern
-
-**Pattern Name:** Enterprise Gateway
-
-- **Conversion Strategy:** Path selection (I am a...). Mega menu navigation. Trust signals prominent.
-- **CTA Placement:** Contact Sales (Primary) + Login (Secondary)
-- **Section Order:** 1. Hero (Video/Mission), 2. Solutions by Industry, 3. Solutions by Role, 4. Client Logos, 5. Contact Sales
+- Espaçamento em múltiplos de 4px (escala Tailwind).
+- Raios: `--radius-sm` 6 · `--radius` 10 (botões, campos) · `--radius-lg` 14 (cards) ·
+  `--radius-xl` 20 · `--radius-2xl` 28 (sheets no celular).
+- Sombras: `--shadow-card` (cards) · `--shadow-elevated` (popovers, toasts) · `--shadow-modal`.
 
 ---
 
-## Motion
+## Componentes (`src/components/ui/`)
 
-**Stagger List** (Standard) — Trigger: load or scroll | Duration: 300-450ms | Easing: `back.out(1.4)`
+Antes de criar qualquer elemento de interface, procure aqui. Não duplique.
 
-```js
-gsap.from('.grid-item', { opacity: 0, scale: 0.92, y: 16, duration: 0.4, stagger: { each: 0.06, from: 'start', grid: 'auto' }, ease: 'back.out(1.4)' });
-```
-
-**Framework notes:** grid: 'auto' lets GSAP infer rows/columns from a CSS grid layout for a natural wave stagger
-
-- ✅ Combine with from: 'center' for a bento-grid layout to draw the eye inward first
-- ❌ Don't use back.out on dense data tables; the overshoot reads as sloppy on informational UI
-- ⚡ Group DOM writes; avoid interleaving layout reads (getBoundingClientRect) between staggered tweens
-
----
-
-## Anti-Patterns (Do NOT Use)
-
-- ❌ Static design
-- ❌ No gamification
-
-### Additional Forbidden Patterns
-
-- ❌ **Emojis as icons** — Use SVG icons (Heroicons, Lucide, Simple Icons)
-- ❌ **Missing cursor:pointer** — All clickable elements must have cursor:pointer
-- ❌ **Layout-shifting hovers** — Avoid scale transforms that shift layout
-- ❌ **Low contrast text** — Maintain 4.5:1 minimum contrast ratio
-- ❌ **Instant state changes** — Always use transitions (150-300ms)
-- ❌ **Invisible focus states** — Focus states must be visible for a11y
+| Componente | Quando usar |
+|---|---|
+| `Button` | Toda ação. Variantes: `primary` (uma por área), `secondary`, `outline`, `ghost`, `danger`. |
+| `TextField`, `Select` | Campos de formulário (label associado, erro com `role="alert"`). |
+| `Card`, `MetricCard`, `SectionHeader`, `PageHeader` | Estrutura de páginas. |
+| `Modal`, `ConfirmActionModal`, `ConfirmarPerigoModal` | Diálogos. Não crie diálogos do zero: reaproveite o `Modal` (foco inicial, Esc e Tab preso já vêm prontos). |
+| `SegmentedControl`, `SubTabs`, `TabPanel` | Alternância entre visões. |
+| `Badge`, `SportBadge`, `RankingPosition`, `TrendIndicator` | Selos e indicadores. |
+| `EmptyState`, `Skeleton`, `InlineAlert`, `Toast` | Estados vazio, carregando, erro e confirmação. |
 
 ---
 
-## Pre-Delivery Checklist
+## Textos e formatação
 
-Before delivering any UI code, verify:
+- **Nomes de modalidade:** sempre por `modalidadeLabel` / `equipeLabel` (`src/lib/labels.ts`).
+  O nome oficial é **Corrida** e **Bike**.
+- **Nomes de telas:** o item do menu, o título no topo e o título da página usam o mesmo nome.
+- **Números:** `formatDecimal`, `formatKm`, `formatBRL` (`src/lib/format.ts`). Sempre vírgula
+  decimal ("12,5 km"), nunca `toFixed`.
+- **Plural:** `plural(n, "treino")` → "1 treino" / "3 treinos". Nunca "treino(s)".
+- **Linguagem:** direta e sem jargão técnico. Mensagens de erro dizem o que aconteceu e o
+  que fazer.
 
-- [ ] No emojis used as icons (use SVG instead)
-- [ ] All icons from consistent icon set (Heroicons/Lucide)
-- [ ] `cursor-pointer` on all clickable elements
-- [ ] Hover states with smooth transitions (150-300ms)
-- [ ] Light mode: text contrast 4.5:1 minimum
-- [ ] Focus states visible for keyboard navigation
-- [ ] `prefers-reduced-motion` respected
-- [ ] Responsive: 375px, 768px, 1024px, 1440px
-- [ ] No content hidden behind fixed navbars
-- [ ] No horizontal scroll on mobile
+---
+
+## Movimento
+
+- Anime só `transform` e `opacity`. Nunca use `transition-all`: nomeie as propriedades.
+- Durações de interface entre 150 e 250ms. Entradas usam ease-out. Nada começa em `scale(0)`.
+- Ações de teclado ou repetidas dezenas de vezes por dia não são animadas.
+- Botões respondem ao toque (`active:scale-[0.97]`, já embutido no `Button`).
+- **Reduzir movimento:** o `<MotionProvider>` (framer-motion) e o `globals.css` já tratam
+  isso. Deslocamentos ficam instantâneos e os fades continuam. Não desligue essa proteção.
+
+---
+
+## Checklist antes de entregar
+
+- [ ] Usa só tokens e componentes existentes.
+- [ ] Contraste ≥ 4,5:1 (texto) nos temas claro e escuro.
+- [ ] Sem rolagem horizontal em 390px de largura. Tabelas largas rolam dentro do próprio card.
+- [ ] Alvos de toque ≥ 44×44px no celular.
+- [ ] Estados de carregamento, vazio e erro presentes.
+- [ ] Foco visível e navegação por teclado (Tab, Esc) funcionando.
+- [ ] Números no padrão pt-BR e plurais corretos.
