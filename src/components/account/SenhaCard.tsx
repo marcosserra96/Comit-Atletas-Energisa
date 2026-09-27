@@ -43,7 +43,7 @@ export function SenhaCard() {
     <Card>
       <h3 className="mb-4 flex items-center gap-2 text-sm font-bold text-text">
         <UserCog className="size-4 text-text-muted" />
-        Dados da conta
+        Alterar senha
       </h3>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <TextField

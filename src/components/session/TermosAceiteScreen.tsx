@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { DocumentoProgramaDoc, Modalidade } from "@/lib/types";
+import { modalidadeLabel } from "@/lib/labels";
 
 function tipoDocumentoLabel(tipo: DocumentoProgramaDoc["tipo"]) {
   return tipo === "regulamento" ? "Regulamento" : "Termo de responsabilidade";
@@ -44,7 +45,7 @@ export function TermosAceiteScreen({
   const marcouAtual = documento ? concordouCom.has(documento.id) : false;
   const todosMarcados = documentos.every((item) => concordouCom.has(item.id));
   const ModalidadeIcon = modalidade === "bicicleta" ? Bike : Footprints;
-  const modalidadeLabel = modalidade === "bicicleta" ? "Bike" : "Corrida";
+  const nomeModalidade = modalidadeLabel[modalidade === "bicicleta" ? "bicicleta" : "corrida"];
 
   function alternarConcordancia() {
     if (!documento) return;
@@ -88,7 +89,7 @@ export function TermosAceiteScreen({
           />
           <span className="flex items-center gap-1.5 rounded-full bg-primary-subtle px-3 py-1.5 text-xs font-bold text-primary">
             <ModalidadeIcon className="size-3.5" aria-hidden="true" />
-            {modalidadeLabel}
+            {nomeModalidade}
           </span>
         </header>
 

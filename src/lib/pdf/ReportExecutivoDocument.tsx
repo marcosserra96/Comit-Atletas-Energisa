@@ -487,10 +487,10 @@ export function ReportExecutivoDocument({
 
       {/* Página 3 — Modalidades */}
       <Page size="A4" style={styles.page}>
-        <PageHeader titulo="Modalidades" subtitulo="Comparativo Bicicleta × Corrida" logo={logo} />
+        <PageHeader titulo="Modalidades" subtitulo="Comparativo Bike × Corrida" logo={logo} />
 
         <View style={{ flexDirection: "row", gap: 10, marginBottom: 14 }}>
-          <ModalidadeResumo titulo="Bicicleta" cor={branding.primary} stats={stats.bike} />
+          <ModalidadeResumo titulo="Bike" cor={branding.primary} stats={stats.bike} />
           <ModalidadeResumo titulo="Corrida" cor={branding.secondary} stats={stats.corrida} />
         </View>
 
@@ -499,7 +499,7 @@ export function ReportExecutivoDocument({
           <Tabela
             colunas={[
               { chave: "item", label: "Indicador", largura: 2 },
-              { chave: "bike", label: "Bicicleta", largura: 1, alinhar: "right" },
+              { chave: "bike", label: "Bike", largura: 1, alinhar: "right" },
               { chave: "corrida", label: "Corrida", largura: 1, alinhar: "right" },
             ]}
             linhas={[
@@ -513,7 +513,7 @@ export function ReportExecutivoDocument({
 
         <View style={{ flexDirection: "row", gap: 14 }}>
           <View style={{ flex: 1 }}>
-            <SectionTitle>Pódio Bicicleta</SectionTitle>
+            <SectionTitle>Pódio Bike</SectionTitle>
             <Podio titulo="Top 3" atletas={stats.podioBike} cor={branding.primary} />
           </View>
           <View style={{ flex: 1 }}>
@@ -534,7 +534,7 @@ export function ReportExecutivoDocument({
           <View style={{ flexDirection: "row", gap: 14 }}>
             <View style={{ flex: 1 }}>
               <Tabela
-                colunas={[{ chave: "nome", label: "Bicicleta" }]}
+                colunas={[{ chave: "nome", label: "Bike" }]}
                 linhas={stats.bike.inativosList.slice(0, 8).map((a) => ({ nome: a.nome }))}
               />
             </View>

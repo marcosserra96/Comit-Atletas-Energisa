@@ -9,10 +9,12 @@ import { souTambemAtleta } from "@/lib/session/dualRole";
 import { roleLabel } from "@/lib/labels";
 
 const titleByPath: Record<string, string> = {
-  "/dashboard": "Dashboard",
+  "/dashboard": "Início",
   "/perfil": "Perfil",
   "/desempenho": "Desempenho",
   "/eventos": "Eventos",
+  "/justificativas": "Justificativas",
+  "/documentos": "Documentos",
   "/noticias": "Notícias",
   "/ranking": "Ranking",
 };

@@ -19,9 +19,9 @@ import { NovoEventoModal } from "./NovoEventoModal";
 import type { EventoDoc } from "@/lib/types";
 
 const modalidadeLabel: Record<EventoDoc["modalidade"], string> = {
-  ambas: "Corrida e Bicicleta",
+  ambas: "Corrida e Bike",
   corrida: "Corrida",
-  bicicleta: "Bicicleta",
+  bicicleta: "Bike",
 };
 
 export default function EventosPage() {

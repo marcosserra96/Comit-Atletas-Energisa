@@ -161,9 +161,9 @@ export function CadastrarTab() {
               <label className="text-sm font-medium text-text">Equipe / modalidade</label>
               <Select value={equipe} onChange={(e) => setEquipe(e.target.value as Equipe)}>
                 <option value="corrida">Corrida</option>
-                <option value="bicicleta">Bicicleta</option>
+                <option value="bicicleta">Bike</option>
                 <option value="fila_corrida">Fila de espera — Corrida</option>
-                <option value="fila_bicicleta">Fila de espera — Bicicleta</option>
+                <option value="fila_bicicleta">Fila de espera — Bike</option>
               </Select>
             </div>
           </div>

@@ -20,6 +20,7 @@ import type {
   RankingVisibilityConfigDoc,
   RankingVisibilityPeriodConfig,
 } from "@/lib/types";
+import { modalidadeLabel } from "@/lib/labels";
 
 function periodoValido(periodo: RankingVisibilityPeriodConfig) {
   return !periodo.ativo || Boolean(periodo.inicio && periodo.fim && periodo.inicio <= periodo.fim);
@@ -44,7 +45,7 @@ function PeriodoModalidadeCard({
 }) {
   const corrida = modalidade === "corrida";
   const Icon = corrida ? Footprints : Bike;
-  const label = corrida ? "Corrida" : "Ciclismo";
+  const label = corrida ? modalidadeLabel.corrida : modalidadeLabel.bicicleta;
 
   function update(next: Partial<RankingVisibilityPeriodConfig>) {
     onChange({ ...value, ...next });

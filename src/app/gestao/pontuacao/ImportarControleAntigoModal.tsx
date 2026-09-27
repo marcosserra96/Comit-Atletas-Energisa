@@ -26,6 +26,7 @@ import { analisarDuplicidade, gravarLancamentos, type LinhaParaGravar } from "@/
 import { RevisarImportacaoModal, type LinhaDuplicada, type LinhaImportacao, type ResultadoAnalise } from "./RevisarImportacaoModal";
 import type { AtletaDoc, HistoricoPontoDoc, Modalidade, RegraPontuacaoDoc } from "@/lib/types";
 import type ExcelJS from "exceljs";
+import { plural } from "@/lib/format";
 
 type Passo = "arquivo" | "mapeamento";
 
@@ -268,8 +269,8 @@ export function ImportarControleAntigoModal({ open, onClose }: { open: boolean; 
       show(
         rankingAtualizado ? "success" : "info",
         rankingAtualizado
-          ? `${linhas.length} lançamento(s) importado(s). Ranking atualizado.`
-          : `${linhas.length} lançamento(s) importado(s), mas o ranking automático não atualizou. Use "Recalcular agora".`,
+          ? `${plural(linhas.length, "lançamento importado", "lançamentos importados")}. Ranking atualizado.`
+          : `${plural(linhas.length, "lançamento importado", "lançamentos importados")}, mas o ranking automático não atualizou. Use "Recalcular agora".`,
       );
       setResultado(null);
       handleClose();
@@ -401,7 +402,7 @@ export function ImportarControleAntigoModal({ open, onClose }: { open: boolean; 
               <EmptyState
                 icon={History}
                 title="Nenhuma regra cadastrada"
-                description="Cadastre critérios de pontuação em Configurar Portal → Critérios antes de importar."
+                description="Cadastre critérios de pontuação no menu Critérios antes de importar."
               />
             )}
 

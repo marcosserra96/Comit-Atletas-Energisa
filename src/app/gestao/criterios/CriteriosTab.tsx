@@ -14,9 +14,9 @@ import { NovaRegraModal } from "./NovaRegraModal";
 import type { RegraPontuacaoDoc } from "@/lib/types";
 
 const modalidadeLabel: Record<RegraPontuacaoDoc["modalidade"], string> = {
-  ambas: "Corrida e Bicicleta",
+  ambas: "Corrida e Bike",
   corrida: "Corrida",
-  bicicleta: "Bicicleta",
+  bicicleta: "Bike",
 };
 
 export function CriteriosTab() {

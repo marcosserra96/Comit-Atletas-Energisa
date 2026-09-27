@@ -65,3 +65,25 @@ export function formatDateTime(value: unknown) {
     minute: "2-digit",
   }).format(date);
 }
+
+/** Número com casas decimais fixas no padrão brasileiro (vírgula): 12,5. */
+export function formatDecimal(value: number, casas = 1) {
+  return new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: casas,
+    maximumFractionDigits: casas,
+  }).format(Number.isFinite(value) ? value : 0);
+}
+
+/** Quilometragem no padrão brasileiro: "12,5 km". */
+export function formatKm(value: number) {
+  return `${formatDecimal(value)} km`;
+}
+
+/**
+ * Quantidade com a palavra no singular ou no plural: plural(1, "treino") →
+ * "1 treino"; plural(3, "treino") → "3 treinos". Para plurais irregulares,
+ * passe a forma plural: plural(2, "atleta ativo", "atletas ativos").
+ */
+export function plural(quantidade: number, singular: string, pluralForma = `${singular}s`) {
+  return `${quantidade} ${quantidade === 1 ? singular : pluralForma}`;
+}

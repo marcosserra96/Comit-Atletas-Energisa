@@ -68,7 +68,7 @@ export default function PontuacaoPage() {
     <div className="flex flex-col gap-5">
       <div>
         <h2 className="text-2xl font-extrabold text-text">
-          Lançamento de pontos
+          Lançar pontos
         </h2>
         <p className="text-sm text-text-light">
           Registre pontuação por treino, evento ou lançamento avulso.
@@ -85,7 +85,7 @@ export default function PontuacaoPage() {
                 label: pendentes > 0 ? `Justificativas (${pendentes})` : "Justificativas",
               },
               { value: "extrato", label: "Extrato" },
-              { value: "consolidado", label: "Visão Consolidada" },
+              { value: "consolidado", label: "Visão consolidada" },
             ] as const
           ).map((opt) => (
             <button

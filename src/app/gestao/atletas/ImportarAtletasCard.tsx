@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { baixarModeloImportacao, readExcelFile } from "@/lib/excel";
 import { logAudit } from "@/lib/audit";
 import type { Equipe } from "@/lib/types";
+import { plural } from "@/lib/format";
 
 const EQUIPES_VALIDAS: Record<string, Equipe> = {
   corrida: "corrida",
@@ -156,9 +157,9 @@ export function ImportarAtletasCard() {
       if (criados === 0) {
         show("error", erros[0] ?? "Nenhuma linha válida encontrada na planilha.");
       } else if (erros.length > 0) {
-        show("info", `${criados} atleta(s) importado(s). ${erros.length} linha(s) ignorada(s): ${erros.slice(0, 3).join("; ")}`);
+        show("info", `${plural(criados, "atleta importado", "atletas importados")}. ${plural(erros.length, "linha ignorada", "linhas ignoradas")}: ${erros.slice(0, 3).join("; ")}`);
       } else {
-        show("success", `${criados} atleta(s) importado(s) com sucesso.`);
+        show("success", `${plural(criados, "atleta importado", "atletas importados")} com sucesso.`);
       }
     } catch {
       show("error", "Não foi possível ler a planilha. Verifique o formato e tente novamente.");

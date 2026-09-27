@@ -17,7 +17,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
-import { formatShortDate } from "@/lib/format";
+import { formatShortDate, formatDecimal, formatKm, plural } from "@/lib/format";
 import { normalizarRankingPeriods } from "@/lib/rankingPeriods";
 import { calcularPosicoesRanking } from "@/lib/rankingPosition";
 import {
@@ -33,6 +33,7 @@ import type {
   RankingResultadoDoc,
   RankingVisibilityConfigDoc,
 } from "@/lib/types";
+import { modalidadeLabel } from "@/lib/labels";
 
 interface RankingEntry extends AtletaPublicoDoc {
   treinos?: number;
@@ -81,7 +82,7 @@ function Place({ atleta }: { atleta?: RankedAtleta }) {
             </span>
             {atleta.treinos !== undefined ? (
               <span className="mt-0.5 text-[10px] text-text-muted">
-                {atleta.treinos} treinos · {atleta.km?.toFixed(1)} km
+                {plural(atleta.treinos, "treino")} · {formatKm(atleta.km ?? 0)}
               </span>
             ) : null}
           </div>
@@ -357,7 +358,7 @@ export default function RankingPage() {
                 }}
                 options={[
                   { value: "corrida", label: "Corrida" },
-                  { value: "bicicleta", label: "Ciclismo" },
+                  { value: "bicicleta", label: modalidadeLabel.bicicleta },
                 ]}
               />
             ) : null}
@@ -385,7 +386,7 @@ export default function RankingPage() {
         <EmptyState
           icon={Trophy}
           title="Modalidade não definida"
-          description="Seu cadastro ainda não está vinculado a uma modalidade de corrida ou ciclismo."
+          description="Seu cadastro ainda não está vinculado a uma modalidade de corrida ou bike."
         />
       ) : !isStaff && (visibility === undefined || periods === undefined) ? (
         <Card className="h-72 animate-pulse" />
@@ -464,7 +465,7 @@ export default function RankingPage() {
                 </div>
                 <div>
                   <strong className="block text-sm tabular-nums text-text">
-                    {(myRankAtleta.km ?? 0).toFixed(1)}
+                    {formatDecimal(myRankAtleta.km ?? 0)}
                   </strong>
                   <span className="text-[10px] text-text-muted">km</span>
                 </div>
@@ -555,7 +556,7 @@ export default function RankingPage() {
                           </div>
                           <div className="px-2">
                             <strong className="block text-sm tabular-nums text-text">
-                              {atleta.km === undefined ? "—" : atleta.km.toFixed(1)}
+                              {atleta.km === undefined ? "—" : formatDecimal(atleta.km)}
                             </strong>
                             <span className="mt-0.5 block text-[11px] text-text-muted sm:hidden">
                               km

@@ -189,7 +189,7 @@ export function EquipesTab() {
         onChange={setTab}
         options={[
           { value: "fila", label: "Filas de espera" },
-          { value: "bike", label: "Bicicleta" },
+          { value: "bike", label: "Bike" },
           { value: "corrida", label: "Corrida" },
           { value: "comite", label: "Comitê" },
         ]}
@@ -202,11 +202,11 @@ export function EquipesTab() {
             atleta ativo do programa.
           </p>
           <div>
-            <h4 className="mb-2 text-sm font-bold text-primary">Fila — Bicicleta</h4>
+            <h4 className="mb-2 text-sm font-bold text-primary">Fila — Bike</h4>
             <Card className="p-0">
               <FilaList
                 atletas={filaBike}
-                vazio="Nenhum atleta aguardando vaga na Bicicleta."
+                vazio="Nenhum atleta aguardando vaga na Bike."
                 onReordenar={handleReordenar}
                 onComentar={setVerificandoComentarios}
               />
@@ -227,7 +227,7 @@ export function EquipesTab() {
       )}
       {tab === "bike" && (
         <Card className="p-0">
-          <ListaSimples atletas={bike} vazio="Nenhum atleta ativo na Bicicleta ainda." />
+          <ListaSimples atletas={bike} vazio="Nenhum atleta ativo na Bike ainda." />
         </Card>
       )}
       {tab === "corrida" && (

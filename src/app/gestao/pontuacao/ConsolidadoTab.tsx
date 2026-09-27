@@ -13,6 +13,7 @@ import { exportToExcel } from "@/lib/excel";
 import { cn } from "@/lib/cn";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import type { AtletaDoc, HistoricoPontoDoc } from "@/lib/types";
+import { formatKm } from "@/lib/format";
 
 const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const TODOS_MESES = new Set(Array.from({ length: 12 }, (_, i) => i + 1));
@@ -33,7 +34,7 @@ function acumuladoVazio(): Acumulado {
 const ITENS: { chave: keyof Acumulado; label: string; formatar: (v: number) => string }[] = [
   { chave: "pontos", label: "Pontuação", formatar: (v) => String(v) },
   { chave: "treinos", label: "Treinos", formatar: (v) => String(v) },
-  { chave: "km", label: "Quilometragem", formatar: (v) => `${v.toFixed(1)} km` },
+  { chave: "km", label: "Quilometragem", formatar: (v) => formatKm(v) },
 ];
 
 export function ConsolidadoTab() {
@@ -161,7 +162,7 @@ export function ConsolidadoTab() {
               >
                 <option value="">Todas</option>
                 <option value="corrida">Corrida</option>
-                <option value="bicicleta">Bicicleta</option>
+                <option value="bicicleta">Bike</option>
               </Select>
             </div>
           </div>

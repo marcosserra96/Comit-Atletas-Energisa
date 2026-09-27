@@ -24,7 +24,7 @@ import {
   BarChart2,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { formatBRL, formatShortDate } from "@/lib/format";
+import { formatBRL, formatShortDate, formatKm, plural } from "@/lib/format";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { calcularEstatisticasDashboard } from "@/lib/dashboardStats";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
@@ -38,6 +38,7 @@ import type {
   RegraPontuacaoDoc,
   SolicitacaoAcessoDoc,
 } from "@/lib/types";
+import { modalidadeLabel } from "@/lib/labels";
 
 /** Arredonda o teto do eixo Y pra um número "redondo" (1/2/5 × potência de 10) e devolve os ticks de 0 até ele. */
 function calcularTicksGrafico(valorMaximo: number, alvoTicks = 4): number[] {
@@ -155,7 +156,7 @@ export function VisaoEstrategica() {
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-extrabold text-text">Visão Estratégica</h2>
+          <h2 className="text-2xl font-extrabold text-text">Visão estratégica</h2>
           <p className="text-sm text-text-light">Acompanhamento do programa.</p>
         </div>
         {isAdmin && !carregando && (
@@ -233,7 +234,7 @@ export function VisaoEstrategica() {
 
         <div className="grid min-w-0 flex-1 grid-cols-2 gap-2.5 2xl:grid-cols-4">
           <HeroKpi icon={TicketCheck} color="var(--color-primary)" value={String(stats.participacoesTotal)} label="Participações" />
-          <HeroKpi icon={Route} color="var(--color-accent)" value={`${stats.kmTotal.toFixed(1)} km`} label="KM acumulado" />
+          <HeroKpi icon={Route} color="var(--color-accent)" value={formatKm(stats.kmTotal)} label="KM acumulado" />
           <HeroKpi icon={DollarSign} color="var(--color-secondary)" value={formatBRL(stats.investimentoTotal)} label="Custo realizado" />
           <HeroKpi icon={TrendingUp} color="var(--color-info)" value={formatBRL(stats.custoPorAtleta)} label="Custo / atleta" />
         </div>
@@ -354,7 +355,7 @@ export function VisaoEstrategica() {
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <ModalidadeCard
               icon={Bike}
-              nome="Bicicleta"
+              nome="Bike"
               corVar="var(--color-primary)"
               stats={stats.bike}
             />
@@ -370,11 +371,11 @@ export function VisaoEstrategica() {
             <div className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-5 shadow-[var(--shadow-card)]">
               <h3 className="flex items-center gap-1.5 text-[.95rem] font-bold text-text">
                 <Award className="size-[15px] text-primary" />
-                Pódio Top 3
+                Pódio top 3
               </h3>
               <p className="mt-0.5 text-[.8rem] text-text-light">Por pontuação acumulada</p>
               <div className="mt-3.5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <PodiumColumn icon={Bike} label="Bike" atletas={stats.podioBike} />
+                <PodiumColumn icon={Bike} label={modalidadeLabel.bicicleta} atletas={stats.podioBike} />
                 <PodiumColumn icon={Footprints} label="Corrida" atletas={stats.podioCorrida} />
               </div>
             </div>
@@ -382,11 +383,11 @@ export function VisaoEstrategica() {
             <div className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-5 shadow-[var(--shadow-card)]">
               <h3 className="flex items-center gap-1.5 text-[.95rem] font-bold text-text">
                 <AlertTriangle className="size-[15px] text-primary" />
-                Radar de Inatividade
+                Radar de inatividade
               </h3>
               <p className="mt-0.5 text-[.8rem] text-text-light">Ausentes há mais de 30 dias</p>
               <div className="mt-3.5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <InactivityColumn icon={Bike} label="Bike" atletas={stats.bike.inativosList} />
+                <InactivityColumn icon={Bike} label={modalidadeLabel.bicicleta} atletas={stats.bike.inativosList} />
                 <InactivityColumn icon={Footprints} label="Corrida" atletas={stats.corrida.inativosList} />
               </div>
             </div>
@@ -402,12 +403,12 @@ export function VisaoEstrategica() {
               </h3>
               <div className="flex flex-wrap gap-1.5">
                 {isAdmin && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-[.72rem] font-bold text-accent">
-                    <b>{pendentes?.length ?? 0}</b> solicitações
+                  <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-accent/10 px-2 py-0.5 text-[.72rem] font-bold text-accent">
+                    {plural(pendentes?.length ?? 0, "solicitação", "solicitações")}
                   </span>
                 )}
-                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[.72rem] font-bold text-primary">
-                  <b>{stats.filaAguardando}</b> fila
+                <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-primary/10 px-2 py-0.5 text-[.72rem] font-bold text-primary">
+                  {stats.filaAguardando} na fila
                 </span>
               </div>
             </div>
@@ -608,7 +609,7 @@ function ModalidadeCard({
           <div>
             <p className="text-sm font-bold text-text">{nome}</p>
             <p className="text-xs text-text-light">
-              <strong className="text-text">{stats.total}</strong> atletas
+              <strong className="text-text">{stats.total}</strong> {stats.total === 1 ? "atleta" : "atletas"}
             </p>
           </div>
         </div>
@@ -624,13 +625,13 @@ function ModalidadeCard({
         />
       </div>
       <p className="mb-3.5 text-xs text-text-light">
-        {stats.ativos30d} de {stats.total} ativos nos últimos 30 dias · {stats.inativos} inativos
+        {stats.ativos30d} de {stats.total} {stats.total === 1 ? "ativo" : "ativos"} nos últimos 30 dias · {plural(stats.inativos, "inativo")}
       </p>
       <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <ModStat label="Participações" value={stats.participacoes} />
         <ModStat label="Pontos" value={stats.pontos} />
         <ModStat label="Média pts" value={stats.media} />
-        <ModStat label="KM total" value={`${stats.km.toFixed(1)} km`} />
+        <ModStat label="KM total" value={formatKm(stats.km)} />
       </div>
       <div
         className="flex items-center gap-2 rounded-[var(--radius-sm)] px-2.5 py-2 text-sm"

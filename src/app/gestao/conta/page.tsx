@@ -10,7 +10,7 @@ export default function MinhaContaPage() {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-2xl font-extrabold text-text">Minha Conta</h2>
+        <h2 className="text-2xl font-extrabold text-text">Minha conta</h2>
         <p className="text-sm text-text-light">
           Personalize a aparência do portal e gerencie os dados de {atleta.nome.split(" ")[0]}.
         </p>

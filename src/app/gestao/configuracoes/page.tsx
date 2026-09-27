@@ -65,7 +65,7 @@ export default function ConfigurarPortalPage() {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-2xl font-extrabold text-text">Configurar Portal</h2>
+        <h2 className="text-2xl font-extrabold text-text">Configurar portal</h2>
         <p className="text-sm text-text-light">
           Usuários, identidade visual e auditoria do programa.
         </p>

@@ -149,10 +149,10 @@ export function FichaCadastroTab({ atleta, onSaved }: { atleta: AtletaDoc; onSav
                   {eq === "corrida"
                     ? "Corrida"
                     : eq === "bicicleta"
-                      ? "Bicicleta"
+                      ? "Bike"
                       : eq === "fila_corrida"
                         ? "Fila de espera — Corrida"
-                        : "Fila de espera — Bicicleta"}
+                        : "Fila de espera — Bike"}
                 </option>
               ))}
             </Select>

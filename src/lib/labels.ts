@@ -2,12 +2,18 @@ import type { Equipe, Role } from "@/lib/types";
 
 export const equipeLabel: Record<Equipe, string> = {
   corrida: "Corrida",
-  bicicleta: "Bicicleta",
+  bicicleta: "Bike",
   fila_corrida: "Fila de espera · Corrida",
-  fila_bicicleta: "Fila de espera · Bicicleta",
+  fila_bicicleta: "Fila de espera · Bike",
   comite: "Comitê",
   nenhuma: "Sem modalidade definida",
 };
+
+/** Nome da modalidade exibido na interface. Mude aqui para trocar em todo o portal. */
+export const modalidadeLabel = {
+  corrida: "Corrida",
+  bicicleta: "Bike",
+} as const;
 
 export const roleLabel: Record<Role, string> = {
   atleta: "Atleta",

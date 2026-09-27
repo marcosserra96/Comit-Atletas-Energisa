@@ -51,7 +51,7 @@ import { SkeletonCard, SkeletonMetric } from "@/components/ui/Skeleton";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { cn } from "@/lib/cn";
 import { isWaitlisted, modalidadeFromEquipe } from "@/lib/labels";
-import { formatDataTreino, formatLongDate, formatShortDate } from "@/lib/format";
+import { formatDataTreino, formatLongDate, formatShortDate, formatDecimal, plural } from "@/lib/format";
 import { calcularInsightsAtleta } from "@/lib/athleteStats";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import {
@@ -65,6 +65,7 @@ import type {
   NoticiaDoc,
   RankingVisibilityConfigDoc,
 } from "@/lib/types";
+import { modalidadeLabel } from "@/lib/labels";
 
 function hojeIsoLocal() {
   const hoje = new Date();
@@ -334,7 +335,7 @@ export default function DashboardPage() {
               <ModalidadeIcon className="size-4 text-secondary" />
               <span>
                 {modalidade === "bicicleta"
-                  ? "Ciclismo"
+                  ? modalidadeLabel.bicicleta
                   : modalidade === "corrida"
                     ? "Corrida"
                     : "Modalidade não definida"}
@@ -381,7 +382,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="px-2">
                   <strong className="block text-xl font-black tabular-nums text-text">
-                    {insights.kmMes.toFixed(1)}
+                    {formatDecimal(insights.kmMes)}
                   </strong>
                   <span className="text-[11px] text-text-muted">km</span>
                 </div>
@@ -597,13 +598,13 @@ export default function DashboardPage() {
                   : rankingOcultoAtual
                   ? "Fechamento em andamento"
                   : modalidade && insights?.totalNoRanking
-                    ? `de ${insights.totalNoRanking} atletas`
+                    ? `de ${plural(insights.totalNoRanking, "atleta")}`
                     : undefined
               }
             />
             <MetricCard
               label="KM Acumulado"
-              value={kmAcumulado > 0 ? kmAcumulado.toFixed(1) : (insights.kmMes > 0 ? insights.kmMes.toFixed(1) : "0")}
+              value={kmAcumulado > 0 ? formatDecimal(kmAcumulado) : (insights.kmMes > 0 ? formatDecimal(insights.kmMes) : "0")}
               icon={ModalidadeIcon}
               iconColor="var(--color-secondary)"
               subtitle="Total registrado"
@@ -832,7 +833,7 @@ export default function DashboardPage() {
                             {item.modalidade === "ambas"
                               ? "Todas"
                               : item.modalidade === "bicicleta"
-                                ? "Ciclismo"
+                                ? modalidadeLabel.bicicleta
                                 : "Corrida"}
                           </span>
                         </Link>
@@ -936,9 +937,9 @@ export default function DashboardPage() {
                   <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Modalidade</p>
                   <p className="mt-0.5 text-sm font-semibold text-text">
                     {eventoAberto.modalidade === "ambas"
-                      ? "Corrida e ciclismo"
+                      ? "Corrida e bike"
                       : eventoAberto.modalidade === "bicicleta"
-                        ? "Ciclismo"
+                        ? modalidadeLabel.bicicleta
                         : "Corrida"}
                     {eventoAberto.km ? ` · ${eventoAberto.km} km` : ""}
                   </p>
@@ -949,7 +950,7 @@ export default function DashboardPage() {
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Participação</p>
                   <p className="mt-0.5 text-sm font-semibold text-text">
-                    {eventoAberto.inscritos?.length ?? 0} confirmado(s)
+                    {plural(eventoAberto.inscritos?.length ?? 0, "confirmado")}
                   </p>
                 </div>
               </div>

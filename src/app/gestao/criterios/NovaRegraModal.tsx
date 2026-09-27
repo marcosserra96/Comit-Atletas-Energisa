@@ -106,7 +106,7 @@ export function NovaRegraModal({
             <Select value={modalidade} onChange={(e) => setModalidade(e.target.value as typeof modalidade)}>
               <option value="ambas">Ambas</option>
               <option value="corrida">Corrida</option>
-              <option value="bicicleta">Bicicleta</option>
+              <option value="bicicleta">Bike</option>
             </Select>
           </div>
           <TextField

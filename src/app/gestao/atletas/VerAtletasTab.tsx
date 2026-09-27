@@ -26,7 +26,7 @@ import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { equipeLabel, isWaitlisted, ehMembroDoElenco } from "@/lib/labels";
-import { formatShortDate } from "@/lib/format";
+import { formatShortDate, formatKm } from "@/lib/format";
 import { exportToExcel } from "@/lib/excel";
 import { cn } from "@/lib/cn";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
@@ -132,9 +132,9 @@ export function VerAtletasTab() {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiCard icon={Route} color="var(--color-primary)" label="KM total" value={`${kmTotal.toFixed(1)} km`} desc="Soma coletiva dos atletas" />
-        <KpiCard icon={Bike} color="var(--color-accent)" label="Bicicleta" value={`${kmBike.toFixed(1)} km`} desc="Quilometragem acumulada" />
-        <KpiCard icon={Footprints} color="var(--color-secondary)" label="Corrida" value={`${kmCorrida.toFixed(1)} km`} desc="Quilometragem acumulada" />
+        <KpiCard icon={Route} color="var(--color-primary)" label="KM total" value={formatKm(kmTotal)} desc="Soma coletiva dos atletas" />
+        <KpiCard icon={Bike} color="var(--color-accent)" label="Bike" value={formatKm(kmBike)} desc="Quilometragem acumulada" />
+        <KpiCard icon={Footprints} color="var(--color-secondary)" label="Corrida" value={formatKm(kmCorrida)} desc="Quilometragem acumulada" />
         <KpiCard icon={Filter} color="#8b5cf6" label="Filtrados" value={String(filtrados.length)} desc={`${totalParticipacoes} participações`} />
       </div>
 
@@ -199,7 +199,7 @@ export function VerAtletasTab() {
             >
               <option value="todas">Todas as equipes</option>
               <option value="corrida">Corrida</option>
-              <option value="bicicleta">Bicicleta</option>
+              <option value="bicicleta">Bike</option>
             </Select>
           </div>
           <div className="flex flex-col gap-1">
@@ -231,15 +231,19 @@ export function VerAtletasTab() {
           {filtrados.map((a) => (
             <Card key={a.id} className="flex flex-col gap-3">
               <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFichaAberta(a)}
+                  className="group flex min-w-0 cursor-pointer items-center gap-3 rounded-[var(--radius)] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
                   <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
                     {a.nome.trim().charAt(0).toUpperCase()}
                   </span>
-                  <div>
-                    <p className="font-semibold text-text">{a.nome}</p>
-                    <p className="text-xs text-text-light">{equipeLabel[a.equipe]}</p>
-                  </div>
-                </div>
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold text-text group-hover:text-primary">{a.nome}</span>
+                    <span className="block text-xs text-text-light">{equipeLabel[a.equipe]}</span>
+                  </span>
+                </button>
                 <div className="flex shrink-0 items-center gap-1">
                    <button
                     onClick={() => setFichaAberta(a)}

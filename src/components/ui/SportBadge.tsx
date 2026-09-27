@@ -1,6 +1,7 @@
 import React from "react";
 import { Bike, Footprints } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { modalidadeLabel } from "@/lib/labels";
 
 export interface SportBadgeProps {
   modalidade?: "corrida" | "bicicleta" | "ambas" | null;
@@ -30,10 +31,10 @@ export function SportBadge({ modalidade, sport, size = "md", className }: SportB
           : "border-sport-running/20 bg-sport-running-subtle text-sport-running",
         className,
       )}
-      title={isBicicleta ? "Ciclismo" : "Corrida"}
+      title={modalidadeLabel[mod]}
     >
       <Icon className={size === "sm" ? "size-3.5" : "size-4"} strokeWidth={2.5} />
-      <span className="capitalize">{isBicicleta ? "Ciclismo" : "Corrida"}</span>
+      <span>{modalidadeLabel[mod]}</span>
     </div>
   );
 }

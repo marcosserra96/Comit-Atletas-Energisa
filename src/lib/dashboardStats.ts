@@ -9,6 +9,7 @@ import type {
   Modalidade,
   RegraPontuacaoDoc,
 } from "@/lib/types";
+import { formatDecimal, formatKm, plural } from "@/lib/format";
 
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
@@ -47,7 +48,7 @@ export interface EstatisticasDashboard {
   eventosPendentesLancamento: number;
   /** Critérios de pontuação nunca usados em nenhum lançamento. */
   regrasSemUso: number;
-  modalidadeMaisKm: "Bicicleta" | "Corrida" | "—";
+  modalidadeMaisKm: "Bike" | "Corrida" | "—";
   analisesExecutivas: string[];
 }
 
@@ -178,17 +179,17 @@ export function calcularEstatisticasDashboard(params: {
   const regrasSemUso = regras.filter((r) => !regrasUsadas.has(r.id)).length;
 
   const modalidadeMaisKm: EstatisticasDashboard["modalidadeMaisKm"] =
-    bike.km === 0 && corrida.km === 0 ? "—" : bike.km >= corrida.km ? "Bicicleta" : "Corrida";
+    bike.km === 0 && corrida.km === 0 ? "—" : bike.km >= corrida.km ? "Bike" : "Corrida";
 
   const mediaKmPorAtleta = ativos.length > 0 ? kmTotal / ativos.length : 0;
   const mediaPontosPorParticipacao = participacoesTotal > 0 ? (bike.pontos + corrida.pontos) / participacoesTotal : 0;
 
   const analisesExecutivas = [
     `Engajamento recente em ${engajamento30d}%, considerando atletas com atividade nos últimos 30 dias.`,
-    `Foram registradas ${participacoesTotal} participações e ${kmTotal.toFixed(1)} km acumulados no período analisado.`,
-    `Média de ${mediaKmPorAtleta.toFixed(1)} km por atleta ativo e ${mediaPontosPorParticipacao.toFixed(1)} pontos por participação.`,
+    `Foram registradas ${participacoesTotal} participações e ${formatKm(kmTotal)} acumulados no período analisado.`,
+    `Média de ${formatKm(mediaKmPorAtleta)} por atleta ativo e ${formatDecimal(mediaPontosPorParticipacao)} pontos por participação.`,
     atletasSemAtividade > 0
-      ? `${atletasSemAtividade} atleta(s) ativo(s) ainda não possuem participação registrada.`
+      ? `${plural(atletasSemAtividade, "atleta ativo", "atletas ativos")} ainda ${atletasSemAtividade === 1 ? "não possui" : "não possuem"} participação registrada.`
       : `Todos os atletas ativos possuem ao menos uma participação registrada.`,
     `Modalidade com maior volume de KM: ${modalidadeMaisKm}.`,
   ];

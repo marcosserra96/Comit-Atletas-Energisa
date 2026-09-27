@@ -192,7 +192,7 @@ export function ExportarRelatorioDropdown({
       } else if (sobrando > 0) {
         show(
           "info",
-          `Informativo gerado. ${sobrando} atleta(s) ficaram de fora: só cabem ${cabem} por modalidade na arte — a lista completa está em Registrar › Visão Consolidada.`,
+          `Informativo gerado. ${sobrando} atleta(s) ficaram de fora: só cabem ${cabem} por modalidade na arte — a lista completa está em Lançar pontos › Visão consolidada.`,
         );
       } else {
         show("success", `Informativo de ${labelPeriodo(periodo)} gerado com sucesso.`);

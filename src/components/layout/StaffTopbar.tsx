@@ -12,12 +12,13 @@ import { souTambemAtleta } from "@/lib/session/dualRole";
 const titleByPath: Record<string, string> = {
   "/gestao": "Início",
   "/gestao/atletas": "Atletas",
-  "/gestao/pontuacao": "Registrar",
+  "/gestao/criterios": "Critérios",
+  "/gestao/pontuacao": "Lançar pontos",
   "/gestao/eventos": "Eventos",
   "/gestao/noticias": "Notícias",
   "/gestao/financeiro": "Financeiro",
-  "/gestao/configuracoes": "Configurar Portal",
-  "/gestao/conta": "Minha Conta",
+  "/gestao/configuracoes": "Configurar portal",
+  "/gestao/conta": "Minha conta",
 };
 
 export function StaffTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {

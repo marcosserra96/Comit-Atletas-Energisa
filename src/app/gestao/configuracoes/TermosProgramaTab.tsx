@@ -25,6 +25,7 @@ import type {
   Modalidade,
   TipoDocumentoPrograma,
 } from "@/lib/types";
+import { modalidadeLabel } from "@/lib/labels";
 
 interface DocumentoConfig
   extends Omit<DocumentoProgramaDoc, "atualizadoEm"> {
@@ -255,7 +256,7 @@ export function TermosProgramaTab() {
             onChange={(value) => setModalidade(value)}
             options={[
               { value: "corrida", label: "Corrida", icon: Footprints },
-              { value: "bicicleta", label: "Bike", icon: Bike },
+              { value: "bicicleta", label: modalidadeLabel.bicicleta, icon: Bike },
             ]}
             className="w-full sm:w-fit"
           />
@@ -312,7 +313,7 @@ export function TermosProgramaTab() {
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-text-light">
-                  {modalidade === "corrida" ? "Corrida" : "Bike"}
+                  {modalidadeLabel[modalidade]}
                 </p>
               </div>
             </div>
