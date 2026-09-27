@@ -25,7 +25,6 @@ export function MetricCard({
     <div
       className={cn(
         "rounded-[var(--radius-lg)] border border-border-subtle bg-bg-card p-4 shadow-[var(--shadow-card)]",
-        "transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-elevated)]",
         className,
       )}
     >
@@ -34,7 +33,7 @@ export function MetricCard({
           <span className="text-xs font-semibold uppercase tracking-wide text-text-muted">
             {label}
           </span>
-          <span className="truncate text-xl font-extrabold leading-tight text-text sm:text-2xl">
+          <span className="truncate text-xl font-extrabold leading-tight tabular-nums text-text sm:text-2xl">
             {value}
           </span>
         </div>
