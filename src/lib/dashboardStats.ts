@@ -6,6 +6,7 @@ import type {
   AtletaDoc,
   DespesaDoc,
   EventoDoc,
+  HistoricoMensalDoc,
   HistoricoPontoDoc,
   Modalidade,
   RegraPontuacaoDoc,
@@ -59,11 +60,12 @@ export interface EstatisticasDashboard {
 export function calcularEstatisticasDashboard(params: {
   atletas: AtletaDoc[];
   lancamentos: HistoricoPontoDoc[];
+  resumosMensais?: HistoricoMensalDoc[];
   despesas: DespesaDoc[];
   eventos: EventoDoc[];
   regras: RegraPontuacaoDoc[];
 }): EstatisticasDashboard {
-  const { atletas, lancamentos, despesas, eventos, regras } = params;
+  const { atletas, lancamentos, resumosMensais = [], despesas, eventos, regras } = params;
   const hoje = new Date();
   const ha30dias = new Date(hoje.getTime() - 30 * 24 * 60 * 60 * 1000);
   const iso30 = dataIsoLocal(ha30dias);
@@ -81,6 +83,7 @@ export function calcularEstatisticasDashboard(params: {
     (l) => !l.estornado && atletaIdsVisiveis.has(l.atletaId),
   );
   const regrasUsadas = new Set(validos.map((l) => l.regraId));
+  const resumosValidos = resumosMensais.filter((item) => atletaIdsVisiveis.has(item.atletaId));
 
   // Mesma consolidação do Ranking: cada atividade conta uma vez, soma os pontos
   // de todas as regras e usa a maior quilometragem informada. Faltas
@@ -104,6 +107,23 @@ export function calcularEstatisticasDashboard(params: {
     kmPorAtleta.set(atletaId, atividades.reduce((t, a) => t + a.km, 0));
     pontosPorAtleta.set(atletaId, atividades.reduce((t, a) => t + a.pontos, 0));
     ultimoPorAtleta.set(atletaId, atividades.reduce((u, a) => (a.data > u ? a.data : u), ""));
+  }
+
+  // Histórico mensal complementa os totais gerais, mas não "fabrica" uma
+  // última data de atividade para os indicadores de 30 dias.
+  for (const resumo of resumosValidos) {
+    participacoesPorAtleta.set(
+      resumo.atletaId,
+      (participacoesPorAtleta.get(resumo.atletaId) ?? 0) + (resumo.treinos || 0),
+    );
+    kmPorAtleta.set(
+      resumo.atletaId,
+      (kmPorAtleta.get(resumo.atletaId) ?? 0) + (resumo.km || 0),
+    );
+    pontosPorAtleta.set(
+      resumo.atletaId,
+      (pontosPorAtleta.get(resumo.atletaId) ?? 0) + (resumo.pontos || 0),
+    );
   }
   const pontosDe = (atleta: AtletaDoc) => pontosPorAtleta.get(atleta.id) ?? 0;
   /** Cópia do atleta com a pontuação calculada, para pódio e relatórios. */
@@ -175,6 +195,9 @@ export function calcularEstatisticasDashboard(params: {
     for (const atividades of atividadesPorAtleta.values()) {
       count += atividades.filter((a) => a.data.startsWith(prefixo)).length;
     }
+    count += resumosValidos
+      .filter((item) => item.competencia === prefixo)
+      .reduce((total, item) => total + (item.treinos || 0), 0);
     return { label: MESES[ref.getMonth()], count };
   });
 
