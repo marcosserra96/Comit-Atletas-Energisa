@@ -71,7 +71,7 @@ export function HistoricoMensalTab() {
         setAtletas(
           snap.docs
             .map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)
-            .filter((a) => a.ativo && perfilAtletaVisivel(a))
+            .filter(perfilAtletaVisivel)
             .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
         );
       },
@@ -405,7 +405,7 @@ export function HistoricoMensalTab() {
               const v = valores[a.id] ?? vazio();
               return (
                 <Card key={a.id} padding="sm" className="flex flex-col gap-3">
-                  <p className="font-semibold text-text">{a.nome}</p>
+                  <p className="font-semibold text-text">{a.nome}{!a.ativo ? <span className="ml-2 text-xs font-medium text-text-muted">(inativo)</span> : null}</p>
                   <div className="grid grid-cols-3 gap-2">
                     <Campo label="Pontos" value={v.pontos} onChange={(x) => alterar(a.id, "pontos", x)} step="1" />
                     <Campo label="KM" value={v.km} onChange={(x) => alterar(a.id, "km", x)} step="0.01" />
@@ -431,7 +431,7 @@ export function HistoricoMensalTab() {
                   const v = valores[a.id] ?? vazio();
                   return (
                     <tr key={a.id} className="border-b border-border last:border-0">
-                      <td className="px-4 py-3 font-medium text-text">{a.nome}</td>
+                      <td className="px-4 py-3 font-medium text-text">{a.nome}{!a.ativo ? <span className="ml-2 text-xs font-medium text-text-muted">(inativo)</span> : null}</td>
                       <td className="px-3 py-2"><TabelaInput value={v.pontos} onChange={(x) => alterar(a.id, "pontos", x)} step="1" /></td>
                       <td className="px-3 py-2"><TabelaInput value={v.km} onChange={(x) => alterar(a.id, "km", x)} step="0.01" /></td>
                       <td className="px-3 py-2"><TabelaInput value={v.treinos} onChange={(x) => alterar(a.id, "treinos", x)} step="1" /></td>
