@@ -21,7 +21,7 @@ import {
   modalidadeDocumentoLabel,
 } from "../src/lib/termosPrograma";
 import type { RankingVisibilityConfigDoc } from "../src/lib/types";
-import type { AtletaDoc, HistoricoPontoDoc } from "../src/lib/types";
+import type { AtletaDoc, HistoricoMensalDoc, HistoricoPontoDoc } from "../src/lib/types";
 
 function lancamento(
   overrides: Partial<HistoricoPontoDoc> = {},
@@ -311,4 +311,78 @@ test("migra a nomenclatura antiga de Mountain Bike para Bike", () => {
   assert.equal(documento.conteudo, "Regulamento do Programa de Bike Atletas Energisa.");
   assert.equal(documento.versao, 2);
   assert.equal(modalidadeDocumentoLabel("bicicleta"), "Bike");
+});
+
+
+test("soma histórico mensal consolidado ao ranking sem inventar atividades", () => {
+  const resumo: HistoricoMensalDoc = {
+    id: "2026-08_atleta-1",
+    atletaId: "atleta-1",
+    atletaNome: "Atleta",
+    equipe: "corrida",
+    competencia: "2026-08",
+    pontos: 25,
+    km: 80.5,
+    treinos: 7,
+    criadoPor: "admin",
+    criadoPorNome: "Admin",
+    criadoEm: null,
+  };
+
+  const resultados = calcularResultadosRanking(
+    [atletaRanking()],
+    [lancamento({ dataTreino: "2026-09-14", pontos: 5, kmPercorrido: 10 })],
+    "geral",
+    undefined,
+    undefined,
+    [resumo],
+  );
+
+  assert.equal(resultados[0].pontuacaoTotal, 30);
+  assert.equal(resultados[0].treinos, 8);
+  assert.equal(resultados[0].km, 90.5);
+});
+
+test("histórico mensal respeita o intervalo do ranking trimestral", () => {
+  const resumos: HistoricoMensalDoc[] = [
+    {
+      id: "jun",
+      atletaId: "atleta-1",
+      atletaNome: "Atleta",
+      equipe: "corrida",
+      competencia: "2026-06",
+      pontos: 10,
+      km: 20,
+      treinos: 2,
+      criadoPor: "admin",
+      criadoPorNome: "Admin",
+      criadoEm: null,
+    },
+    {
+      id: "jul",
+      atletaId: "atleta-1",
+      atletaNome: "Atleta",
+      equipe: "corrida",
+      competencia: "2026-07",
+      pontos: 15,
+      km: 30,
+      treinos: 3,
+      criadoPor: "admin",
+      criadoPorNome: "Admin",
+      criadoEm: null,
+    },
+  ];
+
+  const resultados = calcularResultadosRanking(
+    [atletaRanking()],
+    [],
+    "trimestre",
+    "2026-07-01",
+    "2026-09-30",
+    resumos,
+  );
+
+  assert.equal(resultados[0].pontuacaoTotal, 15);
+  assert.equal(resultados[0].treinos, 3);
+  assert.equal(resultados[0].km, 30);
 });
