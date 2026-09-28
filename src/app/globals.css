@@ -219,6 +219,18 @@
   --shadow-primary-glow: 0 8px 24px rgba(0, 155, 193, 0.15);
 }
 
+/* Superfícies que são escuras nos dois temas (capa do Início, menu lateral,
+   barra da gestão, splash). Ali as cores de marca precisam das variações claras,
+   senão o texto colorido some no azul-marinho. Use a classe `superficie-escura`. */
+.superficie-escura {
+  --color-primary: var(--brand-primary-dark, #009bc1);
+  --color-primary-hover: color-mix(in srgb, var(--brand-primary-dark, #009bc1) 84%, black);
+  --color-secondary: var(--brand-secondary-dark, #00b37e);
+  --color-accent: var(--brand-accent-dark, #f37021);
+  --color-on-primary: #07192d;
+  --color-on-secondary: #07192d;
+}
+
 /* ═══════════════════════════════════════════════════════════
    TAILWIND CSS v4 THEME BRIDGE
    Maps CSS variables → Tailwind utility classes.

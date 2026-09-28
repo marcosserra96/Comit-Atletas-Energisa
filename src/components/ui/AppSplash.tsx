@@ -11,7 +11,7 @@ export function AppSplash({
       role="status"
       aria-live="polite"
       aria-label={message}
-      className="relative isolate flex min-h-dvh flex-1 overflow-hidden bg-navy px-6 text-center text-white [padding-top:max(2rem,env(safe-area-inset-top))] [padding-bottom:max(2rem,env(safe-area-inset-bottom))]"
+      className="superficie-escura relative isolate flex min-h-dvh flex-1 overflow-hidden bg-navy px-6 text-center text-white [padding-top:max(2rem,env(safe-area-inset-top))] [padding-bottom:max(2rem,env(safe-area-inset-bottom))]"
     >
       <div
         aria-hidden="true"

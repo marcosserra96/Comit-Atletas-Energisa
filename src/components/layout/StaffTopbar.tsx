@@ -48,7 +48,7 @@ export function StaffTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }
   }
 
   return (
-    <header className="sticky top-0 z-10 flex h-[60px] shrink-0 items-center gap-3 border-b-2 border-primary bg-navy px-4 shadow-[0_2px_12px_rgba(0,0,0,0.2)] sm:px-5">
+    <header className="superficie-escura sticky top-0 z-10 flex h-[60px] shrink-0 items-center gap-3 border-b-2 border-primary bg-navy px-4 shadow-[0_2px_12px_rgba(0,0,0,0.2)] sm:px-5">
       <button
         onClick={onOpenMobileNav}
         aria-label="Abrir menu"

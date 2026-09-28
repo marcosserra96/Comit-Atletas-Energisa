@@ -95,7 +95,7 @@ export default function EscolherAreaPage() {
             disabled={entering !== null || leaving}
             aria-busy={entering === "comite"}
             className={cn(
-              "group flex min-h-60 touch-manipulation flex-col rounded-[var(--radius-lg)] border border-white/10 bg-navy p-4 text-left text-white shadow-sm sm:min-h-52 sm:p-6",
+              "superficie-escura group flex min-h-60 touch-manipulation flex-col rounded-[var(--radius-lg)] border border-white/10 bg-navy p-4 text-left text-white shadow-sm sm:min-h-52 sm:p-6",
               "transition duration-200 hover:-translate-y-0.5 hover:bg-navy-light hover:shadow-[var(--shadow-elevated)] active:translate-y-0",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
               "disabled:pointer-events-none disabled:opacity-60",

@@ -146,7 +146,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-dvh flex-1">
       {/* PAINEL ESQUERDO — Branding */}
-      <div className="relative hidden flex-col items-center justify-center overflow-hidden p-12 text-white lg:flex lg:w-[64%]">
+      <div className="superficie-escura relative hidden flex-col items-center justify-center overflow-hidden p-12 text-white lg:flex lg:w-[64%]">
         <div className="absolute inset-0" style={{ background: "var(--login-bg)" }} />
         <span className="pointer-events-none absolute -left-20 -top-32 size-[420px] rounded-full bg-white/10 blur-[110px]" />
         <span className="pointer-events-none absolute left-1/4 top-1/3 size-[320px] rounded-full bg-primary/40 blur-[110px]" />

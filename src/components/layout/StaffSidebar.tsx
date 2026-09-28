@@ -75,7 +75,7 @@ export function StaffSidebar({
       )}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex h-dvh w-64 shrink-0 flex-col bg-navy transition-transform duration-200",
+          "superficie-escura fixed inset-y-0 left-0 z-40 flex h-dvh w-64 shrink-0 flex-col bg-navy transition-transform duration-200",
           "lg:sticky lg:top-0 lg:z-auto lg:translate-x-0 lg:transition-[width]",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
           collapsed ? "lg:w-[72px]" : "lg:w-64",
