@@ -4,6 +4,7 @@ import type { Firestore } from "firebase-admin/firestore";
 import { calcularResultadosRanking, normalizarRankingPeriods } from "@/lib/rankingPeriods";
 import type {
   AtletaDoc,
+  HistoricoMensalDoc,
   HistoricoPontoDoc,
   RankingPeriodsConfigDoc,
   RankingResultadoDoc,
@@ -34,11 +35,12 @@ async function gravarEmLotes(
 function resultadosDoPeriodo(
   atletas: AtletaDoc[],
   historico: HistoricoPontoDoc[],
+  resumosMensais: HistoricoMensalDoc[],
   config: RankingPeriodsConfigDoc,
   geracaoId: string,
   geradoEm: FirebaseFirestore.Timestamp,
 ) {
-  const geral = calcularResultadosRanking(atletas, historico, "geral");
+  const geral = calcularResultadosRanking(atletas, historico, "geral", undefined, undefined, resumosMensais);
   const trimestral = config.trimestre.ativo
     ? calcularResultadosRanking(
         atletas,
@@ -46,6 +48,7 @@ function resultadosDoPeriodo(
         "trimestre",
         config.trimestre.inicio,
         config.trimestre.fim,
+        resumosMensais,
       )
     : [];
   const resultados: RankingResultadoDoc[] = [...geral, ...trimestral].map((resultado) => ({
@@ -66,10 +69,11 @@ export async function publicarRankingCompleto(params: {
   const { db, uid, autorNome, configOverride, modo = "manual" } = params;
   const [{ FieldValue, Timestamp }] = await Promise.all([import("firebase-admin/firestore")]);
   const configRef = db.collection("configuracoes").doc("ranking_periodos");
-  const [configSnap, atletasSnap, historicoSnap, resultadosAntigosSnap] = await Promise.all([
+  const [configSnap, atletasSnap, historicoSnap, resumosSnap, resultadosAntigosSnap] = await Promise.all([
     configRef.get(),
     db.collection("atletas").get(),
     db.collection("historico_pontos").get(),
+    db.collection("historico_mensal").get(),
     db.collection("ranking_resultados").get(),
   ]);
   const config = normalizarRankingPeriods(
@@ -83,10 +87,14 @@ export async function publicarRankingCompleto(params: {
   const historico = historicoSnap.docs.map(
     (item) => ({ id: item.id, ...item.data() }) as HistoricoPontoDoc,
   );
+  const resumosMensais = resumosSnap.docs.map(
+    (item) => ({ id: item.id, ...item.data() }) as HistoricoMensalDoc,
+  );
   const geracaoId = db.collection("ranking_resultados").doc().id;
   const { geral, resultados } = resultadosDoPeriodo(
     atletas,
     historico,
+    resumosMensais,
     config,
     geracaoId,
     Timestamp.now(),
@@ -139,7 +147,7 @@ export async function publicarRankingCompleto(params: {
 }
 
 async function carregarDadosDosAtletas(db: Firestore, atletaIds: string[]) {
-  const [atletasPorGrupo, historicosSnaps] = await Promise.all([
+  const [atletasPorGrupo, historicosSnaps, resumosSnaps] = await Promise.all([
     Promise.all(
       gruposDe(atletaIds, 200).map((grupo) =>
         db.getAll(...grupo.map((id) => db.collection("atletas").doc(id))),
@@ -150,6 +158,11 @@ async function carregarDadosDosAtletas(db: Firestore, atletaIds: string[]) {
         db.collection("historico_pontos").where("atletaId", "in", grupo).get(),
       ),
     ),
+    Promise.all(
+      gruposDe(atletaIds, LIMITE_CONSULTA_IN).map((grupo) =>
+        db.collection("historico_mensal").where("atletaId", "in", grupo).get(),
+      ),
+    ),
   ]);
   const atletas = atletasPorGrupo
     .flat()
@@ -158,7 +171,10 @@ async function carregarDadosDosAtletas(db: Firestore, atletaIds: string[]) {
   const historico = historicosSnaps.flatMap((snap) =>
     snap.docs.map((item) => ({ id: item.id, ...item.data() }) as HistoricoPontoDoc),
   );
-  return { atletas, historico };
+  const resumosMensais = resumosSnaps.flatMap((snap) =>
+    snap.docs.map((item) => ({ id: item.id, ...item.data() }) as HistoricoMensalDoc),
+  );
+  return { atletas, historico, resumosMensais };
 }
 
 export async function atualizarRankingDosAtletas(params: {
@@ -196,10 +212,11 @@ export async function atualizarRankingDosAtletas(params: {
         }),
     ),
   );
-  const { atletas, historico } = await carregarDadosDosAtletas(db, atletaIds);
+  const { atletas, historico, resumosMensais } = await carregarDadosDosAtletas(db, atletaIds);
   const { resultados } = resultadosDoPeriodo(
     atletas,
     historico,
+    resumosMensais,
     config,
     geracaoId,
     Timestamp.now(),
