@@ -108,6 +108,24 @@ export interface HistoricoPontoDoc {
   justificativaFim?: string;
 }
 
+export interface HistoricoMensalDoc {
+  id: string;
+  atletaId: string;
+  atletaNome: string;
+  equipe: Equipe;
+  /** Competência civil no formato YYYY-MM. */
+  competencia: string;
+  pontos: number;
+  km: number;
+  treinos: number;
+  criadoPor: string;
+  criadoPorNome: string;
+  criadoEm: unknown;
+  atualizadoEm?: unknown;
+  atualizadoPor?: string;
+  atualizadoPorNome?: string;
+}
+
 export type MotivoAusencia =
   | "viagem"
   | "doenca"
