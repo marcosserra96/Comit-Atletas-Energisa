@@ -1,6 +1,6 @@
 import { consolidarAtividades } from "@/lib/activityConsolidation";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
-import type { AlertaCriterio, AtletaDoc, Equipe, HistoricoPontoDoc } from "@/lib/types";
+import type { AlertaCriterio, AtletaDoc, Equipe, HistoricoMensalDoc, HistoricoPontoDoc } from "@/lib/types";
 
 export interface ResumoAtletaMensal {
   id: string;
@@ -16,12 +16,13 @@ export interface ResumoAtletaMensal {
 export function calcularResumoRankingMensal(params: {
   atletas: AtletaDoc[];
   lancamentos: HistoricoPontoDoc[];
+  resumosMensais?: HistoricoMensalDoc[];
   ano: number;
   mes: number;
 }): ResumoAtletaMensal[] {
-  const { atletas, lancamentos, ano, mes } = params;
+  const { atletas, lancamentos, resumosMensais = [], ano, mes } = params;
   const competencia = `${ano}-${String(mes).padStart(2, "0")}`;
-  return calcularResumoRankingPeriodo({ atletas, lancamentos, de: competencia, ate: competencia });
+  return calcularResumoRankingPeriodo({ atletas, lancamentos, resumosMensais, de: competencia, ate: competencia });
 }
 
 /**
@@ -32,10 +33,11 @@ export function calcularResumoRankingMensal(params: {
 export function calcularResumoRankingPeriodo(params: {
   atletas: AtletaDoc[];
   lancamentos: HistoricoPontoDoc[];
+  resumosMensais?: HistoricoMensalDoc[];
   de: string;
   ate: string;
 }): ResumoAtletaMensal[] {
-  const { atletas, lancamentos } = params;
+  const { atletas, lancamentos, resumosMensais = [] } = params;
   const de = params.de <= params.ate ? params.de : params.ate;
   const ate = params.de <= params.ate ? params.ate : params.de;
 
@@ -67,6 +69,17 @@ export function calcularResumoRankingPeriodo(params: {
     if (!item) continue;
     item.kmMes += atividade.km;
     if (atividade.tipo === "treino") item.treinosMes += 1;
+  }
+
+  // Totais mensais legados entram como complemento do histórico detalhado.
+  // Não alteram ultimaData porque não conhecemos o dia real de cada treino.
+  for (const resumo of resumosMensais) {
+    if (resumo.competencia < de || resumo.competencia > ate) continue;
+    const item = porAtleta.get(resumo.atletaId);
+    if (!item) continue;
+    item.pontosMes += resumo.pontos || 0;
+    item.kmMes += resumo.km || 0;
+    item.treinosMes += resumo.treinos || 0;
   }
 
   return [...porAtleta.values()].sort(ordenarRankingMensal);

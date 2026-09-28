@@ -12,7 +12,7 @@ import { equipeLabel, competeAtivamente } from "@/lib/labels";
 import { exportToExcel } from "@/lib/excel";
 import { cn } from "@/lib/cn";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
-import type { AtletaDoc, HistoricoPontoDoc } from "@/lib/types";
+import type { AtletaDoc, HistoricoMensalDoc, HistoricoPontoDoc } from "@/lib/types";
 import { formatKm } from "@/lib/format";
 
 const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -40,18 +40,24 @@ const ITENS: { chave: keyof Acumulado; label: string; formatar: (v: number) => s
 export function ConsolidadoTab() {
   const [atletas, setAtletas] = useState<AtletaDoc[] | null>(null);
   const [historico, setHistorico] = useState<HistoricoPontoDoc[] | null>(null);
+  const [historicoMensal, setHistoricoMensal] = useState<HistoricoMensalDoc[] | null>(null);
   const [ano, setAno] = useState(() => String(new Date().getFullYear()));
   const [equipeFiltro, setEquipeFiltro] = useState<EquipeFiltro>("");
   const [mesesSelecionados, setMesesSelecionados] = useState<Set<number>>(() => new Set(TODOS_MESES));
   const [metricasExtras, setMetricasExtras] = useState<Set<Metrica>>(new Set());
 
   useEffect(() => {
-    Promise.all([getDocs(collection(db, "atletas")), getDocs(collection(db, "historico_pontos"))]).then(
-      ([atletasSnap, historicoSnap]) => {
-        setAtletas(atletasSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc));
-        setHistorico(historicoSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as HistoricoPontoDoc));
-      },
-    );
+    Promise.all([
+      getDocs(collection(db, "atletas")),
+      getDocs(collection(db, "historico_pontos")),
+      getDocs(collection(db, "historico_mensal")),
+    ]).then(([atletasSnap, historicoSnap, historicoMensalSnap]) => {
+      setAtletas(atletasSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc));
+      setHistorico(historicoSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as HistoricoPontoDoc));
+      setHistoricoMensal(
+        historicoMensalSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as HistoricoMensalDoc),
+      );
+    });
   }, []);
 
   function toggleMes(m: number) {
@@ -84,7 +90,7 @@ export function ConsolidadoTab() {
   );
 
   const linhas = useMemo(() => {
-    if (!atletas || !historico) return [];
+    if (!atletas || !historico || !historicoMensal) return [];
     const elegiveis = atletas.filter(
       (a) =>
         perfilAtletaVisivel(a) &&
@@ -119,10 +125,26 @@ export function ConsolidadoTab() {
             }
             porMes[mes] = atual;
           });
+
+        historicoMensal
+          .filter((h) => h.atletaId === atleta.id && h.competencia.startsWith(ano))
+          .forEach((h) => {
+            const mes = Number(h.competencia.split("-")[1]);
+            if (!meses.includes(mes)) return;
+            const atual = porMes[mes] ?? acumuladoVazio();
+            atual.pontos += h.pontos || 0;
+            atual.km += h.km || 0;
+            atual.treinos += h.treinos || 0;
+            total.pontos += h.pontos || 0;
+            total.km += h.km || 0;
+            total.treinos += h.treinos || 0;
+            porMes[mes] = atual;
+          });
+
         return { atleta, porMes, total };
       })
       .sort((a, b) => a.atleta.nome.localeCompare(b.atleta.nome, "pt-BR"));
-  }, [atletas, historico, ano, equipeFiltro, meses]);
+  }, [atletas, historico, historicoMensal, ano, equipeFiltro, meses]);
 
   function handleExportar() {
     const linhasExportadas = linhas.flatMap(({ atleta, porMes, total }) =>
@@ -137,7 +159,7 @@ export function ConsolidadoTab() {
     exportToExcel(`relatorio-consolidado-${ano}.xlsx`, "Consolidado", linhasExportadas);
   }
 
-  const carregando = atletas === null || historico === null;
+  const carregando = atletas === null || historico === null || historicoMensal === null;
 
   return (
     <div className="flex flex-col gap-4">

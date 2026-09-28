@@ -1,7 +1,7 @@
 import { consolidarAtividades } from "@/lib/activityConsolidation";
 import { dataIsoLocal } from "@/lib/date";
 import { calcularPosicoesRanking } from "@/lib/rankingPosition";
-import type { AtletaDoc, AtletaPublicoDoc, HistoricoPontoDoc } from "@/lib/types";
+import type { AtletaDoc, AtletaPublicoDoc, HistoricoMensalDoc, HistoricoPontoDoc } from "@/lib/types";
 
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
@@ -31,8 +31,10 @@ export function calcularInsightsAtleta(params: {
   companheiros: AtletaPublicoDoc[];
   /** Lançamentos do próprio atleta (qualquer ordem). */
   meusLancamentos: HistoricoPontoDoc[];
+  /** Totais mensais legados do próprio atleta. */
+  historicoMensal?: HistoricoMensalDoc[];
 }): AtletaInsights {
-  const { atleta, companheiros, meusLancamentos } = params;
+  const { atleta, companheiros, meusLancamentos, historicoMensal = [] } = params;
   const hoje = new Date();
 
   const idx = companheiros.findIndex((a) => a.id === atleta.id);
@@ -65,11 +67,18 @@ export function calcularInsightsAtleta(params: {
 
   const atividades = consolidarAtividades(validos);
   const atividadesMes = atividades.filter((atividade) => atividade.data.startsWith(prefixoMes));
-  const pontosMes = validos
-    .filter((lancamento) => lancamento.dataTreino.startsWith(prefixoMes))
-    .reduce((soma, lancamento) => soma + lancamento.pontos, 0);
-  const kmMes = atividadesMes.reduce((soma, atividade) => soma + atividade.km, 0);
-  const treinosMes = atividadesMes.filter((atividade) => atividade.tipo === "treino").length;
+  const resumoMes = historicoMensal.find((item) => item.competencia === prefixoMes);
+  const pontosMes =
+    validos
+      .filter((lancamento) => lancamento.dataTreino.startsWith(prefixoMes))
+      .reduce((soma, lancamento) => soma + lancamento.pontos, 0) +
+    (resumoMes?.pontos ?? 0);
+  const kmMes =
+    atividadesMes.reduce((soma, atividade) => soma + atividade.km, 0) +
+    (resumoMes?.km ?? 0);
+  const treinosMes =
+    atividadesMes.filter((atividade) => atividade.tipo === "treino").length +
+    (resumoMes?.treinos ?? 0);
 
   const inicio7Dias = new Date(hoje);
   inicio7Dias.setDate(inicio7Dias.getDate() - 6);
@@ -85,8 +94,13 @@ export function calcularInsightsAtleta(params: {
   const seriesMensal = Array.from({ length: 6 }, (_, i) => {
     const ref = new Date(hoje.getFullYear(), hoje.getMonth() - (5 - i), 1);
     const prefixo = `${ref.getFullYear()}-${String(ref.getMonth() + 1).padStart(2, "0")}`;
-    const pontos = validos.filter((l) => l.dataTreino.startsWith(prefixo)).reduce((s, l) => s + l.pontos, 0);
-    return { label: MESES[ref.getMonth()], pontos };
+    const pontosDetalhados = validos
+      .filter((l) => l.dataTreino.startsWith(prefixo))
+      .reduce((s, l) => s + l.pontos, 0);
+    const pontosHistoricos = historicoMensal
+      .filter((item) => item.competencia === prefixo)
+      .reduce((s, item) => s + (item.pontos || 0), 0);
+    return { label: MESES[ref.getMonth()], pontos: pontosDetalhados + pontosHistoricos };
   });
 
   const leitura = montarLeitura({

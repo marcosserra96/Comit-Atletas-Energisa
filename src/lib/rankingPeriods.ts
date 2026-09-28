@@ -2,6 +2,7 @@ import { consolidarAtividades } from "@/lib/activityConsolidation";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import type {
   AtletaDoc,
+  HistoricoMensalDoc,
   HistoricoPontoDoc,
   RankingPeriodKey,
   RankingPeriodsConfigDoc,
@@ -42,6 +43,7 @@ export function calcularResultadosRanking(
   periodoId: RankingPeriodKey,
   inicio?: string,
   fim?: string,
+  resumosMensais: HistoricoMensalDoc[] = [],
 ): Omit<RankingResultadoDoc, "geracaoId" | "geradoEm">[] {
   const porAtleta = new Map<string, HistoricoPontoDoc[]>();
 
@@ -63,12 +65,23 @@ export function calcularResultadosRanking(
     }
 
     const atividades = consolidarAtividades(porAtleta.get(atleta.id) ?? []);
-    const pontuacaoTotal = atividades.reduce(
-      (total, atividade) => total + atividade.pontos,
-      0,
+    const competenciaInicio = inicio?.slice(0, 7);
+    const competenciaFim = fim?.slice(0, 7);
+    const resumosDoAtleta = resumosMensais.filter(
+      (resumo) =>
+        resumo.atletaId === atleta.id &&
+        (!competenciaInicio || resumo.competencia >= competenciaInicio) &&
+        (!competenciaFim || resumo.competencia <= competenciaFim),
     );
-    const treinos = atividades.filter((atividade) => atividade.tipo === "treino").length;
-    const km = atividades.reduce((total, atividade) => total + atividade.km, 0);
+    const pontuacaoTotal =
+      atividades.reduce((total, atividade) => total + atividade.pontos, 0) +
+      resumosDoAtleta.reduce((total, resumo) => total + (resumo.pontos || 0), 0);
+    const treinos =
+      atividades.filter((atividade) => atividade.tipo === "treino").length +
+      resumosDoAtleta.reduce((total, resumo) => total + (resumo.treinos || 0), 0);
+    const km =
+      atividades.reduce((total, atividade) => total + atividade.km, 0) +
+      resumosDoAtleta.reduce((total, resumo) => total + (resumo.km || 0), 0);
 
     return [{
       id: atleta.id,
