@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
 import { getStoredBranding } from "@/lib/branding";
-import { formatBRL, plural } from "@/lib/format";
+import { formatBRL } from "@/lib/format";
 import { agruparUltimosLancamentos, type EstatisticasDashboard } from "@/lib/dashboardStats";
 import { calcularResumoRankingPeriodo, diasUteisNoMes } from "@/lib/rankingMensal";
 import { normalizarInformativoConfig } from "@/lib/informativoConfig";

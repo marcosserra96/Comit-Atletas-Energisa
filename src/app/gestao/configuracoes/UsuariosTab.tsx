@@ -330,38 +330,39 @@ export function UsuariosTab() {
                 </Select>
               </div>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setCorrigindoVinculo(pessoa)}
-                className="justify-center"
-              >
-                <Link2 className="size-3.5" />
-                Corrigir vínculo
-              </Button>
-
-              {pessoa.role === "comite" && (
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setGerenciandoAcessos(pessoa)}
-                    className="justify-center"
-                  >
-                    <KeyRound className="size-3.5" />
-                    Gerenciar acessos
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setTestandoPermissoes(pessoa)}
-                    className="justify-center"
-                  >
-                    <TestTube2 className="size-3.5" />
-                    Testar permissões
-                  </Button>
-                </div>
-              )}
+              <div className="-mx-1 flex flex-wrap justify-center gap-1 border-t border-border pt-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCorrigindoVinculo(pessoa)}
+                  className="whitespace-nowrap"
+                >
+                  <Link2 className="size-3.5" />
+                  Corrigir vínculo
+                </Button>
+                {pessoa.role === "comite" && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setGerenciandoAcessos(pessoa)}
+                      className="whitespace-nowrap"
+                    >
+                      <KeyRound className="size-3.5" />
+                      Acessos
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setTestandoPermissoes(pessoa)}
+                      className="whitespace-nowrap"
+                    >
+                      <TestTube2 className="size-3.5" />
+                      Testar permissões
+                    </Button>
+                  </>
+                )}
+              </div>
             </Card>
           ))}
         </div>

@@ -10,7 +10,6 @@ import { cn } from "@/lib/cn";
 import { PERMISSAO_LABEL, PERMISSAO_ORDEM, PERMISSOES_PADRAO, type PermissaoChave } from "@/lib/permissoes";
 import { avaliarPermissoes } from "@/lib/permissionSimulator";
 import type { AtletaDoc } from "@/lib/types";
-import { plural } from "@/lib/format";
 
 export function TestarPermissoesModal({
   pessoa,
