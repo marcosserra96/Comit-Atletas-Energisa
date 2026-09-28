@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { formatRelativeTime } from "@/lib/format";
+import { noticiaVisivel } from "@/lib/noticias";
 import type { NoticiaDoc } from "@/lib/types";
 
 function NoticiaCard({ noticia, destaque = false }: { noticia: NoticiaDoc; destaque?: boolean }) {
@@ -65,7 +66,11 @@ export default function NoticiasAtletaPage() {
     const unsubscribe = onSnapshot(
       query(collection(db, "noticias"), orderBy("criadoEm", "desc")),
       (snap) => {
-        setNoticias(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as NoticiaDoc));
+        setNoticias(
+          snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }) as NoticiaDoc)
+            .filter((n) => noticiaVisivel(n)),
+        );
         setErroCarregamento(false);
       },
       () => {

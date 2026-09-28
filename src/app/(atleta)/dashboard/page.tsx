@@ -47,6 +47,7 @@ import {
   normalizarRankingVisibility,
   rankingOcultoAgora,
 } from "@/lib/rankingVisibility";
+import { noticiaVisivel } from "@/lib/noticias";
 import type {
   AtletaPublicoDoc,
   EventoDoc,
@@ -171,10 +172,16 @@ export default function DashboardPage() {
         }
       });
 
-    getDocs(query(collection(db, "noticias"), orderBy("criadoEm", "desc"), limit(3)))
+    // Busca algumas a mais porque as que já saíram do ar são descartadas aqui.
+    getDocs(query(collection(db, "noticias"), orderBy("criadoEm", "desc"), limit(12)))
       .then((snap) => {
         if (active) {
-          setNoticias(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as NoticiaDoc));
+          setNoticias(
+            snap.docs
+              .map((d) => ({ id: d.id, ...d.data() }) as NoticiaDoc)
+              .filter((n) => noticiaVisivel(n))
+              .slice(0, 2),
+          );
           setErroNoticias(false);
         }
       })

@@ -13,6 +13,7 @@ import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonCard, SkeletonLine } from "@/components/ui/Skeleton";
 import { formatRelativeTime } from "@/lib/format";
+import { corpoDaNoticia, noticiaVisivel } from "@/lib/noticias";
 import type { NoticiaDoc } from "@/lib/types";
 
 export default function DetalheNoticiaPage() {
@@ -27,7 +28,8 @@ export default function DetalheNoticiaPage() {
     const unsubscribe = onSnapshot(
       doc(db, "noticias", noticiaId),
       (snap) => {
-        setNoticia(snap.exists() ? ({ id: snap.id, ...snap.data() } as NoticiaDoc) : null);
+        const encontrada = snap.exists() ? ({ id: snap.id, ...snap.data() } as NoticiaDoc) : null;
+        setNoticia(encontrada && noticiaVisivel(encontrada) ? encontrada : null);
         setErroCarregamento(false);
       },
       () => {
@@ -71,14 +73,19 @@ export default function DetalheNoticiaPage() {
         <Card>
           <EmptyState
             icon={Newspaper}
-            title="Notícia não encontrada"
-            description="Ela pode ter sido removida pelo comitê."
+            title="Notícia não disponível"
+            description="Ela saiu do ar ou foi removida pelo comitê."
           />
         </Card>
       ) : (
         <article>
           <Card className="overflow-hidden p-0">
-            <div className="border-b border-border bg-gradient-to-br from-primary/10 via-bg-card to-secondary/10 p-6 sm:p-9">
+            <div
+              className={
+                "bg-gradient-to-br from-primary/10 via-bg-card to-secondary/10 p-6 sm:p-9" +
+                (corpoDaNoticia(noticia) ? " border-b border-border" : "")
+              }
+            >
               <div className="flex flex-wrap items-center gap-2">
                 {noticia.fixado && (
                   <Badge tone="primary">
@@ -102,11 +109,13 @@ export default function DetalheNoticiaPage() {
                 </p>
               )}
             </div>
-            <div className="p-6 sm:p-9">
-              <div className="whitespace-pre-wrap text-[15px] leading-8 text-text">
-                {noticia.corpo || noticia.resumo}
+            {corpoDaNoticia(noticia) && (
+              <div className="p-6 sm:p-9">
+                <div className="whitespace-pre-wrap text-[15px] leading-8 text-text">
+                  {corpoDaNoticia(noticia)}
+                </div>
               </div>
-            </div>
+            )}
           </Card>
         </article>
       )}

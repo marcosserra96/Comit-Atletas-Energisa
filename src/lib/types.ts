@@ -174,6 +174,7 @@ export interface EventoDoc {
   km?: number;
   criadoEm: unknown;
   criadoPor: string;
+  atualizadoEm?: unknown;
   /** IDs de atletas confirmados. Cada atleta só pode adicionar/remover o próprio id. */
   inscritos?: string[];
 }
@@ -184,9 +185,12 @@ export interface NoticiaDoc {
   resumo: string;
   corpo: string;
   fixado: boolean;
+  /** Último dia (YYYY-MM-DD, inclusive) em que a notícia aparece para os atletas. Vazio = sem prazo. */
+  visivelAte?: string | null;
   autorNome: string;
   autorUid: string;
   criadoEm: unknown;
+  atualizadoEm?: unknown;
 }
 
 export type CategoriaDespesa =
