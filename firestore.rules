@@ -151,6 +151,15 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Totais mensais legados: pontos, km e quantidade de treinos sem inventar
+    // atividades individuais. O atleta lê apenas os próprios totais.
+    match /historico_mensal/{id} {
+      allow read: if isStaff() ||
+        (hasUsuario() && resource.data.atletaId == meuAtletaId());
+      allow create, update: if isAdmin() || comitePode("registrar");
+      allow delete: if isAdmin() || comitePode("registrar");
+    }
+
     // Contém informações potencialmente sensíveis (doença, lesão e descrição).
     // Todo acesso passa pelas rotas autenticadas do servidor, que limitam a
     // leitura ao próprio atleta ou à equipe autorizada de pontuação.
