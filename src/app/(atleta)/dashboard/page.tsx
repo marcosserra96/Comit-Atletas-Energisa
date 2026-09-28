@@ -51,6 +51,7 @@ import { noticiaVisivel } from "@/lib/noticias";
 import type {
   AtletaPublicoDoc,
   EventoDoc,
+  HistoricoMensalDoc,
   HistoricoPontoDoc,
   NoticiaDoc,
   RankingVisibilityConfigDoc,
@@ -86,6 +87,7 @@ export default function DashboardPage() {
 
   const [companheiros, setCompanheiros] = useState<AtletaPublicoDoc[] | null>(() => (modalidade ? null : []));
   const [meusLancamentos, setMeusLancamentos] = useState<HistoricoPontoDoc[] | null>(null);
+  const [meuHistoricoMensal, setMeuHistoricoMensal] = useState<HistoricoMensalDoc[] | null>(null);
   const [proximoEvento, setProximoEvento] = useState<EventoDoc[] | null>(null);
   const [noticias, setNoticias] = useState<NoticiaDoc[] | null>(null);
   const [inscrevendo, setInscrevendo] = useState(false);
@@ -156,11 +158,17 @@ export default function DashboardPage() {
   useEffect(() => {
     let active = true;
 
-    getDocs(query(collection(db, "historico_pontos"), where("atletaId", "==", atleta.id)))
-      .then((snap) => {
+    Promise.all([
+      getDocs(query(collection(db, "historico_pontos"), where("atletaId", "==", atleta.id))),
+      getDocs(query(collection(db, "historico_mensal"), where("atletaId", "==", atleta.id))),
+    ])
+      .then(([snapLancamentos, snapMensal]) => {
         if (active) {
           setMeusLancamentos(
-            snap.docs.map((d) => ({ id: d.id, ...d.data() }) as HistoricoPontoDoc),
+            snapLancamentos.docs.map((d) => ({ id: d.id, ...d.data() }) as HistoricoPontoDoc),
+          );
+          setMeuHistoricoMensal(
+            snapMensal.docs.map((d) => ({ id: d.id, ...d.data() }) as HistoricoMensalDoc),
           );
           setErroHistorico(false);
         }
@@ -168,6 +176,7 @@ export default function DashboardPage() {
       .catch(() => {
         if (active) {
           setMeusLancamentos([]);
+          setMeuHistoricoMensal([]);
           setErroHistorico(true);
         }
       });
@@ -215,13 +224,18 @@ export default function DashboardPage() {
 
   const insights = useMemo(() => {
     const companheirosParaInsights = rankingIndisponivel ? [] : companheiros;
-    if (companheirosParaInsights === null || meusLancamentos === null) return null;
+    if (
+      companheirosParaInsights === null ||
+      meusLancamentos === null ||
+      meuHistoricoMensal === null
+    ) return null;
     return calcularInsightsAtleta({
       atleta,
       companheiros: companheirosParaInsights,
       meusLancamentos,
+      historicoMensal: meuHistoricoMensal,
     });
-  }, [atleta, companheiros, meusLancamentos, rankingIndisponivel]);
+  }, [atleta, companheiros, meusLancamentos, meuHistoricoMensal, rankingIndisponivel]);
 
   const ultimosLancamentos = useMemo(
     () => [...(meusLancamentos ?? [])].sort((a, b) => b.dataTreino.localeCompare(a.dataTreino)).slice(0, 5),
