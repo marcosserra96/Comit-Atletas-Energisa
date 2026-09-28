@@ -10,6 +10,7 @@ import {
   type CampoId,
   type LayoutInformativo,
 } from "@/lib/informativoLayout";
+import { formatNumero } from "@/lib/format";
 
 const PAGE_W = 1672;
 const PAGE_H = 941;
@@ -18,10 +19,6 @@ const WHITE = "#ffffff";
 
 interface ResumoAtletaClassificado extends ResumoAtletaMensal {
   posicao: number;
-}
-
-function formatarNumero(valor: number, casas = 0) {
-  return valor.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas });
 }
 
 function abs(top: number, left: number, width: number, extra: object = {}) {
@@ -138,13 +135,13 @@ function PodiumSlotView({
         {atleta.nome}
       </Campo>
       <Campo campo={slot.campos.pts} layout={layout}>
-        {formatarNumero(atleta.pontosMes)} pts
+        {formatNumero(atleta.pontosMes)} pts
       </Campo>
       <Campo campo={slot.campos.treinos} layout={layout}>
-        {formatarNumero(atleta.treinosMes)} treinos
+        {formatNumero(atleta.treinosMes)} treinos
       </Campo>
       <Campo campo={slot.campos.km} layout={layout}>
-        {formatarNumero(atleta.kmMes, 2)} km
+        {formatNumero(atleta.kmMes)} km
       </Campo>
     </>
   );
@@ -189,7 +186,7 @@ function PodiumCompartilhadoView({ atletas }: { atletas: ResumoAtletaClassificad
                 {atleta.nome}
               </Text>
               <Text style={{ marginTop: 7, color: "#cfe3f2", fontSize: 9 }}>
-                {formatarNumero(atleta.pontosMes)} pts · {formatarNumero(atleta.treinosMes)} treinos · {formatarNumero(atleta.kmMes, 2)} km
+                {formatNumero(atleta.pontosMes)} pts · {formatNumero(atleta.treinosMes)} treinos · {formatNumero(atleta.kmMes)} km
               </Text>
             </View>
           </View>
@@ -287,13 +284,13 @@ function RankingColuna({
               {atleta.nome}
             </Campo>
             <Campo campo={spec.campos.pontos} layout={layout} offsetY={offsetY} bold={false}>
-              {formatarNumero(atleta.pontosMes)}
+              {formatNumero(atleta.pontosMes)}
             </Campo>
             <Campo campo={spec.campos.treinos} layout={layout} offsetY={offsetY} bold={false}>
-              {formatarNumero(atleta.treinosMes)}
+              {formatNumero(atleta.treinosMes)}
             </Campo>
             <Campo campo={spec.campos.km} layout={layout} offsetY={offsetY} bold={false}>
-              {formatarNumero(atleta.kmMes, 2)}
+              {formatNumero(atleta.kmMes)}
             </Campo>
           </View>
         );
@@ -430,10 +427,10 @@ function PaginaModalidade({
           {k.texto}
         </Campo>
       ))}
-      <Campo campo="kpi1" layout={layout}>{`${formatarNumero(totalPontos)} pts`}</Campo>
-      <Campo campo="kpi2" layout={layout}>{formatarNumero(totalTreinos)}</Campo>
-      <Campo campo="kpi3" layout={layout}>{`${formatarNumero(totalKm, 2)} km`}</Campo>
-      <Campo campo="kpi4" layout={layout}>{formatarNumero(lista.length)}</Campo>
+      <Campo campo="kpi1" layout={layout}>{`${formatNumero(totalPontos)} pts`}</Campo>
+      <Campo campo="kpi2" layout={layout}>{formatNumero(totalTreinos)}</Campo>
+      <Campo campo="kpi3" layout={layout}>{`${formatNumero(totalKm)} km`}</Campo>
+      <Campo campo="kpi4" layout={layout}>{formatNumero(lista.length)}</Campo>
 
       {haEmpateNoPodio ? (
         <PodiumCompartilhadoView atletas={lista.slice(0, 3)} />
@@ -461,7 +458,7 @@ function PaginaModalidade({
         linhaCampo="destaque1Linha1"
         titulo="Maior quilometragem"
         lista={maiorKm}
-        formatar={(a) => `${formatarNumero(a.kmMes, 2)} km`}
+        formatar={(a) => `${formatNumero(a.kmMes)} km`}
         layout={layout}
       />
       <DestaqueCard
@@ -469,7 +466,7 @@ function PaginaModalidade({
         linhaCampo="destaque2Linha1"
         titulo="Mais treinos"
         lista={maisTreinos}
-        formatar={(a) => `${formatarNumero(a.treinosMes)} treinos`}
+        formatar={(a) => `${formatNumero(a.treinosMes)} treinos`}
         layout={layout}
       />
       <DestaqueCard
@@ -477,7 +474,7 @@ function PaginaModalidade({
         linhaCampo="destaque3Linha1"
         titulo="Maior pontuação"
         lista={maiorPontuacao}
-        formatar={(a) => `${formatarNumero(a.pontosMes)} pts`}
+        formatar={(a) => `${formatNumero(a.pontosMes)} pts`}
         layout={layout}
         posicoes={posicoesPorId}
       />

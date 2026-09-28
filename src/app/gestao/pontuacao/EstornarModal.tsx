@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import type { HistoricoPontoDoc } from "@/lib/types";
+import { formatPontos } from "@/lib/format";
 
 export function EstornarModal({
   lancamento,
@@ -35,7 +36,7 @@ export function EstornarModal({
       title="Estornar lançamento"
       description={
         lancamento
-          ? `Isso remove ${lancamento.pontos} pts de ${lancamento.atletaNome} referentes a "${lancamento.regraDesc}". Informe o motivo — fica registrado na auditoria.`
+          ? `Isso remove ${formatPontos(lancamento.pontos)} pts de ${lancamento.atletaNome} referentes a "${lancamento.regraDesc}". Informe o motivo — fica registrado na auditoria.`
           : undefined
       }
     >

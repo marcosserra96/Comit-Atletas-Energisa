@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmActionModal } from "@/components/ui/ConfirmActionModal";
 import { NovaRegraModal } from "./NovaRegraModal";
 import type { RegraPontuacaoDoc } from "@/lib/types";
+import { formatPontos } from "@/lib/format";
 
 const modalidadeLabel: Record<RegraPontuacaoDoc["modalidade"], string> = {
   ambas: "Corrida e Bike",
@@ -92,7 +93,7 @@ export function CriteriosTab() {
                   <td className="px-3 py-3">
                     <Badge tone="primary">{modalidadeLabel[r.modalidade]}</Badge>
                   </td>
-                  <td className="px-3 py-3 text-right font-semibold text-text">{r.pontos}</td>
+                  <td className="px-3 py-3 text-right font-semibold text-text">{formatPontos(r.pontos)}</td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-1.5">
                       <button

@@ -24,7 +24,7 @@ import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmarPerigoModal } from "@/components/ui/ConfirmarPerigoModal";
 import { logAudit } from "@/lib/audit";
-import { formatDataTreino, formatDateTime } from "@/lib/format";
+import { formatDataTreino, formatDateTime, formatPontos } from "@/lib/format";
 import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { EstornarModal } from "./EstornarModal";
@@ -354,9 +354,9 @@ export function ExtratoTab() {
                     <td className="px-3 py-3 text-text-light">{formatDataTreino(l.dataTreino, l.dataAproximada)}</td>
                     <td className="px-3 py-3 text-right font-semibold text-text">
                       {l.estornado ? (
-                        <span className="text-text-muted line-through">+{l.pontos}</span>
+                        <span className="text-text-muted line-through">+{formatPontos(l.pontos)}</span>
                       ) : (
-                        <span className="text-success">+{l.pontos}</span>
+                        <span className="text-success">+{formatPontos(l.pontos)}</span>
                       )}
                     </td>
                     <td className="px-3 py-3">
@@ -410,7 +410,7 @@ export function ExtratoTab() {
         descricao={
           alvoExclusao && alvoExclusao.length > 1
             ? `Essa ação apaga permanentemente ${alvoExclusao.length} lançamentos selecionados e não pode ser desfeita.`
-            : `Essa ação apaga permanentemente o lançamento de ${alvoExclusao?.[0]?.atletaNome} (${alvoExclusao?.[0]?.regraDesc}, +${alvoExclusao?.[0]?.pontos} pts) e não pode ser desfeita.`
+            : `Essa ação apaga permanentemente o lançamento de ${alvoExclusao?.[0]?.atletaNome} (${alvoExclusao?.[0]?.regraDesc}, +${formatPontos(alvoExclusao?.[0]?.pontos ?? 0)} pts) e não pode ser desfeita.`
         }
         palavraChave="EXCLUIR"
         onClose={() => setAlvoExclusao(null)}

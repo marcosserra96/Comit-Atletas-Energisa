@@ -2,6 +2,7 @@ import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/render
 import type { Modalidade, BrandingDoc, AlertaCriterio } from "@/lib/types";
 import { atletaEstaEmAlerta, type ResumoAtletaMensal } from "@/lib/rankingMensal";
 import { calcularPosicoesRanking } from "@/lib/rankingPosition";
+import { formatNumero, formatPontos } from "@/lib/format";
 
 /* ═══════════════════════════════════════════════════════════
    Report por Time — Estilo Painel Esportivo (fundo escuro)
@@ -153,10 +154,6 @@ const s = StyleSheet.create({
   destaqueValue: { fontSize: 6.5, fontFamily: "Helvetica-Bold", textAlign: "right" },
 });
 
-function fmt(v: number, decimals = 0) {
-  return v.toLocaleString("pt-BR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-}
-
 function TeamPage({
   lista,
   modalidade,
@@ -235,22 +232,22 @@ function TeamPage({
       <View style={s.kpiRow}>
         <View style={s.kpiCard}>
           <Text style={s.kpiLabel}>Pontos Totais do Mês</Text>
-          <Text style={[s.kpiValue, { color: cor }]}>{fmt(totalPontos)}</Text>
+          <Text style={[s.kpiValue, { color: cor }]}>{formatNumero(totalPontos)}</Text>
           <Text style={s.kpiUnit}>pts</Text>
         </View>
         <View style={s.kpiCard}>
           <Text style={s.kpiLabel}>Quantidade de Treinos</Text>
-          <Text style={[s.kpiValue, { color: cor }]}>{fmt(totalTreinos)}</Text>
+          <Text style={[s.kpiValue, { color: cor }]}>{formatNumero(totalTreinos)}</Text>
           <Text style={s.kpiUnit}>treinos</Text>
         </View>
         <View style={s.kpiCard}>
           <Text style={s.kpiLabel}>KM Acumulados</Text>
-          <Text style={[s.kpiValue, { color: cor }]}>{fmt(totalKm, 2)}</Text>
+          <Text style={[s.kpiValue, { color: cor }]}>{formatNumero(totalKm)}</Text>
           <Text style={s.kpiUnit}>km</Text>
         </View>
         <View style={s.kpiCard}>
           <Text style={s.kpiLabel}>Atletas no Ranking</Text>
-          <Text style={[s.kpiValue, { color: cor }]}>{fmt(totalAtletas)}</Text>
+          <Text style={[s.kpiValue, { color: cor }]}>{formatNumero(totalAtletas)}</Text>
           <Text style={s.kpiUnit}>atletas</Text>
         </View>
       </View>
@@ -283,7 +280,7 @@ function TeamPage({
                   <Text style={s.podiumName}>{a.nome}</Text>
                   <View style={s.podiumStats}>
                     <View style={{ alignItems: "center" }}>
-                      <Text style={s.podiumStatValue}>{a.pontosMes}</Text>
+                      <Text style={s.podiumStatValue}>{formatPontos(a.pontosMes)}</Text>
                       <Text style={s.podiumStat}>pts</Text>
                     </View>
                     <View style={{ alignItems: "center" }}>
@@ -292,7 +289,7 @@ function TeamPage({
                     </View>
                   </View>
                   <Text style={{ fontSize: 5.5, color: TEXT_DIM, marginTop: 2 }}>
-                    {fmt(a.kmMes, 2)} km
+                    {formatNumero(a.kmMes)} km
                   </Text>
                 </View>
               );
@@ -308,7 +305,7 @@ function TeamPage({
                 <View key={a.id} style={s.destaqueItem}>
                   <Text style={[s.destaquePos, { color: medalColors[i]?.text ?? TEXT_DIM }]}>{i + 1}º</Text>
                   <Text style={s.destaqueName}>{a.nome}</Text>
-                  <Text style={s.destaqueValue}>{fmt(a.kmMes, 2)} km</Text>
+                  <Text style={s.destaqueValue}>{formatNumero(a.kmMes)} km</Text>
                 </View>
               ))}
             </View>
@@ -332,7 +329,7 @@ function TeamPage({
                     {posicaoPorId.get(a.id) ?? i + 1}º
                   </Text>
                   <Text style={s.destaqueName}>{a.nome}</Text>
-                  <Text style={s.destaqueValue}>{a.pontosMes} pts</Text>
+                  <Text style={s.destaqueValue}>{formatPontos(a.pontosMes)} pts</Text>
                 </View>
               ))}
             </View>
@@ -364,9 +361,9 @@ function TeamPage({
                       {pos}º
                     </Text>
                     <Text style={[s.tableCell, { flex: 1, color: TEXT_W }]}>{a.nome}</Text>
-                    <Text style={[s.tableCell, { width: 36, textAlign: "right", fontFamily: "Helvetica-Bold", color: TEXT_W }]}>{a.pontosMes}</Text>
+                    <Text style={[s.tableCell, { width: 36, textAlign: "right", fontFamily: "Helvetica-Bold", color: TEXT_W }]}>{formatPontos(a.pontosMes)}</Text>
                     <Text style={[s.tableCell, { width: 36, textAlign: "right", color: TEXT_DIM }]}>{a.treinosMes}</Text>
-                    <Text style={[s.tableCell, { width: 42, textAlign: "right", color: TEXT_DIM }]}>{fmt(a.kmMes, 2)}</Text>
+                    <Text style={[s.tableCell, { width: 42, textAlign: "right", color: TEXT_DIM }]}>{formatNumero(a.kmMes)}</Text>
                   </View>
                 );
               })}
@@ -392,9 +389,9 @@ function TeamPage({
                         {pos}º
                       </Text>
                       <Text style={[s.tableCell, { flex: 1, color: TEXT_W }]}>{a.nome}</Text>
-                      <Text style={[s.tableCell, { width: 36, textAlign: "right", fontFamily: "Helvetica-Bold", color: TEXT_W }]}>{a.pontosMes}</Text>
+                      <Text style={[s.tableCell, { width: 36, textAlign: "right", fontFamily: "Helvetica-Bold", color: TEXT_W }]}>{formatPontos(a.pontosMes)}</Text>
                       <Text style={[s.tableCell, { width: 36, textAlign: "right", color: TEXT_DIM }]}>{a.treinosMes}</Text>
-                      <Text style={[s.tableCell, { width: 42, textAlign: "right", color: TEXT_DIM }]}>{fmt(a.kmMes, 2)}</Text>
+                      <Text style={[s.tableCell, { width: 42, textAlign: "right", color: TEXT_DIM }]}>{formatNumero(a.kmMes)}</Text>
                     </View>
                   );
                 })}

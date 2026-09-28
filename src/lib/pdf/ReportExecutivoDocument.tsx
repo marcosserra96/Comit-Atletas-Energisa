@@ -3,7 +3,7 @@ import { Document, Page, View, Text, Image, Svg, Circle, Rect, StyleSheet } from
 import type { EventoDoc } from "@/lib/types";
 import type { EstatisticasDashboard, LoteResumo } from "@/lib/dashboardStats";
 import type { BrandingDoc } from "@/lib/types";
-import { formatShortDate } from "@/lib/format";
+import { formatKm, formatNumero, formatPontos, formatShortDate } from "@/lib/format";
 import { calcularPosicoesRanking } from "@/lib/rankingPosition";
 
 const NAVY = "#07192d";
@@ -302,7 +302,7 @@ function Podio({ titulo, atletas, cor }: { titulo: string; atletas: { nome: stri
               <Text style={{ fontSize: 6.5, fontFamily: "Helvetica-Bold", color: "#fff" }}>{posicao}</Text>
             </View>
             <Text style={{ fontSize: 8.5, flex: 1, color: TEXT }}>{a.nome}</Text>
-            <Text style={{ fontSize: 8.5, fontFamily: "Helvetica-Bold", color: cor }}>{a.pontuacaoTotal} pts</Text>
+            <Text style={{ fontSize: 8.5, fontFamily: "Helvetica-Bold", color: cor }}>{formatPontos(a.pontuacaoTotal)} pts</Text>
           </View>
           );
         })
@@ -330,7 +330,7 @@ function ModalidadeResumo({
         <MiniStat label="Atletas" value={String(stats.total)} />
         <MiniStat label="Participações" value={String(stats.participacoes)} />
         <MiniStat label="Pontos" value={String(stats.pontos)} />
-        <MiniStat label="KM total" value={`${stats.km.toFixed(1)} km`} />
+        <MiniStat label="KM total" value={formatKm(stats.km)} />
       </View>
       <Text style={{ fontSize: 7.5, color: TEXT_LIGHT, marginTop: 6 }}>
         Top atleta: <Text style={{ fontFamily: "Helvetica-Bold", color: TEXT }}>{stats.top?.nome ?? "—"}</Text>
@@ -395,7 +395,7 @@ export function ReportExecutivoDocument({
           <View style={{ flex: 1, flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             <KpiCard label="Atletas ativos" value={String(stats.ativosCount)} cor={branding.primary} />
             <KpiCard label="Participações" value={String(stats.participacoesTotal)} cor={branding.accent} />
-            <KpiCard label="KM percorridos" value={`${stats.kmTotal.toFixed(1)} km`} cor={branding.secondary} />
+            <KpiCard label="KM percorridos" value={formatKm(stats.kmTotal)} cor={branding.secondary} />
             <KpiCard label="Custo realizado" value={formatBRL(stats.investimentoTotal)} cor="#8b5cf6" />
           </View>
         </View>
@@ -477,7 +477,7 @@ export function ReportExecutivoDocument({
               descricao: l.descricao,
               atletas: String(l.atletasCount),
               pontos: String(l.pontos),
-              km: l.km > 0 ? l.km.toFixed(1) : "—",
+              km: l.km > 0 ? formatNumero(l.km) : "—",
             }))}
           />
         </View>
@@ -505,8 +505,8 @@ export function ReportExecutivoDocument({
             linhas={[
               { item: "Atletas", bike: String(stats.bike.total), corrida: String(stats.corrida.total) },
               { item: "Engajamento", bike: `${stats.bike.engajamento}%`, corrida: `${stats.corrida.engajamento}%` },
-              { item: "KM total", bike: `${stats.bike.km.toFixed(1)} km`, corrida: `${stats.corrida.km.toFixed(1)} km` },
-              { item: "Pontos", bike: String(stats.bike.pontos), corrida: String(stats.corrida.pontos) },
+              { item: "KM total", bike: formatKm(stats.bike.km), corrida: formatKm(stats.corrida.km) },
+              { item: "Pontos", bike: formatPontos(stats.bike.pontos), corrida: formatPontos(stats.corrida.pontos) },
             ]}
           />
         </View>

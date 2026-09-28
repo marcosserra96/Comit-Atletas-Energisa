@@ -23,7 +23,7 @@ import {
   type GrupoDuplicado,
 } from "@/lib/duplicados";
 import type { AtletaDoc } from "@/lib/types";
-import { plural } from "@/lib/format";
+import { formatPontos, plural } from "@/lib/format";
 
 /** Escolhe um "candidato natural" a registro correto: quem tem login, depois quem tem mais pontos. */
 function candidatoPadrao(membros: AtletaDoc[]): string {
@@ -221,7 +221,7 @@ export function ConsistenciaTab() {
                             {equipeLabel[membro.equipe]}
                           </Badge>
                           <span className="text-xs font-semibold text-text-muted">
-                            {membro.pontuacaoTotal} pts
+                            {formatPontos(membro.pontuacaoTotal)} pts
                           </span>
                         </div>
                       </button>

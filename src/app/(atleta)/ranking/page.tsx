@@ -17,7 +17,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
-import { formatShortDate, formatDecimal, formatKm, formatRelativeTime, plural } from "@/lib/format";
+import { formatKm, formatNumero, formatPontos, formatRelativeTime, formatShortDate, plural } from "@/lib/format";
 import { normalizarRankingPeriods } from "@/lib/rankingPeriods";
 import { calcularPosicoesRanking } from "@/lib/rankingPosition";
 import {
@@ -78,7 +78,7 @@ function Place({ atleta }: { atleta?: RankedAtleta }) {
               {atleta.nome}
             </span>
             <span className="text-xs font-extrabold sm:text-sm" style={{ color }}>
-              {atleta.pontuacaoTotal} pts
+              {formatPontos(atleta.pontuacaoTotal)} pts
             </span>
             {atleta.treinos !== undefined ? (
               <span className="mt-0.5 text-xs text-text-muted">
@@ -467,7 +467,7 @@ export default function RankingPage() {
               >
                 <div>
                   <strong className="block text-sm tabular-nums text-text">
-                    {myRankAtleta.pontuacaoTotal}
+                    {formatPontos(myRankAtleta.pontuacaoTotal)}
                   </strong>
                   <span className="text-xs text-text-muted">pontos</span>
                 </div>
@@ -483,7 +483,7 @@ export default function RankingPage() {
                     </div>
                     <div>
                       <strong className="block text-sm tabular-nums text-text">
-                        {formatDecimal(myRankAtleta.km ?? 0)}
+                        {formatNumero(myRankAtleta.km ?? 0)}
                       </strong>
                       <span className="text-xs text-text-muted">km</span>
                     </div>
@@ -576,7 +576,7 @@ export default function RankingPage() {
                           </div>
                           <div className="px-2">
                             <strong className="block text-sm tabular-nums text-text">
-                              {atleta.km === undefined ? "—" : formatDecimal(atleta.km)}
+                              {atleta.km === undefined ? "—" : formatNumero(atleta.km)}
                             </strong>
                             <span className="mt-0.5 block text-xs text-text-muted sm:hidden">
                               km
@@ -584,7 +584,7 @@ export default function RankingPage() {
                           </div>
                           <div className="px-2">
                             <strong className="block text-sm tabular-nums text-text sm:text-base">
-                              {atleta.pontuacaoTotal}
+                              {formatPontos(atleta.pontuacaoTotal)}
                             </strong>
                             <span className="mt-0.5 block text-xs text-text-muted sm:hidden">
                               pontos

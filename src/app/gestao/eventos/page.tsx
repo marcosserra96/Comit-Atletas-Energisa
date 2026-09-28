@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmActionModal } from "@/components/ui/ConfirmActionModal";
 import { NotAuthorized } from "@/components/ui/NotAuthorized";
-import { formatShortDate, plural } from "@/lib/format";
+import { formatKm, formatShortDate, plural } from "@/lib/format";
 import { exportToExcel } from "@/lib/excel";
 import { temPermissao } from "@/lib/permissoes";
 import { EventoModal } from "./EventoModal";
@@ -73,7 +73,7 @@ function EventoCard({
       <div className="flex flex-wrap items-center gap-2">
         <Badge tone="primary">{modalidadeDoEvento[evento.modalidade]}</Badge>
         <Badge tone="neutral">{formatShortDate(evento.data)}</Badge>
-        {evento.km ? <Badge tone="neutral">{evento.km} km</Badge> : null}
+        {evento.km ? <Badge tone="neutral">{formatKm(evento.km)}</Badge> : null}
       </div>
       <button
         type="button"

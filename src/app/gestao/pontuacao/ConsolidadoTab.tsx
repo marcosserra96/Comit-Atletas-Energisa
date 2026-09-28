@@ -13,7 +13,7 @@ import { exportToExcel } from "@/lib/excel";
 import { cn } from "@/lib/cn";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import type { AtletaDoc, HistoricoMensalDoc, HistoricoPontoDoc } from "@/lib/types";
-import { formatKm } from "@/lib/format";
+import { formatKm, formatPontos } from "@/lib/format";
 
 const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const TODOS_MESES = new Set(Array.from({ length: 12 }, (_, i) => i + 1));
@@ -32,7 +32,7 @@ function acumuladoVazio(): Acumulado {
 }
 
 const ITENS: { chave: keyof Acumulado; label: string; formatar: (v: number) => string }[] = [
-  { chave: "pontos", label: "Pontuação", formatar: (v) => String(v) },
+  { chave: "pontos", label: "Pontuação", formatar: (v) => formatPontos(v) },
   { chave: "treinos", label: "Treinos", formatar: (v) => String(v) },
   { chave: "km", label: "Quilometragem", formatar: (v) => formatKm(v) },
 ];

@@ -26,7 +26,7 @@ import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { equipeLabel, isWaitlisted, ehMembroDoElenco } from "@/lib/labels";
-import { formatShortDate, formatKm } from "@/lib/format";
+import { formatKm, formatPontos, formatShortDate } from "@/lib/format";
 import { exportToExcel } from "@/lib/excel";
 import { cn } from "@/lib/cn";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
@@ -279,7 +279,7 @@ export function VerAtletasTab() {
                 <Badge tone={isWaitlisted(a.equipe) ? "warning" : a.ativo ? "success" : "neutral"}>
                   {isWaitlisted(a.equipe) ? "Na fila" : a.ativo ? "Ativo" : "Inativo"}
                 </Badge>
-                <Badge tone="primary">{a.pontuacaoTotal} pts</Badge>
+                <Badge tone="primary">{formatPontos(a.pontuacaoTotal)} pts</Badge>
                 {!a.authUid && (
                   <Badge tone="neutral">
                     <LinkIcon className="size-3" />
@@ -326,8 +326,8 @@ export function VerAtletasTab() {
                       <p className="text-xs text-text-light">{a.email ?? "—"}</p>
                     </td>
                     <td className="px-3.5 py-2.5 text-text-light">{equipeLabel[a.equipe]}</td>
-                    <td className="px-3.5 py-2.5 text-text-light">{a.pontuacaoTotal}</td>
-                    <td className="px-3.5 py-2.5 text-text-light">{resumo?.km ?? 0} km</td>
+                    <td className="px-3.5 py-2.5 text-text-light">{formatPontos(a.pontuacaoTotal)}</td>
+                    <td className="px-3.5 py-2.5 text-text-light">{formatKm(resumo?.km ?? 0)}</td>
                     <td className="px-3.5 py-2.5 text-text-light">{resumo?.eventos ?? 0}</td>
                     <td className="px-3.5 py-2.5 text-text-light">
                       {resumo?.ultimo ? formatShortDate(resumo.ultimo) : "—"}

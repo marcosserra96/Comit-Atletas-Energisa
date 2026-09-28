@@ -24,7 +24,7 @@ import { Select } from "@/components/ui/Select";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { formatShortDate, plural } from "@/lib/format";
+import { formatPontos, formatShortDate, plural } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
@@ -596,7 +596,7 @@ export function LancarPontosTab({
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-semibold text-text">{a.nome}</p>
                   <span className="shrink-0 text-sm font-bold tabular-nums text-text">
-                    {isFalta ? "Falta" : `${pontosDoAtleta(a.id)} pts`}
+                    {isFalta ? "Falta" : `${formatPontos(pontosDoAtleta(a.id))} pts`}
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -619,7 +619,7 @@ export function LancarPontosTab({
                           className="size-5 shrink-0 rounded border-border accent-primary"
                         />
                         <span>
-                          {r.descricao} <span className="text-text-light">· {r.pontos} pts</span>
+                          {r.descricao} <span className="text-text-light">· {formatPontos(r.pontos)} pts</span>
                         </span>
                       </label>
                     );
@@ -687,7 +687,7 @@ export function LancarPontosTab({
                   <th key={r.id} className="px-3 py-3 text-center font-semibold">
                     {r.descricao}
                     <span className="block font-normal normal-case text-text-muted">
-                      {r.pontos} pts
+                      {formatPontos(r.pontos)} pts
                     </span>
                   </th>
                 ))}

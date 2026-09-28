@@ -31,7 +31,7 @@ import { SkeletonCard } from "@/components/ui/Skeleton";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Select } from "@/components/ui/Select";
-import { formatDataTreino, plural } from "@/lib/format";
+import { formatDataTreino, formatKm, formatNumero, formatPontos, plural } from "@/lib/format";
 import {
   calcularDesempenhoAtleta,
   obterInicioPeriodo,
@@ -50,13 +50,6 @@ const tipoLabel: Record<TipoLancamento, string> = {
 
 type MetricaVolume = "km" | "pontos";
 type FiltroTipo = "todos" | TipoLancamento;
-
-function formatarNumero(valor: number, casas = 0) {
-  return new Intl.NumberFormat("pt-BR", {
-    minimumFractionDigits: casas,
-    maximumFractionDigits: casas,
-  }).format(valor);
-}
 
 function nomeMesCapitalizado(valor: string) {
   return valor.charAt(0).toUpperCase() + valor.slice(1);
@@ -142,7 +135,7 @@ function BarraCriterio({
         </span>
         <span className={pontos < 0 ? "shrink-0 font-bold text-danger" : "shrink-0 font-bold text-success"}>
           {pontos > 0 ? "+" : ""}
-          {pontos} pts
+          {formatPontos(pontos)} pts
         </span>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-bg-inset">
@@ -300,14 +293,14 @@ export default function DesempenhoPage() {
             />
             <MetricCard
               label="KM registrados"
-              value={formatarNumero(analise.totalKm, 1)}
+              value={formatNumero(analise.totalKm)}
               icon={Map}
               iconColor="var(--color-primary)"
               subtitle={analise.totalParticipacoes + " participações"}
             />
             <MetricCard
               label="Pontos"
-              value={formatarNumero(analise.totalPontos)}
+              value={formatNumero(analise.totalPontos)}
               icon={Trophy}
               iconColor="var(--color-accent)"
               subtitle="no período selecionado"
@@ -315,13 +308,13 @@ export default function DesempenhoPage() {
             <div className={mostrarAnalisesExtras ? "contents" : "hidden sm:contents"}>
               <MetricCard
               label="Média mensal"
-              value={formatarNumero(analise.mediaTreinosMes, 1)}
+              value={formatNumero(analise.mediaTreinosMes)}
               icon={Gauge}
               subtitle="treinos por mês"
             />
             <MetricCard
               label="Média por treino"
-              value={formatarNumero(analise.mediaKmTreino, 1) + " km"}
+              value={formatKm(analise.mediaKmTreino)}
               icon={Target}
               subtitle="considerando treinos com e sem KM"
             />
@@ -457,7 +450,7 @@ export default function DesempenhoPage() {
                     : "var(--color-accent)"
                 }
                 formatarValor={(valor) =>
-                  metricaVolume === "km" ? formatarNumero(valor, 1) : formatarNumero(valor)
+                  formatNumero(valor)
                 }
                 vazio={
                   metricaVolume === "km"
@@ -593,7 +586,7 @@ export default function DesempenhoPage() {
                           </td>
                           <td className="px-3 py-4 text-right text-text-light">
                             {lancamento.kmPercorrido
-                              ? formatarNumero(lancamento.kmPercorrido, 1)
+                              ? formatNumero(lancamento.kmPercorrido)
                               : "—"}
                           </td>
                           <td className="px-5 py-4 text-right font-bold">
@@ -607,7 +600,7 @@ export default function DesempenhoPage() {
                               }
                             >
                               {lancamento.pontos > 0 ? "+" : ""}
-                              {lancamento.pontos}
+                              {formatPontos(lancamento.pontos)}
                             </span>
                           </td>
                         </tr>
@@ -657,7 +650,7 @@ export default function DesempenhoPage() {
                           }
                         >
                           {lancamento.pontos > 0 ? "+" : ""}
-                          {lancamento.pontos} pt
+                          {formatPontos(lancamento.pontos)} pts
                         </span>
                       </div>
                       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -665,7 +658,7 @@ export default function DesempenhoPage() {
                         {lancamento.estornado && <Badge tone="danger">Estornado</Badge>}
                         {lancamento.kmPercorrido ? (
                           <Badge tone="primary">
-                            {formatarNumero(lancamento.kmPercorrido, 1)} km
+                            {formatNumero(lancamento.kmPercorrido)} km
                           </Badge>
                         ) : null}
                         <span className="ml-auto text-xs text-text-light">
