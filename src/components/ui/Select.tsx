@@ -80,6 +80,8 @@ interface SelectProps {
   className?: string;
   /** Mostra um campo de busca no topo da lista — útil quando há muitas opções. */
   searchable?: boolean;
+  /** Vai para o botão, para associar um `<label htmlFor>`. */
+  id?: string;
 }
 
 export function Select({
@@ -90,6 +92,7 @@ export function Select({
   disabled,
   className,
   searchable,
+  id,
 }: SelectProps) {
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
@@ -175,6 +178,7 @@ export function Select({
   return (
     <div ref={rootRef} className="relative">
       <button
+        id={id}
         type="button"
         disabled={disabled}
         onClick={() => (open ? setOpen(false) : openList())}

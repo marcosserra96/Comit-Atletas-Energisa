@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { collection, deleteDoc, doc, onSnapshot, orderBy, query } from "firebase/firestore";
-import { Newspaper, Pin, Plus, Trash2 } from "lucide-react";
+import { CalendarClock, Newspaper, Pencil, Pin, Plus, Trash2 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
@@ -12,16 +12,82 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmActionModal } from "@/components/ui/ConfirmActionModal";
 import { NotAuthorized } from "@/components/ui/NotAuthorized";
-import { formatRelativeTime } from "@/lib/format";
+import { formatRelativeTime, formatShortDate, plural } from "@/lib/format";
+import { noticiaVisivel } from "@/lib/noticias";
 import { temPermissao } from "@/lib/permissoes";
-import { NovaNoticiaModal } from "./NovaNoticiaModal";
+import { NoticiaModal } from "./NoticiaModal";
 import type { NoticiaDoc } from "@/lib/types";
+
+const botaoIcone =
+  "flex size-11 shrink-0 items-center justify-center rounded-[var(--radius)] text-text-muted transition-colors";
+
+function NoticiaItem({
+  noticia,
+  noAr,
+  onEditar,
+  onRemover,
+}: {
+  noticia: NoticiaDoc;
+  noAr: boolean;
+  onEditar: () => void;
+  onRemover: () => void;
+}) {
+  return (
+    <Card className="flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <p className="font-semibold text-text">{noticia.titulo}</p>
+        <p className="mt-1 line-clamp-2 text-sm text-text-light">{noticia.resumo}</p>
+        <div className="mt-2.5 flex flex-wrap items-center gap-2">
+          {noticia.fixado && noAr && (
+            <Badge tone="warning">
+              <Pin className="size-3" />
+              Fixada
+            </Badge>
+          )}
+          {noticia.visivelAte && (
+            <Badge tone={noAr ? "primary" : "neutral"}>
+              <CalendarClock className="size-3" />
+              {noAr
+                ? `No ar até ${formatShortDate(noticia.visivelAte)}`
+                : `Ficou no ar até ${formatShortDate(noticia.visivelAte)}`}
+            </Badge>
+          )}
+          <span className="text-xs text-text-muted">
+            {noticia.autorNome} · {formatRelativeTime(noticia.criadoEm)}
+          </span>
+        </div>
+      </div>
+      <div className="-mr-2 -mt-2 flex shrink-0">
+        <button
+          type="button"
+          onClick={onEditar}
+          aria-label={`Editar “${noticia.titulo}”`}
+          className={`${botaoIcone} hover:bg-primary/10 hover:text-primary`}
+        >
+          <Pencil className="size-4" />
+        </button>
+        <button
+          type="button"
+          onClick={onRemover}
+          aria-label={`Remover “${noticia.titulo}”`}
+          className={`${botaoIcone} hover:bg-danger/10 hover:text-danger`}
+        >
+          <Trash2 className="size-4" />
+        </button>
+      </div>
+    </Card>
+  );
+}
 
 export default function NoticiasPage() {
   const { usuario } = useActiveSession();
   const { show } = useToast();
   const [noticias, setNoticias] = useState<NoticiaDoc[] | null>(null);
-  const [novaOpen, setNovaOpen] = useState(false);
+  const [formulario, setFormulario] = useState<{ aberto: boolean; noticia: NoticiaDoc | null; versao: number }>({
+    aberto: false,
+    noticia: null,
+    versao: 0,
+  });
   const [removendo, setRemovendo] = useState<NoticiaDoc | null>(null);
 
   useEffect(() => {
@@ -34,6 +100,20 @@ export default function NoticiasPage() {
     );
     return unsubscribe;
   }, []);
+
+  const { noAr, encerradas } = useMemo(() => {
+    const lista = noticias ?? [];
+    const visiveis = lista.filter((n) => noticiaVisivel(n));
+    return {
+      // Fixadas primeiro, como o atleta vê.
+      noAr: [...visiveis.filter((n) => n.fixado), ...visiveis.filter((n) => !n.fixado)],
+      encerradas: lista.filter((n) => !noticiaVisivel(n)),
+    };
+  }, [noticias]);
+
+  function abrirFormulario(noticia: NoticiaDoc | null) {
+    setFormulario((atual) => ({ aberto: true, noticia, versao: atual.versao + 1 }));
+  }
 
   async function handleRemover() {
     if (!removendo) return;
@@ -52,14 +132,17 @@ export default function NoticiasPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-text">Notícias</h1>
           <p className="text-sm text-text-light">
-            {noticias === null ? "Carregando…" : `${noticias.length} publicações.`}
+            {noticias === null
+              ? "Carregando…"
+              : `${plural(noAr.length, "notícia no ar", "notícias no ar")}` +
+                (encerradas.length > 0 ? ` · ${plural(encerradas.length, "encerrada")}` : "")}
           </p>
         </div>
-        <Button onClick={() => setNovaOpen(true)}>
+        <Button onClick={() => abrirFormulario(null)}>
           <Plus className="size-4" />
           Publicar notícia
         </Button>
@@ -76,37 +159,58 @@ export default function NoticiasPage() {
           />
         </Card>
       ) : (
-        <div className="flex flex-col gap-3">
-          {noticias.map((n) => (
-            <Card key={n.id} className="flex items-start justify-between gap-3">
+        <>
+          <section className="flex flex-col gap-3" aria-labelledby="noticias-no-ar">
+            <h2 id="noticias-no-ar" className="text-xs font-bold uppercase tracking-wide text-text-muted">
+              No ar para os atletas
+            </h2>
+            {noAr.length === 0 ? (
+              <Card className="text-sm text-text-light">
+                Nenhuma notícia no ar agora. Os atletas não veem notícias no Início.
+              </Card>
+            ) : (
+              noAr.map((n) => (
+                <NoticiaItem
+                  key={n.id}
+                  noticia={n}
+                  noAr
+                  onEditar={() => abrirFormulario(n)}
+                  onRemover={() => setRemovendo(n)}
+                />
+              ))
+            )}
+          </section>
+
+          {encerradas.length > 0 && (
+            <section className="flex flex-col gap-3" aria-labelledby="noticias-encerradas">
               <div>
-                <div className="mb-1 flex items-center gap-2">
-                  {n.fixado && (
-                    <Badge tone="warning">
-                      <Pin className="size-3" />
-                      Fixado
-                    </Badge>
-                  )}
-                  <p className="font-semibold text-text">{n.titulo}</p>
-                </div>
-                <p className="text-sm text-text-light">{n.resumo}</p>
-                <p className="mt-1.5 text-xs text-text-muted">
-                  {n.autorNome} · {formatRelativeTime(n.criadoEm)}
+                <h2 id="noticias-encerradas" className="text-xs font-bold uppercase tracking-wide text-text-muted">
+                  Encerradas
+                </h2>
+                <p className="mt-0.5 text-xs text-text-muted">
+                  Só a gestão vê. Para voltar a publicar, edite e mude a data.
                 </p>
               </div>
-              <button
-                onClick={() => setRemovendo(n)}
-                aria-label="Remover"
-                className="shrink-0 rounded-[var(--radius)] p-1.5 text-text-muted hover:bg-danger/10 hover:text-danger"
-              >
-                <Trash2 className="size-4" />
-              </button>
-            </Card>
-          ))}
-        </div>
+              {encerradas.map((n) => (
+                <NoticiaItem
+                  key={n.id}
+                  noticia={n}
+                  noAr={false}
+                  onEditar={() => abrirFormulario(n)}
+                  onRemover={() => setRemovendo(n)}
+                />
+              ))}
+            </section>
+          )}
+        </>
       )}
 
-      <NovaNoticiaModal open={novaOpen} onClose={() => setNovaOpen(false)} />
+      <NoticiaModal
+        key={formulario.versao}
+        open={formulario.aberto}
+        noticia={formulario.noticia}
+        onClose={() => setFormulario((atual) => ({ ...atual, aberto: false }))}
+      />
       <ConfirmActionModal
         open={!!removendo}
         title="Excluir notícia"
