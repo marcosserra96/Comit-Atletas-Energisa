@@ -153,16 +153,21 @@ export function HistoricoMensalTab() {
     (atletaId: string): ValoresHistoricos => {
       const editado = valores[atletaId];
       if (editado) return editado;
-      const item = existentes.get(atletaId);
-      return item
-        ? {
-            pontos: item.pontos ? String(item.pontos) : "",
-            km: item.km ? String(item.km) : "",
-            treinos: item.treinos ? String(item.treinos) : "",
-          }
-        : vazio();
+
+      const complemento = existentes.get(atletaId);
+      const detalhado = sobreposicoes.get(atletaId);
+
+      const pontos = (detalhado?.pontos ?? 0) + (complemento?.pontos ?? 0);
+      const km = (detalhado?.km ?? 0) + (complemento?.km ?? 0);
+      const treinos = (detalhado?.treinos ?? 0) + (complemento?.treinos ?? 0);
+
+      return {
+        pontos: pontos ? String(pontos) : "",
+        km: km ? String(km) : "",
+        treinos: treinos ? String(treinos) : "",
+      };
     },
-    [existentes, valores],
+    [existentes, sobreposicoes, valores],
   );
 
   const totais = useMemo(() => {
@@ -218,18 +223,25 @@ export function HistoricoMensalTab() {
 
       for (const atleta of atletas) {
         const atual = existentes.get(atleta.id);
+        const detalhado = sobreposicoes.get(atleta.id);
         const v = valoresDoAtleta(atleta.id);
-        const pontos = numero(v.pontos);
-        const km = numero(v.km);
-        const treinos = Math.floor(numero(v.treinos));
-        const temDados = pontos > 0 || km > 0 || treinos > 0;
+
+        const totalPontos = numero(v.pontos);
+        const totalKm = numero(v.km);
+        const totalTreinos = Math.floor(numero(v.treinos));
+
+        const pontos = Math.max(0, totalPontos - (detalhado?.pontos ?? 0));
+        const km = Math.max(0, totalKm - (detalhado?.km ?? 0));
+        const treinos = Math.max(0, totalTreinos - (detalhado?.treinos ?? 0));
+
+        const temComplemento = pontos > 0 || km > 0 || treinos > 0;
         const docId = `${competencia}_${atleta.id}`;
         const ref = doc(db, "historico_mensal", docId);
 
-        if (!temDados && !atual) continue;
+        if (!temComplemento && !atual) continue;
 
         const deltaPontos = pontos - (atual?.pontos ?? 0);
-        if (!temDados && atual) {
+        if (!temComplemento && atual) {
           batch.delete(ref);
         } else {
           batch.set(
@@ -411,7 +423,7 @@ export function HistoricoMensalTab() {
           <div>
             <h2 className="font-bold text-text">Histórico mensal consolidado</h2>
             <p className="text-sm text-text-light">
-              Use quando você conhece apenas os totais do mês. Esses dados entram nos totais históricos sem criar atividades fictícias.
+              Os campos já consideram os lançamentos existentes no mês. Informe o total mensal desejado e o sistema grava somente o complemento que ainda falta.
             </p>
           </div>
         </div>
@@ -468,7 +480,7 @@ export function HistoricoMensalTab() {
                 Possível duplicidade em {plural(conflitosAtivos.length, "atleta")}
               </p>
               <p className="mt-1 text-sm text-text-light">
-                Estes atletas já possuem lançamentos detalhados em {competencia}. Se os totais abaixo incluírem essas mesmas atividades, pontos, KM e treinos serão somados duas vezes.
+                Estes atletas já possuem lançamentos detalhados em {competencia}. Os valores abaixo já incluem esses lançamentos; ao salvar, será gravado somente o complemento necessário.
               </p>
             </div>
           </div>
@@ -480,7 +492,7 @@ export function HistoricoMensalTab() {
               className="mt-0.5 size-4 shrink-0 rounded border-border accent-primary"
             />
             <span>
-              Conferi os dados e quero salvar mesmo com a sobreposição indicada.
+              Conferi os totais exibidos e quero salvar o complemento indicado.
             </span>
           </label>
         </div>
@@ -509,7 +521,7 @@ export function HistoricoMensalTab() {
                     {sobreposicao ? (
                       <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-ranking-gold-text">
                         <AlertTriangle className="size-3.5" aria-hidden="true" />
-                        Já lançado no mês: {sobreposicao.pontos} pts · {sobreposicao.km.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km · {sobreposicao.treinos} treinos
+                        Já existente: {sobreposicao.pontos} pts · {sobreposicao.km.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km · {sobreposicao.treinos} treinos
                       </p>
                     ) : null}
                   </div>
@@ -544,7 +556,7 @@ export function HistoricoMensalTab() {
                         {sobreposicao ? (
                           <div className="mt-1 flex items-center gap-1 text-xs font-semibold text-ranking-gold-text">
                             <AlertTriangle className="size-3.5" aria-hidden="true" />
-                            Já lançado: {sobreposicao.pontos} pts · {sobreposicao.km.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km · {sobreposicao.treinos} treinos
+                            Já existente: {sobreposicao.pontos} pts · {sobreposicao.km.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km · {sobreposicao.treinos} treinos
                           </div>
                         ) : null}
                       </td>
