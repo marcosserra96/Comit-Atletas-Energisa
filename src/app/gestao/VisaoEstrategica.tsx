@@ -7,22 +7,19 @@ import { collection, getDocs, onSnapshot, orderBy, query, where } from "firebase
 import {
   Activity,
   AlertTriangle,
-  Award,
   Bike,
   CalendarClock,
   CalendarDays,
+  CheckCircle2,
+  ChevronRight,
   Clock4,
-  Crown,
-  DollarSign,
   Footprints,
   ListChecks,
-  Route,
   Sparkles,
-  TicketCheck,
-  TrendingUp,
   UserX,
-  BarChart2,
+  Users,
 } from "lucide-react";
+import { cn } from "@/lib/cn";
 import { db } from "@/lib/firebase";
 import { formatBRL, formatShortDate, formatKm, plural } from "@/lib/format";
 import { useActiveSession } from "@/lib/session/SessionProvider";
@@ -146,18 +143,57 @@ export function VisaoEstrategica() {
   );
 
   const carregando = atletas === null || lancamentos === null || despesas === null;
-  const ringCircumference = 2 * Math.PI * 40;
-  const ringOffset = ringCircumference - (stats.engajamento30d / 100) * ringCircumference;
   const ticksGrafico = calcularTicksGrafico(Math.max(...stats.seriesMensal.map((s) => s.count)));
   const tetoGrafico = ticksGrafico[ticksGrafico.length - 1];
   const mesAtualIdx = stats.seriesMensal.length - 1;
 
+  const prioridades: Prioridade[] = [
+    ...(isAdmin && (pendentes?.length ?? 0) > 0
+      ? [{
+          href: "/gestao/atletas?tab=pendentes",
+          icon: Clock4,
+          texto: plural(pendentes!.length, "solicitação de acesso", "solicitações de acesso"),
+          destaque: true,
+        }]
+      : []),
+    ...(stats.filaAguardando > 0
+      ? [{ href: "/gestao/atletas?tab=equipes", icon: Users, texto: `${stats.filaAguardando} na fila de espera` }]
+      : []),
+    ...(stats.eventosPendentesLancamento > 0
+      ? [{
+          href: "/gestao/pontuacao",
+          icon: CalendarClock,
+          texto: plural(stats.eventosPendentesLancamento, "evento sem pontos lançados", "eventos sem pontos lançados"),
+        }]
+      : []),
+    ...(stats.atletasSemAtividade > 0
+      ? [{
+          href: "/gestao/atletas?tab=ver",
+          icon: UserX,
+          texto: plural(stats.atletasSemAtividade, "atleta sem nenhuma participação", "atletas sem nenhuma participação"),
+        }]
+      : []),
+    ...(isAdmin && stats.regrasSemUso > 0
+      ? [{
+          href: "/gestao/criterios",
+          icon: ListChecks,
+          texto: plural(stats.regrasSemUso, "critério nunca usado", "critérios nunca usados"),
+        }]
+      : []),
+  ];
+
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-text">Visão estratégica</h1>
-          <p className="text-sm text-text-light">Acompanhamento do programa.</p>
+          <p className="mt-0.5 text-sm text-text-light">
+            {carregando
+              ? "Carregando o programa…"
+              : stats.ativosCount === 0
+                ? "Cadastre atletas para começar a acompanhar o programa."
+                : `${plural(stats.ativosCount, "atleta ativo", "atletas ativos")} · ${stats.engajamento30d}% engajados nos últimos 30 dias`}
+          </p>
         </div>
         {isAdmin && !carregando && (
           <ExportarRelatorioDropdown
@@ -169,404 +205,241 @@ export function VisaoEstrategica() {
         )}
       </div>
 
-      <div className="flex items-center gap-2.5 rounded-[var(--radius)] border border-border bg-bg-card px-4 py-2.5 text-sm text-text-light shadow-[var(--shadow-card)]">
-        <span
-          className="size-2 shrink-0 rounded-full"
-          style={{
-            backgroundColor: carregando
-              ? "var(--color-text-muted)"
-              : stats.ativosCount === 0
-                ? "var(--color-accent)"
-                : "var(--color-secondary)",
-            boxShadow: !carregando && stats.ativosCount > 0 ? "var(--ring-primary)" : undefined,
-          }}
-        />
-        <span>
-          {carregando
-            ? "Carregando programa…"
-            : `${stats.ativosCount} atletas ativos`}
-        </span>
-        <span className="opacity-30">·</span>
-        <span>
-          {carregando
-            ? "Aguardando dados"
-            : stats.ativosCount === 0
-              ? "Cadastre atletas para começar"
-              : `${stats.engajamento30d}% engajados nos últimos 30 dias`}
-        </span>
-      </div>
+      {/* 1. O que precisa de ação agora — vem antes dos números. */}
+      <section aria-labelledby="titulo-atencao" className={painel}>
+        <h2 id="titulo-atencao" className="flex items-center gap-2 text-base font-bold text-text">
+          <Sparkles className="size-4 text-primary" aria-hidden="true" />
+          Precisa da sua atenção
+        </h2>
+        {carregando ? (
+          <div className="mt-3 h-12 animate-pulse rounded-[var(--radius)] bg-bg-inset" />
+        ) : prioridades.length === 0 ? (
+          <p className="mt-3 flex items-center gap-2 text-sm text-text-light">
+            <CheckCircle2 className="size-4 text-success" aria-hidden="true" />
+            Tudo em ordem — nenhuma ação pendente.
+          </p>
+        ) : (
+          <ul className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {prioridades.map((item) => (
+              <li key={item.href + item.texto}>
+                <Link
+                  href={item.href}
+                  className={cn(
+                    "group flex min-h-12 items-center gap-3 rounded-[var(--radius)] border px-3 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                    item.destaque
+                      ? "border-accent/30 bg-accent-subtle hover:bg-accent/15"
+                      : "border-border bg-bg hover:bg-bg-inset",
+                  )}
+                >
+                  <item.icon
+                    className={cn("size-4 shrink-0", item.destaque ? "text-accent" : "text-text-light")}
+                    aria-hidden="true"
+                  />
+                  <span className="min-w-0 flex-1 font-medium text-text">{item.texto}</span>
+                  <ChevronRight className="size-4 shrink-0 text-text-muted transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
-      <div className="relative flex flex-wrap items-center gap-7 overflow-hidden rounded-[var(--radius-xl)] border border-border bg-bg-card p-6 shadow-[var(--shadow-card)] sm:p-7">
-        <div className="flex shrink-0 items-center gap-4.5">
-          <div className="relative size-[90px] shrink-0">
-            <svg viewBox="0 0 100 100" className="size-full -rotate-90">
-              <circle cx="50" cy="50" r="40" fill="none" stroke="var(--color-border)" strokeWidth="8" />
-              <circle
-                cx="50"
-                cy="50"
-                r="40"
-                fill="none"
-                stroke="var(--color-primary)"
-                strokeWidth="8"
-                strokeLinecap="round"
-                strokeDasharray={ringCircumference}
-                strokeDashoffset={ringOffset}
-                className="transition-[stroke-dashoffset] duration-700"
-              />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-              <strong className="text-[1.05rem] font-extrabold text-text">{stats.engajamento30d}%</strong>
-              <span className="text-[.6rem] font-semibold uppercase tracking-wide text-text-light">engajados</span>
-            </div>
-          </div>
-          <div>
-            <p className="mb-1 text-[.68rem] font-bold uppercase tracking-wide text-text-light">
-              Engajamento 30 dias
-            </p>
-            <p className="mb-1 text-sm text-text">
-              <b className="font-bold">{stats.ativosRecentesCount}</b> de{" "}
-              <b className="font-bold">{stats.ativosCount}</b> atletas ativos recentemente
-            </p>
-          </div>
-        </div>
-
-        <div className="hidden self-stretch border-l border-border sm:block" />
-
-        <div className="grid min-w-0 flex-1 grid-cols-2 gap-2.5 2xl:grid-cols-4">
-          <HeroKpi icon={TicketCheck} color="var(--color-primary)" value={String(stats.participacoesTotal)} label="Participações" />
-          <HeroKpi icon={Route} color="var(--color-accent)" value={formatKm(stats.kmTotal)} label="KM acumulado" />
-          <HeroKpi icon={DollarSign} color="var(--color-secondary)" value={formatBRL(stats.investimentoTotal)} label="Custo realizado" />
-          <HeroKpi icon={TrendingUp} color="var(--color-info)" value={formatBRL(stats.custoPorAtleta)} label="Custo / atleta" />
-        </div>
-      </div>
+      {/* 2. Números do programa — mesmo estilo para todos, sem cores competindo. */}
+      <section
+        aria-label="Números do programa"
+        className="overflow-hidden rounded-[var(--radius-lg)] border border-border shadow-[var(--shadow-card)]"
+      >
+        {/* gap-px sobre fundo de borda desenha as linhas divisórias em qualquer número de colunas. */}
+        <dl className="grid grid-cols-2 gap-px bg-border sm:grid-cols-3 lg:grid-cols-6">
+          <Numero rotulo="Engajamento" valor={`${stats.engajamento30d}%`} detalhe={`${stats.ativosRecentesCount} de ${plural(stats.ativosCount, "ativo")} em 30 dias`} barra={stats.engajamento30d} />
+          <Numero rotulo="Participações" valor={String(stats.participacoesTotal)} />
+          <Numero rotulo="Quilometragem" valor={formatKm(stats.kmTotal)} />
+          <Numero rotulo="Custo realizado" valor={formatBRL(stats.investimentoTotal)} />
+          <Numero rotulo="Custo por atleta" valor={formatBRL(stats.custoPorAtleta)} />
+          <Numero rotulo="Custo médio" valor={formatBRL(stats.custoParticipacao)} detalhe={`por participação${stats.custoKm > 0 ? ` · ${formatBRL(stats.custoKm)} por km` : ""}`} />
+        </dl>
+      </section>
 
       {!carregando && stats.analisesExecutivas.length > 0 && (
-        <div className="rounded-[var(--radius-lg)] border border-primary/20 bg-primary/[0.04] p-5 shadow-[var(--shadow-card)]">
-          <h3 className="mb-3 flex items-center gap-1.5 text-[.95rem] font-bold text-text">
-            <Sparkles className="size-[15px] text-primary" />
-            Leitura do mês
-          </h3>
-          <div className="grid grid-cols-1 gap-x-6 gap-y-2 lg:grid-cols-2">
+        <section aria-labelledby="titulo-leitura" className={painel}>
+          <h2 id="titulo-leitura" className="text-base font-bold text-text">Leitura do mês</h2>
+          <ul className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2 lg:grid-cols-2">
             {stats.analisesExecutivas.map((texto, i) => (
-              <div key={i} className="flex items-start gap-2.5">
-                <span className="mt-[7px] size-1.5 shrink-0 rounded-full bg-primary" />
-                <p className="text-sm leading-snug text-text">{texto}</p>
-              </div>
+              <li key={i} className="flex items-start gap-2.5 text-sm leading-relaxed text-text-secondary">
+                <span className="mt-2 size-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true" />
+                {texto}
+              </li>
             ))}
-          </div>
-        </div>
+          </ul>
+        </section>
       )}
 
-      <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[1fr_300px]">
-        <div className="flex min-w-0 flex-col gap-5">
-          <div className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-5 shadow-[var(--shadow-card)]">
-            <div className="mb-1 flex items-start justify-between gap-3">
-              <div>
-                <h3 className="flex items-center gap-1.5 text-[.95rem] font-bold text-text">
-                  <Activity className="size-[15px] text-primary" />
-                  Evolução mensal
-                </h3>
-                <p className="mt-0.5 text-[.8rem] text-text-light">
-                  Participações registradas por mês · toque ou passe o mouse numa barra para ver o total
-                </p>
-              </div>
-            </div>
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <section aria-labelledby="titulo-evolucao" className={cn(painel, "min-w-0")}>
+          <h2 id="titulo-evolucao" className="flex items-center gap-2 text-base font-bold text-text">
+            <Activity className="size-4 text-primary" aria-hidden="true" />
+            Evolução mensal
+          </h2>
+          <p className="mt-0.5 text-sm text-text-light">
+            Participações por mês · toque ou passe o mouse numa barra para ver o total
+          </p>
 
-            {/* Espaço extra no topo para a marca máxima do eixo e o rótulo da barra não encostarem no subtítulo. */}
-            <div className="mt-9 flex gap-2">
-              <div className="relative h-[176px] w-6 shrink-0">
-                {ticksGrafico.map((t) => (
-                  <span
-                    key={t}
-                    className="absolute right-1.5 -translate-y-1/2 text-[10px] tabular-nums text-text-muted"
-                    style={{ bottom: `${(t / tetoGrafico) * 100}%` }}
-                  >
-                    {t}
-                  </span>
-                ))}
-              </div>
-              <div className="relative h-[176px] flex-1">
-                {ticksGrafico.map((t) => (
-                  <div
-                    key={t}
-                    className="pointer-events-none absolute inset-x-0 border-t border-border"
-                    style={{ bottom: `${(t / tetoGrafico) * 100}%` }}
-                  />
-                ))}
-                <div className="relative flex h-full items-end gap-3 sm:gap-5">
-                  {stats.seriesMensal.map((s, i) => {
-                    const isAtual = i === mesAtualIdx;
-                    const pct = s.count === 0 ? 3 : Math.max(6, (s.count / tetoGrafico) * 100);
-                    return (
-                      <div
-                        key={s.label}
-                        className="group relative flex h-full flex-1 flex-col items-center justify-end"
-                        onMouseEnter={() => setMesHover(i)}
-                        onMouseLeave={() => setMesHover((atual) => (atual === i ? null : atual))}
-                      >
-                        {isAtual && (
-                          <span className="absolute -top-5 whitespace-nowrap text-xs font-extrabold tabular-nums text-text">
-                            {s.count} {s.count === 1 ? "participação" : "participações"}
-                          </span>
-                        )}
-                        {!isAtual && mesHover === i && (
-                          <div
-                            className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-text px-2.5 py-1.5 text-[11.5px] font-semibold text-bg-card shadow-lg"
-                            style={{ bottom: `calc(${pct}% + 10px)` }}
-                          >
-                            {s.label.toUpperCase()} · <span className="tabular-nums">{s.count}</span>{" "}
-                            {s.count === 1 ? "participação" : "participações"}
-                            <span className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-text" />
-                          </div>
-                        )}
+          {/* Espaço no topo para a marca máxima do eixo e o rótulo da barra não encostarem no subtítulo. */}
+          <div className="mt-9 flex gap-2">
+            <div className="relative h-[176px] w-7 shrink-0">
+              {ticksGrafico.map((t) => (
+                <span
+                  key={t}
+                  className="absolute right-1.5 -translate-y-1/2 text-xs tabular-nums text-text-muted"
+                  style={{ bottom: `${(t / tetoGrafico) * 100}%` }}
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+            <div className="relative h-[176px] flex-1">
+              {ticksGrafico.map((t) => (
+                <div
+                  key={t}
+                  className="pointer-events-none absolute inset-x-0 border-t border-border"
+                  style={{ bottom: `${(t / tetoGrafico) * 100}%` }}
+                />
+              ))}
+              <div className="relative flex h-full items-end gap-3 sm:gap-5">
+                {stats.seriesMensal.map((s, i) => {
+                  const isAtual = i === mesAtualIdx;
+                  const pct = s.count === 0 ? 3 : Math.max(6, (s.count / tetoGrafico) * 100);
+                  return (
+                    <div
+                      key={s.label}
+                      className="group relative flex h-full flex-1 flex-col items-center justify-end"
+                      onMouseEnter={() => setMesHover(i)}
+                      onMouseLeave={() => setMesHover((atual) => (atual === i ? null : atual))}
+                      onClick={() => setMesHover((atual) => (atual === i ? null : i))}
+                    >
+                      {isAtual && (
+                        <span className="absolute -top-6 right-0 whitespace-nowrap text-xs font-extrabold tabular-nums text-text">
+                          {plural(s.count, "participação", "participações")}
+                        </span>
+                      )}
+                      {!isAtual && mesHover === i && (
                         <div
-                          className="w-full max-w-6 rounded-t-[var(--radius-sm)] transition-[filter] duration-150 group-hover:brightness-110"
-                          style={{
-                            height: `${pct}%`,
-                            backgroundColor:
-                              s.count > 0
-                                ? "var(--color-primary)"
-                                : "color-mix(in srgb, var(--color-primary) 22%, var(--color-bg-card))",
-                          }}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-2 flex gap-2">
-              <div className="w-6 shrink-0" />
-              <div className="flex flex-1 gap-3 sm:gap-5">
-                {stats.seriesMensal.map((s, i) => (
-                  <span
-                    key={s.label}
-                    className={`flex-1 text-center text-[.7rem] font-semibold uppercase ${
-                      i === mesAtualIdx ? "text-primary" : "text-text-light"
-                    }`}
-                  >
-                    {s.label}
-                  </span>
-                ))}
+                          className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-text px-2.5 py-1.5 text-xs font-semibold text-bg-card shadow-lg"
+                          style={{ bottom: `calc(${pct}% + 10px)` }}
+                        >
+                          {s.label.toUpperCase()} · {plural(s.count, "participação", "participações")}
+                          <span className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-text" />
+                        </div>
+                      )}
+                      <div
+                        className="w-full max-w-7 rounded-t-[var(--radius-sm)] transition-[filter] duration-150 group-hover:brightness-110"
+                        style={{
+                          height: `${pct}%`,
+                          backgroundColor:
+                            s.count > 0
+                              ? "var(--color-primary)"
+                              : "color-mix(in srgb, var(--color-primary) 22%, var(--color-bg-card))",
+                        }}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
-
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            <ModalidadeCard
-              icon={Bike}
-              nome="Bike"
-              corVar="var(--color-primary)"
-              stats={stats.bike}
-            />
-            <ModalidadeCard
-              icon={Footprints}
-              nome="Corrida"
-              corVar="var(--color-secondary)"
-              stats={stats.corrida}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            <div className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-5 shadow-[var(--shadow-card)]">
-              <h3 className="flex items-center gap-1.5 text-[.95rem] font-bold text-text">
-                <Award className="size-[15px] text-primary" />
-                Pódio top 3
-              </h3>
-              <p className="mt-0.5 text-[.8rem] text-text-light">Por pontuação acumulada</p>
-              <div className="mt-3.5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <PodiumColumn icon={Bike} label={modalidadeLabel.bicicleta} atletas={stats.podioBike} />
-                <PodiumColumn icon={Footprints} label="Corrida" atletas={stats.podioCorrida} />
-              </div>
-            </div>
-
-            <div className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-5 shadow-[var(--shadow-card)]">
-              <h3 className="flex items-center gap-1.5 text-[.95rem] font-bold text-text">
-                <AlertTriangle className="size-[15px] text-primary" />
-                Radar de inatividade
-              </h3>
-              <p className="mt-0.5 text-[.8rem] text-text-light">Ausentes há mais de 30 dias</p>
-              <div className="mt-3.5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <InactivityColumn icon={Bike} label={modalidadeLabel.bicicleta} atletas={stats.bike.inativosList} />
-                <InactivityColumn icon={Footprints} label="Corrida" atletas={stats.corrida.inativosList} />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-5">
-          <div className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-5 shadow-[var(--shadow-card)]">
-            <div className="mb-1 flex items-start justify-between gap-3">
-              <h3 className="flex items-center gap-1.5 text-[.95rem] font-bold text-text">
-                <Sparkles className="size-[15px] text-primary" />
-                Prioridades
-              </h3>
-              <div className="flex flex-wrap gap-1.5">
-                {isAdmin && (
-                  <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-accent/10 px-2 py-0.5 text-[.72rem] font-bold text-accent">
-                    {plural(pendentes?.length ?? 0, "solicitação", "solicitações")}
-                  </span>
-                )}
-                <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-primary/10 px-2 py-0.5 text-[.72rem] font-bold text-primary">
-                  {stats.filaAguardando} na fila
+          <div className="mt-2 flex gap-2">
+            <div className="w-7 shrink-0" />
+            <div className="flex flex-1 gap-3 sm:gap-5">
+              {stats.seriesMensal.map((s, i) => (
+                <span
+                  key={s.label}
+                  className={cn(
+                    "flex-1 text-center text-xs font-semibold uppercase",
+                    i === mesAtualIdx ? "text-primary" : "text-text-light",
+                  )}
+                >
+                  {s.label}
                 </span>
-              </div>
-            </div>
-            <div className="mt-3 flex flex-col gap-2">
-              {isAdmin && (pendentes?.length ?? 0) > 0 && (
-                <Link
-                  href="/gestao/atletas?tab=pendentes"
-                  className="flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-accent/25 bg-accent/5 px-3 py-2.5 text-sm hover:bg-accent/10"
-                >
-                  <span className="flex items-center gap-2 text-text">
-                    <Clock4 className="size-3.5 text-accent" />
-                    {pendentes!.length}{" "}
-                    {pendentes!.length > 1 ? "solicitações de acesso" : "solicitação de acesso"}
-                  </span>
-                  <span className="font-semibold text-accent">Ver</span>
-                </Link>
-              )}
-              {stats.filaAguardando > 0 && (
-                <Link
-                  href="/gestao/atletas?tab=equipes"
-                  className="flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-border bg-bg px-3 py-2.5 text-sm hover:bg-primary/[0.04]"
-                >
-                  <span className="text-text">{stats.filaAguardando} na fila de espera</span>
-                  <span className="font-semibold text-primary">Ver</span>
-                </Link>
-              )}
-              {stats.eventosPendentesLancamento > 0 && (
-                <Link
-                  href="/gestao/pontuacao"
-                  className="flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-border bg-bg px-3 py-2.5 text-sm hover:bg-primary/[0.04]"
-                >
-                  <span className="flex items-center gap-2 text-text">
-                    <CalendarClock className="size-3.5 text-text-light" />
-                    {stats.eventosPendentesLancamento}{" "}
-                    {stats.eventosPendentesLancamento > 1 ? "eventos sem pontos lançados" : "evento sem pontos lançados"}
-                  </span>
-                  <span className="font-semibold text-primary">Ver</span>
-                </Link>
-              )}
-              {stats.atletasSemAtividade > 0 && (
-                <Link
-                  href="/gestao/atletas?tab=ver"
-                  className="flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-border bg-bg px-3 py-2.5 text-sm hover:bg-primary/[0.04]"
-                >
-                  <span className="flex items-center gap-2 text-text">
-                    <UserX className="size-3.5 text-text-light" />
-                    {stats.atletasSemAtividade}{" "}
-                    {stats.atletasSemAtividade > 1 ? "atletas sem nenhuma participação" : "atleta sem nenhuma participação"}
-                  </span>
-                  <span className="font-semibold text-primary">Ver</span>
-                </Link>
-              )}
-              {isAdmin && stats.regrasSemUso > 0 && (
-                <Link
-                  href="/gestao/criterios"
-                  className="flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-border bg-bg px-3 py-2.5 text-sm hover:bg-primary/[0.04]"
-                >
-                  <span className="flex items-center gap-2 text-text">
-                    <ListChecks className="size-3.5 text-text-light" />
-                    {stats.regrasSemUso}{" "}
-                    {stats.regrasSemUso > 1 ? "critérios nunca usados" : "critério nunca usado"}
-                  </span>
-                  <span className="font-semibold text-primary">Ver</span>
-                </Link>
-              )}
-              {!carregando &&
-                (pendentes?.length ?? 0) === 0 &&
-                stats.filaAguardando === 0 &&
-                stats.eventosPendentesLancamento === 0 &&
-                stats.atletasSemAtividade === 0 &&
-                (!isAdmin || stats.regrasSemUso === 0) && (
-                  <p className="py-3 text-center text-sm text-text-muted">Tudo em ordem — nenhuma ação prioritária.</p>
-                )}
+              ))}
             </div>
           </div>
+        </section>
 
-          <div className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-5 shadow-[var(--shadow-card)]">
-            <h3 className="flex items-center gap-1.5 text-[.95rem] font-bold text-text">
-              <CalendarDays className="size-[15px] text-primary" />
+        <section aria-labelledby="titulo-proximos" className={painel}>
+          <div className="flex items-center justify-between gap-2">
+            <h2 id="titulo-proximos" className="flex items-center gap-2 text-base font-bold text-text">
+              <CalendarDays className="size-4 text-primary" aria-hidden="true" />
               Próximos eventos
-            </h3>
-            <div className="mt-3 flex flex-col gap-2">
-              {eventos === null ? (
-                <p className="py-3 text-center text-sm text-text-muted">Carregando…</p>
-              ) : proximosEventos.length === 0 ? (
-                <p className="py-3 text-center text-sm text-text-muted">Sem eventos próximos.</p>
-              ) : (
-                proximosEventos.map((e) => (
-                  <div key={e.id} className="flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-border bg-bg px-3 py-2 text-sm">
-                    <span className="truncate text-text">{e.titulo}</span>
-                    <span className="shrink-0 text-xs font-semibold text-text-light">{formatShortDate(e.data)}</span>
-                  </div>
-                ))
-              )}
-            </div>
+            </h2>
+            <Link href="/gestao/eventos" className="text-sm font-bold text-primary hover:underline">
+              Agenda
+            </Link>
           </div>
-
-          <div className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-5 shadow-[var(--shadow-card)]">
-            <h3 className="mb-3.5 flex items-center gap-1.5 text-[.95rem] font-bold text-text">
-              <BarChart2 className="size-[15px] text-primary" />
-              Eficiência financeira
-            </h3>
-            <div className="grid grid-cols-2 gap-2.5">
-              <div className="rounded-[var(--radius)] border border-border bg-bg p-3">
-                <span className="mb-1 block text-[.7rem] font-semibold uppercase tracking-wide text-text-light">
-                  Custo / participação
-                </span>
-                <strong className="whitespace-nowrap text-base font-extrabold text-text">
-                  {formatBRL(stats.custoParticipacao)}
-                </strong>
-              </div>
-              <div className="rounded-[var(--radius)] border border-border bg-bg p-3">
-                <span className="mb-1 block text-[.7rem] font-semibold uppercase tracking-wide text-text-light">
-                  Custo / km
-                </span>
-                <strong className="whitespace-nowrap text-base font-extrabold text-text">
-                  {formatBRL(stats.custoKm)}
-                </strong>
-              </div>
-            </div>
-          </div>
-        </div>
+          {eventos === null ? (
+            <div className="mt-3 h-20 animate-pulse rounded-[var(--radius)] bg-bg-inset" />
+          ) : proximosEventos.length === 0 ? (
+            <p className="mt-3 text-sm text-text-light">Sem eventos próximos.</p>
+          ) : (
+            <ul className="mt-2 flex flex-col divide-y divide-border">
+              {proximosEventos.map((e) => (
+                <li key={e.id} className="flex items-start gap-3 py-2.5">
+                  <span className="shrink-0 whitespace-nowrap text-xs font-bold uppercase tabular-nums text-primary">
+                    {formatShortDate(e.data)}
+                  </span>
+                  <span className="min-w-0 flex-1 text-sm font-medium text-text">{e.titulo}</span>
+                  <span className="shrink-0 text-xs text-text-light">
+                    {plural(e.inscritos?.length ?? 0, "confirmado")}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </div>
+
+      {/* 3. Corrida × Bike lado a lado, com pódio e inativos de cada uma. */}
+      <section aria-labelledby="titulo-modalidades" className={painel}>
+        <h2 id="titulo-modalidades" className="text-base font-bold text-text">Modalidades</h2>
+        <div className="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-0 md:divide-x md:divide-border">
+          <ColunaModalidade icon={Footprints} nome={modalidadeLabel.corrida} stats={stats.corrida} podio={stats.podioCorrida} className="md:pr-6" />
+          <ColunaModalidade icon={Bike} nome={modalidadeLabel.bicicleta} stats={stats.bike} podio={stats.podioBike} className="md:pl-6" />
+        </div>
+      </section>
     </div>
   );
 }
 
-function HeroKpi({
-  icon: Icon,
-  color,
-  value,
-  label,
+const painel =
+  "rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-[var(--shadow-card)] sm:p-5";
+
+interface Prioridade {
+  href: string;
+  icon: typeof Clock4;
+  texto: string;
+  destaque?: boolean;
+}
+
+function Numero({
+  rotulo,
+  valor,
+  detalhe,
+  barra,
 }: {
-  icon: typeof Route;
-  color: string;
-  value: string;
-  label: string;
+  rotulo: string;
+  valor: string;
+  detalhe?: string;
+  barra?: number;
 }) {
   return (
-    <div
-      className="flex items-center gap-2.5 rounded-[var(--radius)] border border-border bg-bg-card p-3 shadow-[var(--shadow-card)] transition-transform hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
-      style={{ borderTop: `3px solid ${color}` }}
-    >
-      <span
-        className="flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)]"
-        style={{ backgroundColor: `color-mix(in srgb, ${color} 10%, transparent)`, color }}
-      >
-        <Icon className="size-[15px]" />
-      </span>
-      <div className="min-w-0">
-        <strong className="block truncate text-[.95rem] leading-tight font-extrabold text-text sm:text-base">
-          {value}
-        </strong>
-        <span className="block truncate text-[.65rem] font-bold uppercase tracking-wide text-text-light">
-          {label}
-        </span>
-      </div>
+    <div className="bg-bg-card p-4 sm:p-5">
+      <dt className="truncate text-xs font-semibold text-text-light">{rotulo}</dt>
+      <dd className="mt-1 text-xl font-extrabold tabular-nums text-text">{valor}</dd>
+      {barra !== undefined ? (
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-bg-inset" aria-hidden="true">
+          <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, barra)}%` }} />
+        </div>
+      ) : null}
+      {detalhe ? <dd className="mt-1 text-xs text-text-light">{detalhe}</dd> : null}
     </div>
   );
 }
@@ -581,177 +454,118 @@ interface ModStats {
   media: number;
   km: number;
   top: AtletaDoc | undefined;
+  inativosList: AtletaDoc[];
 }
 
-function ModalidadeCard({
+function ColunaModalidade({
   icon: Icon,
   nome,
-  corVar,
   stats,
+  podio,
+  className,
 }: {
   icon: typeof Bike;
   nome: string;
-  corVar: string;
   stats: ModStats;
+  podio: AtletaDoc[];
+  className?: string;
 }) {
+  const posicoes = calcularPosicoesRanking(podio.map((atleta) => atleta.pontuacaoTotal));
+  const medalha = [
+    "bg-ranking-gold-bg text-ranking-gold-text",
+    "bg-ranking-silver-bg text-ranking-silver-text",
+    "bg-ranking-bronze-bg text-ranking-bronze-text",
+  ];
   return (
-    <div
-      className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-5 shadow-[var(--shadow-card)]"
-      style={{ borderTop: `3px solid ${corVar}` }}
-    >
-      <div className="mb-3.5 flex items-center justify-between">
+    <div className={cn("flex min-w-0 flex-col gap-4", className)}>
+      <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span
-            className="flex size-9 items-center justify-center rounded-[var(--radius-sm)]"
-            style={{ backgroundColor: `color-mix(in srgb, ${corVar} 10%, transparent)`, color: corVar }}
-          >
-            <Icon className="size-[18px]" />
+          <span className="flex size-9 items-center justify-center rounded-[var(--radius)] bg-primary-subtle text-primary">
+            <Icon className="size-[18px]" aria-hidden="true" />
           </span>
           <div>
-            <p className="text-sm font-bold text-text">{nome}</p>
-            <p className="text-xs text-text-light">
-              <strong className="text-text">{stats.total}</strong> {stats.total === 1 ? "atleta" : "atletas"}
-            </p>
+            <h3 className="font-bold text-text">{nome}</h3>
+            <p className="text-xs text-text-light">{plural(stats.total, "atleta")}</p>
           </div>
         </div>
         <div className="text-right">
-          <strong className="block text-xl font-extrabold text-text">{stats.engajamento}%</strong>
-          <span className="text-[.68rem] font-semibold uppercase text-text-light">engajados</span>
+          <strong className="block text-xl font-extrabold tabular-nums text-text">{stats.engajamento}%</strong>
+          <span className="text-xs text-text-light">engajados</span>
         </div>
       </div>
-      <div className="mb-1.5 h-[5px] overflow-hidden rounded-full bg-border">
-        <div
-          className="h-full rounded-full transition-all"
-          style={{ width: `${stats.engajamento}%`, backgroundColor: corVar }}
-        />
-      </div>
-      <p className="mb-3.5 text-xs text-text-light">
-        {stats.ativos30d} de {stats.total} {stats.total === 1 ? "ativo" : "ativos"} nos últimos 30 dias · {plural(stats.inativos, "inativo")}
-      </p>
-      <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <ModStat label="Participações" value={stats.participacoes} />
-        <ModStat label="Pontos" value={stats.pontos} />
-        <ModStat label="Média pts" value={stats.media} />
-        <ModStat label="KM total" value={formatKm(stats.km)} />
-      </div>
-      <div
-        className="flex items-center gap-2 rounded-[var(--radius-sm)] px-2.5 py-2 text-sm"
-        style={{
-          backgroundColor: `color-mix(in srgb, ${corVar} 5%, transparent)`,
-          borderLeft: `3px solid ${corVar}`,
-        }}
-      >
-        <Crown className="size-3.5 text-warning" />
-        <span className="text-text-light">Top atleta</span>
-        <strong className="truncate font-bold text-text">{stats.top?.nome ?? "—"}</strong>
-      </div>
-    </div>
-  );
-}
-
-function ModStat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-[var(--radius-sm)] border border-border bg-bg p-2 text-center">
-      <span className="mb-0.5 block text-[.65rem] font-semibold uppercase tracking-wide text-text-light">
-        {label}
-      </span>
-      <strong className="text-sm font-extrabold text-text">{value}</strong>
-    </div>
-  );
-}
-
-function PodiumColumn({
-  icon: Icon,
-  label,
-  atletas,
-}: {
-  icon: typeof Bike;
-  label: string;
-  atletas: AtletaDoc[];
-}) {
-  const medalStyles = [
-    { bg: "var(--color-ranking-gold-bg)", border: "var(--color-ranking-gold)", color: "var(--color-ranking-gold-text)" },
-    { bg: "var(--color-ranking-silver-bg)", border: "var(--color-ranking-silver)", color: "var(--color-ranking-silver-text)" },
-    { bg: "var(--color-ranking-bronze-bg)", border: "var(--color-ranking-bronze)", color: "var(--color-ranking-bronze-text)" },
-  ];
-  const posicoes = calcularPosicoesRanking(atletas.map((atleta) => atleta.pontuacaoTotal));
-  return (
-    <div>
-      <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-text-light">
-        <Icon className="size-3" />
-        {label}
-      </p>
-      {atletas.length === 0 ? (
-        <p className="rounded-[var(--radius-sm)] border border-border bg-bg p-2.5 text-center text-xs text-text-muted">
-          Sem dados ainda
+      <div>
+        <div className="h-1.5 overflow-hidden rounded-full bg-bg-inset" aria-hidden="true">
+          <div className="h-full rounded-full bg-primary" style={{ width: `${stats.engajamento}%` }} />
+        </div>
+        <p className="mt-1.5 text-xs text-text-light">
+          {stats.ativos30d} de {stats.total} {stats.total === 1 ? "ativo" : "ativos"} nos últimos 30 dias
         </p>
-      ) : (
-        <ul className="flex flex-col gap-1.5">
-          {atletas.map((a, i) => {
-            const posicao = posicoes[i];
-            const medalStyle = medalStyles[Math.min(posicao, 3) - 1];
-            return (
+      </div>
+
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4 md:grid-cols-2 xl:grid-cols-4">
+        {[
+          ["Participações", String(stats.participacoes)],
+          ["Pontos", String(stats.pontos)],
+          ["Média de pontos", String(stats.media)],
+          ["Km", formatKm(stats.km)],
+        ].map(([rotulo, valor]) => (
+          <div key={rotulo}>
+            <dt className="text-xs text-text-light">{rotulo}</dt>
+            <dd className="text-base font-bold tabular-nums text-text">{valor}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <div>
+        <h4 className="text-xs font-bold uppercase tracking-wide text-text-light">Pódio</h4>
+        {podio.length === 0 ? (
+          <p className="mt-2 text-sm text-text-light">Sem pontuação ainda.</p>
+        ) : (
+          <ol className="mt-2 flex flex-col gap-1.5">
+            {podio.map((a, i) => (
+              <li key={a.id} className="flex items-center gap-2.5 text-sm">
+                <span
+                  className={cn(
+                    "flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+                    medalha[Math.min(posicoes[i], 3) - 1],
+                  )}
+                >
+                  {posicoes[i]}
+                </span>
+                <span className="min-w-0 flex-1 font-medium text-text">{a.nome}</span>
+                <span className="shrink-0 font-bold tabular-nums text-primary">{a.pontuacaoTotal} pts</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+
+      <div>
+        <h4 className="text-xs font-bold uppercase tracking-wide text-text-light">
+          Sem atividade há mais de 30 dias
+        </h4>
+        {stats.inativosList.length === 0 ? (
+          <p className="mt-2 flex items-center gap-1.5 text-sm text-text-light">
+            <CheckCircle2 className="size-4 text-success" aria-hidden="true" />
+            Ninguém
+          </p>
+        ) : (
+          <ul className="mt-2 flex flex-wrap gap-1.5">
+            {stats.inativosList.slice(0, 6).map((a) => (
               <li
                 key={a.id}
-                className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-border bg-bg px-2.5 py-1.5"
+                className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent-subtle px-2.5 py-1 text-xs font-medium text-text"
               >
-                <span
-                  className="flex size-6 shrink-0 items-center justify-center rounded-full text-[.7rem] font-bold"
-                  style={{
-                    backgroundColor: medalStyle.bg,
-                    borderColor: medalStyle.border,
-                    color: medalStyle.color,
-                    borderWidth: 1,
-                    borderStyle: "solid",
-                  }}
-                >
-                  {posicao}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-[.83rem] font-semibold text-text">{a.nome}</span>
-                <span className="shrink-0 text-[.83rem] font-bold text-primary">{a.pontuacaoTotal}</span>
+                <AlertTriangle className="size-3.5 shrink-0 text-accent" aria-hidden="true" />
+                {a.nome}
               </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-function InactivityColumn({
-  icon: Icon,
-  label,
-  atletas,
-}: {
-  icon: typeof Bike;
-  label: string;
-  atletas: AtletaDoc[];
-}) {
-  return (
-    <div>
-      <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-text-light">
-        <Icon className="size-3" />
-        {label}
-      </p>
-      {atletas.length === 0 ? (
-        <p className="rounded-[var(--radius-sm)] border border-border bg-bg p-2.5 text-center text-xs text-text-muted">
-          Nenhum atleta inativo
-        </p>
-      ) : (
-        <ul className="flex flex-col gap-1.5">
-          {atletas.slice(0, 4).map((a) => (
-            <li
-              key={a.id}
-              className="flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-border bg-bg px-2.5 py-1.5"
-            >
-              <span className="flex min-w-0 items-center gap-1.5">
-                <AlertTriangle className="size-3.5 shrink-0 text-accent" />
-                <span className="truncate text-[.83rem] font-medium text-text">{a.nome}</span>
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
+            ))}
+            {stats.inativosList.length > 6 ? (
+              <li className="px-1 py-1 text-xs text-text-light">e mais {stats.inativosList.length - 6}</li>
+            ) : null}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
