@@ -3,6 +3,7 @@
 import { dataIsoLocal } from "@/lib/date";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { collection, getDocs, onSnapshot, orderBy, query, where } from "firebase/firestore";
 import {
   Activity,
@@ -21,7 +22,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { db } from "@/lib/firebase";
-import { formatBRL, formatShortDate, formatKm, plural } from "@/lib/format";
+import { formatBRL, formatDecimal, formatShortDate, formatKm, plural } from "@/lib/format";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { calcularEstatisticasDashboard } from "@/lib/dashboardStats";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
@@ -400,9 +401,22 @@ export function VisaoEstrategica() {
       {/* 3. Corrida × Bike lado a lado, com pódio e inativos de cada uma. */}
       <section aria-labelledby="titulo-modalidades" className={painel}>
         <h2 id="titulo-modalidades" className="text-base font-bold text-text">Modalidades</h2>
-        <div className="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-0 md:divide-x md:divide-border">
-          <ColunaModalidade icon={Footprints} nome={modalidadeLabel.corrida} stats={stats.corrida} podio={stats.podioCorrida} className="md:pr-6" />
-          <ColunaModalidade icon={Bike} nome={modalidadeLabel.bicicleta} stats={stats.bike} podio={stats.podioBike} className="md:pl-6" />
+        <p className="mt-0.5 text-xs text-text-light">
+          Pontos, participações e km desde o início, os mesmos do Ranking geral. Atividade: últimos 30 dias.
+        </p>
+        <div className="mt-4 grid grid-cols-1 divide-y divide-border md:grid-cols-2 md:divide-x md:divide-y-0">
+          <ColunaModalidade
+            modalidade="corrida"
+            stats={stats.corrida}
+            podio={stats.podioCorrida}
+            className="pb-5 md:pb-0 md:pr-6"
+          />
+          <ColunaModalidade
+            modalidade="bicicleta"
+            stats={stats.bike}
+            podio={stats.podioBike}
+            className="pt-5 md:pl-6 md:pt-0"
+          />
         </div>
       </section>
     </div>
@@ -457,30 +471,45 @@ interface ModStats {
   inativosList: AtletaDoc[];
 }
 
+const identidadeModalidade = {
+  corrida: { icon: Footprints, caixa: "bg-sport-running-subtle text-sport-running" },
+  bicicleta: { icon: Bike, caixa: "bg-sport-cycling-subtle text-sport-cycling" },
+} as const;
+
+const LIMITE_INATIVOS = 6;
+
 function ColunaModalidade({
-  icon: Icon,
-  nome,
+  modalidade,
   stats,
   podio,
   className,
 }: {
-  icon: typeof Bike;
-  nome: string;
+  modalidade: "corrida" | "bicicleta";
   stats: ModStats;
+  /** `pontuacaoTotal` já é a pontuação calculada (a do Ranking geral). */
   podio: AtletaDoc[];
   className?: string;
 }) {
+  const { icon: Icon, caixa } = identidadeModalidade[modalidade];
+  const nome = modalidadeLabel[modalidade];
   const posicoes = calcularPosicoesRanking(podio.map((atleta) => atleta.pontuacaoTotal));
   const medalha = [
     "bg-ranking-gold-bg text-ranking-gold-text",
     "bg-ranking-silver-bg text-ranking-silver-text",
     "bg-ranking-bronze-bg text-ranking-bronze-text",
   ];
+  const numeros: [string, string][] = [
+    ["Participações", String(stats.participacoes)],
+    ["Pontos", String(stats.pontos)],
+    ["Por atleta", String(stats.media)],
+    ...(stats.km > 0 ? ([["Km", formatDecimal(stats.km)]] as [string, string][]) : []),
+  ];
+
   return (
     <div className={cn("flex min-w-0 flex-col gap-4", className)}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="flex size-9 items-center justify-center rounded-[var(--radius)] bg-primary-subtle text-primary">
+          <span className={cn("flex size-9 items-center justify-center rounded-[var(--radius)]", caixa)}>
             <Icon className="size-[18px]" aria-hidden="true" />
           </span>
           <div>
@@ -488,29 +517,32 @@ function ColunaModalidade({
             <p className="text-xs text-text-light">{plural(stats.total, "atleta")}</p>
           </div>
         </div>
-        <div className="text-right">
-          <strong className="block text-xl font-extrabold tabular-nums text-text">{stats.engajamento}%</strong>
-          <span className="text-xs text-text-light">engajados</span>
-        </div>
+        <strong className="text-2xl font-extrabold tabular-nums text-text">{stats.engajamento}%</strong>
       </div>
+
       <div>
         <div className="h-1.5 overflow-hidden rounded-full bg-bg-inset" aria-hidden="true">
-          <div className="h-full rounded-full bg-primary" style={{ width: `${stats.engajamento}%` }} />
+          <motion.div
+            className="h-full origin-left rounded-full bg-primary"
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: Math.min(100, stats.engajamento) / 100 }}
+            transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
+          />
         </div>
         <p className="mt-1.5 text-xs text-text-light">
           {stats.ativos30d} de {stats.total} {stats.total === 1 ? "ativo" : "ativos"} nos últimos 30 dias
         </p>
       </div>
 
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4 md:grid-cols-2 xl:grid-cols-4">
-        {[
-          ["Participações", String(stats.participacoes)],
-          ["Pontos", String(stats.pontos)],
-          ["Média de pontos", String(stats.media)],
-          ["Km", formatKm(stats.km)],
-        ].map(([rotulo, valor]) => (
-          <div key={rotulo}>
-            <dt className="text-xs text-text-light">{rotulo}</dt>
+      <dl
+        className={cn(
+          "grid gap-x-4 gap-y-3",
+          numeros.length === 4 ? "grid-cols-2 sm:grid-cols-4 md:grid-cols-2 xl:grid-cols-4" : "grid-cols-3",
+        )}
+      >
+        {numeros.map(([rotulo, valor]) => (
+          <div key={rotulo} className="min-w-0">
+            <dt className="truncate text-xs text-text-light">{rotulo}</dt>
             <dd className="text-base font-bold tabular-nums text-text">{valor}</dd>
           </div>
         ))}
@@ -532,8 +564,8 @@ function ColunaModalidade({
                 >
                   {posicoes[i]}
                 </span>
-                <span className="min-w-0 flex-1 font-medium text-text">{a.nome}</span>
-                <span className="shrink-0 font-bold tabular-nums text-primary">{a.pontuacaoTotal} pts</span>
+                <span className="min-w-0 flex-1 truncate font-medium text-text">{a.nome}</span>
+                <span className="shrink-0 font-semibold tabular-nums text-text-secondary">{a.pontuacaoTotal} pts</span>
               </li>
             ))}
           </ol>
@@ -551,17 +583,27 @@ function ColunaModalidade({
           </p>
         ) : (
           <ul className="mt-2 flex flex-wrap gap-1.5">
-            {stats.inativosList.slice(0, 6).map((a) => (
-              <li
-                key={a.id}
-                className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent-subtle px-2.5 py-1 text-xs font-medium text-text"
-              >
-                <AlertTriangle className="size-3.5 shrink-0 text-accent" aria-hidden="true" />
-                {a.nome}
+            {stats.inativosList.slice(0, LIMITE_INATIVOS).map((a) => (
+              <li key={a.id}>
+                <Link
+                  href={`/gestao/atletas?tab=ver&ficha=${encodeURIComponent(a.id)}`}
+                  aria-label={`Abrir ficha de ${a.nome}`}
+                  className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-accent/30 bg-accent-subtle px-2.5 py-1 text-xs font-medium text-text transition-colors hover:border-accent/60"
+                >
+                  <AlertTriangle className="size-3.5 shrink-0 text-accent" aria-hidden="true" />
+                  {a.nome}
+                </Link>
               </li>
             ))}
-            {stats.inativosList.length > 6 ? (
-              <li className="px-1 py-1 text-xs text-text-light">e mais {stats.inativosList.length - 6}</li>
+            {stats.inativosList.length > LIMITE_INATIVOS ? (
+              <li>
+                <Link
+                  href="/gestao/atletas?tab=ver"
+                  className="inline-flex min-h-8 items-center px-1.5 text-xs font-semibold text-primary hover:text-primary-hover"
+                >
+                  e mais {stats.inativosList.length - LIMITE_INATIVOS}
+                </Link>
+              </li>
             ) : null}
           </ul>
         )}

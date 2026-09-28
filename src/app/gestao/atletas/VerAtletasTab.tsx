@@ -54,6 +54,24 @@ export function VerAtletasTab() {
   const [visualizacao, setVisualizacao] = useState<Visualizacao>("cards");
   const [fichaAberta, setFichaAberta] = useState<AtletaDoc | null>(null);
 
+  // `?ficha=<id>` abre a ficha direto (links da Visão estratégica).
+  const fichaDaUrl = searchParams.get("ficha");
+  const [fichaDaUrlAberta, setFichaDaUrlAberta] = useState<string | null>(null);
+  if (atletas && fichaDaUrl && fichaDaUrl !== fichaDaUrlAberta) {
+    setFichaDaUrlAberta(fichaDaUrl);
+    const alvo = atletas.find((a) => a.id === fichaDaUrl);
+    if (alvo) setFichaAberta(alvo);
+  }
+
+  function fecharFicha() {
+    setFichaAberta(null);
+    if (fichaDaUrl) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("ficha");
+      window.history.replaceState(null, "", url);
+    }
+  }
+
   useEffect(() => {
     const unsubscribe = onSnapshot(
       query(collection(db, "atletas"), orderBy("nome", "asc")),
@@ -349,7 +367,7 @@ export function VerAtletasTab() {
       <FichaAtletaModal
         key={fichaAberta?.id ?? "none"}
         atleta={fichaAberta}
-        onClose={() => setFichaAberta(null)}
+        onClose={fecharFicha}
       />
     </div>
   );
