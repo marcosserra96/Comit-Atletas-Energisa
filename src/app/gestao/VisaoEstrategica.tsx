@@ -32,6 +32,7 @@ import type {
   AtletaDoc,
   DespesaDoc,
   EventoDoc,
+  HistoricoMensalDoc,
   HistoricoPontoDoc,
   RegraPontuacaoDoc,
   SolicitacaoAcessoDoc,
@@ -58,6 +59,7 @@ export function VisaoEstrategica() {
 
   const [atletas, setAtletas] = useState<AtletaDoc[] | null>(null);
   const [lancamentos, setLancamentos] = useState<HistoricoPontoDoc[] | null>(null);
+  const [historicoMensal, setHistoricoMensal] = useState<HistoricoMensalDoc[] | null>(null);
   const [despesas, setDespesas] = useState<DespesaDoc[] | null>(null);
   const [eventos, setEventos] = useState<EventoDoc[] | null>(null);
   const [regras, setRegras] = useState<RegraPontuacaoDoc[] | null>(null);
@@ -79,8 +81,16 @@ export function VisaoEstrategica() {
   }, []);
 
   useEffect(() => {
-    getDocs(collection(db, "historico_pontos")).then((snap) => {
-      setLancamentos(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as HistoricoPontoDoc));
+    Promise.all([
+      getDocs(collection(db, "historico_pontos")),
+      getDocs(collection(db, "historico_mensal")),
+    ]).then(([snapLancamentos, snapMensal]) => {
+      setLancamentos(
+        snapLancamentos.docs.map((d) => ({ id: d.id, ...d.data() }) as HistoricoPontoDoc),
+      );
+      setHistoricoMensal(
+        snapMensal.docs.map((d) => ({ id: d.id, ...d.data() }) as HistoricoMensalDoc),
+      );
     });
   }, []);
 
@@ -125,11 +135,12 @@ export function VisaoEstrategica() {
       calcularEstatisticasDashboard({
         atletas: atletas ?? [],
         lancamentos: lancamentos ?? [],
+        resumosMensais: historicoMensal ?? [],
         despesas: despesas ?? [],
         eventos: eventos ?? [],
         regras: regras ?? [],
       }),
-    [atletas, lancamentos, despesas, eventos, regras],
+    [atletas, lancamentos, historicoMensal, despesas, eventos, regras],
   );
 
   const lancamentosVisiveis = useMemo(() => {
@@ -143,7 +154,11 @@ export function VisaoEstrategica() {
     [eventos],
   );
 
-  const carregando = atletas === null || lancamentos === null || despesas === null;
+  const carregando =
+    atletas === null ||
+    lancamentos === null ||
+    historicoMensal === null ||
+    despesas === null;
   const ticksGrafico = calcularTicksGrafico(Math.max(...stats.seriesMensal.map((s) => s.count)));
   const tetoGrafico = ticksGrafico[ticksGrafico.length - 1];
   const mesAtualIdx = stats.seriesMensal.length - 1;
