@@ -28,7 +28,9 @@ export function MobileBottomNav({ items, className }: MobileBottomNavProps) {
           className,
         )}
       >
-        <div className="grid h-[72px] grid-cols-5 items-stretch px-1">
+        {/* Colunas flexíveis (não iguais): rótulos longos como "Desempenho" ganham o
+            espaço que os curtos ("Início", "Perfil") não usam, e cabem inteiros. */}
+        <div className="flex h-[72px] items-stretch px-1">
           {displayItems.map((item) => {
             const hrefPath = item.href.split("?")[0];
             const isActive =
@@ -39,10 +41,9 @@ export function MobileBottomNav({ items, className }: MobileBottomNavProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                aria-label={item.label}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "relative flex min-w-0 touch-manipulation select-none flex-col items-center justify-center gap-1 px-1 py-2",
+                  "relative flex min-w-0 flex-auto touch-manipulation select-none flex-col items-center justify-center gap-1 px-0.5 py-2",
                   "transition-colors duration-150 active:bg-primary/10",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary",
                   isActive
@@ -65,12 +66,8 @@ export function MobileBottomNav({ items, className }: MobileBottomNavProps) {
                 >
                   <Icon size={21} strokeWidth={isActive ? 2.5 : 2} />
                 </span>
-                <span
-                  className={cn(
-                    "max-w-full truncate text-[11px] leading-none",
-                    isActive ? "font-bold" : "font-medium",
-                  )}
-                >
+                {/* Peso fixo: o rótulo não muda de largura ao ficar ativo. */}
+                <span className="max-w-full truncate text-center text-[11px] font-semibold leading-none tracking-[-0.01em]">
                   {item.label}
                 </span>
               </Link>
