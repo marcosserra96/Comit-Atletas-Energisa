@@ -207,7 +207,7 @@ export function RankingVisibilityTab() {
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-sm font-bold text-text">Ranking no portal dos atletas</h3>
-                <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${
                   config.exibirParaAtletas
                     ? "bg-success-subtle text-success"
                     : "bg-bg-inset text-text-muted"

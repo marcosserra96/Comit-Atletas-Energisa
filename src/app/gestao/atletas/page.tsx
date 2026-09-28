@@ -47,6 +47,7 @@ export default function AtletasPage() {
       </div>
 
       <SubTabs
+        label="Seções de atletas"
         value={tab}
         onChange={setTab}
         options={[

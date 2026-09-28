@@ -98,7 +98,7 @@ export function StaffSidebar({
         </div>
 
         {!collapsed && (
-          <span className="mx-4 mb-2 w-fit rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold tracking-wider text-white/70">
+          <span className="mx-4 mb-2 w-fit rounded-full bg-white/10 px-2.5 py-1 text-xs font-bold tracking-wider text-white/70">
             {role === "administrador" ? "ADMINISTRADOR" : "COMITÊ"}
           </span>
         )}

@@ -168,26 +168,24 @@ export default function PerfilPage() {
           <Card>
             <SectionHeader title="Vínculo com o programa" />
             
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 mt-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-semibold text-text-muted">Equipe</label>
-                <div className="px-3 py-2.5 rounded-lg bg-bg-inset border border-border/50 text-text-muted font-medium text-sm flex items-center h-[42px]">
-                  {equipeLabel[atleta.equipe] || atleta.equipe}
-                </div>
+            {/* Dados que só o comitê altera: mostrados como texto, não como campos desabilitados. */}
+            <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-3">
+              <div>
+                <dt className="text-xs font-semibold text-text-light">Equipe</dt>
+                <dd className="mt-0.5 font-semibold text-text">{equipeLabel[atleta.equipe] || atleta.equipe}</dd>
               </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-semibold text-text-muted">Modalidade</label>
-                <div className="px-3 py-2.5 rounded-lg bg-bg-inset border border-border/50 text-text-muted font-medium text-sm flex items-center h-[42px] capitalize">
+              <div>
+                <dt className="text-xs font-semibold text-text-light">Modalidade</dt>
+                <dd className="mt-0.5 font-semibold text-text">
                   {modalidade === "bicicleta" || modalidade === "corrida" ? modalidadeLabel[modalidade] : "Não se aplica"}
-                </div>
+                </dd>
               </div>
-              <div className="flex flex-col gap-1.5 sm:col-span-2">
-                <label className="text-sm font-semibold text-text-muted">Membro desde</label>
-                <div className="px-3 py-2.5 rounded-lg bg-bg-inset border border-border/50 text-text-muted font-medium text-sm flex items-center h-[42px]">
-                  {atleta.anoEntrada || "Não informado"}
-                </div>
+              <div>
+                <dt className="text-xs font-semibold text-text-light">Membro desde</dt>
+                <dd className="mt-0.5 font-semibold text-text">{atleta.anoEntrada || "Não informado"}</dd>
               </div>
-            </div>
+            </dl>
+            <p className="mt-4 text-xs text-text-light">Para alterar esses dados, fale com o comitê.</p>
           </Card>
 
         </div>

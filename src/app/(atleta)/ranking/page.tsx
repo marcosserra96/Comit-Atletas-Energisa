@@ -81,7 +81,7 @@ function Place({ atleta }: { atleta?: RankedAtleta }) {
               {atleta.pontuacaoTotal} pts
             </span>
             {atleta.treinos !== undefined ? (
-              <span className="mt-0.5 text-[10px] text-text-muted">
+              <span className="mt-0.5 text-xs text-text-muted">
                 {plural(atleta.treinos, "treino")} · {formatKm(atleta.km ?? 0)}
               </span>
             ) : null}
@@ -520,7 +520,7 @@ export default function RankingPage() {
               </div>
             ) : (
               <>
-                <div className="hidden items-center border-b border-border bg-bg/50 px-5 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-muted sm:flex">
+                <div className="hidden items-center border-b border-border bg-bg/50 px-5 py-2 text-xs font-semibold uppercase tracking-wide text-text-muted sm:flex">
                   <span className="flex-1 pl-11">Atleta</span>
                   <div className="grid w-[280px] shrink-0 grid-cols-3 text-center">
                     <span>Treinos</span>
@@ -570,7 +570,7 @@ export default function RankingPage() {
                             <strong className="block text-sm tabular-nums text-text">
                               {atleta.treinos ?? "—"}
                             </strong>
-                            <span className="mt-0.5 block text-[11px] text-text-muted sm:hidden">
+                            <span className="mt-0.5 block text-xs text-text-muted sm:hidden">
                               treinos
                             </span>
                           </div>
@@ -578,7 +578,7 @@ export default function RankingPage() {
                             <strong className="block text-sm tabular-nums text-text">
                               {atleta.km === undefined ? "—" : formatDecimal(atleta.km)}
                             </strong>
-                            <span className="mt-0.5 block text-[11px] text-text-muted sm:hidden">
+                            <span className="mt-0.5 block text-xs text-text-muted sm:hidden">
                               km
                             </span>
                           </div>
@@ -586,7 +586,7 @@ export default function RankingPage() {
                             <strong className="block text-sm tabular-nums text-text sm:text-base">
                               {atleta.pontuacaoTotal}
                             </strong>
-                            <span className="mt-0.5 block text-[11px] text-text-muted sm:hidden">
+                            <span className="mt-0.5 block text-xs text-text-muted sm:hidden">
                               pontos
                             </span>
                           </div>

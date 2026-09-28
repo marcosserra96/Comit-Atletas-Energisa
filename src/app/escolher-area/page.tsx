@@ -77,7 +77,7 @@ export default function EscolherAreaPage() {
               className="h-auto w-[112px] sm:w-[170px]"
             />
           </div>
-          <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.16em] text-primary sm:mt-6 sm:text-xs sm:tracking-[0.18em]">
+          <p className="mt-3 text-xs font-bold uppercase tracking-[0.16em] text-primary sm:mt-6 sm:text-xs sm:tracking-[0.18em]">
             Bem-vindo, {primeiroNome}
           </p>
           <h1 className="mt-1 text-xl font-extrabold tracking-tight text-text sm:mt-2 sm:text-3xl">

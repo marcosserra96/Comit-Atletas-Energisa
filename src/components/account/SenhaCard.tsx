@@ -63,9 +63,11 @@ export function SenhaCard() {
           onChange={(e) => setNovaSenha(e.target.value)}
           required
         />
-        <Button type="submit" loading={loading} className="w-full">
-          Salvar alterações
-        </Button>
+        <div className="flex justify-end pt-2">
+          <Button type="submit" loading={loading}>
+            Alterar senha
+          </Button>
+        </div>
       </form>
     </Card>
   );

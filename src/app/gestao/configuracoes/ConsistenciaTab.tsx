@@ -217,10 +217,10 @@ export function ConsistenciaTab() {
                           {membro.email ?? "sem e-mail"}
                         </span>
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <Badge tone="neutral" className="px-2 py-0.5 text-[10px]">
+                          <Badge tone="neutral" className="px-2 py-0.5 text-xs">
                             {equipeLabel[membro.equipe]}
                           </Badge>
-                          <span className="text-[10.5px] font-semibold text-text-muted">
+                          <span className="text-xs font-semibold text-text-muted">
                             {membro.pontuacaoTotal} pts
                           </span>
                         </div>

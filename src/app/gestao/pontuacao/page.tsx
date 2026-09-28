@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { cn } from "@/lib/cn";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { NotAuthorized } from "@/components/ui/NotAuthorized";
+import { SubTabs } from "@/components/ui/SubTabs";
 import { TabPanel } from "@/components/ui/TabPanel";
 import { temPermissao } from "@/lib/permissoes";
 import { LancarPontosTab } from "./LancarPontosTab";
@@ -75,35 +75,20 @@ export default function PontuacaoPage() {
         </p>
       </div>
 
-      <div className="max-w-full overflow-x-auto pb-1">
-        <div className="flex w-max gap-1 rounded-[var(--radius)] border border-border bg-bg-card p-1">
-          {(
-            [
-              { value: "lancar", label: "Lançar pontos" },
-              {
-                value: "justificativas",
-                label: pendentes > 0 ? `Justificativas (${pendentes})` : "Justificativas",
-              },
-              { value: "extrato", label: "Extrato" },
-              { value: "consolidado", label: "Visão consolidada" },
-            ] as const
-          ).map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => setTab(opt.value)}
-              className={cn(
-                "min-h-11 cursor-pointer rounded-[calc(var(--radius)-2px)] px-4 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                tab === opt.value
-                  ? "bg-primary text-on-primary"
-                  : "text-text-light hover:bg-bg hover:text-text",
-              )}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <SubTabs
+        label="Seções de pontuação"
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: "lancar", label: "Lançar pontos" },
+          {
+            value: "justificativas",
+            label: pendentes > 0 ? `Justificativas (${pendentes})` : "Justificativas",
+          },
+          { value: "extrato", label: "Extrato" },
+          { value: "consolidado", label: "Visão consolidada" },
+        ]}
+      />
 
       <TabPanel key={tab}>
         {tab === "lancar" ? (

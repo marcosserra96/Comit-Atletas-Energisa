@@ -113,7 +113,7 @@ function GraficoMensal({
                   title={item.rotulo + ": " + formatarValor(valor)}
                 />
               </div>
-              <span className="text-center text-[11px] font-semibold uppercase leading-tight text-text-muted">
+              <span className="text-center text-xs font-semibold uppercase leading-tight text-text-muted">
                 {item.rotuloCurto}
               </span>
             </div>

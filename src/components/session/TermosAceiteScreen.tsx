@@ -135,7 +135,7 @@ export function TermosAceiteScreen({
                     {concluido ? (
                       <CheckCircle2 className="size-4 text-success" aria-hidden="true" />
                     ) : (
-                      <span className="flex size-4 items-center justify-center rounded-full border border-current text-[10px]">
+                      <span className="flex size-4 items-center justify-center rounded-full border border-current text-xs">
                         {itemIndice + 1}
                       </span>
                     )}

@@ -103,7 +103,7 @@ export function StaffTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }
           </span>
           <div className="hidden leading-tight sm:block">
             <p className="text-[13px] font-semibold text-white">{atleta.nome.split(" ")[0]}</p>
-            <p className="text-[10px] font-bold uppercase tracking-wide text-white/45">
+            <p className="text-xs font-bold uppercase tracking-wide text-white/45">
               {roleLabel[usuario.role]}
             </p>
           </div>

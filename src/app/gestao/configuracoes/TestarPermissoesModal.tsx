@@ -59,7 +59,7 @@ export function TestarPermissoesModal({
                   <span
                     key={chave}
                     className={cn(
-                      "rounded-full border px-2.5 py-1 text-[11px] font-semibold",
+                      "rounded-full border px-2.5 py-1 text-xs font-semibold",
                       permissoes.includes(chave)
                         ? "border-primary/30 bg-primary/10 text-primary"
                         : "border-border bg-bg text-text-muted",

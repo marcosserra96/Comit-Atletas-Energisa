@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { collection, getDocs, onSnapshot, orderBy, query } from "firebase/firestore";
 import {
+  IdCard,
   Search,
   Users,
-  Pencil,
   LinkIcon,
   Route,
   Bike,
@@ -245,12 +245,14 @@ export function VerAtletasTab() {
                   </span>
                 </button>
                 <div className="flex shrink-0 items-center gap-1">
-                   <button
+                  <button
+                    type="button"
                     onClick={() => setFichaAberta(a)}
-                    aria-label="Ver ficha"
-                    className="rounded-[var(--radius)] p-1.5 text-text-muted hover:bg-bg hover:text-primary"
+                    aria-label={`Abrir ficha de ${a.nome}`}
+                    title="Abrir ficha"
+                    className="inline-flex size-11 cursor-pointer items-center justify-center rounded-[var(--radius)] text-text-light hover:bg-bg hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
-                    <Pencil className="size-4" />
+                    <IdCard className="size-5" aria-hidden="true" />
                   </button>
                 </div>
               </div>
@@ -331,7 +333,7 @@ export function VerAtletasTab() {
                           </a>
                         )}
                         <Button size="sm" variant="secondary" onClick={() => setFichaAberta(a)}>
-                          <Pencil className="size-3.5" />
+                          <IdCard className="size-3.5" aria-hidden="true" />
                           Ficha
                         </Button>
                       </div>
@@ -378,7 +380,7 @@ function KpiCard({
         <Icon className="size-[18px]" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-bold uppercase tracking-wide text-text-light">{label}</p>
+        <p className="text-xs font-bold uppercase tracking-wide text-text-light">{label}</p>
         <p className="text-[1.35rem] font-extrabold leading-tight text-text">{value}</p>
         <p className="text-xs text-text-muted">{desc}</p>
       </div>

@@ -6,7 +6,7 @@ import { db } from "@/lib/firebase";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
 import { Card } from "@/components/ui/Card";
-import { SubTabs } from "@/components/ui/SubTabs";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { logAudit } from "@/lib/audit";
 import { GripVertical, MessageSquare, Users } from "lucide-react";
@@ -184,7 +184,8 @@ export function EquipesTab() {
 
   return (
     <div className="flex flex-col gap-4">
-      <SubTabs
+      <SegmentedControl
+        className="max-w-full overflow-x-auto"
         value={tab}
         onChange={setTab}
         options={[
