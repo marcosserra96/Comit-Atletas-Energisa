@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   collection,
   doc,
+  getDocs,
   increment,
   onSnapshot,
   query,
@@ -106,15 +107,19 @@ export function HistoricoMensalTab() {
   }, [competencia]);
 
   useEffect(() => {
+    let ativo = true;
     const inicio = `${competencia}-01`;
     const fim = `${competencia}-31`;
-    const unsubscribe = onSnapshot(
+
+    void getDocs(
       query(
         collection(db, "historico_pontos"),
         where("dataTreino", ">=", inicio),
         where("dataTreino", "<=", fim),
       ),
-      (snap) => {
+    )
+      .then((snap) => {
+        if (!ativo) return;
         const porAtleta = new Map<string, HistoricoPontoDoc[]>();
         snap.docs.forEach((d) => {
           const item = { id: d.id, ...d.data() } as HistoricoPontoDoc;
@@ -134,24 +139,31 @@ export function HistoricoMensalTab() {
           });
         });
         setSobreposicoes(mapa);
-      },
-      () => setSobreposicoes(new Map()),
-    );
-    return unsubscribe;
+      })
+      .catch(() => {
+        if (ativo) setSobreposicoes(new Map());
+      });
+
+    return () => {
+      ativo = false;
+    };
   }, [competencia]);
 
-  function valoresDoAtleta(atletaId: string): ValoresHistoricos {
-    const editado = valores[atletaId];
-    if (editado) return editado;
-    const item = existentes.get(atletaId);
-    return item
-      ? {
-          pontos: item.pontos ? String(item.pontos) : "",
-          km: item.km ? String(item.km) : "",
-          treinos: item.treinos ? String(item.treinos) : "",
-        }
-      : vazio();
-  }
+  const valoresDoAtleta = useCallback(
+    (atletaId: string): ValoresHistoricos => {
+      const editado = valores[atletaId];
+      if (editado) return editado;
+      const item = existentes.get(atletaId);
+      return item
+        ? {
+            pontos: item.pontos ? String(item.pontos) : "",
+            km: item.km ? String(item.km) : "",
+            treinos: item.treinos ? String(item.treinos) : "",
+          }
+        : vazio();
+    },
+    [existentes, valores],
+  );
 
   const totais = useMemo(() => {
     if (!atletas) return { atletas: 0, pontos: 0, km: 0, treinos: 0 };
@@ -169,7 +181,7 @@ export function HistoricoMensalTab() {
       },
       { atletas: 0, pontos: 0, km: 0, treinos: 0 },
     );
-  }, [atletas, valores, existentes]);
+  }, [atletas, valoresDoAtleta]);
 
   const conflitosAtivos = useMemo(() => {
     if (!atletas) return [];
@@ -178,7 +190,7 @@ export function HistoricoMensalTab() {
       const v = valoresDoAtleta(atleta.id);
       return numero(v.pontos) > 0 || numero(v.km) > 0 || numero(v.treinos) > 0;
     });
-  }, [atletas, existentes, sobreposicoes, valores]);
+  }, [atletas, sobreposicoes, valoresDoAtleta]);
 
   function alterar(atletaId: string, campo: keyof ValoresHistoricos, valor: string) {
     setSobreposicaoConfirmada(false);
