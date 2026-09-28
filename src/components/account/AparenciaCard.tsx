@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { cn } from "@/lib/cn";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { applyTheme, getStoredTheme, type Theme } from "@/lib/theme";
 
 export function AparenciaCard() {
@@ -21,28 +21,14 @@ export function AparenciaCard() {
         Aparência
       </h3>
       <p className="mb-2 text-xs text-text-light">Tema</p>
-      <div className="flex w-fit gap-1 rounded-[var(--radius)] border border-border bg-bg p-1">
-        <button
-          onClick={() => handleChange("light")}
-          className={cn(
-            "flex items-center gap-2 rounded-[calc(var(--radius)-2px)] px-4 py-2 text-sm font-semibold transition-colors",
-            theme === "light" ? "bg-bg-card text-primary shadow-sm" : "text-text-light",
-          )}
-        >
-          <Sun className="size-4" />
-          Claro
-        </button>
-        <button
-          onClick={() => handleChange("dark")}
-          className={cn(
-            "flex items-center gap-2 rounded-[calc(var(--radius)-2px)] px-4 py-2 text-sm font-semibold transition-colors",
-            theme === "dark" ? "bg-bg-card text-primary shadow-sm" : "text-text-light",
-          )}
-        >
-          <Moon className="size-4" />
-          Escuro
-        </button>
-      </div>
+      <SegmentedControl
+        value={theme}
+        onChange={handleChange}
+        options={[
+          { value: "light", label: "Claro", icon: Sun },
+          { value: "dark", label: "Escuro", icon: Moon },
+        ]}
+      />
     </Card>
   );
 }

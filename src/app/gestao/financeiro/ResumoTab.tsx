@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot } from "firebase/firestore";
-import { Building2, Calculator, CalendarRange, PieChart, Receipt, TrendingUp, Wallet } from "lucide-react";
+import { Building2, Calculator, CalendarRange, PieChart } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
+import { PainelNumeros } from "@/components/ui/PainelNumeros";
 import { formatBRL, plural } from "@/lib/format";
 import type { CategoriaDespesa, DespesaDoc } from "@/lib/types";
 
@@ -147,11 +148,19 @@ export function ResumoTab() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <FinKpi icon={Wallet} color="var(--color-primary)" label="Total orçado" desc="Orçamento aprovado" value={formatBRL(totalProposto)} />
-        <FinKpi icon={Receipt} color="var(--color-danger)" label="Total realizado" desc="Gasto confirmado" value={formatBRL(totalRealizado)} />
-        <FinKpi icon={TrendingUp} color="var(--color-secondary)" label="Saldo / desvio" desc="Orçado menos realizado" value={formatBRL(saldo)} />
-      </div>
+      <PainelNumeros
+        emLinhasNoCelular
+        itens={[
+          { rotulo: "Total orçado", valor: formatBRL(totalProposto), detalhe: "Orçamento aprovado" },
+          { rotulo: "Total realizado", valor: formatBRL(totalRealizado), detalhe: "Gasto confirmado" },
+          {
+            rotulo: "Saldo",
+            valor: formatBRL(saldo),
+            detalhe: saldo < 0 ? "Acima do orçado" : "Orçado menos realizado",
+            tom: saldo < 0 ? "danger" : "success",
+          },
+        ]}
+      />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
@@ -164,28 +173,10 @@ export function ResumoTab() {
           ) : porEquipe.length === 0 ? (
             <p className="py-6 text-center text-sm text-text-muted">Nenhum dado financeiro registrado</p>
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left text-xs uppercase text-text-muted">
-                  <th className="py-2 font-semibold">Equipe</th>
-                  <th className="py-2 text-right font-semibold">Orçado</th>
-                  <th className="py-2 text-right font-semibold">Realizado</th>
-                  <th className="py-2 text-right font-semibold">Desvio</th>
-                </tr>
-              </thead>
-              <tbody>
-                {porEquipe.map((e) => (
-                  <tr key={e.equipe} className="border-b border-border last:border-0">
-                    <td className="py-2.5 font-medium text-text">{e.equipe}</td>
-                    <td className="py-2.5 text-right text-text-light">{formatBRL(e.proposto)}</td>
-                    <td className="py-2.5 text-right text-text-light">{formatBRL(e.realizado)}</td>
-                    <td className={`py-2.5 text-right font-semibold ${e.desvio < 0 ? "text-danger" : "text-success"}`}>
-                      {formatBRL(e.desvio)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <TabelaOrcamento
+              rotuloNome="Equipe"
+              linhas={porEquipe.map((x) => ({ nome: x.equipe, proposto: x.proposto, realizado: x.realizado, desvio: x.desvio }))}
+            />
           )}
         </Card>
 
@@ -254,30 +245,10 @@ export function ResumoTab() {
             Nenhum custo recorrente ou despesa com mês definido ainda.
           </p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[560px] text-sm">
-              <thead>
-                <tr className="border-b border-border text-left text-xs uppercase text-text-muted">
-                  <th className="py-2 font-semibold">Mês</th>
-                  <th className="py-2 text-right font-semibold">Orçado</th>
-                  <th className="py-2 text-right font-semibold">Realizado</th>
-                  <th className="py-2 text-right font-semibold">Desvio</th>
-                </tr>
-              </thead>
-              <tbody>
-                {porMes.map((m) => (
-                  <tr key={m.mes} className="border-b border-border last:border-0">
-                    <td className="py-2.5 font-medium text-text">{m.mes}</td>
-                    <td className="py-2.5 text-right text-text-light">{formatBRL(m.proposto)}</td>
-                    <td className="py-2.5 text-right text-text-light">{formatBRL(m.realizado)}</td>
-                    <td className={`py-2.5 text-right font-semibold ${m.desvio < 0 ? "text-danger" : "text-success"}`}>
-                      {formatBRL(m.desvio)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <TabelaOrcamento
+            rotuloNome="Mês"
+            linhas={porMes.map((x) => ({ nome: x.mes, proposto: x.proposto, realizado: x.realizado, desvio: x.desvio }))}
+          />
         )}
       </Card>
 
@@ -291,63 +262,72 @@ export function ResumoTab() {
         ) : porEmpresa.length === 0 ? (
           <p className="py-6 text-center text-sm text-text-muted">Nenhum dado financeiro registrado</p>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs uppercase text-text-muted">
-                <th className="py-2 font-semibold">Empresa</th>
-                <th className="py-2 text-right font-semibold">Orçado</th>
-                <th className="py-2 text-right font-semibold">Realizado</th>
-                <th className="py-2 text-right font-semibold">Desvio</th>
-              </tr>
-            </thead>
-            <tbody>
-              {porEmpresa.map((e) => (
-                <tr key={e.empresa} className="border-b border-border last:border-0">
-                  <td className="py-2.5 font-medium text-text">{e.empresa}</td>
-                  <td className="py-2.5 text-right text-text-light">{formatBRL(e.proposto)}</td>
-                  <td className="py-2.5 text-right text-text-light">{formatBRL(e.realizado)}</td>
-                  <td className={`py-2.5 text-right font-semibold ${e.desvio < 0 ? "text-danger" : "text-success"}`}>
-                    {formatBRL(e.desvio)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <TabelaOrcamento
+            rotuloNome="Empresa"
+            linhas={porEmpresa.map((x) => ({ nome: x.empresa, proposto: x.proposto, realizado: x.realizado, desvio: x.desvio }))}
+          />
         )}
       </Card>
     </div>
   );
 }
 
-function FinKpi({
-  icon: Icon,
-  color,
-  label,
-  desc,
-  value,
-}: {
-  icon: typeof Wallet;
-  color: string;
-  label: string;
-  desc: string;
-  value: string;
-}) {
+
+interface LinhaOrcamento {
+  nome: string;
+  proposto: number;
+  realizado: number;
+  desvio: number;
+}
+
+/** Orçado × realizado. Tabela no computador; no celular, um bloco por linha. */
+function TabelaOrcamento({ rotuloNome, linhas }: { rotuloNome: string; linhas: LinhaOrcamento[] }) {
+  const corDesvio = (desvio: number) => (desvio < 0 ? "text-danger" : "text-success");
   return (
-    <div
-      className="flex items-center gap-3.5 rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-sm"
-      style={{ borderLeft: `3px solid ${color}` }}
-    >
-      <span
-        className="flex size-9 shrink-0 items-center justify-center rounded-[var(--radius-sm)]"
-        style={{ backgroundColor: `color-mix(in srgb, ${color} 10%, transparent)`, color }}
-      >
-        <Icon className="size-[18px]" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs font-bold uppercase tracking-wide text-text-light">{label}</p>
-        <p className="text-[1.35rem] font-extrabold leading-tight text-text">{value}</p>
-        <p className="text-xs text-text-muted">{desc}</p>
-      </div>
-    </div>
+    <>
+      <table className="hidden w-full text-sm sm:table">
+        <thead>
+          <tr className="border-b border-border text-left text-xs uppercase text-text-muted">
+            <th className="py-2 font-semibold">{rotuloNome}</th>
+            <th className="py-2 text-right font-semibold">Orçado</th>
+            <th className="py-2 text-right font-semibold">Realizado</th>
+            <th className="py-2 text-right font-semibold">Desvio</th>
+          </tr>
+        </thead>
+        <tbody>
+          {linhas.map((l) => (
+            <tr key={l.nome} className="border-b border-border last:border-0">
+              <td className="py-2.5 pr-3 font-medium text-text">{l.nome}</td>
+              <td className="whitespace-nowrap py-2.5 pl-3 text-right tabular-nums text-text-light">{formatBRL(l.proposto)}</td>
+              <td className="whitespace-nowrap py-2.5 pl-3 text-right tabular-nums text-text-light">{formatBRL(l.realizado)}</td>
+              <td className={`whitespace-nowrap py-2.5 pl-3 text-right font-semibold tabular-nums ${corDesvio(l.desvio)}`}>
+                {formatBRL(l.desvio)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <ul className="flex flex-col divide-y divide-border sm:hidden">
+        {linhas.map((l) => (
+          <li key={l.nome} className="py-3 first:pt-0 last:pb-0">
+            <p className="text-sm font-semibold text-text">{l.nome}</p>
+            <dl className="mt-1.5 grid grid-cols-3 gap-2 text-xs">
+              <div>
+                <dt className="text-text-muted">Orçado</dt>
+                <dd className="font-medium tabular-nums text-text-light">{formatBRL(l.proposto)}</dd>
+              </div>
+              <div>
+                <dt className="text-text-muted">Realizado</dt>
+                <dd className="font-medium tabular-nums text-text-light">{formatBRL(l.realizado)}</dd>
+              </div>
+              <div className="text-right">
+                <dt className="text-text-muted">Desvio</dt>
+                <dd className={`font-bold tabular-nums ${corDesvio(l.desvio)}`}>{formatBRL(l.desvio)}</dd>
+              </div>
+            </dl>
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }

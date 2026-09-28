@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -16,10 +16,13 @@ import {
   UserCog,
   ChevronsLeft,
   ChevronsRight,
+  X,
   Bike,
   Footprints,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { RodapeDaGaveta } from "@/components/layout/RodapeDaGaveta";
+import { useGavetaMobile } from "@/components/layout/useGavetaMobile";
 import { temPermissao, type PermissaoChave } from "@/lib/permissoes";
 import type { Role } from "@/lib/types";
 import { useActiveSession } from "@/lib/session/SessionProvider";
@@ -53,7 +56,9 @@ export function StaffSidebar({
   onCloseMobile: () => void;
 }) {
   const pathname = usePathname();
-  const { usuario, atleta } = useActiveSession();
+  const { usuario, atleta, logout } = useActiveSession();
+  const painelRef = useRef<HTMLElement>(null);
+  const gestos = useGavetaMobile(mobileOpen, onCloseMobile, painelRef);
   const [collapsed, setCollapsed] = useState(false);
   const tambemAtleta = souTambemAtleta(usuario, atleta);
   const IconModalidade = atleta.equipe === "bicicleta" ? Bike : Footprints;
@@ -67,21 +72,29 @@ export function StaffSidebar({
 
   return (
     <>
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-navy/50 backdrop-blur-sm lg:hidden"
-          onClick={onCloseMobile}
-        />
-      )}
-      <aside
+      <div
+        aria-hidden="true"
         className={cn(
-          "superficie-escura fixed inset-y-0 left-0 z-40 flex h-dvh w-64 shrink-0 flex-col bg-navy transition-transform duration-200",
+          "fixed inset-0 z-[55] bg-navy/50 backdrop-blur-sm transition-opacity duration-300 lg:hidden",
+          mobileOpen ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
+        onClick={onCloseMobile}
+      />
+      <aside
+        ref={painelRef}
+        {...gestos}
+        role={mobileOpen ? "dialog" : undefined}
+        aria-modal={mobileOpen ? true : undefined}
+        aria-label={mobileOpen ? "Menu" : undefined}
+        tabIndex={-1}
+        className={cn(
+          "superficie-escura fixed inset-y-0 left-0 z-[60] flex h-dvh w-[min(18rem,85vw)] shrink-0 flex-col bg-navy outline-none transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] lg:w-64",
           "lg:sticky lg:top-0 lg:z-auto lg:translate-x-0 lg:transition-[width]",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
           collapsed ? "lg:w-[72px]" : "lg:w-64",
         )}
       >
-        <div className="flex h-16 items-center px-4">
+        <div className="flex h-16 items-center justify-between px-4">
           {collapsed ? (
             <span className="hidden size-9 items-center justify-center rounded-lg bg-white/10 text-sm font-bold text-white lg:flex">
               AE
@@ -95,6 +108,14 @@ export function StaffSidebar({
               className="h-auto w-[132px]"
             />
           )}
+          <button
+            type="button"
+            onClick={onCloseMobile}
+            aria-label="Fechar menu"
+            className="-mr-2 flex size-11 items-center justify-center rounded-full text-white/60 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
+          >
+            <X className="size-5" />
+          </button>
         </div>
 
         {!collapsed && (
@@ -113,7 +134,7 @@ export function StaffSidebar({
                 onClick={onCloseMobile}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-3 rounded-[var(--radius)] px-3 py-2.5 text-sm font-medium text-white/70 transition-colors",
+                  "flex min-h-11 items-center gap-3 rounded-[var(--radius)] px-3 py-2.5 text-sm font-medium text-white/70 transition-colors lg:min-h-0",
                   "hover:bg-white/5 hover:text-white",
                   active && "bg-white/10 text-white shadow-[inset_3px_0_0_var(--color-secondary)]",
                   collapsed && "lg:justify-center lg:px-0",
@@ -142,6 +163,8 @@ export function StaffSidebar({
             </Link>
           )}
         </nav>
+
+        <RodapeDaGaveta nome={atleta.nome} papel={role === "administrador" ? "Administrador" : "Comitê"} onSair={logout} comTema />
 
         <button
           onClick={() => setCollapsed((c) => !c)}

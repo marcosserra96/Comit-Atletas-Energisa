@@ -9,20 +9,18 @@ import {
   CalendarCheck,
   CalendarDays,
   ChevronDown,
-  ChevronUp,
+  FileSpreadsheet,
   Footprints,
-  Gauge,
-  Map,
+  Medal,
   RefreshCw,
   Search,
   Sparkles,
-  Target,
   Trophy,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useAthleteView } from "@/lib/session/AthleteViewProvider";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { MetricCard } from "@/components/ui/MetricCard";
+import { TrendIndicator } from "@/components/ui/TrendIndicator";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -30,7 +28,6 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { Select } from "@/components/ui/Select";
 import { formatDataTreino, formatKm, formatNumero, formatPontos, plural } from "@/lib/format";
 import {
   calcularDesempenhoAtleta,
@@ -39,7 +36,7 @@ import {
   type PeriodoDesempenho,
   type SerieMensalDesempenho,
 } from "@/lib/athletePerformance";
-import type { HistoricoPontoDoc, TipoLancamento } from "@/lib/types";
+import type { HistoricoMensalDoc, HistoricoPontoDoc, TipoLancamento } from "@/lib/types";
 
 const tipoLabel: Record<TipoLancamento, string> = {
   treino: "Treino",
@@ -53,6 +50,98 @@ type FiltroTipo = "todos" | TipoLancamento;
 
 function nomeMesCapitalizado(valor: string) {
   return valor.charAt(0).toUpperCase() + valor.slice(1);
+}
+
+type ItemHistoricoDados =
+  | { tipo: "lancamento"; id: string; data: string; lancamento: HistoricoPontoDoc }
+  | { tipo: "mensal"; id: string; data: string; resumo: HistoricoMensalDoc };
+
+const FILTROS_TIPO: { value: FiltroTipo; label: string }[] = [
+  { value: "todos", label: "Todos" },
+  { value: "treino", label: "Treinos" },
+  { value: "evento", label: "Eventos" },
+  { value: "avulso", label: "Avulsos" },
+  { value: "importacao", label: "Importações" },
+];
+
+const POR_PAGINA = 15;
+
+const iconePorTipo: Record<TipoLancamento, typeof Footprints> = {
+  treino: Footprints,
+  evento: Medal,
+  avulso: Sparkles,
+  importacao: FileSpreadsheet,
+};
+
+const formatoDiaMes = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" });
+
+function diaMes(data: string) {
+  const d = new Date(data + "T00:00:00");
+  return Number.isNaN(d.getTime()) ? "—" : formatoDiaMes.format(d).replace(".", "");
+}
+
+function ResumoNumero({ rotulo, valor }: { rotulo: string; valor: string }) {
+  return (
+    <div className="flex flex-col items-center gap-0.5 px-2 py-4 text-center sm:py-5">
+      <dd className="text-2xl font-black tabular-nums text-text sm:text-3xl">{valor}</dd>
+      <dt className="order-last text-xs font-medium text-text-light">{rotulo}</dt>
+    </div>
+  );
+}
+
+function ItemHistorico({ item }: { item: ItemHistoricoDados }) {
+  if (item.tipo === "mensal") {
+    const r = item.resumo;
+    const meta = [plural(r.treinos || 0, "treino"), r.km ? formatKm(r.km) : null].filter(Boolean).join(" · ");
+    return (
+      <li className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 last:border-b-0 sm:px-5">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-bg-subtle text-text-muted">
+          <CalendarDays className="size-4" aria-hidden="true" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-text">Total do mês (planilha)</p>
+          <p className="truncate text-xs text-text-light">{meta}</p>
+        </div>
+        <span className="shrink-0 text-sm font-bold tabular-nums text-success">+{formatPontos(r.pontos || 0)}</span>
+      </li>
+    );
+  }
+  const l = item.lancamento;
+  const Icone = iconePorTipo[l.tipoLancamento] ?? Footprints;
+  const meta = [
+    l.dataAproximada ? formatDataTreino(l.dataTreino, true) : diaMes(l.dataTreino),
+    l.kmPercorrido ? formatKm(l.kmPercorrido) : null,
+    l.descricaoLote && l.descricaoLote !== l.regraDesc ? l.descricaoLote : tipoLabel[l.tipoLancamento],
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const cor = l.estornado ? "text-text-muted line-through" : l.pontos < 0 ? "text-danger" : "text-success";
+  return (
+    <li className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 last:border-b-0 sm:px-5">
+      <span
+        className={
+          "flex size-9 shrink-0 items-center justify-center rounded-full " +
+          (l.estornado ? "bg-bg-subtle text-text-muted" : "bg-primary-subtle text-primary")
+        }
+      >
+        <Icone className="size-4" aria-hidden="true" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className={"truncate text-sm font-semibold " + (l.estornado ? "text-text-muted line-through" : "text-text")}>
+          {l.regraDesc}
+        </p>
+        <p className="truncate text-xs text-text-light">{meta}</p>
+        {l.observacao ? <p className="mt-0.5 line-clamp-2 text-xs text-text-muted">{l.observacao}</p> : null}
+      </div>
+      <div className="flex shrink-0 flex-col items-end gap-0.5">
+        <span className={"text-sm font-bold tabular-nums " + cor}>
+          {l.pontos > 0 ? "+" : ""}
+          {formatPontos(l.pontos)}
+        </span>
+        {l.estornado ? <span className="text-xs font-semibold text-danger">Estornado</span> : null}
+      </div>
+    </li>
+  );
 }
 
 function GraficoMensal({
@@ -174,6 +263,8 @@ function textoComparacao(analise: AnaliseDesempenho) {
 export default function DesempenhoPage() {
   const { atleta } = useAthleteView();
   const [lancamentos, setLancamentos] = useState<HistoricoPontoDoc[] | null>(null);
+  const [resumosMensais, setResumosMensais] = useState<HistoricoMensalDoc[]>([]);
+  const [limite, setLimite] = useState(POR_PAGINA);
   const [erroCarregamento, setErroCarregamento] = useState(false);
   const [periodo, setPeriodo] = useState<PeriodoDesempenho>("6m");
   const [metricaVolume, setMetricaVolume] = useState<MetricaVolume>("km");
@@ -201,17 +292,27 @@ export default function DesempenhoPage() {
     return unsubscribe;
   }, [atleta.id]);
 
+  useEffect(() => {
+    // Opcional: sem permissão ou sem dados, a tela segue só com os lançamentos.
+    const unsubscribe = onSnapshot(
+      query(collection(db, "historico_mensal"), where("atletaId", "==", atleta.id)),
+      (snap) => setResumosMensais(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as HistoricoMensalDoc)),
+      () => setResumosMensais([]),
+    );
+    return unsubscribe;
+  }, [atleta.id]);
+
   const analise = useMemo(
-    () => (lancamentos ? calcularDesempenhoAtleta({ lancamentos, periodo }) : null),
-    [lancamentos, periodo],
+    () => (lancamentos ? calcularDesempenhoAtleta({ lancamentos, resumosMensais, periodo }) : null),
+    [lancamentos, resumosMensais, periodo],
   );
 
-  const historicoFiltrado = useMemo(() => {
+  const historicoFiltrado = useMemo<ItemHistoricoDados[]>(() => {
     if (!lancamentos) return [];
     const inicio = obterInicioPeriodo(periodo);
     const termo = busca.trim().toLocaleLowerCase("pt-BR");
 
-    return [...lancamentos]
+    const itens: ItemHistoricoDados[] = lancamentos
       .filter((item) => item.dataTreino >= inicio)
       .filter((item) => filtroTipo === "todos" || item.tipoLancamento === filtroTipo)
       .filter((item) => {
@@ -220,8 +321,43 @@ export default function DesempenhoPage() {
           .filter(Boolean)
           .some((valor) => String(valor).toLocaleLowerCase("pt-BR").includes(termo));
       })
-      .sort((a, b) => b.dataTreino.localeCompare(a.dataTreino));
-  }, [busca, filtroTipo, lancamentos, periodo]);
+      .map((lancamento) => ({ tipo: "lancamento", id: lancamento.id, data: lancamento.dataTreino, lancamento }));
+
+    // Resumos mensais contam como treinos; ficam no fim do mês na lista.
+    if ((filtroTipo === "todos" || filtroTipo === "treino") && (!termo || "total do mês planilha".includes(termo))) {
+      for (const resumo of resumosMensais) {
+        if (`${resumo.competencia}-01` < inicio.slice(0, 7) + "-01") continue;
+        itens.push({ tipo: "mensal", id: `mensal-${resumo.id}`, data: `${resumo.competencia}-00`, resumo });
+      }
+    }
+
+    return itens.sort((a, b) => b.data.localeCompare(a.data));
+  }, [busca, filtroTipo, lancamentos, resumosMensais, periodo]);
+
+  const gruposHistorico = useMemo(() => {
+    const grupos: { chave: string; rotulo: string; pontos: number; itens: ItemHistoricoDados[] }[] = [];
+    for (const item of historicoFiltrado.slice(0, limite)) {
+      const chave = item.data.slice(0, 7);
+      let grupo = grupos.at(-1);
+      if (!grupo || grupo.chave !== chave) {
+        const [ano, mes] = chave.split("-").map(Number);
+        const rotulo = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date(ano, mes - 1, 1));
+        grupo = { chave, rotulo, pontos: 0, itens: [] };
+        grupos.push(grupo);
+      }
+      grupo.itens.push(item);
+    }
+    // Total do mês considera todos os itens filtrados do mês, não só os visíveis.
+    for (const grupo of grupos) {
+      grupo.pontos = historicoFiltrado
+        .filter((item) => item.data.startsWith(grupo.chave))
+        .reduce((soma, item) => {
+          if (item.tipo === "mensal") return soma + (item.resumo.pontos || 0);
+          return item.lancamento.estornado ? soma : soma + item.lancamento.pontos;
+        }, 0);
+    }
+    return grupos;
+  }, [historicoFiltrado, limite]);
 
   const criteriosPrincipais = analise?.pontosPorRegra.slice(0, 6) ?? [];
   const maximoCriterio = Math.max(0, ...criteriosPrincipais.map((item) => Math.abs(item.pontos)));
@@ -262,11 +398,7 @@ export default function DesempenhoPage() {
         </Card>
       ) : lancamentos === null || analise === null ? (
         <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-            {Array.from({ length: 6 }, (_, indice) => (
-              <SkeletonCard key={indice} className="h-28" />
-            ))}
-          </div>
+          <SkeletonCard className="h-32" />
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
             <SkeletonCard className="h-80 lg:col-span-3" />
             <SkeletonCard className="h-80 lg:col-span-2" />
@@ -274,81 +406,24 @@ export default function DesempenhoPage() {
         </>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-            <MetricCard
-              label="Treinos"
-              value={analise.totalTreinos}
-              icon={Footprints}
-              iconColor="var(--color-secondary)"
-              trend={
-                analise.variacaoTreinosPct === null
-                  ? undefined
-                  : { value: analise.variacaoTreinosPct, label: "vs mês anterior" }
-              }
-              subtitle={
-                analise.variacaoTreinosPct === null
-                  ? analise.treinosMesAnterior + " no mês anterior"
-                  : undefined
-              }
-            />
-            <MetricCard
-              label="KM registrados"
-              value={formatNumero(analise.totalKm)}
-              icon={Map}
-              iconColor="var(--color-primary)"
-              subtitle={analise.totalParticipacoes + " participações"}
-            />
-            <MetricCard
-              label="Pontos"
-              value={formatNumero(analise.totalPontos)}
-              icon={Trophy}
-              iconColor="var(--color-accent)"
-              subtitle="no período selecionado"
-            />
-            <div className={mostrarAnalisesExtras ? "contents" : "hidden sm:contents"}>
-              <MetricCard
-              label="Média mensal"
-              value={formatNumero(analise.mediaTreinosMes)}
-              icon={Gauge}
-              subtitle="treinos por mês"
-            />
-            <MetricCard
-              label="Média por treino"
-              value={formatKm(analise.mediaKmTreino)}
-              icon={Target}
-              subtitle="considerando treinos com e sem KM"
-            />
-              <MetricCard
-                label="Mês mais ativo"
-                value={analise.melhorMes ? nomeDoMes(analise.melhorMes.rotulo) : "—"}
-                icon={CalendarDays}
-                subtitle={
-                  analise.melhorMes
-                    ? `${plural(analise.melhorMes.treinos, "treino")} em ${analise.melhorMes.rotulo.split(" de ")[1] ?? ""}`.trim()
-                    : "sem treinos no período"
-                }
-              />
+          <Card className="p-0">
+            <dl className="grid grid-cols-3 divide-x divide-border">
+              <ResumoNumero rotulo="Treinos" valor={String(analise.totalTreinos)} />
+              <ResumoNumero rotulo="Km" valor={formatNumero(analise.totalKm)} />
+              <ResumoNumero rotulo="Pontos" valor={formatPontos(analise.totalPontos)} />
+            </dl>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-border px-4 py-3 text-xs text-text-light sm:px-5">
+              {analise.variacaoTreinosPct !== null ? (
+                <span className="flex items-center gap-1">
+                  <TrendIndicator value={analise.variacaoTreinosPct} />
+                  vs mês anterior
+                </span>
+              ) : null}
+              <span>{formatNumero(analise.mediaTreinosMes)} treinos por mês</span>
+              {analise.mediaKmTreino > 0 ? <span>{formatKm(analise.mediaKmTreino)} por treino</span> : null}
+              {analise.melhorMes ? <span>Mês mais ativo: {nomeDoMes(analise.melhorMes.rotulo)}</span> : null}
             </div>
-          </div>
-
-          <Button
-            variant="secondary"
-            className="w-full justify-center sm:hidden"
-            onClick={() => setMostrarAnalisesExtras((valor) => !valor)}
-            aria-expanded={mostrarAnalisesExtras}
-          >
-            {mostrarAnalisesExtras ? (
-              <>
-                Mostrar menos
-                <ChevronUp className="size-4" />
-              </>
-            ) : (
-              <>
-                Ver mais análises
-                <ChevronDown className="size-4" />
-              </>
-            )}
-          </Button>
+          </Card>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
             <Card className="lg:col-span-3">
@@ -372,6 +447,18 @@ export default function DesempenhoPage() {
                 vazio="Os treinos registrados pelo comitê aparecerão aqui."
               />
             </Card>
+
+            <Button
+              variant="secondary"
+              className="w-full justify-center sm:hidden"
+              onClick={() => setMostrarAnalisesExtras((valor) => !valor)}
+              aria-expanded={mostrarAnalisesExtras}
+            >
+              {mostrarAnalisesExtras ? "Mostrar menos" : "Ver consistência e volume"}
+              <ChevronDown
+                className={"size-4 transition-transform duration-200 " + (mostrarAnalisesExtras ? "rotate-180" : "")}
+              />
+            </Button>
 
             <Card className={(mostrarAnalisesExtras ? "flex" : "hidden sm:flex") + " flex-col lg:col-span-2"}>
               <SectionHeader title="Consistência" icon={Sparkles} />
@@ -488,40 +575,58 @@ export default function DesempenhoPage() {
             </Card>
           </div>
 
-          <Card id="historico" className="scroll-mt-24 overflow-hidden p-0">
-            <div className="flex flex-col gap-4 border-b border-border p-5 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <h2 className="text-lg font-bold text-text">Histórico detalhado</h2>
-                <p className="mt-1 text-sm text-text-light">
-                  {plural(historicoFiltrado.length, "lançamento")} no filtro atual.
-                </p>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-[minmax(220px,1fr)_180px]">
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-xs font-semibold text-text-light">Buscar</span>
-                  <span className="relative">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-muted" />
-                    <input
-                      value={busca}
-                      onChange={(evento) => setBusca(evento.target.value)}
-                      placeholder="Regra ou atividade"
-                      className="h-11 w-full rounded-[var(--radius)] border border-border bg-bg-card pl-9 pr-3 text-base text-text outline-none transition-colors placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/15 sm:text-sm"
-                    />
-                  </span>
-                </label>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-text-light">Tipo</label>
-                  <Select
-                    value={filtroTipo}
-                    onChange={(evento) => setFiltroTipo(evento.target.value as FiltroTipo)}
-                  >
-                    <option value="todos">Todos</option>
-                    <option value="treino">Treinos</option>
-                    <option value="evento">Eventos</option>
-                    <option value="avulso">Avulsos</option>
-                    <option value="importacao">Importações</option>
-                  </Select>
+          <Card id="historico" className="scroll-mt-24 p-0">
+            <div className="flex flex-col gap-3 border-b border-border p-4 sm:p-5">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-bold text-text">Histórico</h2>
+                  <p className="mt-0.5 text-sm text-text-light">
+                    {plural(historicoFiltrado.length, "registro")} no período
+                  </p>
                 </div>
+              </div>
+              <label className="relative block">
+                <span className="sr-only">Buscar no histórico</span>
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-muted" />
+                <input
+                  type="search"
+                  value={busca}
+                  onChange={(evento) => {
+                    setBusca(evento.target.value);
+                    setLimite(POR_PAGINA);
+                  }}
+                  placeholder="Buscar treino, evento ou critério"
+                  enterKeyHint="search"
+                  className="h-11 w-full rounded-[var(--radius)] border border-border bg-bg-card pl-9 pr-3 text-base text-text outline-none transition-colors placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/15 sm:text-sm"
+                />
+              </label>
+              <div
+                role="group"
+                aria-label="Filtrar por tipo"
+                className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] sm:mx-0 sm:px-0"
+              >
+                {FILTROS_TIPO.map((opcao) => {
+                  const ativo = filtroTipo === opcao.value;
+                  return (
+                    <button
+                      key={opcao.value}
+                      type="button"
+                      aria-pressed={ativo}
+                      onClick={() => {
+                        setFiltroTipo(opcao.value);
+                        setLimite(POR_PAGINA);
+                      }}
+                      className={
+                        "min-h-9 shrink-0 rounded-full border px-3.5 text-sm font-semibold transition-[background-color,border-color,color,scale] duration-150 active:scale-[0.97] pointer-coarse:min-h-10 " +
+                        (ativo
+                          ? "border-primary bg-primary text-on-primary"
+                          : "border-border bg-bg-card text-text-light hover:border-border-strong hover:text-text")
+                      }
+                    >
+                      {opcao.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -529,145 +634,45 @@ export default function DesempenhoPage() {
               <div className="p-6">
                 <EmptyState
                   icon={CalendarCheck}
-                  title="Nenhum lançamento encontrado"
-                  description="Altere o período, o tipo ou o texto pesquisado."
+                  title="Nada encontrado"
+                  description={
+                    busca || filtroTipo !== "todos"
+                      ? "Tente outro termo ou o filtro “Todos”."
+                      : "Os treinos e eventos lançados pelo comitê aparecem aqui."
+                  }
                 />
               </div>
             ) : (
               <>
-                <div className="hidden overflow-x-auto md:block">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border bg-bg-inset text-left text-xs uppercase text-text-muted">
-                        <th className="px-5 py-3 font-semibold">Atividade</th>
-                        <th className="px-3 py-3 font-semibold">Tipo</th>
-                        <th className="px-3 py-3 font-semibold">Data</th>
-                        <th className="px-3 py-3 text-right font-semibold">KM</th>
-                        <th className="px-5 py-3 text-right font-semibold">Pontos</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {historicoFiltrado.map((lancamento) => (
-                        <tr
-                          key={lancamento.id}
-                          className={
-                            "border-b border-border transition-colors last:border-0 hover:bg-bg-inset " +
-                            (lancamento.estornado ? "opacity-60" : "")
-                          }
-                        >
-                          <td className="px-5 py-4">
-                            <div className="flex items-center gap-2">
-                              <span
-                                className={
-                                  "font-medium text-text " +
-                                  (lancamento.estornado ? "line-through text-text-muted" : "")
-                                }
-                              >
-                                {lancamento.regraDesc}
-                              </span>
-                              {lancamento.estornado && <Badge tone="danger">Estornado</Badge>}
-                            </div>
-                            {lancamento.descricaoLote && (
-                              <p className="mt-0.5 text-xs text-text-muted">
-                                {lancamento.descricaoLote}
-                              </p>
-                            )}
-                            {lancamento.observacao && (
-                              <p className="mt-1 max-w-md whitespace-pre-wrap text-xs text-text-light">
-                                {lancamento.observacao}
-                              </p>
-                            )}
-                          </td>
-                          <td className="px-3 py-4">
-                            <Badge tone="neutral">{tipoLabel[lancamento.tipoLancamento]}</Badge>
-                          </td>
-                          <td className="px-3 py-4 text-text-light">
-                            {formatDataTreino(lancamento.dataTreino, lancamento.dataAproximada)}
-                          </td>
-                          <td className="px-3 py-4 text-right text-text-light">
-                            {lancamento.kmPercorrido
-                              ? formatNumero(lancamento.kmPercorrido)
-                              : "—"}
-                          </td>
-                          <td className="px-5 py-4 text-right font-bold">
-                            <span
-                              className={
-                                lancamento.estornado
-                                  ? "text-text-muted line-through"
-                                  : lancamento.pontos < 0
-                                    ? "text-danger"
-                                    : "text-success"
-                              }
-                            >
-                              {lancamento.pontos > 0 ? "+" : ""}
-                              {formatPontos(lancamento.pontos)}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="flex flex-col gap-3 p-4 md:hidden">
-                  {historicoFiltrado.map((lancamento) => (
-                    <div
-                      key={lancamento.id}
-                      className={
-                        "rounded-[var(--radius)] border border-border bg-bg-card p-4 " +
-                        (lancamento.estornado ? "opacity-65" : "")
-                      }
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p
-                            className={
-                              "font-semibold text-text " +
-                              (lancamento.estornado ? "line-through text-text-muted" : "")
-                            }
-                          >
-                            {lancamento.regraDesc}
-                          </p>
-                          {lancamento.descricaoLote && (
-                            <p className="mt-0.5 truncate text-xs text-text-muted">
-                              {lancamento.descricaoLote}
-                            </p>
-                          )}
-                          {lancamento.observacao && (
-                            <p className="mt-1 line-clamp-2 text-xs text-text-light">
-                              {lancamento.observacao}
-                            </p>
-                          )}
-                        </div>
-                        <span
-                          className={
-                            "shrink-0 font-bold " +
-                            (lancamento.estornado
-                              ? "text-text-muted line-through"
-                              : lancamento.pontos < 0
-                                ? "text-danger"
-                                : "text-success")
-                          }
-                        >
-                          {lancamento.pontos > 0 ? "+" : ""}
-                          {formatPontos(lancamento.pontos)} pts
+                <ol>
+                  {gruposHistorico.map((grupo) => (
+                    <li key={grupo.chave}>
+                      <h3 className="sticky top-16 z-[1] flex items-center justify-between border-b border-border bg-bg-subtle/95 px-4 py-2 text-xs font-bold uppercase tracking-wide text-text-muted backdrop-blur sm:px-5">
+                        <span>{grupo.rotulo}</span>
+                        <span className="tabular-nums normal-case tracking-normal">
+                          {formatPontos(grupo.pontos)} pts
                         </span>
-                      </div>
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <Badge tone="neutral">{tipoLabel[lancamento.tipoLancamento]}</Badge>
-                        {lancamento.estornado && <Badge tone="danger">Estornado</Badge>}
-                        {lancamento.kmPercorrido ? (
-                          <Badge tone="primary">
-                            {formatNumero(lancamento.kmPercorrido)} km
-                          </Badge>
-                        ) : null}
-                        <span className="ml-auto text-xs text-text-light">
-                          {formatDataTreino(lancamento.dataTreino, lancamento.dataAproximada)}
-                        </span>
-                      </div>
-                    </div>
+                      </h3>
+                      <ul>
+                        {grupo.itens.map((item) => (
+                          <ItemHistorico key={item.id} item={item} />
+                        ))}
+                      </ul>
+                    </li>
                   ))}
-                </div>
+                </ol>
+                {historicoFiltrado.length > limite ? (
+                  <div className="border-t border-border p-3">
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-center"
+                      onClick={() => setLimite((atual) => atual + POR_PAGINA)}
+                    >
+                      Mostrar mais {Math.min(POR_PAGINA, historicoFiltrado.length - limite)}
+                      <ChevronDown className="size-4" />
+                    </Button>
+                  </div>
+                ) : null}
               </>
             )}
           </Card>

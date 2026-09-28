@@ -299,7 +299,7 @@ export default function DashboardPage() {
     if (waitlisted || !modalidade) return null;
     if (!insights?.posicao) return null;
     return {
-      texto: `${insights.posicao}º lugar na ${nomeModalidade} · ${plural(atleta.pontuacaoTotal, "ponto")} no total`,
+      texto: `${insights.posicao}º lugar na ${nomeModalidade} · ${formatPontos(atleta.pontuacaoTotal)} ${atleta.pontuacaoTotal === 1 ? "ponto" : "pontos"} no total`,
       link: true,
     };
   })();

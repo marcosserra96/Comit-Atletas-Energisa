@@ -6,7 +6,6 @@ import { ListChecks, Pencil, Plus, Trash2 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useToast } from "@/components/ui/Toast";
 import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmActionModal } from "@/components/ui/ConfirmActionModal";
@@ -76,49 +75,42 @@ export function CriteriosTab() {
           />
         </Card>
       ) : (
-        <Card className="overflow-x-auto p-0">
-          <table className="w-full min-w-[560px] text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs uppercase text-text-muted">
-                <th className="px-4 py-3 font-semibold">Descrição</th>
-                <th className="px-3 py-3 font-semibold">Modalidade</th>
-                <th className="px-3 py-3 text-right font-semibold">Pontos</th>
-                <th className="px-4 py-3 text-right font-semibold">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {regras.map((r) => (
-                <tr key={r.id} className="border-b border-border last:border-0">
-                  <td className="px-4 py-3 font-medium text-text">{r.descricao}</td>
-                  <td className="px-3 py-3">
-                    <Badge tone="primary">{modalidadeLabel[r.modalidade]}</Badge>
-                  </td>
-                  <td className="px-3 py-3 text-right font-semibold text-text">{formatPontos(r.pontos)}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-1.5">
-                      <button
-                        onClick={() => {
-                          setEditando(r);
-                          setModalOpen(true);
-                        }}
-                        aria-label="Editar"
-                        className="rounded-[var(--radius)] p-1.5 text-text-muted hover:bg-bg hover:text-primary"
-                      >
-                        <Pencil className="size-4" />
-                      </button>
-                      <button
-                        onClick={() => setExcluindo(r)}
-                        aria-label="Excluir"
-                        className="rounded-[var(--radius)] p-1.5 text-text-muted hover:bg-danger/10 hover:text-danger"
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <Card className="p-0">
+          <ul className="divide-y divide-border">
+            {regras.map((r) => (
+              <li key={r.id} className="flex items-center gap-3 py-2 pl-4 pr-2 sm:pl-5">
+                <div className="min-w-0 flex-1 py-1">
+                  <p className="font-medium text-text">{r.descricao}</p>
+                  <p className="mt-0.5 text-xs text-text-light">{modalidadeLabel[r.modalidade]}</p>
+                </div>
+                <span className="shrink-0 text-base font-bold tabular-nums text-text">
+                  {formatPontos(r.pontos)}
+                  <span className="ml-0.5 text-xs font-medium text-text-muted">pts</span>
+                </span>
+                <div className="flex shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditando(r);
+                      setModalOpen(true);
+                    }}
+                    aria-label={`Editar “${r.descricao}”`}
+                    className="flex size-11 items-center justify-center rounded-[var(--radius)] text-text-muted transition-colors hover:bg-primary/10 hover:text-primary"
+                  >
+                    <Pencil className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExcluindo(r)}
+                    aria-label={`Excluir “${r.descricao}”`}
+                    className="flex size-11 items-center justify-center rounded-[var(--radius)] text-text-muted transition-colors hover:bg-danger/10 hover:text-danger"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
         </Card>
       )}
 

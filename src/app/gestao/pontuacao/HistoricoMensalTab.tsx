@@ -571,7 +571,7 @@ export function HistoricoMensalTab() {
         </>
       )}
 
-      <div className="sticky bottom-0 z-10 -mx-4 flex flex-col gap-2 border-t border-border bg-bg-card px-4 py-3 sm:static sm:mx-0 sm:flex-row sm:items-center sm:justify-between sm:border-0 sm:bg-transparent sm:p-0">
+      <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 -mx-4 flex flex-col gap-2 border-t border-border bg-bg-card/95 px-4 py-3 shadow-[0_-8px_24px_-12px_rgba(7,25,45,0.25)] backdrop-blur sm:static sm:shadow-none sm:backdrop-blur-none sm:mx-0 sm:flex-row sm:items-center sm:justify-between sm:border-0 sm:bg-transparent sm:p-0">
         <p className="text-sm text-text-light">
           {totais.atletas} com dados · {formatPontos(totais.pontos)} pts · {formatKm(totais.km)} · {totais.treinos} treinos
         </p>
