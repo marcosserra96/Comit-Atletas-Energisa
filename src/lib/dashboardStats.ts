@@ -1,6 +1,7 @@
 import { dataIsoLocal } from "@/lib/date";
 import { ehMembroDoElenco } from "@/lib/labels";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
+import { consolidarAtividades, type AtividadeConsolidada } from "@/lib/activityConsolidation";
 import type {
   AtletaDoc,
   DespesaDoc,
@@ -20,8 +21,10 @@ export interface ModalidadeStats {
   inativos: number;
   participacoes: number;
   pontos: number;
+  /** Pontos divididos pelo número de atletas da modalidade. */
   media: number;
   km: number;
+  /** `pontuacaoTotal` aqui é a pontuação calculada, a mesma do Ranking geral. */
   top: AtletaDoc | undefined;
   inativosList: AtletaDoc[];
 }
@@ -38,6 +41,7 @@ export interface EstatisticasDashboard {
   custoKm: number;
   bike: ModalidadeStats;
   corrida: ModalidadeStats;
+  /** Até 3 atletas; `pontuacaoTotal` é a pontuação calculada, a mesma do Ranking geral. */
   podioBike: AtletaDoc[];
   podioCorrida: AtletaDoc[];
   filaAguardando: number;
@@ -76,26 +80,38 @@ export function calcularEstatisticasDashboard(params: {
   const validos = lancamentos.filter(
     (l) => !l.estornado && atletaIdsVisiveis.has(l.atletaId),
   );
-  const lotesPorAtleta = new Map<string, Set<string>>();
+  const regrasUsadas = new Set(validos.map((l) => l.regraId));
+
+  // Mesma consolidação do Ranking: cada atividade conta uma vez, soma os pontos
+  // de todas as regras e usa a maior quilometragem informada. Faltas
+  // justificadas não contam como atividade.
+  const lancamentosPorAtleta = new Map<string, HistoricoPontoDoc[]>();
+  for (const l of validos) {
+    const lista = lancamentosPorAtleta.get(l.atletaId) ?? [];
+    lista.push(l);
+    lancamentosPorAtleta.set(l.atletaId, lista);
+  }
+  const atividadesPorAtleta = new Map<string, AtividadeConsolidada[]>();
+  const participacoesPorAtleta = new Map<string, number>();
   const kmPorAtleta = new Map<string, number>();
   const pontosPorAtleta = new Map<string, number>();
   const ultimoPorAtleta = new Map<string, string>();
-  const regrasUsadas = new Set<string>();
-
-  for (const l of validos) {
-    regrasUsadas.add(l.regraId);
-    const lotes = lotesPorAtleta.get(l.atletaId) ?? new Set<string>();
-    if (!lotes.has(l.loteId)) {
-      lotes.add(l.loteId);
-      kmPorAtleta.set(l.atletaId, (kmPorAtleta.get(l.atletaId) ?? 0) + (l.kmPercorrido ?? 0));
-      pontosPorAtleta.set(l.atletaId, (pontosPorAtleta.get(l.atletaId) ?? 0) + l.pontos);
-    }
-    lotesPorAtleta.set(l.atletaId, lotes);
-    const atual = ultimoPorAtleta.get(l.atletaId);
-    if (!atual || l.dataTreino > atual) ultimoPorAtleta.set(l.atletaId, l.dataTreino);
+  for (const [atletaId, lista] of lancamentosPorAtleta) {
+    const atividades = consolidarAtividades(lista);
+    if (atividades.length === 0) continue;
+    atividadesPorAtleta.set(atletaId, atividades);
+    participacoesPorAtleta.set(atletaId, atividades.length);
+    kmPorAtleta.set(atletaId, atividades.reduce((t, a) => t + a.km, 0));
+    pontosPorAtleta.set(atletaId, atividades.reduce((t, a) => t + a.pontos, 0));
+    ultimoPorAtleta.set(atletaId, atividades.reduce((u, a) => (a.data > u ? a.data : u), ""));
   }
+  const pontosDe = (atleta: AtletaDoc) => pontosPorAtleta.get(atleta.id) ?? 0;
+  /** Cópia do atleta com a pontuação calculada, para pódio e relatórios. */
+  const comPontos = (atleta: AtletaDoc): AtletaDoc => ({ ...atleta, pontuacaoTotal: pontosDe(atleta) });
+  const porPontos = (a: AtletaDoc, b: AtletaDoc) =>
+    pontosDe(b) - pontosDe(a) || a.nome.localeCompare(b.nome, "pt-BR");
 
-  const participacoesTotal = [...lotesPorAtleta.values()].reduce((s, set) => s + set.size, 0);
+  const participacoesTotal = [...participacoesPorAtleta.values()].reduce((s, v) => s + v, 0);
   const kmTotal = [...kmPorAtleta.values()].reduce((s, v) => s + v, 0);
   const investimentoTotal = despesas.reduce((s, d) => s + d.totalRealizado, 0);
 
@@ -111,15 +127,11 @@ export function calcularEstatisticasDashboard(params: {
       const ultimo = ultimoPorAtleta.get(a.id);
       return ultimo && ultimo >= iso30;
     });
-    const participacoes = grupo.reduce((s, a) => s + (lotesPorAtleta.get(a.id)?.size ?? 0), 0);
-    const pontos = grupo.reduce((s, a) => s + (pontosPorAtleta.get(a.id) ?? 0), 0);
+    const participacoes = grupo.reduce((s, a) => s + (participacoesPorAtleta.get(a.id) ?? 0), 0);
+    const pontos = grupo.reduce((s, a) => s + pontosDe(a), 0);
     const km = grupo.reduce((s, a) => s + (kmPorAtleta.get(a.id) ?? 0), 0);
-    const top = [...grupo]
-      .sort(
-        (a, b) =>
-          b.pontuacaoTotal - a.pontuacaoTotal || a.nome.localeCompare(b.nome, "pt-BR"),
-      )
-      .find((a) => a.pontuacaoTotal > 0);
+    const primeiro = [...grupo].sort(porPontos).find((a) => pontosDe(a) > 0);
+    const top = primeiro ? comPontos(primeiro) : undefined;
     const inativos = grupo.filter((a) => {
       const ultimo = ultimoPorAtleta.get(a.id);
       return !ultimo || ultimo < iso30;
@@ -142,13 +154,11 @@ export function calcularEstatisticasDashboard(params: {
   const corrida = porModalidade("corrida");
 
   const podio = (mod: Modalidade) =>
-    [...ativos]
-      .filter((a) => a.equipe === mod && a.pontuacaoTotal > 0)
-      .sort(
-        (a, b) =>
-          b.pontuacaoTotal - a.pontuacaoTotal || a.nome.localeCompare(b.nome, "pt-BR"),
-      )
-      .slice(0, 3);
+    ativos
+      .filter((a) => a.equipe === mod && pontosDe(a) > 0)
+      .sort(porPontos)
+      .slice(0, 3)
+      .map(comPontos);
 
   const custoParticipacao = participacoesTotal > 0 ? investimentoTotal / participacoesTotal : 0;
   const custoKm = kmTotal > 0 ? investimentoTotal / kmTotal : 0;
@@ -161,11 +171,14 @@ export function calcularEstatisticasDashboard(params: {
   const seriesMensal = Array.from({ length: 6 }, (_, i) => {
     const ref = new Date(hoje.getFullYear(), hoje.getMonth() - (5 - i), 1);
     const prefixo = `${ref.getFullYear()}-${String(ref.getMonth() + 1).padStart(2, "0")}`;
-    const count = validos.filter((l) => l.dataTreino.startsWith(prefixo)).length;
+    let count = 0;
+    for (const atividades of atividadesPorAtleta.values()) {
+      count += atividades.filter((a) => a.data.startsWith(prefixo)).length;
+    }
     return { label: MESES[ref.getMonth()], count };
   });
 
-  const atletasSemAtividade = ativos.filter((a) => !lotesPorAtleta.has(a.id)).length;
+  const atletasSemAtividade = ativos.filter((a) => !participacoesPorAtleta.has(a.id)).length;
 
   const eventosLancados = new Set(validos.filter((l) => l.eventoId).map((l) => l.eventoId));
   const limiteInferior = new Date(hoje);
