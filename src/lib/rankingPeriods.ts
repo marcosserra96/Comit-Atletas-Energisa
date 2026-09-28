@@ -41,9 +41,9 @@ export function calcularResultadosRanking(
   atletas: AtletaDoc[],
   lancamentos: HistoricoPontoDoc[],
   periodoId: RankingPeriodKey,
-  resumosMensais: HistoricoMensalDoc[] = [],
   inicio?: string,
   fim?: string,
+  resumosMensais: HistoricoMensalDoc[] = [],
 ): Omit<RankingResultadoDoc, "geracaoId" | "geradoEm">[] {
   const porAtleta = new Map<string, HistoricoPontoDoc[]>();
 
