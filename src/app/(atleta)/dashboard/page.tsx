@@ -19,12 +19,10 @@ import {
   Bike,
   ChevronRight,
   Footprints,
-  History,
   CalendarCheck,
   Newspaper,
   MapPin,
   Check,
-  TrendingUp,
   Award,
   AlertCircle,
   Navigation,
@@ -34,24 +32,15 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
-import { consolidarAtividades } from "@/lib/activityConsolidation";
 import { useAthleteView } from "@/lib/session/AthleteViewProvider";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useAthleteDirectoryCollection } from "@/lib/session/useAthleteDirectory";
 import { useToast } from "@/components/ui/Toast";
-import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { MetricCard } from "@/components/ui/MetricCard";
-import { SportBadge } from "@/components/ui/SportBadge";
-import { SkeletonCard, SkeletonMetric } from "@/components/ui/Skeleton";
-import { SectionHeader } from "@/components/ui/SectionHeader";
 import { cn } from "@/lib/cn";
 import { isWaitlisted, modalidadeFromEquipe } from "@/lib/labels";
-import { formatDataTreino, formatLongDate, formatShortDate, formatDecimal, plural } from "@/lib/format";
+import { formatDataTreino, formatShortDate, formatDecimal, plural } from "@/lib/format";
 import { calcularInsightsAtleta } from "@/lib/athleteStats";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import {
@@ -232,15 +221,6 @@ export default function DashboardPage() {
     [meusLancamentos],
   );
 
-  const atividadesConsolidadas = useMemo(
-    () => consolidarAtividades(meusLancamentos ?? []),
-    [meusLancamentos],
-  );
-  const participacoesTotais = atividadesConsolidadas.length;
-  const kmAcumulado = atividadesConsolidadas.reduce(
-    (soma, atividade) => soma + atividade.km,
-    0,
-  );
 
   const eventosDoAtleta = useMemo(() => {
     const todos = proximoEvento ?? [];
@@ -282,513 +262,220 @@ export default function DashboardPage() {
   ].filter((fonte): fonte is string => fonte !== null);
   const erroDados = fontesComErro.length > 0;
 
-  const maxSerie = Math.max(1, ...(insights?.seriesMensal.map((s) => s.pontos) ?? [1]));
-  const isTop3 = insights?.posicao && insights.posicao <= 3;
-  const medalColor = insights?.posicao === 1 ? "var(--color-ranking-gold)" 
-                   : insights?.posicao === 2 ? "var(--color-ranking-silver)" 
-                   : insights?.posicao === 3 ? "var(--color-ranking-bronze)" 
-                   : "var(--color-text-muted)";
+  const nomeCurto = atleta.nome.split(" ")[0];
+  const nomeModalidade =
+    modalidade === "bicicleta" || modalidade === "corrida"
+      ? modalidadeLabel[modalidade]
+      : "Modalidade não definida";
+  const statusPrograma = waitlisted ? "Fila de espera" : atleta.ativo ? "Ativo no programa" : "Inativo";
+  const mesAtual = new Date().toLocaleDateString("pt-BR", { month: "long" });
+  const ultimasAtividades = ultimosLancamentos.slice(0, 3);
+
+  /** Linha do ranking dentro do resumo — texto claro para cada situação. */
+  const linhaRanking = (() => {
+    if (rankingDesativado) return { texto: "Ranking indisponível no momento", link: false };
+    if (rankingOcultoAtual) return { texto: "Ranking em fechamento para conferência", link: false };
+    if (waitlisted || !modalidade) return null;
+    if (!insights?.posicao) return null;
+    return {
+      texto: `${insights.posicao}º lugar na ${nomeModalidade} · ${plural(atleta.pontuacaoTotal, "ponto")} no total`,
+      link: true,
+    };
+  })();
 
   return (
     <>
-      <div className="-mx-4 -mt-4 sm:hidden">
-        <section className="relative isolate overflow-hidden bg-navy px-4 pb-7 pt-4 text-white">
-          <div className="absolute inset-0 -z-20 bg-gradient-to-br from-navy via-navy-light to-navy" />
-          <div
-            aria-hidden="true"
-            className="absolute -right-20 -top-24 -z-10 size-64 rounded-full border-[32px] border-primary/10"
-          />
-          <div
-            aria-hidden="true"
-            className="absolute -bottom-28 -left-20 -z-10 size-56 rounded-full border-[28px] border-secondary/10"
-          />
-          <ModalidadeIcon
-            aria-hidden="true"
-            className="absolute -bottom-5 -right-8 -z-10 size-44 text-white/[0.05]"
-            strokeWidth={1}
-          />
-          <div
-            aria-hidden="true"
-            className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-primary via-secondary to-accent"
-          />
+      {/*
+        Uma única tela para celular e computador. No celular a capa ocupa a largura
+        toda e o conteúdo "sobe" sobre ela; a partir de `sm` a capa vira um cartão e o
+        conteúdo se organiza em duas colunas.
+      */}
+      <section className="superficie-escura relative isolate -mx-4 -mt-4 overflow-hidden bg-navy px-4 pb-10 pt-4 text-white sm:mx-0 sm:mt-0 sm:rounded-[var(--radius-xl)] sm:px-8 sm:py-7">
+        <div className="absolute inset-0 -z-20 bg-gradient-to-br from-navy via-navy-light to-navy" />
+        <div
+          aria-hidden="true"
+          className="absolute -right-20 -top-24 -z-10 size-64 rounded-full border-[32px] border-primary/10"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute -bottom-28 -left-20 -z-10 size-56 rounded-full border-[28px] border-secondary/10"
+        />
+        <ModalidadeIcon
+          aria-hidden="true"
+          className="absolute -bottom-5 -right-8 -z-10 size-44 text-white/[0.05] sm:right-10"
+          strokeWidth={1}
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-primary via-secondary to-accent"
+        />
 
-          <div className="flex items-start justify-between gap-4">
-            <Image
-              src="/logos/logo-comite-branca-trim.png"
-              alt="Atletas Energisa"
-              width={156}
-              height={48}
-              priority
-              className="h-9 w-auto"
-            />
-            <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[11px] font-bold backdrop-blur-sm">
-              {waitlisted ? "Fila de espera" : atleta.ativo ? "Ativo" : "Inativo"}
-            </span>
-          </div>
+        <div className="flex items-start justify-between gap-4 sm:hidden">
+          <Image
+            src="/logos/logo-comite-branca-trim.png"
+            alt="Atletas Energisa"
+            width={156}
+            height={48}
+            priority
+            className="h-auto w-[120px]"
+          />
+          <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold backdrop-blur-sm">
+            {statusPrograma}
+          </span>
+        </div>
 
-          <div className="mt-8">
+        <div className="mt-8 flex flex-col gap-4 sm:mt-0 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
             <p className="text-sm font-medium text-white/75">Olá,</p>
-            <h1 className="mt-0.5 text-3xl font-black tracking-tight">
-              {atleta.nome.split(" ")[0]}
-            </h1>
-            <div className="mt-2 flex items-center gap-2 text-sm text-white/80">
-              <ModalidadeIcon className="size-4 text-secondary" />
-              <span>
-                {modalidade === "bicicleta"
-                  ? modalidadeLabel.bicicleta
-                  : modalidade === "corrida"
-                    ? "Corrida"
-                    : "Modalidade não definida"}
-              </span>
-            </div>
-            <p className="mt-4 text-xs font-bold uppercase tracking-[0.24em] text-primary">
+            <h1 className="mt-0.5 text-3xl font-black tracking-tight sm:text-4xl">{nomeCurto}</h1>
+            <p className="mt-2 flex items-center gap-2 text-sm text-white/80">
+              <ModalidadeIcon className="size-4 shrink-0 text-secondary" aria-hidden="true" />
+              <span>{nomeModalidade}</span>
+            </p>
+            {insights?.leitura ? (
+              <p className="mt-3 max-w-xl text-sm text-white/85 [text-wrap:pretty]">{insights.leitura}</p>
+            ) : null}
+          </div>
+          <div className="hidden shrink-0 flex-col items-end gap-3 sm:flex">
+            <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold backdrop-blur-sm">
+              {statusPrograma}
+            </span>
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-secondary">
               Movimento que conecta
             </p>
           </div>
-        </section>
+        </div>
+        <p className="mt-4 text-xs font-bold uppercase tracking-[0.24em] text-secondary sm:hidden">
+          Movimento que conecta
+        </p>
+      </section>
 
-        <div className="-mt-4 rounded-t-[28px] bg-bg px-4 pb-4 pt-6">
-          {erroDados ? (
-            <div className="mb-4 flex items-start gap-3 rounded-[var(--radius)] border border-danger/20 bg-danger/5 p-3 text-sm text-text-light">
-              <AlertCircle className="mt-0.5 size-5 shrink-0 text-danger" />
-              <p>Não foi possível carregar: {fontesComErro.join(", ")}.</p>
-            </div>
-          ) : null}
-
-          <section className="mt-5 rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-text-muted">
-                  Seu mês
-                </p>
-                <h2 className="mt-0.5 text-lg font-extrabold text-text">Resumo de desempenho</h2>
-              </div>
-              <Link
-                href={withPreview("/desempenho")}
-                className="flex min-h-11 items-center gap-1 rounded-full px-2 text-xs font-bold text-primary"
-              >
-                Ver análise
-                <ChevronRight className="size-4" />
-              </Link>
-            </div>
-
-            {insights ? (
-              <div className="mt-4 grid grid-cols-3 divide-x divide-border rounded-[var(--radius)] bg-bg-inset py-3 text-center">
-                <div className="px-2">
-                  <strong className="block text-xl font-black tabular-nums text-text">
-                    {insights.treinosMes}
-                  </strong>
-                  <span className="text-[11px] text-text-muted">treinos</span>
-                </div>
-                <div className="px-2">
-                  <strong className="block text-xl font-black tabular-nums text-text">
-                    {formatDecimal(insights.kmMes)}
-                  </strong>
-                  <span className="text-[11px] text-text-muted">km</span>
-                </div>
-                <div className="px-2">
-                  <strong className="block text-xl font-black tabular-nums text-text">
-                    {insights.pontosMes}
-                  </strong>
-                  <span className="text-[11px] text-text-muted">pontos</span>
-                </div>
-              </div>
-            ) : (
-              <div className="mt-4 h-20 animate-pulse rounded-[var(--radius)] bg-bg-inset" />
-            )}
-          </section>
-
-          <Link
-            href={withPreview("/justificativas")}
-            className="mt-5 flex min-h-20 items-center gap-3 rounded-[var(--radius-lg)] border border-secondary/20 bg-gradient-to-r from-secondary/10 to-bg-card p-4 shadow-sm transition-colors active:bg-secondary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      <div className="relative -mx-4 -mt-5 rounded-t-[28px] bg-bg px-4 pt-6 sm:mx-0 sm:mt-6 sm:rounded-none sm:p-0">
+        {erroDados ? (
+          <div
+            role="alert"
+            className="mb-5 flex items-start gap-3 rounded-[var(--radius)] border border-danger/20 bg-danger/5 p-3 text-sm text-text-light"
           >
-            <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary/15 text-secondary">
-              <CalendarOff className="size-5" aria-hidden="true" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <strong className="block text-sm text-text">Vai ficar sem treinar?</strong>
-              <span className="mt-0.5 block text-xs text-text-muted">
-                Informe o período e acompanhe a análise do Comitê.
-              </span>
-            </span>
-            <ChevronRight className="size-5 shrink-0 text-text-muted" aria-hidden="true" />
-          </Link>
+            <AlertCircle className="mt-0.5 size-5 shrink-0 text-danger" aria-hidden="true" />
+            <p>
+              Não foi possível carregar: {fontesComErro.join(", ")}. Atualize a página; se o
+              problema continuar, fale com o comitê.
+            </p>
+          </div>
+        ) : null}
 
-          <section className="mt-5 rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-text-muted">
-                  Próximo evento
-                </p>
-                <h2 className="mt-0.5 text-lg font-extrabold text-text">Na sua agenda</h2>
-              </div>
-              <Link
-                href={withPreview("/eventos")}
-                className="flex min-h-11 items-center gap-1 rounded-full px-2 text-xs font-bold text-primary"
-              >
-                Ver todos
-                <ChevronRight className="size-4" />
-              </Link>
-            </div>
-
-            {proximoEvento === null ? (
-              <div className="mt-3 h-24 animate-pulse rounded-[var(--radius)] bg-bg-inset" />
-            ) : evento ? (
-              <div className="mt-3">
-                <button
-                  type="button"
-                  aria-haspopup="dialog"
-                  onClick={() => setEventoAbertoId(evento.id)}
-                  className="flex min-h-20 w-full items-center gap-3 rounded-[var(--radius)] bg-bg-inset p-3 text-left transition-colors active:bg-border-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                >
-                  <div className="flex size-14 shrink-0 flex-col items-center justify-center rounded-[var(--radius)] bg-bg-card shadow-sm">
-                    <span className="text-[10px] font-bold uppercase text-primary">
-                      {dataEvento?.mes}
-                    </span>
-                    <span className="text-xl font-black leading-none text-text">
-                      {dataEvento?.dia}
-                    </span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-bold text-text">{evento.titulo}</p>
-                    <p className="mt-1 flex items-center gap-1 text-xs text-text-muted">
-                      <MapPin className="size-3.5 shrink-0" />
-                      <span className="truncate">{evento.local}</span>
-                    </p>
-                  </div>
-                  {jaConfirmado ? (
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-success-subtle text-success">
-                      <Check className="size-4" />
-                    </span>
-                  ) : (
-                    <ChevronRight className="size-5 shrink-0 text-text-muted" aria-hidden="true" />
-                  )}
-                </button>
-                <Button
-                  variant={jaConfirmado ? "secondary" : "primary"}
-                  className="mt-3 min-h-11 w-full justify-center"
-                  onClick={() => handleRsvp()}
-                  loading={inscrevendo}
-                  disabled={isPreview}
-                >
-                  {isPreview
-                    ? "Somente visualização"
-                    : jaConfirmado
-                      ? "Cancelar presença"
-                      : "Confirmar presença"}
-                </Button>
-              </div>
-            ) : (
-              <p className="mt-3 rounded-[var(--radius)] bg-bg-inset p-4 text-center text-sm text-text-muted">
-                Nenhum evento agendado no momento.
-              </p>
-            )}
-          </section>
-
-          <section className="mt-5 rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-text-muted">
-                  Novidades
-                </p>
-                <h2 className="mt-0.5 text-lg font-extrabold text-text">Últimas notícias</h2>
-              </div>
-              <Link
-                href={withPreview("/noticias")}
-                className="flex min-h-11 items-center gap-1 rounded-full px-2 text-xs font-bold text-primary"
-              >
-                Ver todas
-                <ChevronRight className="size-4" />
-              </Link>
-            </div>
-
-            {noticias === null ? (
-              <div className="mt-3 h-20 animate-pulse rounded-[var(--radius)] bg-bg-inset" />
-            ) : noticias.length === 0 ? (
-              <p className="mt-3 rounded-[var(--radius)] bg-bg-inset p-4 text-center text-sm text-text-muted">
-                Nenhuma notícia publicada no momento.
-              </p>
-            ) : (
-              <div className="mt-3 flex flex-col divide-y divide-border">
-                {noticias.slice(0, 2).map((noticia) => (
-                  <Link
-                    key={noticia.id}
-                    href={withPreview(`/noticias/${noticia.id}`)}
-                    className="group flex min-h-16 items-center gap-3 py-3 first:pt-0 last:pb-0"
-                  >
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
-                      <Newspaper className="size-5" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <strong className="block truncate text-sm text-text group-active:text-primary">
-                        {noticia.titulo}
-                      </strong>
-                      <span className="mt-0.5 block truncate text-xs text-text-muted">
-                        {noticia.resumo}
-                      </span>
-                    </span>
-                    <ChevronRight className="size-4 shrink-0 text-text-muted" />
-                  </Link>
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
-      </div>
-
-      <div className="hidden flex-col sm:flex">
-      <PageHeader
-        title={`Olá, ${atleta.nome.split(" ")[0]} 👋`}
-        subtitle={insights?.leitura || formatLongDate(new Date())}
-        badge={<SportBadge modalidade={modalidade} size="sm" />}
-        actions={
-          <Badge tone={waitlisted ? "warning" : atleta.ativo ? "success" : "neutral"}>
-            {waitlisted ? "Na fila de espera" : atleta.ativo ? "Ativo no programa" : "Inativo"}
-          </Badge>
-        }
-        className="mb-6"
-      />
-
-      {erroDados && (
-        <div className="mb-6 flex items-start gap-3 rounded-[var(--radius)] border border-danger/20 bg-danger/5 p-4 text-sm text-text-light">
-          <AlertCircle className="mt-0.5 size-5 shrink-0 text-danger" />
-          <p>
-            Não foi possível carregar: {fontesComErro.join(", ")}. Atualize a página; se o
-            problema continuar, fale com o comitê.
-          </p>
-        </div>
-      )}
-
-      {/* METRIC CARDS ROW */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
-        {!insights ? (
-          <>
-            <SkeletonMetric />
-            <SkeletonMetric />
-            <SkeletonMetric />
-            <SkeletonMetric />
-          </>
-        ) : (
-          <>
-            <MetricCard
-              label="Pontuação total"
-              value={atleta.pontuacaoTotal}
-              icon={Trophy}
-              iconColor="var(--color-primary)"
-              trend={insights?.vsMediaEquipePct !== null && insights?.vsMediaEquipePct !== undefined ? { value: insights.vsMediaEquipePct, label: "vs equipe" } : undefined}
-            />
-            <MetricCard
-              label="Posição no ranking"
-              value={
-                rankingDesativado
-                  ? "Indisponível"
-                  : rankingOcultoAtual
-                  ? "Oculto"
-                  : !modalidade || waitlisted
-                    ? "—"
-                    : insights?.posicao
-                      ? `${insights.posicao}º`
-                      : "…"
-              }
-              icon={Award}
-              iconColor={!rankingIndisponivel && isTop3 ? medalColor : undefined}
-              subtitle={
-                rankingDesativado
-                  ? "Desativado pelo administrador"
-                  : rankingOcultoAtual
-                  ? "Fechamento em andamento"
-                  : modalidade && insights?.totalNoRanking
-                    ? `de ${plural(insights.totalNoRanking, "atleta")}`
-                    : undefined
-              }
-            />
-            <MetricCard
-              label="KM Acumulado"
-              value={kmAcumulado > 0 ? formatDecimal(kmAcumulado) : (insights.kmMes > 0 ? formatDecimal(insights.kmMes) : "0")}
-              icon={ModalidadeIcon}
-              iconColor="var(--color-secondary)"
-              subtitle="Total registrado"
-            />
-            <MetricCard
-              label="Participações"
-              value={participacoesTotais}
-              icon={History}
-              iconColor="var(--color-accent)"
-              subtitle="Atividades validadas"
-            />
-          </>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* MAIN COLUMN (2 cols lg) */}
-        <div className="lg:col-span-2 flex flex-col gap-6">
-          {/* EVOLUTION CHART */}
-          <Card className="flex flex-col">
-            <SectionHeader title="Sua evolução" icon={TrendingUp} />
-            <div className="mt-2 text-sm text-[var(--color-text-secondary)] mb-6">
-              Pontos acumulados por mês (últimos 6 meses)
-            </div>
-            {!insights ? (
-              <SkeletonCard className="h-[200px]" />
-            ) : (
-              <div className="flex h-[200px] items-end gap-2 relative mt-2">
-                <div className="absolute left-0 top-0 bottom-6 w-8 flex flex-col justify-between text-[10px] text-[var(--color-text-muted)] border-r border-[var(--color-border-subtle)] pr-1 text-right">
-                  <span>{maxSerie}</span>
-                  <span>{Math.round(maxSerie / 2)}</span>
-                  <span>0</span>
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-start lg:gap-6">
+          {/* Coluna principal: como estou e o que vem pela frente. */}
+          <div className="flex min-w-0 flex-col gap-5 lg:gap-6">
+            <section className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-[var(--shadow-card)] sm:p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-text-muted">Seu mês</p>
+                  <h2 className="mt-0.5 text-lg font-extrabold text-text first-letter:uppercase">
+                    {mesAtual}
+                  </h2>
                 </div>
-                
-                <div className="flex flex-1 items-end gap-2 ml-10 h-full pb-6">
-                  {(insights.seriesMensal).map((s) => {
-                    const heightPct = Math.max(0, (s.pontos / maxSerie) * 100);
-                    const isActive = s.pontos > 0;
-                    return (
-                      <div key={s.label} className="flex flex-1 flex-col items-center gap-2 h-full group relative">
-                        {isActive && (
-                          <div className="absolute -top-8 bg-[var(--color-bg-inverse)] text-[var(--color-text-inverse)] text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10 font-medium">
-                            {s.pontos} pts
-                          </div>
-                        )}
-                        <div className="flex h-full w-full items-end justify-center">
-                          <div
-                            className={cn(
-                              "w-full max-w-[40px] rounded-t-[var(--radius-sm)] transition-all",
-                              isActive 
-                                ? "bg-[var(--color-primary)] opacity-80 group-hover:opacity-100 group-hover:bg-[var(--color-primary-hover)] cursor-pointer" 
-                                : "bg-[var(--color-bg-inset)] h-[4px]"
-                            )}
-                            style={isActive ? { height: `${heightPct}%` } : undefined}
-                          />
-                        </div>
-                        <span className="absolute bottom-0 text-[10px] font-medium uppercase text-[var(--color-text-secondary)]">
-                          {s.label}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </Card>
-
-          {/* RECENT ACTIVITY */}
-          <Card className="flex flex-col">
-            <SectionHeader title="Atividade recente" icon={History} />
-            {meusLancamentos === null ? (
-              <div className="flex flex-col gap-4 mt-4">
-                <SkeletonCard className="h-16" />
-                <SkeletonCard className="h-16" />
-                <SkeletonCard className="h-16" />
-              </div>
-            ) : ultimosLancamentos.length === 0 ? (
-              <EmptyState
-                icon={History}
-                title="Nenhum lançamento ainda"
-                description="Assim que o comitê lançar pontos, seu histórico aparece aqui."
-              />
-            ) : (
-              <div className="mt-2 flex flex-col">
-                {ultimosLancamentos.map((item, i) => (
-                  <div key={item.id} className={cn("flex items-start gap-4 py-4", i !== ultimosLancamentos.length - 1 && "border-b border-[var(--color-border-subtle)]")}>
-                    <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-full", item.estornado ? "bg-[var(--color-bg-inset)] text-[var(--color-text-muted)]" : "bg-[var(--color-primary-subtle)] text-[var(--color-primary)]")}>
-                      {item.tipoLancamento === 'treino' ? <ModalidadeIcon className="size-5" /> : <Award className="size-5" />}
-                    </div>
-                    <div className="flex flex-1 flex-col min-w-0">
-                      <div className="flex justify-between items-start gap-2">
-                        <p className={cn("text-sm font-semibold truncate", item.estornado && "line-through text-[var(--color-text-muted)]")}>{item.regraDesc}</p>
-                        <span className={cn("text-sm font-bold whitespace-nowrap", item.estornado ? "text-[var(--color-text-muted)]" : "text-[var(--color-success)]")}>
-                          {item.estornado ? "" : "+"}{item.pontos} pts
-                        </span>
-                      </div>
-                      <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">{formatDataTreino(item.dataTreino, item.dataAproximada)}</p>
-                      {item.observacao ? (
-                        <p className="mt-1 line-clamp-2 text-xs text-text-muted">
-                          {item.observacao}
-                        </p>
-                      ) : null}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-        </div>
-
-        {/* SIDE COLUMN (1 col lg) */}
-        <div className="flex flex-col gap-6">
-          {/* NEXT EVENT */}
-          <Card className="flex flex-col">
-            <SectionHeader
-              title="Próximo evento"
-              icon={CalendarCheck}
-              action={
-                <Link href={withPreview("/eventos")} className="text-xs font-semibold text-primary hover:underline">
-                  Agenda completa
+                <Link
+                  href={withPreview("/desempenho")}
+                  className="flex min-h-11 items-center gap-1 rounded-full px-2 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  Ver análise
+                  <ChevronRight className="size-4" aria-hidden="true" />
                 </Link>
-              }
-            />
-            {proximoEvento === null ? (
-              <div className="mt-4 flex flex-col gap-4">
-                <SkeletonCard className="h-40" />
-                <SkeletonCard className="h-16" />
-                <SkeletonCard className="h-16" />
               </div>
-            ) : !evento ? (
-              <EmptyState
-                icon={CalendarCheck}
-                title="Nenhum evento agendado"
-                description="Quando o comitê publicar um evento, ele aparecerá aqui."
-              />
-            ) : (
-              <div className="mt-4 flex flex-col">
-                <div className="rounded-[var(--radius-lg)] border border-primary/15 bg-gradient-to-br from-primary/10 via-bg-card to-secondary/10 p-4">
+
+              {insights ? (
+                <dl className="mt-4 grid grid-cols-3 divide-x divide-border rounded-[var(--radius)] bg-bg-inset py-3 text-center">
+                  <div className="px-2">
+                    <dd className="text-2xl font-black tabular-nums text-text">{insights.treinosMes}</dd>
+                    <dt className="text-xs text-text-muted">{insights.treinosMes === 1 ? "treino" : "treinos"}</dt>
+                  </div>
+                  <div className="px-2">
+                    <dd className="text-2xl font-black tabular-nums text-text">{formatDecimal(insights.kmMes)}</dd>
+                    <dt className="text-xs text-text-muted">km</dt>
+                  </div>
+                  <div className="px-2">
+                    <dd className="text-2xl font-black tabular-nums text-text">{insights.pontosMes}</dd>
+                    <dt className="text-xs text-text-muted">{insights.pontosMes === 1 ? "ponto" : "pontos"}</dt>
+                  </div>
+                </dl>
+              ) : (
+                <div className="mt-4 h-[76px] animate-pulse rounded-[var(--radius)] bg-bg-inset" />
+              )}
+
+              {linhaRanking ? (
+                linhaRanking.link ? (
+                  <Link
+                    href={withPreview("/ranking")}
+                    className="group mt-3 flex min-h-11 items-center gap-3 rounded-[var(--radius)] px-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-ranking-gold-bg text-ranking-gold-text">
+                      <Trophy className="size-4" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 flex-1 font-semibold text-text group-hover:text-primary">
+                      {linhaRanking.texto}
+                    </span>
+                    <ChevronRight className="size-4 shrink-0 text-text-muted" aria-hidden="true" />
+                  </Link>
+                ) : (
+                  <p className="mt-3 flex min-h-11 items-center gap-3 px-1 text-sm text-text-light">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-bg-inset text-text-muted">
+                      <Trophy className="size-4" aria-hidden="true" />
+                    </span>
+                    {linhaRanking.texto}
+                  </p>
+                )
+              ) : null}
+            </section>
+
+            <section className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-[var(--shadow-card)] sm:p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-text-muted">Próximo evento</p>
+                  <h2 className="mt-0.5 text-lg font-extrabold text-text">Na sua agenda</h2>
+                </div>
+                <Link
+                  href={withPreview("/eventos")}
+                  className="flex min-h-11 items-center gap-1 rounded-full px-2 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  Ver todos
+                  <ChevronRight className="size-4" aria-hidden="true" />
+                </Link>
+              </div>
+
+              {proximoEvento === null ? (
+                <div className="mt-3 h-36 animate-pulse rounded-[var(--radius)] bg-bg-inset" />
+              ) : evento ? (
+                <div className="mt-3">
                   <button
                     type="button"
                     aria-haspopup="dialog"
                     onClick={() => setEventoAbertoId(evento.id)}
-                    className="w-full rounded-[var(--radius)] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="flex min-h-20 w-full cursor-pointer items-center gap-3 rounded-[var(--radius)] bg-bg-inset p-3 text-left transition-colors hover:bg-border-subtle active:bg-border-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
-                    <div className="flex items-start gap-4">
-                    <div className="flex size-18 shrink-0 flex-col items-center justify-center rounded-[var(--radius)] bg-bg-card shadow-sm">
-                      <span className="text-xs font-bold uppercase tracking-wide text-primary">
-                        {dataEvento?.mes}
-                      </span>
-                      <span className="text-3xl font-black leading-none text-text">
-                        {dataEvento?.dia}
-                      </span>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="line-clamp-2 text-lg font-bold leading-tight text-text">
-                        {evento.titulo}
-                      </p>
-                      <p className="mt-2 flex items-center gap-1.5 text-sm text-text-light">
-                        <MapPin className="size-4 shrink-0" />
-                        <span className="truncate">{evento.local}</span>
-                      </p>
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
-                        {evento.modalidade === "ambas" ? (
-                          <Badge tone="neutral">Todas as modalidades</Badge>
-                        ) : (
-                          <SportBadge modalidade={evento.modalidade} size="sm" />
-                        )}
-                        {jaConfirmado && (
-                          <Badge tone="success">
-                            <Check className="mr-1 size-3" />
-                            Confirmado
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                    <span className="mt-3 flex items-center justify-end gap-1 text-xs font-semibold text-primary">
-                      Ver detalhes
-                      <ChevronRight className="size-4" aria-hidden="true" />
+                    <span className="flex size-14 shrink-0 flex-col items-center justify-center rounded-[var(--radius)] bg-bg-card shadow-sm">
+                      <span className="text-xs font-bold uppercase text-primary">{dataEvento?.mes}</span>
+                      <span className="text-xl font-black leading-none text-text">{dataEvento?.dia}</span>
                     </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="line-clamp-2 text-sm font-bold text-text">{evento.titulo}</span>
+                      <span className="mt-1 flex items-center gap-1 text-xs text-text-muted">
+                        <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
+                        <span className="truncate">{evento.local}</span>
+                      </span>
+                    </span>
+                    {jaConfirmado ? (
+                      <span className="flex shrink-0 items-center gap-1 rounded-full bg-success-subtle px-2 py-1 text-xs font-bold text-success">
+                        <Check className="size-3.5" aria-hidden="true" />
+                        Confirmado
+                      </span>
+                    ) : (
+                      <ChevronRight className="size-5 shrink-0 text-text-muted" aria-hidden="true" />
+                    )}
                   </button>
                   <Button
                     variant={jaConfirmado ? "secondary" : "primary"}
-                    className="mt-4 w-full justify-center"
+                    className="mt-3 w-full"
                     onClick={() => handleRsvp()}
                     loading={inscrevendo}
                     disabled={isPreview}
@@ -799,108 +486,171 @@ export default function DashboardPage() {
                         ? "Cancelar presença"
                         : "Confirmar presença"}
                   </Button>
-                </div>
 
-                {eventosPosteriores.length > 0 && (
-                  <div className="mt-5 border-t border-border-subtle pt-4">
-                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-text-muted">
-                      Depois
-                    </p>
-                    <div className="flex flex-col gap-2">
-                      {eventosPosteriores.map((item) => (
-                        <Link
-                          key={item.id}
-                          href={withPreview("/eventos")}
-                          className="group flex items-center gap-3 rounded-[var(--radius)] border border-transparent p-2.5 transition-colors hover:border-border hover:bg-bg-inset"
-                        >
-                          <div className="flex w-14 shrink-0 flex-col items-center rounded-[var(--radius-sm)] bg-bg-inset px-2 py-2">
-                            <span className="text-[10px] font-bold uppercase text-primary">
-                              {partesDataEvento(item.data).mes}
-                            </span>
-                            <span className="text-lg font-extrabold leading-none text-text">
-                              {partesDataEvento(item.data).dia}
-                            </span>
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-semibold text-text transition-colors group-hover:text-primary">
-                              {item.titulo}
-                            </p>
-                            <p className="mt-0.5 truncate text-xs text-text-muted">
-                              {formatShortDate(item.data)} · {item.local}
-                            </p>
-                          </div>
-                          <span className="shrink-0 text-[10px] font-semibold text-text-muted">
-                            {item.modalidade === "ambas"
-                              ? "Todas"
-                              : item.modalidade === "bicicleta"
-                                ? modalidadeLabel.bicicleta
-                                : "Corrida"}
-                          </span>
-                        </Link>
-                      ))}
+                  {eventosPosteriores.length > 0 ? (
+                    <div className="mt-4 border-t border-border-subtle pt-3">
+                      <p className="text-xs font-bold uppercase tracking-wide text-text-muted">Depois</p>
+                      <ul className="mt-1 flex flex-col">
+                        {eventosPosteriores.slice(0, 2).map((item) => (
+                          <li key={item.id}>
+                            <button
+                              type="button"
+                              aria-haspopup="dialog"
+                              onClick={() => setEventoAbertoId(item.id)}
+                              className="group flex min-h-12 w-full cursor-pointer items-center gap-3 rounded-[var(--radius)] px-1 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                            >
+                              <span className="w-14 shrink-0 text-xs font-bold uppercase tabular-nums text-primary">
+                                {formatShortDate(item.data)}
+                              </span>
+                              <span className="min-w-0 flex-1 truncate text-sm font-semibold text-text group-hover:text-primary">
+                                {item.titulo}
+                              </span>
+                              <ChevronRight className="size-4 shrink-0 text-text-muted" aria-hidden="true" />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </Card>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="mt-3 rounded-[var(--radius)] bg-bg-inset p-4 text-center text-sm text-text-muted">
+                  Nenhum evento agendado no momento.
+                </p>
+              )}
+            </section>
+          </div>
 
-          <Card padding="sm">
+          {/* Coluna lateral: ações e contexto. */}
+          <div className="flex min-w-0 flex-col gap-5 lg:gap-6">
             <Link
               href={withPreview("/justificativas")}
-              className="group flex min-h-20 items-center gap-3 rounded-[var(--radius)] p-2 transition-colors hover:bg-bg-inset focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="group flex min-h-20 items-center gap-3 rounded-[var(--radius-lg)] border border-secondary/20 bg-gradient-to-r from-secondary/10 to-bg-card p-4 shadow-[var(--shadow-card)] transition-colors hover:border-secondary/40 active:bg-secondary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary/10 text-secondary">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary/15 text-secondary">
                 <CalendarOff className="size-5" aria-hidden="true" />
               </span>
               <span className="min-w-0 flex-1">
-                <strong className="block text-sm text-text transition-colors group-hover:text-primary">
-                  Justificar uma ausência
-                </strong>
-                <span className="mt-0.5 block text-xs text-text-muted">
-                  Envie o período ao Comitê e acompanhe a análise.
+                <strong className="block text-sm text-text">Vai ficar sem treinar?</strong>
+                <span className="mt-0.5 block text-xs text-text-light">
+                  Informe o período e acompanhe a análise do Comitê.
                 </span>
               </span>
-              <ChevronRight className="size-5 shrink-0 text-text-muted" aria-hidden="true" />
+              <ChevronRight className="size-5 shrink-0 text-text-muted transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
             </Link>
-          </Card>
 
-          {/* NEWS PREVIEW */}
-          <Card className="flex flex-col">
-            <SectionHeader 
-              title="Notícias" 
-              icon={Newspaper} 
-              action={
-                <Link href={withPreview("/noticias")} className="text-xs font-semibold text-[var(--color-primary)] hover:underline">
-                  Ver todas
+            <section className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-[var(--shadow-card)] sm:p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-text-muted">Histórico</p>
+                  <h2 className="mt-0.5 text-lg font-extrabold text-text">Atividade recente</h2>
+                </div>
+                <Link
+                  href={withPreview("/desempenho")}
+                  className="flex min-h-11 items-center gap-1 rounded-full px-2 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  Ver tudo
+                  <ChevronRight className="size-4" aria-hidden="true" />
                 </Link>
-              } 
-            />
-            <div className="mt-3 flex flex-col gap-3">
-              {noticias === null ? (
-                <>
-                  <SkeletonCard className="h-16" />
-                  <SkeletonCard className="h-16" />
-                </>
-              ) : noticias.length === 0 ? (
-                <EmptyState
-                  icon={Newspaper}
-                  title="Nenhuma notícia"
-                  description="Comunicados vão aparecer aqui."
-                />
+              </div>
+
+              {meusLancamentos === null ? (
+                <div className="mt-3 h-24 animate-pulse rounded-[var(--radius)] bg-bg-inset" />
+              ) : ultimasAtividades.length === 0 ? (
+                <p className="mt-3 rounded-[var(--radius)] bg-bg-inset p-4 text-center text-sm text-text-muted">
+                  Assim que o comitê lançar seus pontos, eles aparecem aqui.
+                </p>
               ) : (
-                noticias.map((noticia) => (
-                  <Link key={noticia.id} href={withPreview(`/noticias/${noticia.id}`)} className="group flex flex-col gap-1.5 p-3 rounded-[var(--radius-lg)] bg-[var(--color-bg-inset)] hover:bg-[var(--color-bg-hover)] transition-colors border border-transparent hover:border-[var(--color-border-subtle)]">
-                    <p className="text-sm font-semibold text-[var(--color-text)] group-hover:text-[var(--color-primary)] transition-colors line-clamp-2 leading-snug">{noticia.titulo}</p>
-                    <p className="text-xs text-[var(--color-text-secondary)] line-clamp-2">{noticia.resumo}</p>
-                  </Link>
-                ))
+                <ul className="mt-2 flex flex-col divide-y divide-border">
+                  {ultimasAtividades.map((item) => (
+                    <li key={item.id} className="flex items-center gap-3 py-3 last:pb-0">
+                      <span
+                        className={cn(
+                          "flex size-10 shrink-0 items-center justify-center rounded-full",
+                          item.estornado ? "bg-bg-inset text-text-muted" : "bg-primary-subtle text-primary",
+                        )}
+                      >
+                        {item.tipoLancamento === "treino" ? (
+                          <ModalidadeIcon className="size-5" aria-hidden="true" />
+                        ) : (
+                          <Award className="size-5" aria-hidden="true" />
+                        )}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span
+                          className={cn(
+                            "block truncate text-sm font-semibold text-text",
+                            item.estornado && "text-text-muted line-through",
+                          )}
+                        >
+                          {item.regraDesc}
+                        </span>
+                        <span className="mt-0.5 block text-xs text-text-light">
+                          {formatDataTreino(item.dataTreino, item.dataAproximada)}
+                          {item.estornado ? " · estornado" : ""}
+                        </span>
+                      </span>
+                      {!item.estornado ? (
+                        <span className="shrink-0 text-sm font-bold tabular-nums text-success">
+                          +{item.pontos} pts
+                        </span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
               )}
-            </div>
-          </Card>
+            </section>
+
+            <section className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-[var(--shadow-card)] sm:p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-text-muted">Novidades</p>
+                  <h2 className="mt-0.5 text-lg font-extrabold text-text">Últimas notícias</h2>
+                </div>
+                <Link
+                  href={withPreview("/noticias")}
+                  className="flex min-h-11 items-center gap-1 rounded-full px-2 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  Ver todas
+                  <ChevronRight className="size-4" aria-hidden="true" />
+                </Link>
+              </div>
+
+              {noticias === null ? (
+                <div className="mt-3 h-20 animate-pulse rounded-[var(--radius)] bg-bg-inset" />
+              ) : noticias.length === 0 ? (
+                <p className="mt-3 rounded-[var(--radius)] bg-bg-inset p-4 text-center text-sm text-text-muted">
+                  Nenhuma notícia publicada no momento.
+                </p>
+              ) : (
+                <ul className="mt-2 flex flex-col divide-y divide-border">
+                  {noticias.slice(0, 2).map((noticia) => (
+                    <li key={noticia.id}>
+                      <Link
+                        href={withPreview(`/noticias/${noticia.id}`)}
+                        className="group flex min-h-16 items-center gap-3 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      >
+                        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
+                          <Newspaper className="size-5" aria-hidden="true" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="line-clamp-2 text-sm font-semibold text-text group-hover:text-primary">
+                            {noticia.titulo}
+                          </span>
+                          {noticia.resumo ? (
+                            <span className="mt-0.5 block truncate text-xs text-text-light">{noticia.resumo}</span>
+                          ) : null}
+                        </span>
+                        <ChevronRight className="size-4 shrink-0 text-text-muted" aria-hidden="true" />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
         </div>
       </div>
-    </div>
 
       <Modal
         open={Boolean(eventoAberto)}
