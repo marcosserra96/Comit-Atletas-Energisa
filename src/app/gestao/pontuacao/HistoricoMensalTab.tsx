@@ -96,32 +96,24 @@ export function HistoricoMensalTab() {
     return unsubscribe;
   }, [competencia]);
 
-  useEffect(() => {
-    if (!atletas) return;
-    setValores(
-      Object.fromEntries(
-        atletas.map((a) => {
-          const item = existentes.get(a.id);
-          return [
-            a.id,
-            item
-              ? {
-                  pontos: item.pontos ? String(item.pontos) : "",
-                  km: item.km ? String(item.km) : "",
-                  treinos: item.treinos ? String(item.treinos) : "",
-                }
-              : vazio(),
-          ];
-        }),
-      ),
-    );
-  }, [atletas, existentes]);
+  function valoresDoAtleta(atletaId: string): ValoresHistoricos {
+    const editado = valores[atletaId];
+    if (editado) return editado;
+    const item = existentes.get(atletaId);
+    return item
+      ? {
+          pontos: item.pontos ? String(item.pontos) : "",
+          km: item.km ? String(item.km) : "",
+          treinos: item.treinos ? String(item.treinos) : "",
+        }
+      : vazio();
+  }
 
   const totais = useMemo(() => {
     if (!atletas) return { atletas: 0, pontos: 0, km: 0, treinos: 0 };
     return atletas.reduce(
       (acc, atleta) => {
-        const v = valores[atleta.id] ?? vazio();
+        const v = valoresDoAtleta(atleta.id);
         const pontos = numero(v.pontos);
         const km = numero(v.km);
         const treinos = Math.floor(numero(v.treinos));
@@ -156,7 +148,7 @@ export function HistoricoMensalTab() {
 
       for (const atleta of atletas) {
         const atual = existentes.get(atleta.id);
-        const v = valores[atleta.id] ?? vazio();
+        const v = valoresDoAtleta(atleta.id);
         const pontos = numero(v.pontos);
         const km = numero(v.km);
         const treinos = Math.floor(numero(v.treinos));
@@ -360,7 +352,10 @@ export function HistoricoMensalTab() {
               type="month"
               value={competencia}
               max={competenciaAtual()}
-              onChange={(e) => setCompetencia(e.target.value)}
+              onChange={(e) => {
+                setCompetencia(e.target.value);
+                setValores({});
+              }}
               className="h-10 rounded-[var(--radius)] border border-border bg-bg-card px-3 text-sm text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
             />
           </div>
@@ -369,7 +364,10 @@ export function HistoricoMensalTab() {
             <Select
               className="w-44"
               value={modalidade}
-              onChange={(e) => setModalidade(e.target.value as Modalidade)}
+              onChange={(e) => {
+                setModalidade(e.target.value as Modalidade);
+                setValores({});
+              }}
             >
               <option value="corrida">Corrida</option>
               <option value="bicicleta">Bike</option>
