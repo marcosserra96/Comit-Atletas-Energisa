@@ -283,7 +283,7 @@ export function JustificativasTab({
                 className={cn(
                   "min-h-11 shrink-0 cursor-pointer rounded-[calc(var(--radius)-2px)] px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                   filtro === opcao.value
-                    ? "bg-primary text-white"
+                    ? "bg-primary text-on-primary"
                     : "text-text-light hover:bg-bg-inset hover:text-text",
                 )}
               >

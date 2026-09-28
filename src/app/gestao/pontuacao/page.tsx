@@ -67,9 +67,9 @@ export default function PontuacaoPage() {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-2xl font-extrabold text-text">
+        <h1 className="text-2xl font-extrabold text-text">
           Lançar pontos
-        </h2>
+        </h1>
         <p className="text-sm text-text-light">
           Registre pontuação por treino, evento ou lançamento avulso.
         </p>
@@ -95,7 +95,7 @@ export default function PontuacaoPage() {
               className={cn(
                 "min-h-11 cursor-pointer rounded-[calc(var(--radius)-2px)] px-4 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                 tab === opt.value
-                  ? "bg-primary text-white"
+                  ? "bg-primary text-on-primary"
                   : "text-text-light hover:bg-bg hover:text-text",
               )}
             >

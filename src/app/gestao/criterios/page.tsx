@@ -15,7 +15,7 @@ export default function CriteriosPage() {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-2xl font-extrabold text-text">Critérios de pontuação</h2>
+        <h1 className="text-2xl font-extrabold text-text">Critérios de pontuação</h1>
         <p className="text-sm text-text-light">
           Defina as regras usadas para pontuar treinos, eventos e lançamentos avulsos.
         </p>

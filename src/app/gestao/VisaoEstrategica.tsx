@@ -156,7 +156,7 @@ export function VisaoEstrategica() {
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-extrabold text-text">Visão estratégica</h2>
+          <h1 className="text-2xl font-extrabold text-text">Visão estratégica</h1>
           <p className="text-sm text-text-light">Acompanhamento do programa.</p>
         </div>
         {isAdmin && !carregando && (
@@ -267,12 +267,13 @@ export function VisaoEstrategica() {
                   Evolução mensal
                 </h3>
                 <p className="mt-0.5 text-[.8rem] text-text-light">
-                  Participações registradas por mês · passe o mouse numa barra
+                  Participações registradas por mês · toque ou passe o mouse numa barra para ver o total
                 </p>
               </div>
             </div>
 
-            <div className="mt-4 flex gap-2">
+            {/* Espaço extra no topo para a marca máxima do eixo e o rótulo da barra não encostarem no subtítulo. */}
+            <div className="mt-9 flex gap-2">
               <div className="relative h-[176px] w-6 shrink-0">
                 {ticksGrafico.map((t) => (
                   <span

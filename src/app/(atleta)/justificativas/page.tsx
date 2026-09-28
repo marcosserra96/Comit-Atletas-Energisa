@@ -215,7 +215,7 @@ function SolicitacaoModal({
                     )}
                     className={`min-h-11 cursor-pointer rounded-[var(--radius)] border px-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                       selecionado
-                        ? "border-primary bg-primary text-white"
+                        ? "border-primary bg-primary text-on-primary"
                         : "border-border bg-bg text-text-light hover:bg-bg-inset"
                     }`}
                   >
@@ -434,7 +434,8 @@ export default function JustificativasPage() {
             : "Avise o Comitê quando precisar se afastar dos treinos."
         }
         actions={
-          !isPreview ? (
+          // Sem nenhuma justificativa, o estado vazio já traz o botão — evita dois iguais na tela.
+          !isPreview && (erro || (items !== null && items.length > 0)) ? (
             <Button
               className="w-full sm:w-auto"
               onClick={() => {
@@ -449,6 +450,7 @@ export default function JustificativasPage() {
         }
       />
 
+      {items !== null && items.length > 0 ? (
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
         <Card padding="sm" className="text-center">
           <strong className="block text-xl font-extrabold text-ranking-gold-text">
@@ -469,6 +471,7 @@ export default function JustificativasPage() {
           <span className="text-xs text-text-muted">finalizadas</span>
         </Card>
       </div>
+      ) : null}
 
       {erro ? (
         <Card className="flex flex-col items-center gap-3 py-9 text-center">

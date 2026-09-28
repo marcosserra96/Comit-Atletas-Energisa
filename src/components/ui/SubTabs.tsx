@@ -17,7 +17,7 @@ export function SubTabs<T extends string>({ value, onChange, options }: SubTabsP
           onClick={() => onChange(opt.value)}
           className={cn(
             "rounded-[calc(var(--radius)-2px)] px-4 py-2 text-sm font-semibold transition-colors",
-            value === opt.value ? "bg-primary text-white" : "text-text-light hover:text-text",
+            value === opt.value ? "bg-primary text-on-primary" : "text-text-light hover:text-text",
           )}
         >
           {opt.label}

@@ -61,7 +61,7 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
               type="button"
               onClick={() => setVisible((v) => !v)}
               aria-label={visible ? "Ocultar senha" : "Mostrar senha"}
-              className="-mr-3 flex min-h-11 min-w-11 shrink-0 items-center justify-center text-text-muted transition-colors hover:text-text-light focus-visible:outline-none focus-visible:text-primary"
+              className="-mr-3 flex min-h-11 min-w-11 shrink-0 items-center justify-center text-text-muted transition-colors hover:text-text-light focus-visible:outline-none focus-visible:text-primary focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40 rounded-[var(--radius)]"
             >
               {visible ? <EyeOff className="size-[18px]" /> : <Eye className="size-[18px]" />}
             </button>

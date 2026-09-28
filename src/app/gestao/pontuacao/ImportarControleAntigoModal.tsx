@@ -359,7 +359,7 @@ export function ImportarControleAntigoModal({ open, onClose }: { open: boolean; 
         ) : (
           <div className="flex flex-col gap-3">
             <p className="text-xs text-text-muted">
-              {entradasCount} lançamento(s) encontrado(s) nessa aba, agrupados em {combos.length} combinações de
+              {plural(entradasCount, "lançamento encontrado", "lançamentos encontrados")} nessa aba, agrupados em {plural(combos.length, "combinação", "combinações")} de
               dia da semana + pontos. Grupos sem regra vinculada não serão importados.
             </p>
             <div className="max-h-96 overflow-y-auto rounded-[var(--radius)] border border-border">
@@ -417,8 +417,8 @@ export function ImportarControleAntigoModal({ open, onClose }: { open: boolean; 
                   />
                   <div>
                     <p className="text-sm font-semibold text-text">
-                      {extras.reduce((s, e) => s + e.quantidade, 0)} treino(s) extra(s) encontrado(s) para{" "}
-                      {extras.length} atleta(s) — sem dia específico dentro do mês
+                      {plural(extras.reduce((s, e) => s + e.quantidade, 0), "treino extra encontrado", "treinos extras encontrados")} para{" "}
+                      {plural(extras.length, "atleta")} — sem dia específico dentro do mês
                     </p>
                     <p className="text-xs text-text-muted">
                       Cada um vira um lançamento marcado como aproximado (mês certo, dia 01 por convenção).
@@ -458,7 +458,7 @@ export function BotaoImportarControleAntigo() {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button variant="secondary" onClick={() => setOpen(true)}>
+      <Button variant="secondary" onClick={() => setOpen(true)} className="w-full sm:w-auto">
         <FileSpreadsheet className="size-4" />
         Importar controle antigo
       </Button>

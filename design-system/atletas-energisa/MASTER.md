@@ -32,6 +32,10 @@ certa para cada tema.
 `*-hover` é derivado automaticamente (`color-mix` com preto). `*-subtle` são fundos
 translúcidos para selos e ícones.
 
+**Texto sobre fundo colorido:** use `text-on-primary`, `text-on-danger` etc., nunca
+`text-white`. No tema claro é branco; no escuro, azul-marinho, porque ali as cores de marca
+ficam claras demais para texto branco.
+
 ### Status (fixos)
 `success` `#15803d` · `warning` `#b45309` · `info` `#2563eb`. No tema escuro:
 `#22c55e` · `#f1c40f` · `#60a5fa`.
@@ -63,7 +67,8 @@ texto.** Para hierarquia, use tamanho e peso, não cores mais apagadas.
 - **Fonte:** Inter (`next/font`), pesos 400–800. Não há fonte de títulos separada.
 - **Escala:** `text-xs` 12 · `text-sm` 13 · `text-base` 14 · `text-md` 15 · `text-lg` 17 ·
   `text-xl` 20 · `text-2xl` 24 · `text-3xl` 30 · `text-4xl` 36.
-- **Título de página:** `text-2xl font-bold tracking-tight` (via `PageHeader`).
+- **Título de página:** um único `<h1>` por página (`PageHeader` no atleta). A barra do topo
+  mostra o nome da página só depois que o `<h1>` sai da tela, para não repetir o título.
 - **Números:** use `tabular-nums` em métricas, tabelas e rankings.
 - **Tamanho mínimo:** 12px para texto que precisa ser lido. Evite `text-[10px]`/`text-[11px]`.
 - **Maiúsculas:** só a primeira letra da frase ("Dados pessoais", não "Dados Pessoais").

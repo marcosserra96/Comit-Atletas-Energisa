@@ -442,7 +442,6 @@ export function LancarPontosTab({
 
   return (
     <div className="flex flex-col gap-5">
-      <ImportarPontuacoesCard />
 
       {erroJustificativas ? (
         <div className="flex items-start gap-3 rounded-[var(--radius)] border border-warning/25 bg-warning/10 p-3 text-sm text-text-light">
@@ -570,6 +569,10 @@ export function LancarPontosTab({
           />
         </Card>
       ) : (
+        <>
+        <p className="-mb-3 text-xs text-text-light sm:hidden">
+          Deslize a tabela para o lado para ver todas as colunas.
+        </p>
         <Card className="overflow-x-auto p-0">
           <table className="w-full min-w-[860px] text-sm">
             <thead>
@@ -699,16 +702,26 @@ export function LancarPontosTab({
             </tbody>
           </table>
         </Card>
+        </>
       )}
 
-      <div className="flex items-center justify-between">
+      {/* No celular a barra de salvar fica presa ao pé da tela, sempre à mão. */}
+      <div className="sticky bottom-0 z-10 -mx-4 flex flex-col gap-2 border-t border-border bg-bg-card px-4 py-3 sm:static sm:mx-0 sm:flex-row sm:items-center sm:justify-between sm:border-0 sm:bg-transparent sm:p-0">
         <p className="text-sm text-text-light">
           {totalAtletasEnvolvidos === 1 ? "1 atleta receberá" : `${totalAtletasEnvolvidos} atletas receberão`} este lançamento (pontos ou falta justificada).
         </p>
-        <Button onClick={handleSalvar} loading={salvando} disabled={!atletas || !regras}>
+        <Button
+          onClick={handleSalvar}
+          loading={salvando}
+          disabled={!atletas || !regras}
+          className="w-full shrink-0 sm:w-auto"
+        >
           Salvar lançamento
         </Button>
       </div>
+
+      {/* Importação em lote é ocasional; fica depois do lançamento do dia a dia. */}
+      <ImportarPontuacoesCard />
     </div>
   );
 }

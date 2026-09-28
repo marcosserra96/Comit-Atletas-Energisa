@@ -8,15 +8,27 @@ import { auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/Button";
 import { AppSplash } from "@/components/ui/AppSplash";
 import { firebaseErrorCode, mapFirebaseError } from "@/lib/firebaseErrors";
+import { useBuscaDaUrl } from "@/lib/useBuscaDaUrl";
 
 type ActionState = "checking" | "success" | "error";
 
 export default function FirebaseActionPage() {
   const [state, setState] = useState<ActionState>("checking");
   const [message, setMessage] = useState("");
+  const busca = useBuscaDaUrl();
+  const linkValido = (() => {
+    if (busca === undefined) return true; // ainda lendo a URL
+    const params = new URLSearchParams(busca);
+    const mode = params.get("mode");
+    return (
+      !!params.get("oobCode") &&
+      (mode === "resetPassword" || mode === "verifyEmail" || mode === "recoverEmail")
+    );
+  })();
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    if (busca === undefined || !linkValido) return;
+    const params = new URLSearchParams(busca);
     const mode = params.get("mode");
     const code = params.get("oobCode");
 
@@ -40,14 +52,15 @@ export default function FirebaseActionPage() {
           setMessage(mapFirebaseError(firebaseErrorCode(error)));
           setState("error");
         });
-      return;
     }
+  }, [busca, linkValido]);
 
-    setMessage("Este link é inválido ou está incompleto. Solicite um novo link.");
-    setState("error");
-  }, []);
+  const estado: ActionState = linkValido ? state : "error";
+  const mensagem = linkValido
+    ? message
+    : "Este link é inválido ou está incompleto. Solicite um novo link.";
 
-  if (state === "checking") {
+  if (estado === "checking") {
     return <AppSplash message="Validando seu link..." />;
   }
 
@@ -64,22 +77,22 @@ export default function FirebaseActionPage() {
         />
         <div
           className={`mx-auto mb-5 flex size-16 items-center justify-center rounded-full ${
-            state === "success"
+            estado === "success"
               ? "bg-success-subtle text-success"
               : "bg-danger-subtle text-danger"
           }`}
         >
-          {state === "success" ? (
+          {estado === "success" ? (
             <CheckCircle2 className="size-8" aria-hidden="true" />
           ) : (
             <CircleAlert className="size-8" aria-hidden="true" />
           )}
         </div>
         <h1 className="text-2xl font-bold text-text">
-          {state === "success" ? "Tudo certo" : "Não foi possível abrir o link"}
+          {estado === "success" ? "Tudo certo" : "Não foi possível abrir o link"}
         </h1>
-        <p role={state === "error" ? "alert" : undefined} className="mt-2 text-sm leading-relaxed text-text-light">
-          {message}
+        <p role={estado === "error" ? "alert" : undefined} className="mt-2 text-sm leading-relaxed text-text-light">
+          {mensagem}
         </p>
         <Button type="button" className="mt-7 w-full" onClick={() => window.location.assign("/login")}>
           Ir para o login

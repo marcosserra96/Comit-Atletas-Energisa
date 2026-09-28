@@ -12,7 +12,7 @@ function GestaoShellInner({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-dvh">
       <StaffSidebar
         role={role}
         permissoes={usuario.permissoes}

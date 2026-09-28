@@ -177,7 +177,13 @@ export function TermosAceiteScreen({
         </div>
 
         <footer className="flex shrink-0 flex-col gap-2 border-t border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-7 sm:py-4">
-          <Button type="button" variant="ghost" onClick={onLogout} disabled={salvando}>
+          {!marcouAtual ? (
+            // No celular a caixa de aceite pode ficar fora da tela; explica por que o botão está desabilitado.
+            <p className="text-center text-xs font-medium text-text-light sm:hidden">
+              Marque “Li e concordo” acima para continuar.
+            </p>
+          ) : null}
+          <Button type="button" variant="ghost" onClick={onLogout} disabled={salvando} className="order-last sm:order-none">
             <LogOut className="size-4" aria-hidden="true" />
             Sair
           </Button>

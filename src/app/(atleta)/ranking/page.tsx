@@ -101,7 +101,9 @@ function Place({ atleta }: { atleta?: RankedAtleta }) {
 }
 
 function Podium({ atletas }: { atletas: RankedAtleta[] }) {
-  if (atletas.length === 0) return null;
+  // Com um atleta só, o pódio não compara nada (e sobrariam dois lugares vazios);
+  // a tabela abaixo já mostra a posição.
+  if (atletas.length < 2) return null;
   const exibidos = atletas.slice(0, 3);
   const semEmpateNoPodio =
     exibidos[0]?.rank === 1 &&

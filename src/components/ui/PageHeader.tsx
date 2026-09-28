@@ -15,7 +15,7 @@ export interface PageHeaderProps {
 export function PageHeader({ title, subtitle, description, icon: Icon, actions, badge, className }: PageHeaderProps) {
   const sub = subtitle || description;
   return (
-    <div className={cn("mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between", className)}>
+    <div className={cn("mb-2 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between", className)}>
       <div className="flex items-start gap-4">
         {Icon && (
           <div className="shrink-0 rounded-[var(--radius-lg)] bg-primary-subtle p-2.5 text-primary">

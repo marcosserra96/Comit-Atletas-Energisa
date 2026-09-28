@@ -23,6 +23,7 @@ import {
   type GrupoDuplicado,
 } from "@/lib/duplicados";
 import type { AtletaDoc } from "@/lib/types";
+import { plural } from "@/lib/format";
 
 /** Escolhe um "candidato natural" a registro correto: quem tem login, depois quem tem mais pontos. */
 function candidatoPadrao(membros: AtletaDoc[]): string {
@@ -122,7 +123,7 @@ export function ConsistenciaTab() {
       });
       show(
         resultado.rankingAtualizado ? "success" : "info",
-        `Mesclado. ${resultado.lancamentosMigrados} lançamento(s), ${resultado.comentariosMigrados} comentário(s) e ${resultado.eventosAtualizados} inscrição(ões) migrados.${resultado.rankingAtualizado ? " Ranking atualizado." : " O ranking automático não atualizou; use \"Recalcular agora\"."}`,
+        `Mesclado: ${plural(resultado.lancamentosMigrados, "lançamento")}, ${plural(resultado.comentariosMigrados, "comentário")} e ${plural(resultado.eventosAtualizados, "inscrição", "inscrições")} migrados.${resultado.rankingAtualizado ? " Ranking atualizado." : " O ranking automático não atualizou; use \"Recalcular agora\"."}`,
       );
       setAlvoFusao(null);
     } catch (err) {
@@ -264,7 +265,7 @@ export function ConsistenciaTab() {
         titulo="Mesclar registros duplicados"
         descricao={
           alvoFusao
-            ? `${alvoFusao.perdedores.map((p) => p.nome).join(", ")} ${alvoFusao.perdedores.length > 1 ? "serão apagados" : "será apagado"} depois de migrar ${alvoFusao.totalLancamentos} lançamento(s), comentários e inscrições em eventos pra "${alvoFusao.grupo.membros.find((m) => m.id === alvoFusao.canonicalId)?.nome}". A pontuação total é recalculada a partir do histórico depois da fusão.`
+            ? `${alvoFusao.perdedores.map((p) => p.nome).join(", ")} ${alvoFusao.perdedores.length > 1 ? "serão apagados" : "será apagado"} depois de migrar ${plural(alvoFusao.totalLancamentos, "lançamento")}, comentários e inscrições em eventos pra "${alvoFusao.grupo.membros.find((m) => m.id === alvoFusao.canonicalId)?.nome}". A pontuação total é recalculada a partir do histórico depois da fusão.`
             : ""
         }
         palavraChave="MESCLAR"

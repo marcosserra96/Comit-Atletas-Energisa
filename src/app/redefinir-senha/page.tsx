@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
 import { AppSplash } from "@/components/ui/AppSplash";
 import { firebaseErrorCode, mapFirebaseError } from "@/lib/firebaseErrors";
+import { useBuscaDaUrl } from "@/lib/useBuscaDaUrl";
 
 type PageState = "checking" | "ready" | "success" | "error";
 
@@ -22,14 +23,12 @@ export default function RedefinirSenhaPage() {
   const [pageError, setPageError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const actionCode = new URLSearchParams(window.location.search).get("oobCode");
+  const busca = useBuscaDaUrl();
+  const actionCode = busca === undefined ? undefined : new URLSearchParams(busca).get("oobCode");
+  const linkIncompleto = actionCode === null;
 
-    if (!actionCode) {
-      setPageError("Este link de redefinição está incompleto. Solicite um novo link.");
-      setPageState("error");
-      return;
-    }
+  useEffect(() => {
+    if (!actionCode) return;
 
     verifyPasswordResetCode(auth, actionCode)
       .then((verifiedEmail) => {
@@ -41,7 +40,12 @@ export default function RedefinirSenhaPage() {
         setPageError(mapFirebaseError(firebaseErrorCode(error)));
         setPageState("error");
       });
-  }, []);
+  }, [actionCode]);
+
+  const estado: PageState = linkIncompleto ? "error" : pageState;
+  const erroDaPagina = linkIncompleto
+    ? "Este link de redefinição está incompleto. Solicite um novo link."
+    : pageError;
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -70,7 +74,7 @@ export default function RedefinirSenhaPage() {
     }
   }
 
-  if (pageState === "checking") {
+  if (estado === "checking") {
     return <AppSplash message="Validando seu link..." />;
   }
 
@@ -89,7 +93,7 @@ export default function RedefinirSenhaPage() {
           className="mx-auto mb-7 h-auto w-[210px] rounded-xl bg-navy px-4 py-3"
         />
 
-        {pageState === "ready" && (
+        {estado === "ready" && (
           <>
             <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-full bg-primary-subtle text-primary">
               <KeyRound className="size-7" aria-hidden="true" />
@@ -138,7 +142,7 @@ export default function RedefinirSenhaPage() {
           </>
         )}
 
-        {pageState === "success" && (
+        {estado === "success" && (
           <div className="text-center">
             <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-full bg-success-subtle text-success">
               <CheckCircle2 className="size-8" aria-hidden="true" />
@@ -153,14 +157,14 @@ export default function RedefinirSenhaPage() {
           </div>
         )}
 
-        {pageState === "error" && (
+        {estado === "error" && (
           <div className="text-center">
             <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-full bg-danger-subtle text-danger">
               <CircleAlert className="size-8" aria-hidden="true" />
             </div>
             <h1 className="text-2xl font-bold text-text">Não foi possível abrir o link</h1>
             <p role="alert" className="mt-2 text-sm leading-relaxed text-text-light">
-              {pageError}
+              {erroDaPagina}
             </p>
             <Button type="button" className="mt-7 w-full" onClick={() => window.location.assign("/login")}>
               Voltar e solicitar novo link

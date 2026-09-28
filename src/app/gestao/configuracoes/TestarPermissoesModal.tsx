@@ -10,6 +10,7 @@ import { cn } from "@/lib/cn";
 import { PERMISSAO_LABEL, PERMISSAO_ORDEM, PERMISSOES_PADRAO, type PermissaoChave } from "@/lib/permissoes";
 import { avaliarPermissoes } from "@/lib/permissionSimulator";
 import type { AtletaDoc } from "@/lib/types";
+import { plural } from "@/lib/format";
 
 export function TestarPermissoesModal({
   pessoa,
@@ -73,7 +74,7 @@ export function TestarPermissoesModal({
                 <div className="flex items-start gap-2.5 rounded-[var(--radius)] border border-danger/30 bg-danger/5 p-3 text-sm text-danger">
                   <ShieldAlert className="mt-0.5 size-4 shrink-0" />
                   <p>
-                    {negados} ação(ões) seriam negadas pelo Firestore com a configuração atual — confira
+                    {negados === 1 ? "1 ação seria negada" : `${negados} ações seriam negadas`} pelo Firestore com a configuração atual — confira
                     abaixo e corrija se algo aqui não deveria estar bloqueado.
                   </p>
                 </div>
