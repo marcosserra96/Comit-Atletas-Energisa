@@ -72,6 +72,7 @@ export default function ConfigurarPortalPage() {
       </div>
 
       <SubTabs
+        label="Seções de configuração"
         value={tab}
         onChange={setTab}
         options={[

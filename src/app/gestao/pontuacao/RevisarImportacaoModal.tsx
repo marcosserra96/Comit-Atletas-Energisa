@@ -161,7 +161,7 @@ export function RevisarImportacaoModal({
                     </div>
                     <span
                       className={cn(
-                        "shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold",
+                        "shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold",
                         marcada ? "bg-success/10 text-success" : "bg-bg text-text-muted",
                       )}
                     >

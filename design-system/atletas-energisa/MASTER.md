@@ -36,6 +36,11 @@ translúcidos para selos e ícones.
 `text-white`. No tema claro é branco; no escuro, azul-marinho, porque ali as cores de marca
 ficam claras demais para texto branco.
 
+**Superfícies sempre escuras** (menu lateral, barra do topo da gestão, abertura, faixa de
+boas-vindas do Início, painel do login): adicione a classe `superficie-escura`. Ela troca as
+cores de marca pelas variantes claras e ajusta os `on-*`, para que links e botões continuem
+legíveis também no tema claro.
+
 ### Status (fixos)
 `success` `#15803d` · `warning` `#b45309` · `info` `#2563eb`. No tema escuro:
 `#22c55e` · `#f1c40f` · `#60a5fa`.
@@ -75,6 +80,17 @@ texto.** Para hierarquia, use tamanho e peso, não cores mais apagadas.
 
 ---
 
+## Padrões de página
+
+- **Cabeçalho:** título e descrição à esquerda; a ação principal da página fica à direita,
+  na mesma linha (quebra para baixo no celular).
+- **Cards de ação:** ações secundárias ficam num rodapé com `ghost`, separadas por uma borda,
+  sem quebra de linha no texto do botão.
+- **Números em painéis:** sem bordas coloridas competindo. Destaque vem de tamanho e peso.
+- **Celular:** tabelas largas viram um card por item (`md:hidden` / `hidden md:block`).
+
+---
+
 ## Espaçamento, raios e sombras
 
 - Espaçamento em múltiplos de 4px (escala Tailwind).
@@ -94,7 +110,8 @@ Antes de criar qualquer elemento de interface, procure aqui. Não duplique.
 | `TextField`, `Select` | Campos de formulário (label associado, erro com `role="alert"`). |
 | `Card`, `MetricCard`, `SectionHeader`, `PageHeader` | Estrutura de páginas. |
 | `Modal`, `ConfirmActionModal`, `ConfirmarPerigoModal` | Diálogos. Não crie diálogos do zero: reaproveite o `Modal` (foco inicial, Esc e Tab preso já vêm prontos). |
-| `SegmentedControl`, `SubTabs`, `TabPanel` | Alternância entre visões. |
+| `SubTabs` + `TabPanel` | Seções de uma página (abas sublinhadas, com rolagem lateral no celular). Passe `label` para leitores de tela. |
+| `SegmentedControl` | Filtro curto de 2 a 4 opções dentro de uma seção (ex.: Corrida / Bike, Claro / Escuro). |
 | `Badge`, `SportBadge`, `RankingPosition`, `TrendIndicator` | Selos e indicadores. |
 | `EmptyState`, `Skeleton`, `InlineAlert`, `Toast` | Estados vazio, carregando, erro e confirmação. |
 

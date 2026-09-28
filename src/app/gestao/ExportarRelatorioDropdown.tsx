@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
 import { getStoredBranding } from "@/lib/branding";
-import { formatBRL, plural } from "@/lib/format";
+import { formatBRL } from "@/lib/format";
 import { agruparUltimosLancamentos, type EstatisticasDashboard } from "@/lib/dashboardStats";
 import { calcularResumoRankingPeriodo, diasUteisNoMes } from "@/lib/rankingMensal";
 import { normalizarInformativoConfig } from "@/lib/informativoConfig";
@@ -217,7 +217,7 @@ export function ExportarRelatorioDropdown({
           role="menu"
           className="absolute right-0 top-[calc(100%+6px)] z-50 w-64 overflow-hidden rounded-[var(--radius)] border border-border bg-bg-card p-1.5 shadow-lg"
         >
-          <p className="px-2.5 pb-1 pt-1.5 text-[10px] font-bold uppercase tracking-wide text-text-muted">
+          <p className="px-2.5 pb-1 pt-1.5 text-xs font-bold uppercase tracking-wide text-text-muted">
             Relatórios
           </p>
           <button

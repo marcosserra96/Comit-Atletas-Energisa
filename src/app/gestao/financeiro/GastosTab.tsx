@@ -188,13 +188,13 @@ export function GastosTab() {
                       <td className="px-3 py-3 font-medium text-text">
                         {d.evento}
                         {d.recorrente && (
-                          <span className="ml-1.5 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-primary">
+                          <span className="ml-1.5 inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-primary">
                             <Repeat className="size-3" />
                             recorrente
                           </span>
                         )}
                         {d.avulso && (
-                          <span className="ml-1.5 text-[10px] font-bold uppercase tracking-wide text-accent">
+                          <span className="ml-1.5 text-xs font-bold uppercase tracking-wide text-accent">
                             [avulso]
                           </span>
                         )}
@@ -327,13 +327,13 @@ export function GastosTab() {
                           )}
                           {d.observacoes && (
                             <div className="mt-3 rounded-[var(--radius)] border border-border bg-bg-card p-3">
-                              <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-text-muted">
+                              <p className="mb-1 text-xs font-bold uppercase tracking-wide text-text-muted">
                                 Observações
                               </p>
                               <p className="whitespace-pre-wrap text-sm text-text-light">{d.observacoes}</p>
                             </div>
                           )}
-                          <p className="mt-3 text-[11px] text-text-muted">
+                          <p className="mt-3 text-xs text-text-muted">
                             Lançado por {d.criadoPorNome || "—"}
                             {d.atualizadoPorNome && ` · última edição de ${d.atualizadoPorNome}`}
                           </p>

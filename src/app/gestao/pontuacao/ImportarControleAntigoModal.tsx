@@ -348,7 +348,7 @@ export function ImportarControleAntigoModal({ open, onClose }: { open: boolean; 
                         {aba.nome}
                       </span>
                       {!aba.mesNumero && (
-                        <span className="text-[11px] font-semibold text-danger">Mês não reconhecido</span>
+                        <span className="text-xs font-semibold text-danger">Mês não reconhecido</span>
                       )}
                     </button>
                   ))}

@@ -30,6 +30,7 @@ export default function FinanceiroPage() {
       </div>
 
       <SubTabs
+        label="Seções do financeiro"
         value={tab}
         onChange={setTab}
         options={[

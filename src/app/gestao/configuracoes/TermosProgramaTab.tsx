@@ -287,7 +287,7 @@ export function TermosProgramaTab() {
                       </span>
                     </span>
                     {sujo ? (
-                      <span className="rounded-full bg-warning/15 px-2 py-1 text-[11px] font-bold text-warning">
+                      <span className="rounded-full bg-warning/15 px-2 py-1 text-xs font-bold text-warning">
                         Não salvo
                       </span>
                     ) : null}

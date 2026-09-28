@@ -389,7 +389,7 @@ export function NovaDespesaModal({
                   <p className="mb-2 text-sm font-semibold text-text">{t.label}</p>
                   <div className="grid grid-cols-2 gap-2">
                     <div className={avulso ? "pointer-events-none opacity-30" : undefined}>
-                      <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-text-muted">Orçado</p>
+                      <p className="mb-1 text-xs font-bold uppercase tracking-wide text-text-muted">Orçado</p>
                       <CustoInput
                         value={prop[t.chave]}
                         onChange={(v) => setProp((p) => ({ ...p, [t.chave]: v }))}
@@ -397,7 +397,7 @@ export function NovaDespesaModal({
                       />
                     </div>
                     <div>
-                      <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-secondary">Realizado</p>
+                      <p className="mb-1 text-xs font-bold uppercase tracking-wide text-secondary">Realizado</p>
                       <CustoInput value={real[t.chave]} onChange={(v) => setReal((p) => ({ ...p, [t.chave]: v }))} />
                     </div>
                   </div>
@@ -484,7 +484,7 @@ function ParcelasEditor({
 
       <div className="overflow-x-auto rounded-[var(--radius)] border border-border">
         <div className="min-w-[560px]">
-          <div className="grid grid-cols-[56px_1fr_64px_1fr_1fr] gap-px bg-border text-[10px] font-bold uppercase tracking-wide text-text-muted">
+          <div className="grid grid-cols-[56px_1fr_64px_1fr_1fr] gap-px bg-border text-xs font-bold uppercase tracking-wide text-text-muted">
             <div className="bg-bg-card px-2 py-2">Mês</div>
             <div className="bg-bg-card px-2 py-2 text-center">Previsto</div>
             <div className="bg-bg-card px-2 py-2 text-center">Pago</div>

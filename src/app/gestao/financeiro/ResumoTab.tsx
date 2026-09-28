@@ -344,7 +344,7 @@ function FinKpi({
         <Icon className="size-[18px]" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-bold uppercase tracking-wide text-text-light">{label}</p>
+        <p className="text-xs font-bold uppercase tracking-wide text-text-light">{label}</p>
         <p className="text-[1.35rem] font-extrabold leading-tight text-text">{value}</p>
         <p className="text-xs text-text-muted">{desc}</p>
       </div>

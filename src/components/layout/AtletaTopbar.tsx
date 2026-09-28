@@ -69,7 +69,7 @@ export function AtletaTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
           <div className="hidden leading-tight sm:block">
             <span className="block text-sm font-medium text-text">{atleta.nome.split(" ")[0]}</span>
             {(tambemComite || isPreview) && (
-              <span className="block text-[10px] font-bold uppercase tracking-wide text-text-muted">
+              <span className="block text-xs font-bold uppercase tracking-wide text-text-muted">
                 {isPreview ? "Visualização" : roleLabel[usuario.role]}
               </span>
             )}

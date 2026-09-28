@@ -10,7 +10,6 @@ import { cn } from "@/lib/cn";
 import { PERMISSAO_LABEL, PERMISSAO_ORDEM, PERMISSOES_PADRAO, type PermissaoChave } from "@/lib/permissoes";
 import { avaliarPermissoes } from "@/lib/permissionSimulator";
 import type { AtletaDoc } from "@/lib/types";
-import { plural } from "@/lib/format";
 
 export function TestarPermissoesModal({
   pessoa,
@@ -59,7 +58,7 @@ export function TestarPermissoesModal({
                   <span
                     key={chave}
                     className={cn(
-                      "rounded-full border px-2.5 py-1 text-[11px] font-semibold",
+                      "rounded-full border px-2.5 py-1 text-xs font-semibold",
                       permissoes.includes(chave)
                         ? "border-primary/30 bg-primary/10 text-primary"
                         : "border-border bg-bg text-text-muted",

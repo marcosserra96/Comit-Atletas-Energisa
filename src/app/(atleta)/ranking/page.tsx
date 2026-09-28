@@ -17,7 +17,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
-import { formatShortDate, formatDecimal, formatKm, plural } from "@/lib/format";
+import { formatShortDate, formatDecimal, formatKm, formatRelativeTime, plural } from "@/lib/format";
 import { normalizarRankingPeriods } from "@/lib/rankingPeriods";
 import { calcularPosicoesRanking } from "@/lib/rankingPosition";
 import {
@@ -81,7 +81,7 @@ function Place({ atleta }: { atleta?: RankedAtleta }) {
               {atleta.pontuacaoTotal} pts
             </span>
             {atleta.treinos !== undefined ? (
-              <span className="mt-0.5 text-[10px] text-text-muted">
+              <span className="mt-0.5 text-xs text-text-muted">
                 {plural(atleta.treinos, "treino")} · {formatKm(atleta.km ?? 0)}
               </span>
             ) : null}
@@ -327,9 +327,14 @@ export default function RankingPage() {
       <PageHeader
         title="Ranking"
         subtitle={
-          isStaff
+          (isStaff
             ? "Classificação publicada por período e modalidade."
-            : "Classificação publicada da sua modalidade."
+            : "Classificação publicada da sua modalidade.") +
+          // O ranking é um retrato publicado (atualizado a cada lançamento); dizer
+          // quando foi evita a impressão de número "errado" frente ao Desempenho.
+          (possuiResultadosPublicados && periods?.rankingAtualizadoEm
+            ? ` Atualizado ${formatRelativeTime(periods.rankingAtualizadoEm)}.`
+            : "")
         }
         icon={Trophy}
         badge={<SportBadge modalidade={modalidade} size="md" />}
@@ -452,25 +457,38 @@ export default function RankingPage() {
                   {myRankAtleta.rank}º lugar no ranking
                 </p>
               </div>
-              <div className="grid shrink-0 grid-cols-3 gap-3 text-center">
+              {/* Treinos e km só existem no ranking publicado; sem ele, mostrar "0"
+                  contradizia a tela Desempenho. */}
+              <div
+                className={cn(
+                  "grid shrink-0 gap-3 text-center",
+                  myRankAtleta.treinos !== undefined ? "grid-cols-3" : "grid-cols-1",
+                )}
+              >
                 <div>
                   <strong className="block text-sm tabular-nums text-text">
                     {myRankAtleta.pontuacaoTotal}
                   </strong>
-                  <span className="text-[10px] text-text-muted">pontos</span>
+                  <span className="text-xs text-text-muted">pontos</span>
                 </div>
-                <div>
-                  <strong className="block text-sm tabular-nums text-text">
-                    {myRankAtleta.treinos ?? 0}
-                  </strong>
-                  <span className="text-[10px] text-text-muted">treinos</span>
-                </div>
-                <div>
-                  <strong className="block text-sm tabular-nums text-text">
-                    {formatDecimal(myRankAtleta.km ?? 0)}
-                  </strong>
-                  <span className="text-[10px] text-text-muted">km</span>
-                </div>
+                {myRankAtleta.treinos !== undefined ? (
+                  <>
+                    <div>
+                      <strong className="block text-sm tabular-nums text-text">
+                        {myRankAtleta.treinos}
+                      </strong>
+                      <span className="text-xs text-text-muted">
+                        {myRankAtleta.treinos === 1 ? "treino" : "treinos"}
+                      </span>
+                    </div>
+                    <div>
+                      <strong className="block text-sm tabular-nums text-text">
+                        {formatDecimal(myRankAtleta.km ?? 0)}
+                      </strong>
+                      <span className="text-xs text-text-muted">km</span>
+                    </div>
+                  </>
+                ) : null}
               </div>
             </div>
           ) : null}
@@ -502,7 +520,7 @@ export default function RankingPage() {
               </div>
             ) : (
               <>
-                <div className="hidden items-center border-b border-border bg-bg/50 px-5 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-muted sm:flex">
+                <div className="hidden items-center border-b border-border bg-bg/50 px-5 py-2 text-xs font-semibold uppercase tracking-wide text-text-muted sm:flex">
                   <span className="flex-1 pl-11">Atleta</span>
                   <div className="grid w-[280px] shrink-0 grid-cols-3 text-center">
                     <span>Treinos</span>
@@ -552,7 +570,7 @@ export default function RankingPage() {
                             <strong className="block text-sm tabular-nums text-text">
                               {atleta.treinos ?? "—"}
                             </strong>
-                            <span className="mt-0.5 block text-[11px] text-text-muted sm:hidden">
+                            <span className="mt-0.5 block text-xs text-text-muted sm:hidden">
                               treinos
                             </span>
                           </div>
@@ -560,7 +578,7 @@ export default function RankingPage() {
                             <strong className="block text-sm tabular-nums text-text">
                               {atleta.km === undefined ? "—" : formatDecimal(atleta.km)}
                             </strong>
-                            <span className="mt-0.5 block text-[11px] text-text-muted sm:hidden">
+                            <span className="mt-0.5 block text-xs text-text-muted sm:hidden">
                               km
                             </span>
                           </div>
@@ -568,7 +586,7 @@ export default function RankingPage() {
                             <strong className="block text-sm tabular-nums text-text sm:text-base">
                               {atleta.pontuacaoTotal}
                             </strong>
-                            <span className="mt-0.5 block text-[11px] text-text-muted sm:hidden">
+                            <span className="mt-0.5 block text-xs text-text-muted sm:hidden">
                               pontos
                             </span>
                           </div>

@@ -45,17 +45,24 @@ export function CriteriosTab() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <Button
-        className="w-fit"
-        onClick={() => {
-          setEditando(null);
-          setModalOpen(true);
-        }}
-      >
-        <Plus className="size-4" />
-        Nova regra
-      </Button>
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-extrabold text-text">Critérios de pontuação</h1>
+          <p className="text-sm text-text-light">
+            Defina as regras usadas para pontuar treinos, eventos e lançamentos avulsos.
+          </p>
+        </div>
+        <Button
+          onClick={() => {
+            setEditando(null);
+            setModalOpen(true);
+          }}
+        >
+          <Plus className="size-4" />
+          Nova regra
+        </Button>
+      </div>
 
       {regras === null ? (
         <Card className="h-40 animate-pulse" />

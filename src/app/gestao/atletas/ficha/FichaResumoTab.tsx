@@ -112,13 +112,13 @@ export function FichaResumoTab({ atleta }: { atleta: AtletaDoc }) {
     <div className="flex flex-col gap-5">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="rounded-[var(--radius)] border border-border bg-bg p-4">
-          <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-text-muted">
+          <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-text-muted">
             Total de pontos
           </span>
           <h3 className="text-xl font-extrabold text-text">{atleta.pontuacaoTotal}</h3>
         </div>
         <div className="rounded-[var(--radius)] border border-border bg-bg p-4">
-          <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-text-muted">
+          <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-text-muted">
             KM percorridos
           </span>
           <h3 className="text-xl font-extrabold text-text">
@@ -126,7 +126,7 @@ export function FichaResumoTab({ atleta }: { atleta: AtletaDoc }) {
           </h3>
         </div>
         <div className="rounded-[var(--radius)] border border-border bg-bg p-4">
-          <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-text-muted">
+          <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-text-muted">
             Status
           </span>
           <h3 className="text-xl font-extrabold text-text">{atleta.ativo ? "Ativo" : "Inativo"}</h3>

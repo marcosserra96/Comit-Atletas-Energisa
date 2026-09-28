@@ -164,7 +164,7 @@ export function IdentidadeVisualTab() {
             className="flex h-36 flex-col justify-center rounded-[var(--radius-lg)] px-5 text-white"
             style={{ background: loginBackground(branding) }}
           >
-            <p className="text-[10px] font-bold tracking-[0.14em] text-white/60">PRÉVIA</p>
+            <p className="text-xs font-bold tracking-[0.14em] text-white/60">PRÉVIA</p>
             <p className="text-lg font-bold tracking-[-0.02em]">Portal Atletas Energisa</p>
             <p className="text-xs text-white/70">Desempenho, pontuação e evolução em um só lugar.</p>
           </div>
