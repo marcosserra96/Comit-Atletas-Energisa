@@ -106,7 +106,6 @@ export function HistoricoMensalTab() {
   }, [competencia]);
 
   useEffect(() => {
-    setSobreposicaoConfirmada(false);
     const inicio = `${competencia}-01`;
     const fim = `${competencia}-31`;
     const unsubscribe = onSnapshot(
