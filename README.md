@@ -10,10 +10,12 @@ Construído em Next.js (App Router) + TypeScript + Tailwind CSS + Firebase
 ## Desenvolvimento local
 
 O projeto roda contra o **Firebase Emulator Suite**, sem depender de nenhum
-projeto Firebase real.
+projeto Firebase real. Requer Node 22+ e Java 11+ (usado pelo emulador do
+Firestore).
 
 ```bash
 npm install
+cp .env.example .env.local   # já vem com NEXT_PUBLIC_USE_FIREBASE_EMULATOR=true
 
 # Terminal 1 — emuladores (Auth + Firestore)
 npm run emulators
@@ -24,6 +26,10 @@ npm run seed
 # Terminal 3 — servidor Next.js
 npm run dev
 ```
+
+Com o emulador ligado, as rotas de API do servidor (termos, justificativas,
+administração) também usam os emuladores — nenhuma credencial do Firebase
+Admin é necessária localmente.
 
 Abra [http://localhost:3000](http://localhost:3000). Contas de teste criadas
 pelo `npm run seed` (senha `senha123`):

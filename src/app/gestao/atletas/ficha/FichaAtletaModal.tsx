@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { LayoutDashboard, History, IdCard, MessageSquare, ShieldCheck, X } from "lucide-react";
 import { equipeLabel } from "@/lib/labels";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
+import { useDialogFocus } from "@/lib/useDialogFocus";
 import { FichaResumoTab } from "./FichaResumoTab";
 import { FichaLancamentosTab } from "./FichaLancamentosTab";
 import { FichaCadastroTab } from "./FichaCadastroTab";
@@ -32,7 +33,9 @@ export function FichaAtletaModal({
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<FichaTab>(initialTab);
+  const dialogRef = useRef<HTMLDivElement>(null);
   useLockBodyScroll(atleta !== null);
+  useDialogFocus(atleta !== null, dialogRef, onClose);
 
   return (
     <AnimatePresence>
@@ -45,9 +48,11 @@ export function FichaAtletaModal({
           onClick={onClose}
         >
           <motion.div
+            ref={dialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="ficha-title"
+            tabIndex={-1}
             onClick={(e) => e.stopPropagation()}
             initial={{ opacity: 0, y: 12, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -66,9 +71,10 @@ export function FichaAtletaModal({
                 <p className="truncate text-xs text-text-muted">{equipeLabel[atleta.equipe]}</p>
               </div>
               <button
+                type="button"
                 onClick={onClose}
                 aria-label="Fechar"
-                className="shrink-0 rounded-[var(--radius)] p-2 text-text-muted hover:bg-bg hover:text-text"
+                className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-[var(--radius)] text-text-muted hover:bg-bg hover:text-text"
               >
                 <X className="size-5" />
               </button>
