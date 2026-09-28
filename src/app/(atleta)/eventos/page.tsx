@@ -12,6 +12,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { AlertCircle, CalendarCheck, CalendarPlus, Check, MapPin, Navigation, RefreshCw, Users } from "lucide-react";
+import type { ReactNode } from "react";
 import { db } from "@/lib/firebase";
 import { useAthleteView } from "@/lib/session/AthleteViewProvider";
 import { useToast } from "@/components/ui/Toast";
@@ -23,6 +24,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
 import { formatShortDate, plural } from "@/lib/format";
+import { cn } from "@/lib/cn";
+import { modalidadeFromEquipe, modalidadeLabel } from "@/lib/labels";
 import type { EventoDoc } from "@/lib/types";
 
 function hojeIsoLocal() {
@@ -76,8 +79,112 @@ function baixarEventoCalendario(evento: EventoDoc) {
   URL.revokeObjectURL(url);
 }
 
+function EventoCard({
+  evento,
+  confirmado,
+  alterando,
+  bloqueado,
+  somenteVisualizacao,
+  onAlternar,
+}: {
+  evento: EventoDoc;
+  confirmado: boolean;
+  alterando: boolean;
+  bloqueado: boolean;
+  somenteVisualizacao: boolean;
+  onAlternar: () => void;
+}) {
+  const data = partesData(evento.data);
+  const inscritos = evento.inscritos?.length ?? 0;
+  const linkSecundario =
+    "inline-flex min-h-11 items-center gap-1.5 rounded-[var(--radius)] px-2 text-sm font-semibold text-text-light transition-colors hover:bg-bg-inset hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary";
+
+  return (
+    <Card
+      className={cn(
+        "flex flex-col gap-4",
+        confirmado && "border-success/40 shadow-[0_0_0_1px_var(--color-success-subtle)]",
+      )}
+    >
+      <div className="flex items-start gap-4">
+        <div className="flex size-16 shrink-0 flex-col items-center justify-center rounded-[var(--radius-lg)] bg-primary-subtle text-primary">
+          <span className="text-xs font-bold uppercase">{data.mes}</span>
+          <span className="text-2xl font-black leading-none tabular-nums">{data.dia}</span>
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-base font-bold leading-snug text-text sm:text-lg">{evento.titulo}</h3>
+          <p className="mt-1 flex items-start gap-1.5 text-sm text-text-light">
+            <MapPin className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            <span className="line-clamp-2">{evento.local}</span>
+          </p>
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            {evento.modalidade === "ambas" ? (
+              <Badge tone="neutral">Todas as modalidades</Badge>
+            ) : (
+              <SportBadge modalidade={evento.modalidade} size="sm" />
+            )}
+            {evento.km ? <Badge tone="neutral">{evento.km} km</Badge> : null}
+            <span className="inline-flex items-center gap-1 text-xs text-text-light">
+              <Users className="size-3.5" aria-hidden="true" />
+              {plural(inscritos, "confirmado")}
+            </span>
+            {confirmado ? (
+              <Badge tone="success">
+                <Check className="mr-1 size-3" aria-hidden="true" />
+                Presença confirmada
+              </Badge>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2 border-t border-border-subtle pt-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 sm:-ml-2">
+          <a
+            href={"https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(evento.local)}
+            target="_blank"
+            rel="noreferrer"
+            className={linkSecundario}
+          >
+            <Navigation className="size-4" aria-hidden="true" />
+            Ver mapa
+          </a>
+          <button type="button" onClick={() => baixarEventoCalendario(evento)} className={cn(linkSecundario, "cursor-pointer")}>
+            <CalendarPlus className="size-4" aria-hidden="true" />
+            Salvar na agenda
+          </button>
+        </div>
+        <Button
+          size="sm"
+          variant={confirmado ? "ghost" : "primary"}
+          className="w-full shrink-0 sm:w-auto"
+          loading={alterando}
+          disabled={somenteVisualizacao || bloqueado}
+          onClick={onAlternar}
+        >
+          {somenteVisualizacao
+            ? "Somente visualização"
+            : confirmado
+              ? "Cancelar presença"
+              : "Confirmar presença"}
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+function GrupoEventos({ titulo, children }: { titulo: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <h3 className="text-sm font-bold uppercase tracking-wide text-text-light">{titulo}</h3>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">{children}</div>
+    </div>
+  );
+}
+
 export default function EventosAtletaPage() {
   const { atleta, isPreview } = useAthleteView();
+  const minhaModalidade = modalidadeFromEquipe(atleta.equipe);
   const { show } = useToast();
   const [eventos, setEventos] = useState<EventoDoc[] | null>(null);
   const [erroCarregamento, setErroCarregamento] = useState(false);
@@ -172,113 +279,55 @@ export default function EventosAtletaPage() {
                 />
               </Card>
             ) : (
-              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                {futuros.map((evento) => {
-                  const data = partesData(evento.data);
-                  const confirmado = evento.inscritos?.includes(atleta.id) ?? false;
-                  const inscritos = evento.inscritos?.length ?? 0;
-
-                  return (
-                    <Card
-                      key={evento.id}
-                      className="flex flex-col gap-4 transition-colors hover:border-primary/40 sm:flex-row"
-                    >
-                      <div className="flex items-center gap-4 sm:block">
-                        <div className="flex size-18 shrink-0 flex-col items-center justify-center rounded-[var(--radius-lg)] bg-primary/10 text-primary">
-                          <span className="text-[11px] font-bold uppercase">{data.mes}</span>
-                          <span className="text-2xl font-black leading-none">{data.dia}</span>
-                        </div>
-                        <div className="sm:hidden">
-                          <p className="font-bold text-text">{evento.titulo}</p>
-                          <p className="mt-1 text-xs text-text-light">{formatShortDate(evento.data)}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex min-w-0 flex-1 flex-col">
-                        <div className="hidden sm:block">
-                          <p className="text-lg font-bold text-text">{evento.titulo}</p>
-                          <p className="mt-1 flex items-center gap-1.5 text-sm text-text-light">
-                            <MapPin className="size-4 shrink-0" />
-                            <span className="truncate">{evento.local}</span>
-                          </p>
-                        </div>
-                        <p className="flex items-center gap-1.5 text-sm text-text-light sm:hidden">
-                          <MapPin className="size-4 shrink-0" />
-                          <span className="truncate">{evento.local}</span>
-                        </p>
-
-                        <div className="mt-3 flex flex-wrap items-center gap-2">
-                          {evento.modalidade === "ambas" ? (
-                            <Badge tone="neutral">Todas as modalidades</Badge>
-                          ) : (
-                            <SportBadge modalidade={evento.modalidade} size="sm" />
-                          )}
-                          {evento.km ? <Badge tone="neutral">{evento.km} km</Badge> : null}
-                          <span className="inline-flex items-center gap-1 text-xs text-text-muted">
-                            <Users className="size-3.5" />
-                            {plural(inscritos, "confirmado")}
-                          </span>
-                          {confirmado && (
-                            <Badge tone="success">
-                              <Check className="mr-1 size-3" />
-                              Você confirmou
-                            </Badge>
-                          )}
-                        </div>
-
-                        <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-auto sm:pt-4">
-                          <a
-                            href={"https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(evento.local)}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius)] border border-border bg-bg-card px-3 text-xs font-bold text-text-light transition-colors hover:bg-bg-inset hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                          >
-                            <Navigation className="size-4 text-primary" />
-                            Abrir no Maps
-                          </a>
-                          <button
-                            type="button"
-                            onClick={() => baixarEventoCalendario(evento)}
-                            className="flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius)] border border-border bg-bg-card px-3 text-xs font-bold text-text-light transition-colors hover:bg-bg-inset hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                          >
-                            <CalendarPlus className="size-4 text-secondary" />
-                            Calendário
-                          </button>
-                          <Button
-                            size="sm"
-                            variant={confirmado ? "secondary" : "primary"}
-                            className="col-span-2 min-h-11 w-full justify-center"
-                            loading={alterandoId === evento.id}
-                            disabled={isPreview || (alterandoId !== null && alterandoId !== evento.id)}
-                            onClick={() => alternarPresenca(evento)}
-                          >
-                            {isPreview
-                              ? "Somente visualização"
-                              : confirmado
-                                ? "Cancelar presença"
-                                : "Confirmar presença"}
-                          </Button>
-                        </div>
-                      </div>
-                    </Card>
-                  );
-                })}
-              </div>
+              (() => {
+                const renderCard = (evento: EventoDoc) => (
+                  <EventoCard
+                    key={evento.id}
+                    evento={evento}
+                    confirmado={evento.inscritos?.includes(atleta.id) ?? false}
+                    alterando={alterandoId === evento.id}
+                    bloqueado={alterandoId !== null && alterandoId !== evento.id}
+                    somenteVisualizacao={isPreview}
+                    onAlternar={() => alternarPresenca(evento)}
+                  />
+                );
+                // Separa o que é da modalidade do atleta do resto, para um evento de
+                // outra modalidade não parecer um convite direto.
+                if (!minhaModalidade) {
+                  return <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">{futuros.map(renderCard)}</div>;
+                }
+                const meus = futuros.filter(
+                  (evento) => evento.modalidade === "ambas" || evento.modalidade === minhaModalidade,
+                );
+                const outros = futuros.filter((evento) => !meus.includes(evento));
+                return (
+                  <div className="flex flex-col gap-6">
+                    {meus.length > 0 ? (
+                      <GrupoEventos titulo={`Da sua modalidade · ${modalidadeLabel[minhaModalidade]}`}>
+                        {meus.map(renderCard)}
+                      </GrupoEventos>
+                    ) : null}
+                    {outros.length > 0 ? (
+                      <GrupoEventos titulo="Outras modalidades">{outros.map(renderCard)}</GrupoEventos>
+                    ) : null}
+                  </div>
+                );
+              })()
             )}
           </section>
 
           {passados.length > 0 && (
             <section className="flex flex-col gap-4">
-              <h2 className="text-lg font-bold text-text-muted">Eventos passados</h2>
-              <div className="grid grid-cols-1 gap-4 opacity-75 xl:grid-cols-2">
+              <h2 className="text-lg font-bold text-text">Eventos passados</h2>
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                 {passados.map((evento) => (
                   <Card key={evento.id} className="flex items-center gap-4 bg-bg-inset/50">
                     <div className="flex size-16 shrink-0 flex-col items-center justify-center rounded-[var(--radius)] bg-bg-inset text-text-muted">
-                      <span className="text-[10px] font-bold uppercase">{partesData(evento.data).mes}</span>
+                      <span className="text-xs font-bold uppercase">{partesData(evento.data).mes}</span>
                       <span className="text-xl font-black">{partesData(evento.data).dia}</span>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold text-text-muted">{evento.titulo}</p>
+                      <p className="truncate font-semibold text-text-light">{evento.titulo}</p>
                       <p className="mt-1 flex items-center gap-1.5 text-xs text-text-muted">
                         <MapPin className="size-3.5 shrink-0" />
                         <span className="truncate">{evento.local}</span>
