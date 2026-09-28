@@ -5,6 +5,7 @@ import { SessionProvider } from "@/lib/session/SessionProvider";
 import { ThemeInit } from "@/components/ThemeInit";
 import { BrandingInit } from "@/components/BrandingInit";
 import { PwaRegister } from "@/components/PwaRegister";
+import { MotionProvider } from "@/components/MotionProvider";
 import "./globals.css";
 
 const inter = Inter({
@@ -51,9 +52,11 @@ export default function RootLayout({
         <ThemeInit />
         <BrandingInit />
         <PwaRegister />
-        <ToastProvider>
-          <SessionProvider>{children}</SessionProvider>
-        </ToastProvider>
+        <MotionProvider>
+          <ToastProvider>
+            <SessionProvider>{children}</SessionProvider>
+          </ToastProvider>
+        </MotionProvider>
       </body>
     </html>
   );

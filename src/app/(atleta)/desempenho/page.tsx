@@ -31,7 +31,7 @@ import { SkeletonCard } from "@/components/ui/Skeleton";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Select } from "@/components/ui/Select";
-import { formatDataTreino } from "@/lib/format";
+import { formatDataTreino, plural } from "@/lib/format";
 import {
   calcularDesempenhoAtleta,
   obterInicioPeriodo,
@@ -163,18 +163,13 @@ function textoComparacao(analise: AnaliseDesempenho) {
     return "Ainda não há treinos registrados neste mês nem no anterior.";
   }
   if (analise.treinosMesAnterior === 0) {
-    return "Você já registrou " + analise.treinosMesAtual + " treino(s) neste mês.";
+    return `Você já registrou ${plural(analise.treinosMesAtual, "treino")} neste mês.`;
   }
   const diferenca = analise.treinosMesAtual - analise.treinosMesAnterior;
   if (diferenca === 0) {
     return "Você está com o mesmo número de treinos do mês anterior.";
   }
-  return (
-    "Você tem " +
-    Math.abs(diferenca) +
-    (diferenca > 0 ? " treino(s) a mais" : " treino(s) a menos") +
-    " que no mês anterior."
-  );
+  return `Você tem ${plural(Math.abs(diferenca), "treino")} a ${diferenca > 0 ? "mais" : "menos"} que no mês anterior.`;
 }
 
 export default function DesempenhoPage() {
@@ -330,7 +325,7 @@ export default function DesempenhoPage() {
                 icon={CalendarDays}
                 subtitle={
                   analise.melhorMes
-                    ? analise.melhorMes.treinos + " treino(s)"
+                    ? plural(analise.melhorMes.treinos, "treino")
                     : "sem treinos no período"
                 }
               />
@@ -499,7 +494,7 @@ export default function DesempenhoPage() {
               <div>
                 <h2 className="text-lg font-bold text-text">Histórico detalhado</h2>
                 <p className="mt-1 text-sm text-text-light">
-                  {historicoFiltrado.length} lançamento(s) no filtro atual.
+                  {plural(historicoFiltrado.length, "lançamento")} no filtro atual.
                 </p>
               </div>
               <div className="grid gap-3 sm:grid-cols-[minmax(220px,1fr)_180px]">

@@ -22,7 +22,7 @@ import { useActiveSession } from "@/lib/session/SessionProvider";
 import { souTambemAtleta } from "@/lib/session/dualRole";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Início", icon: LayoutDashboard },
   { href: "/perfil", label: "Perfil", icon: UserCircle },
   { href: "/desempenho", label: "Desempenho", icon: Activity },
   { href: "/eventos", label: "Eventos", icon: CalendarCheck },

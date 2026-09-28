@@ -81,7 +81,7 @@ export function UsuariosTab() {
         "success",
         novaEquipe === "comite" || novaEquipe === "nenhuma"
           ? `${pessoa.nome.split(" ")[0]} não compete mais no programa.`
-          : `${pessoa.nome.split(" ")[0]} agora também compete em ${novaEquipe === "bicicleta" ? "Bicicleta" : "Corrida"}.`,
+          : `${pessoa.nome.split(" ")[0]} agora também compete em ${novaEquipe === "bicicleta" ? "Bike" : "Corrida"}.`,
       );
     } catch {
       show("error", "Não foi possível atualizar agora. Tente novamente.");
@@ -283,11 +283,11 @@ export function UsuariosTab() {
                 </Badge>
                 <Badge tone="neutral">
                   {pessoa.equipe === "bicicleta"
-                    ? "Atleta · Bicicleta"
+                    ? "Atleta · Bike"
                     : pessoa.equipe === "corrida"
                       ? "Atleta · Corrida"
                       : pessoa.equipe === "fila_bicicleta"
-                        ? "Fila · Bicicleta"
+                        ? "Fila · Bike"
                         : pessoa.equipe === "fila_corrida"
                           ? "Fila · Corrida"
                           : "Não compete"}
@@ -324,7 +324,7 @@ export function UsuariosTab() {
                   }}
                 >
                   <option value="nao_compete">Não compete</option>
-                  <option value="bicicleta">Atleta · Bicicleta</option>
+                  <option value="bicicleta">Atleta · Bike</option>
                   <option value="corrida">Atleta · Corrida</option>
                 </Select>
               </div>

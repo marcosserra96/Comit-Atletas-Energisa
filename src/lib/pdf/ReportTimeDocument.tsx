@@ -174,7 +174,7 @@ function TeamPage({
 }) {
   const dataHoje = new Date().toLocaleDateString("pt-BR");
   const cor = modalidade === "corrida" ? GREEN : BLUE;
-  const modalidadeLabel = modalidade === "corrida" ? "Corrida" : "Bicicleta";
+  const modalidadeLabel = modalidade === "corrida" ? "Corrida" : "Bike";
   const modalidadeIcon = modalidade === "corrida" ? "🏃" : "🚴";
 
   const totalPontos = lista.reduce((s, a) => s + a.pontosMes, 0);

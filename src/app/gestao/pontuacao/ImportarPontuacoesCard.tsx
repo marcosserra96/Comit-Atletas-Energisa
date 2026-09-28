@@ -27,6 +27,7 @@ import {
 } from "./RevisarImportacaoModal";
 import { BotaoImportarControleAntigo } from "./ImportarControleAntigoModal";
 import type { AtletaDoc, HistoricoPontoDoc, Modalidade, RegraPontuacaoDoc, TipoLancamento } from "@/lib/types";
+import { plural } from "@/lib/format";
 
 const TIPOS_VALIDOS: TipoLancamento[] = ["treino", "evento", "avulso"];
 const DATA_ISO_REGEX = /^\d{4}-\d{2}-\d{2}$/;
@@ -108,7 +109,7 @@ export function ImportarPontuacoesCard() {
             exemplo: descricoesRegras[0] ?? "Treino registrado no app",
             obrigatorio: true,
             descricao:
-              "Descrição exata do critério de pontuação (cadastrado em Configurar Portal → Critérios), compatível com a equipe e o tipo do atleta.",
+              "Descrição exata do critério de pontuação (cadastrado no menu Critérios), compatível com a equipe e o tipo do atleta.",
           },
           {
             coluna: "KM",
@@ -254,8 +255,8 @@ export function ImportarPontuacoesCard() {
       show(
         rankingAtualizado ? "success" : "info",
         rankingAtualizado
-          ? `${linhas.length} lançamento(s) importado(s). Ranking atualizado.`
-          : `${linhas.length} lançamento(s) importado(s), mas o ranking automático não atualizou. Use "Recalcular agora".`,
+          ? `${plural(linhas.length, "lançamento importado", "lançamentos importados")}. Ranking atualizado.`
+          : `${plural(linhas.length, "lançamento importado", "lançamentos importados")}, mas o ranking automático não atualizou. Use "Recalcular agora".`,
       );
       setResultado(null);
       setLinhasParaGravar(new Map());

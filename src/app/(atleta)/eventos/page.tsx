@@ -22,7 +22,7 @@ import { SportBadge } from "@/components/ui/SportBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
-import { formatShortDate } from "@/lib/format";
+import { formatShortDate, plural } from "@/lib/format";
 import type { EventoDoc } from "@/lib/types";
 
 function hojeIsoLocal() {
@@ -160,7 +160,7 @@ export default function EventosAtletaPage() {
           <section className="flex flex-col gap-4">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-lg font-bold text-text">Próximos eventos</h2>
-              <Badge tone="neutral">{futuros.length} agendado(s)</Badge>
+              <Badge tone="neutral">{plural(futuros.length, "agendado")}</Badge>
             </div>
 
             {futuros.length === 0 ? (
@@ -216,7 +216,7 @@ export default function EventosAtletaPage() {
                           {evento.km ? <Badge tone="neutral">{evento.km} km</Badge> : null}
                           <span className="inline-flex items-center gap-1 text-xs text-text-muted">
                             <Users className="size-3.5" />
-                            {inscritos} confirmado(s)
+                            {plural(inscritos, "confirmado")}
                           </span>
                           {confirmado && (
                             <Badge tone="success">
@@ -285,7 +285,7 @@ export default function EventosAtletaPage() {
                       </p>
                       <div className="mt-2 flex flex-wrap gap-2">
                         <Badge tone="neutral">{formatShortDate(evento.data)}</Badge>
-                        <Badge tone="neutral">{evento.inscritos?.length ?? 0} participante(s)</Badge>
+                        <Badge tone="neutral">{plural(evento.inscritos?.length ?? 0, "participante")}</Badge>
                       </div>
                     </div>
                   </Card>

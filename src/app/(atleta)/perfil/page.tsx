@@ -29,6 +29,7 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { AparenciaCard } from "@/components/account/AparenciaCard";
 import { SenhaCard } from "@/components/account/SenhaCard";
 import { equipeLabel, isWaitlisted, modalidadeFromEquipe } from "@/lib/labels";
+import { modalidadeLabel } from "@/lib/labels";
 
 export default function PerfilPage() {
   const { atleta, isPreview, withPreview } = useAthleteView();
@@ -103,7 +104,7 @@ export default function PerfilPage() {
         <div className="flex flex-col gap-4 sm:gap-6 xl:col-span-7">
           
           <Card>
-            <SectionHeader title="Dados Pessoais" />
+            <SectionHeader title="Dados pessoais" />
             
             <form onSubmit={handleSubmit} className="flex flex-col gap-5 mt-4">
               <TextField
@@ -165,7 +166,7 @@ export default function PerfilPage() {
           </Card>
 
           <Card>
-            <SectionHeader title="Vínculo com o Programa" />
+            <SectionHeader title="Vínculo com o programa" />
             
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 mt-4">
               <div className="flex flex-col gap-1.5">
@@ -177,7 +178,7 @@ export default function PerfilPage() {
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-semibold text-text-muted">Modalidade</label>
                 <div className="px-3 py-2.5 rounded-lg bg-bg-inset border border-border/50 text-text-muted font-medium text-sm flex items-center h-[42px] capitalize">
-                  {modalidade === "bicicleta" ? "Ciclismo" : modalidade === "corrida" ? "Corrida" : "Não se aplica"}
+                  {modalidade === "bicicleta" || modalidade === "corrida" ? modalidadeLabel[modalidade] : "Não se aplica"}
                 </div>
               </div>
               <div className="flex flex-col gap-1.5 sm:col-span-2">

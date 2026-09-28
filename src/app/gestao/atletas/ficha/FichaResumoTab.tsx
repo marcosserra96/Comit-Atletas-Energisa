@@ -13,7 +13,7 @@ import { logAudit } from "@/lib/audit";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { atualizarVisibilidadePerfil } from "@/lib/athleteVisibilityClient";
 import { equipeLabel } from "@/lib/labels";
-import { formatShortDate } from "@/lib/format";
+import { formatShortDate, formatKm } from "@/lib/format";
 import type { AtletaDoc, HistoricoPontoDoc } from "@/lib/types";
 
 const sexoLabel: Record<string, string> = { M: "Masculino", F: "Feminino", Outro: "Prefiro não informar" };
@@ -93,7 +93,7 @@ export function FichaResumoTab({ atleta }: { atleta: AtletaDoc }) {
           ? "Perfil reativado nas visões do portal."
           : resultado.rankingAtualizado
             ? "Perfil ocultado das listas, indicadores e ranking."
-            : "Perfil ocultado, mas o ranking não atualizou. Use “Recalcular agora” em Configurar Portal.",
+            : "Perfil ocultado, mas o ranking não atualizou. Use “Recalcular agora” em Configurar portal.",
       );
     } catch (error) {
       setVisivelNasListas(visibilidadeSalva);
@@ -122,7 +122,7 @@ export function FichaResumoTab({ atleta }: { atleta: AtletaDoc }) {
             KM percorridos
           </span>
           <h3 className="text-xl font-extrabold text-text">
-            {resumo === null ? "…" : `${resumo.km.toFixed(1)} km`}
+            {resumo === null ? "…" : formatKm(resumo.km)}
           </h3>
         </div>
         <div className="rounded-[var(--radius)] border border-border bg-bg p-4">
@@ -207,7 +207,7 @@ export function FichaResumoTab({ atleta }: { atleta: AtletaDoc }) {
                   <p className="mt-0.5 text-xs leading-relaxed text-text-muted">
                     {visivelNasListas
                       ? "Aparece normalmente nas listas e resultados do programa."
-                      : "Fica apenas em Configurar Portal → Perfis ocultos."}
+                      : "Fica apenas em Configurar portal → Perfis ocultos."}
                   </p>
                 </div>
               </div>

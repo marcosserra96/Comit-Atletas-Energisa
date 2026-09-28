@@ -79,7 +79,7 @@ export function NovoEventoModal({ open, onClose }: { open: boolean; onClose: () 
             >
               <option value="ambas">Ambas</option>
               <option value="corrida">Corrida</option>
-              <option value="bicicleta">Bicicleta</option>
+              <option value="bicicleta">Bike</option>
             </Select>
           </div>
           <TextField

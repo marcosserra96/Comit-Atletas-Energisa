@@ -24,7 +24,7 @@ import { Select } from "@/components/ui/Select";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { formatShortDate } from "@/lib/format";
+import { formatShortDate, plural } from "@/lib/format";
 import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import {
@@ -429,8 +429,8 @@ export function LancarPontosTab({
       show(
         rankingAtualizado ? "success" : "info",
         rankingAtualizado
-          ? `Lançamento registrado para ${totalAtletasEnvolvidos} atleta(s). Ranking atualizado.`
-          : `Lançamento registrado para ${totalAtletasEnvolvidos} atleta(s), mas o ranking automático não atualizou. Use "Recalcular agora".`,
+          ? `Lançamento registrado para ${plural(totalAtletasEnvolvidos, "atleta")}. Ranking atualizado.`
+          : `Lançamento registrado para ${plural(totalAtletasEnvolvidos, "atleta")}, mas o ranking automático não atualizou. Use "Recalcular agora".`,
       );
       resetFormulario();
     } catch {
@@ -517,7 +517,7 @@ export function LancarPontosTab({
               }}
             >
               <option value="corrida">Corrida</option>
-              <option value="bicicleta">Bicicleta</option>
+              <option value="bicicleta">Bike</option>
             </Select>
           </div>
           <div className="flex flex-col gap-1.5">
@@ -703,7 +703,7 @@ export function LancarPontosTab({
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-text-light">
-          {totalAtletasEnvolvidos} atleta(s) receberão este lançamento (pontos ou falta justificada).
+          {totalAtletasEnvolvidos === 1 ? "1 atleta receberá" : `${totalAtletasEnvolvidos} atletas receberão`} este lançamento (pontos ou falta justificada).
         </p>
         <Button onClick={handleSalvar} loading={salvando} disabled={!atletas || !regras}>
           Salvar lançamento

@@ -5,6 +5,7 @@ import type {
   Modalidade,
   TipoDocumentoPrograma,
 } from "@/lib/types";
+import { modalidadeLabel } from "@/lib/labels";
 
 export const DOCUMENTO_PROGRAMA_IDS: DocumentoProgramaId[] = [
   "corrida_regulamento",
@@ -207,5 +208,5 @@ export function tipoDocumentoLabel(tipo: TipoDocumentoPrograma) {
 }
 
 export function modalidadeDocumentoLabel(modalidade: Modalidade) {
-  return modalidade === "corrida" ? "Corrida" : "Bike";
+  return modalidadeLabel[modalidade];
 }
