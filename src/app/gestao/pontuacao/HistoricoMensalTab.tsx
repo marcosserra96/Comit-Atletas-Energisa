@@ -11,7 +11,7 @@ import {
   where,
   writeBatch,
 } from "firebase/firestore";
-import { FileSpreadsheet, History } from "lucide-react";
+import { AlertTriangle, FileSpreadsheet, History } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { atletaPublicoRef } from "@/lib/publicAthletes";
 import { useActiveSession } from "@/lib/session/SessionProvider";
@@ -24,12 +24,19 @@ import { baixarModeloImportacao, readExcelFile } from "@/lib/excel";
 import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { plural } from "@/lib/format";
-import type { AtletaDoc, HistoricoMensalDoc, Modalidade } from "@/lib/types";
+import { consolidarAtividades } from "@/lib/activityConsolidation";
+import type { AtletaDoc, HistoricoMensalDoc, HistoricoPontoDoc, Modalidade } from "@/lib/types";
 
 interface ValoresHistoricos {
   pontos: string;
   km: string;
   treinos: string;
+}
+
+interface SobreposicaoResumo {
+  pontos: number;
+  km: number;
+  treinos: number;
 }
 
 const vazio = (): ValoresHistoricos => ({ pontos: "", km: "", treinos: "" });
@@ -59,6 +66,8 @@ export function HistoricoMensalTab() {
   const [competencia, setCompetencia] = useState(competenciaAnterior);
   const [atletas, setAtletas] = useState<AtletaDoc[] | null>(null);
   const [existentes, setExistentes] = useState<Map<string, HistoricoMensalDoc>>(new Map());
+  const [sobreposicoes, setSobreposicoes] = useState<Map<string, SobreposicaoResumo>>(new Map());
+  const [sobreposicaoConfirmada, setSobreposicaoConfirmada] = useState(false);
   const [valores, setValores] = useState<Record<string, ValoresHistoricos>>({});
   const [salvando, setSalvando] = useState(false);
   const [baixando, setBaixando] = useState(false);
@@ -96,6 +105,42 @@ export function HistoricoMensalTab() {
     return unsubscribe;
   }, [competencia]);
 
+  useEffect(() => {
+    setSobreposicaoConfirmada(false);
+    const inicio = `${competencia}-01`;
+    const fim = `${competencia}-31`;
+    const unsubscribe = onSnapshot(
+      query(
+        collection(db, "historico_pontos"),
+        where("dataTreino", ">=", inicio),
+        where("dataTreino", "<=", fim),
+      ),
+      (snap) => {
+        const porAtleta = new Map<string, HistoricoPontoDoc[]>();
+        snap.docs.forEach((d) => {
+          const item = { id: d.id, ...d.data() } as HistoricoPontoDoc;
+          if (item.estornado || item.regraId === "falta_justificada") return;
+          const lista = porAtleta.get(item.atletaId) ?? [];
+          lista.push(item);
+          porAtleta.set(item.atletaId, lista);
+        });
+
+        const mapa = new Map<string, SobreposicaoResumo>();
+        porAtleta.forEach((lista, atletaId) => {
+          const atividades = consolidarAtividades(lista);
+          mapa.set(atletaId, {
+            pontos: lista.reduce((total, item) => total + (item.pontos || 0), 0),
+            km: atividades.reduce((total, atividade) => total + atividade.km, 0),
+            treinos: atividades.filter((atividade) => atividade.tipo === "treino").length,
+          });
+        });
+        setSobreposicoes(mapa);
+      },
+      () => setSobreposicoes(new Map()),
+    );
+    return unsubscribe;
+  }, [competencia]);
+
   function valoresDoAtleta(atletaId: string): ValoresHistoricos {
     const editado = valores[atletaId];
     if (editado) return editado;
@@ -125,12 +170,22 @@ export function HistoricoMensalTab() {
       },
       { atletas: 0, pontos: 0, km: 0, treinos: 0 },
     );
-  }, [atletas, valores]);
+  }, [atletas, valores, existentes]);
+
+  const conflitosAtivos = useMemo(() => {
+    if (!atletas) return [];
+    return atletas.filter((atleta) => {
+      if (!sobreposicoes.has(atleta.id)) return false;
+      const v = valoresDoAtleta(atleta.id);
+      return numero(v.pontos) > 0 || numero(v.km) > 0 || numero(v.treinos) > 0;
+    });
+  }, [atletas, existentes, sobreposicoes, valores]);
 
   function alterar(atletaId: string, campo: keyof ValoresHistoricos, valor: string) {
+    setSobreposicaoConfirmada(false);
     setValores((atual) => ({
       ...atual,
-      [atletaId]: { ...(atual[atletaId] ?? vazio()), [campo]: valor },
+      [atletaId]: { ...valoresDoAtleta(atletaId), ...atual[atletaId], [campo]: valor },
     }));
   }
 
@@ -138,6 +193,10 @@ export function HistoricoMensalTab() {
     if (!atletas || !competencia) return;
     if (competencia > competenciaAtual()) {
       show("error", "A competência não pode estar no futuro.");
+      return;
+    }
+    if (conflitosAtivos.length > 0 && !sobreposicaoConfirmada) {
+      show("info", "Há atletas com lançamentos detalhados no mesmo mês. Confirme a sobreposição antes de salvar.");
       return;
     }
 
@@ -247,7 +306,7 @@ export function HistoricoMensalTab() {
         arquivo: `historico-${competencia}-${modalidade}.xlsx`,
         aba: "Histórico mensal",
         linhasPreenchidas: atletas.map((a) => {
-          const v = valores[a.id] ?? vazio();
+          const v = valoresDoAtleta(a.id);
           return {
             Atleta: a.nome,
             Pontos: numero(v.pontos) || "",
@@ -316,6 +375,7 @@ export function HistoricoMensalTab() {
         encontrados += 1;
       }
 
+      setSobreposicaoConfirmada(false);
       setValores(novos);
       show(
         encontrados > 0 ? "success" : "info",
@@ -354,6 +414,7 @@ export function HistoricoMensalTab() {
               max={competenciaAtual()}
               onChange={(e) => {
                 setCompetencia(e.target.value);
+                setSobreposicaoConfirmada(false);
                 setValores({});
               }}
               className="h-10 rounded-[var(--radius)] border border-border bg-bg-card px-3 text-sm text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
@@ -366,6 +427,7 @@ export function HistoricoMensalTab() {
               value={modalidade}
               onChange={(e) => {
                 setModalidade(e.target.value as Modalidade);
+                setSobreposicaoConfirmada(false);
                 setValores({});
               }}
             >
@@ -386,6 +448,33 @@ export function HistoricoMensalTab() {
         </div>
       </Card>
 
+      {conflitosAtivos.length > 0 ? (
+        <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-warning/35 bg-warning/10 p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 size-5 shrink-0 text-ranking-gold-text" aria-hidden="true" />
+            <div>
+              <p className="font-bold text-text">
+                Possível duplicidade em {plural(conflitosAtivos.length, "atleta")}
+              </p>
+              <p className="mt-1 text-sm text-text-light">
+                Estes atletas já possuem lançamentos detalhados em {competencia}. Se os totais abaixo incluírem essas mesmas atividades, pontos, KM e treinos serão somados duas vezes.
+              </p>
+            </div>
+          </div>
+          <label className="flex cursor-pointer items-start gap-2.5 rounded-[var(--radius)] border border-warning/25 bg-bg-card px-3 py-2.5 text-sm text-text">
+            <input
+              type="checkbox"
+              checked={sobreposicaoConfirmada}
+              onChange={(e) => setSobreposicaoConfirmada(e.target.checked)}
+              className="mt-0.5 size-4 shrink-0 rounded border-border accent-primary"
+            />
+            <span>
+              Conferi os dados e quero salvar mesmo com a sobreposição indicada.
+            </span>
+          </label>
+        </div>
+      ) : null}
+
       {atletas === null ? (
         <Card className="h-64 animate-pulse" />
       ) : atletas.length === 0 ? (
@@ -400,10 +489,19 @@ export function HistoricoMensalTab() {
         <>
           <div className="flex flex-col gap-3 md:hidden">
             {atletas.map((a) => {
-              const v = valores[a.id] ?? vazio();
+              const v = valoresDoAtleta(a.id);
+              const sobreposicao = sobreposicoes.get(a.id);
               return (
                 <Card key={a.id} padding="sm" className="flex flex-col gap-3">
-                  <p className="font-semibold text-text">{a.nome}{!a.ativo ? <span className="ml-2 text-xs font-medium text-text-muted">(inativo)</span> : null}</p>
+                  <div>
+                    <p className="font-semibold text-text">{a.nome}{!a.ativo ? <span className="ml-2 text-xs font-medium text-text-muted">(inativo)</span> : null}</p>
+                    {sobreposicao ? (
+                      <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-ranking-gold-text">
+                        <AlertTriangle className="size-3.5" aria-hidden="true" />
+                        Já lançado no mês: {sobreposicao.pontos} pts · {sobreposicao.km.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km · {sobreposicao.treinos} treinos
+                      </p>
+                    ) : null}
+                  </div>
                   <div className="grid grid-cols-3 gap-2">
                     <Campo label="Pontos" value={v.pontos} onChange={(x) => alterar(a.id, "pontos", x)} step="1" />
                     <Campo label="KM" value={v.km} onChange={(x) => alterar(a.id, "km", x)} step="0.01" />
@@ -426,10 +524,19 @@ export function HistoricoMensalTab() {
               </thead>
               <tbody>
                 {atletas.map((a) => {
-                  const v = valores[a.id] ?? vazio();
+                  const v = valoresDoAtleta(a.id);
+                  const sobreposicao = sobreposicoes.get(a.id);
                   return (
                     <tr key={a.id} className="border-b border-border last:border-0">
-                      <td className="px-4 py-3 font-medium text-text">{a.nome}{!a.ativo ? <span className="ml-2 text-xs font-medium text-text-muted">(inativo)</span> : null}</td>
+                      <td className="px-4 py-3 font-medium text-text">
+                        <div>{a.nome}{!a.ativo ? <span className="ml-2 text-xs font-medium text-text-muted">(inativo)</span> : null}</div>
+                        {sobreposicao ? (
+                          <div className="mt-1 flex items-center gap-1 text-xs font-semibold text-ranking-gold-text">
+                            <AlertTriangle className="size-3.5" aria-hidden="true" />
+                            Já lançado: {sobreposicao.pontos} pts · {sobreposicao.km.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km · {sobreposicao.treinos} treinos
+                          </div>
+                        ) : null}
+                      </td>
                       <td className="px-3 py-2"><TabelaInput value={v.pontos} onChange={(x) => alterar(a.id, "pontos", x)} step="1" /></td>
                       <td className="px-3 py-2"><TabelaInput value={v.km} onChange={(x) => alterar(a.id, "km", x)} step="0.01" /></td>
                       <td className="px-3 py-2"><TabelaInput value={v.treinos} onChange={(x) => alterar(a.id, "treinos", x)} step="1" /></td>
@@ -446,7 +553,12 @@ export function HistoricoMensalTab() {
         <p className="text-sm text-text-light">
           {totais.atletas} com dados · {totais.pontos.toLocaleString("pt-BR")} pts · {totais.km.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km · {totais.treinos} treinos
         </p>
-        <Button onClick={handleSalvar} loading={salvando} disabled={!atletas || !competencia} className="w-full sm:w-auto">
+        <Button
+          onClick={handleSalvar}
+          loading={salvando}
+          disabled={!atletas || !competencia || (conflitosAtivos.length > 0 && !sobreposicaoConfirmada)}
+          className="w-full sm:w-auto"
+        >
           Salvar histórico
         </Button>
       </div>
