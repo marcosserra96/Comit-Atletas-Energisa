@@ -10,10 +10,11 @@ import { LancarPontosTab } from "./LancarPontosTab";
 import { ExtratoTab } from "./ExtratoTab";
 import { ConsolidadoTab } from "./ConsolidadoTab";
 import { JustificativasTab } from "./JustificativasTab";
+import { HistoricoMensalTab } from "./HistoricoMensalTab";
 import { carregarJustificativasGestao } from "@/lib/justificativasAusenciaClient";
 import type { JustificativaAusenciaDoc } from "@/lib/types";
 
-type Tab = "lancar" | "justificativas" | "extrato" | "consolidado";
+type Tab = "lancar" | "historico" | "justificativas" | "extrato" | "consolidado";
 
 export default function PontuacaoPage() {
   const { usuario } = useActiveSession();
@@ -81,6 +82,7 @@ export default function PontuacaoPage() {
         onChange={setTab}
         options={[
           { value: "lancar", label: "Lançar pontos" },
+          { value: "historico", label: "Histórico mensal" },
           {
             value: "justificativas",
             label: pendentes > 0 ? `Justificativas (${pendentes})` : "Justificativas",
@@ -96,6 +98,8 @@ export default function PontuacaoPage() {
             justificativas={justificativas ?? []}
             erroJustificativas={erroJustificativas}
           />
+        ) : tab === "historico" ? (
+          <HistoricoMensalTab />
         ) : tab === "justificativas" ? (
           <JustificativasTab
             items={justificativas}
