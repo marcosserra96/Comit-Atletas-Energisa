@@ -25,6 +25,7 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatShortDate, plural } from "@/lib/format";
+import { cn } from "@/lib/cn";
 import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import {
@@ -544,7 +545,7 @@ export function LancarPontosTab({
               className="h-10 w-36 rounded-[var(--radius)] border border-border bg-bg-card px-3 text-sm text-text outline-none placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/15"
             />
             <p className="text-xs text-text-muted">
-              Usado pra quem não tiver um KM individual na tabela abaixo.
+              Usado para quem não tiver um KM individual abaixo.
             </p>
           </div>
         </div>
@@ -570,10 +571,114 @@ export function LancarPontosTab({
         </Card>
       ) : (
         <>
-        <p className="-mb-3 text-xs text-text-light sm:hidden">
-          Deslize a tabela para o lado para ver todas as colunas.
-        </p>
-        <Card className="overflow-x-auto p-0">
+        {/* Celular: um card por atleta, com alvos grandes para o dedo. */}
+        <div className="flex flex-col gap-3 md:hidden">
+          <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-[var(--radius)] border border-accent/30 bg-accent-subtle px-3 text-sm font-semibold text-text">
+            <input
+              type="checkbox"
+              checked={atletas.length > 0 && atletas.every((a) => faltososEfetivos.has(a.id))}
+              onChange={toggleFaltaTodos}
+              className="size-5 shrink-0 rounded border-border accent-accent"
+            />
+            Falta justificada para todo o time
+          </label>
+          {atletas.map((a) => {
+            const isFalta = faltososEfetivos.has(a.id);
+            const justificativa = justificativaPorAtleta.get(a.id);
+            const justificativaAplicada =
+              justificativa && !faltasAutomaticasIgnoradas.has(a.id) ? justificativa : null;
+            const observacaoAutomatica = justificativaAplicada
+              ? resumoJustificativa(justificativaAplicada)
+              : "";
+            const temMarcacao = isFalta || (marcados[a.id]?.size ?? 0) > 0;
+            return (
+              <Card key={a.id} padding="sm" className={cn("flex flex-col gap-3", temMarcacao && "border-primary/40")}>
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-semibold text-text">{a.nome}</p>
+                  <span className="shrink-0 text-sm font-bold tabular-nums text-text">
+                    {isFalta ? "Falta" : `${pontosDoAtleta(a.id)} pts`}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {regrasCompativeis.map((r) => {
+                    const marcado = marcados[a.id]?.has(r.id) ?? false;
+                    return (
+                      <label
+                        key={r.id}
+                        className={cn(
+                          "flex min-h-11 cursor-pointer items-center gap-2 rounded-[var(--radius)] border px-3 text-sm transition-colors",
+                          marcado ? "border-primary bg-primary-subtle text-text" : "border-border text-text-light",
+                          isFalta && "cursor-not-allowed opacity-50",
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          disabled={isFalta}
+                          checked={marcado}
+                          onChange={() => toggleRegra(a.id, r.id)}
+                          className="size-5 shrink-0 rounded border-border accent-primary"
+                        />
+                        <span>
+                          {r.descricao} <span className="text-text-light">· {r.pontos} pts</span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                  <label
+                    className={cn(
+                      "flex min-h-11 cursor-pointer items-center gap-2 rounded-[var(--radius)] border px-3 text-sm transition-colors",
+                      isFalta ? "border-accent bg-accent-subtle text-text" : "border-border text-text-light",
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isFalta}
+                      onChange={() => toggleFalta(a.id)}
+                      className="size-5 shrink-0 rounded border-border accent-accent"
+                    />
+                    Falta justificada
+                  </label>
+                </div>
+                {justificativa ? (
+                  <p className={cn("text-xs font-semibold", justificativaAplicada ? "text-success" : "text-text-light")}>
+                    {justificativaAplicada
+                      ? `Justificativa aprovada: ${motivoAusenciaLabel[justificativa.motivo]}`
+                      : "Justificativa aprovada, não aplicada"}
+                  </p>
+                ) : null}
+                {temMarcacao ? (
+                  <div className="grid grid-cols-[7rem_1fr] gap-2">
+                    {!isFalta ? (
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        min={0}
+                        step="0.01"
+                        aria-label={`KM de ${a.nome}`}
+                        value={kmPorAtleta[a.id] ?? ""}
+                        onChange={(e) => setKmPorAtleta((prev) => ({ ...prev, [a.id]: e.target.value }))}
+                        placeholder={kmLote ? `${kmLote} km` : "KM"}
+                        className="h-11 w-full rounded-[var(--radius)] border border-border bg-bg px-3 text-text outline-none placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/15"
+                      />
+                    ) : null}
+                    <input
+                      aria-label={`Observação para ${a.nome}`}
+                      value={observacoes[a.id] ?? observacaoAutomatica}
+                      onChange={(e) => setObservacoes((prev) => ({ ...prev, [a.id]: e.target.value }))}
+                      placeholder="Observação (opcional)"
+                      className={cn(
+                        "h-11 w-full rounded-[var(--radius)] border border-border bg-bg px-3 text-text outline-none placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/15",
+                        isFalta && "col-span-2",
+                      )}
+                    />
+                  </div>
+                ) : null}
+              </Card>
+            );
+          })}
+        </div>
+
+        <Card className="hidden overflow-x-auto p-0 md:block">
           <table className="w-full min-w-[860px] text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs uppercase text-text-muted">
@@ -668,8 +773,8 @@ export function LancarPontosTab({
                           <span
                             className={
                               justificativaAplicada
-                                ? "text-[10px] font-semibold text-success"
-                                : "text-[10px] font-semibold text-text-muted"
+                                ? "text-xs font-semibold text-success"
+                                : "text-xs font-semibold text-text-light"
                             }
                           >
                             {justificativaAplicada
