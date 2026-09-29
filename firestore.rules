@@ -156,8 +156,9 @@ service cloud.firestore {
     match /historico_mensal/{id} {
       allow read: if isStaff() ||
         (hasUsuario() && resource.data.atletaId == meuAtletaId());
-      allow create, update: if isAdmin() || comitePode("registrar");
-      allow delete: if isAdmin() || comitePode("registrar");
+      // Só quem o administrador liberou em "Histórico mensal" (além de Registrar).
+      allow create, update, delete: if isAdmin() ||
+        (comitePode("registrar") && comitePode("historicoMensal"));
     }
 
     // Contém informações potencialmente sensíveis (doença, lesão e descrição).

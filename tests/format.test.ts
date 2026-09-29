@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { formatDecimal, formatKm, formatNumero, formatPontos, plural } from "../src/lib/format";
+import { formatDecimal, formatDistancia, formatKm, formatNumero, formatPontos, plural } from "../src/lib/format";
 
 test("formatDecimal e formatKm usam vírgula decimal", () => {
   assert.equal(formatDecimal(0), "0,0");
@@ -24,8 +24,14 @@ test("formatNumero corta ruído de ponto flutuante e zeros à direita", () => {
   assert.equal(formatNumero(10), "10");
   assert.equal(formatNumero(1234.56), "1.234,6");
   assert.equal(formatNumero(Number.NaN), "0");
-  assert.equal(formatPontos(33.3333333), "33,3");
   assert.equal(formatPontos(25), "25");
-  assert.equal(formatKm(12.345), "12,3 km");
+  assert.equal(formatPontos(1250), "1.250");
+  // Pontos são sempre inteiros.
+  assert.equal(formatPontos(42.6), "43");
+  // Km com até 2 casas, sem zeros sobrando.
+  assert.equal(formatKm(12.345), "12,35 km");
+  assert.equal(formatKm(12.5), "12,5 km");
+  assert.equal(formatKm(5.2 + 3.1), "8,3 km");
   assert.equal(formatKm(0), "0 km");
+  assert.equal(formatDistancia(61.333), "61,33");
 });

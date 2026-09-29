@@ -13,6 +13,7 @@ import {
   PERFIS_RAPIDOS,
   PERMISSAO_LABEL,
   PERMISSAO_ORDEM,
+  PERMISSAO_REQUER,
   PERMISSOES_PADRAO,
   type PermissaoChave,
 } from "@/lib/permissoes";
@@ -45,8 +46,17 @@ export function GerenciarAcessosModal({
     setPerfilRapido("");
     setPermissoes((prev) => {
       const next = new Set(prev);
-      if (next.has(chave)) next.delete(chave);
-      else next.add(chave);
+      if (next.has(chave)) {
+        next.delete(chave);
+        // Tirar a base tira também o que depende dela.
+        for (const [dependente, base] of Object.entries(PERMISSAO_REQUER)) {
+          if (base === chave) next.delete(dependente as PermissaoChave);
+        }
+      } else {
+        next.add(chave);
+        const base = PERMISSAO_REQUER[chave];
+        if (base) next.add(base);
+      }
       return next;
     });
   }
@@ -117,7 +127,7 @@ export function GerenciarAcessosModal({
                 {PERMISSAO_ORDEM.map((chave) => (
                   <label
                     key={chave}
-                    className="flex items-center gap-2.5 rounded-[var(--radius)] border border-border bg-bg px-3 py-2.5 text-sm text-text"
+                    className="flex min-h-11 items-center gap-2.5 rounded-[var(--radius)] border border-border bg-bg px-3 py-2.5 text-sm text-text"
                   >
                     <input
                       type="checkbox"
@@ -125,7 +135,14 @@ export function GerenciarAcessosModal({
                       onChange={() => toggle(chave)}
                       className="size-4 rounded border-border accent-primary"
                     />
-                    {PERMISSAO_LABEL[chave]}
+                    <span className="min-w-0">
+                      {PERMISSAO_LABEL[chave]}
+                      {PERMISSAO_REQUER[chave] ? (
+                        <span className="block text-xs text-text-muted">
+                          Só para quem você autorizar. Inclui “{PERMISSAO_LABEL[PERMISSAO_REQUER[chave]!].split(" (")[0]}”.
+                        </span>
+                      ) : null}
+                    </span>
                   </label>
                 ))}
               </div>

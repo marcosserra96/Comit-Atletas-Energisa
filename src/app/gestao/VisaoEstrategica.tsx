@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { db } from "@/lib/firebase";
-import { formatBRL, formatKm, formatNumero, formatPontos, formatShortDate, plural } from "@/lib/format";
+import { formatBRL, formatDistancia, formatKm, formatPontos, formatShortDate, plural } from "@/lib/format";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { calcularEstatisticasDashboard } from "@/lib/dashboardStats";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
@@ -517,7 +517,7 @@ function ColunaModalidade({
     ["Participações", String(stats.participacoes)],
     ["Pontos", formatPontos(stats.pontos)],
     ["Por atleta", formatPontos(stats.media)],
-    ...(stats.km > 0 ? ([["Km", formatNumero(stats.km)]] as [string, string][]) : []),
+    ...(stats.km > 0 ? ([["Km", formatDistancia(stats.km)]] as [string, string][]) : []),
   ];
 
   return (

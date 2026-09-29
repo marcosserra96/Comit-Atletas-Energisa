@@ -17,7 +17,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
-import { formatKm, formatNumero, formatPontos, formatRelativeTime, formatShortDate, plural } from "@/lib/format";
+import { formatDistancia, formatKm, formatPontos, formatRelativeTime, formatShortDate, plural } from "@/lib/format";
 import { normalizarRankingPeriods } from "@/lib/rankingPeriods";
 import { calcularPosicoesRanking } from "@/lib/rankingPosition";
 import {
@@ -483,7 +483,7 @@ export default function RankingPage() {
                     </div>
                     <div>
                       <strong className="block text-sm tabular-nums text-text">
-                        {formatNumero(myRankAtleta.km ?? 0)}
+                        {formatDistancia(myRankAtleta.km ?? 0)}
                       </strong>
                       <span className="text-xs text-text-muted">km</span>
                     </div>
@@ -570,7 +570,7 @@ export default function RankingPage() {
                         >
                           <strong className="text-sm tabular-nums text-text">{atleta.treinos ?? "—"}</strong>
                           <strong className="text-sm tabular-nums text-text">
-                            {atleta.km === undefined ? "—" : formatNumero(atleta.km)}
+                            {atleta.km === undefined ? "—" : formatDistancia(atleta.km)}
                           </strong>
                           <strong className="text-base tabular-nums text-text">
                             {formatPontos(atleta.pontuacaoTotal)}

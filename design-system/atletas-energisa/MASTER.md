@@ -139,10 +139,10 @@ Antes de criar qualquer elemento de interface, procure aqui. Não duplique.
 - **Nomes de modalidade:** sempre por `modalidadeLabel` / `equipeLabel` (`src/lib/labels.ts`).
   O nome oficial é **Corrida** e **Bike**.
 - **Nomes de telas:** o item do menu, o título no topo e o título da página usam o mesmo nome.
-- **Números:** `formatPontos`, `formatKm`, `formatNumero` e `formatBRL` (`src/lib/format.ts`).
-  Pontos e km têm **no máximo 1 casa e nenhum zero sobrando** ("10 km", "12,5 km", "25 pts"),
-  o que também limpa somas como 5,2 + 3,1. Nunca mostre o número cru nem use `toFixed`
-  (ponto decimal). `formatDecimal` só quando as casas precisam ser fixas.
+- **Números:** `formatPontos`, `formatKm`/`formatDistancia`, `formatNumero` e `formatBRL`
+  (`src/lib/format.ts`). **Pontos são sempre inteiros** ("25", "1.250"); **km tem até 2 casas**,
+  sem zeros sobrando ("10 km", "12,35 km"), o que também limpa somas como 5,2 + 3,1. Campos
+  de pontos aceitam só inteiros. Nunca mostre o número cru nem use `toFixed` (ponto decimal).
 - **Plural:** `plural(n, "treino")` → "1 treino" / "3 treinos". Nunca "treino(s)".
 - **Linguagem:** direta e sem jargão técnico. Mensagens de erro dizem o que aconteceu e o
   que fazer.
