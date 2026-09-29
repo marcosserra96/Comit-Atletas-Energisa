@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   collection,
   doc,
@@ -10,10 +10,11 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  Timestamp,
   where,
   writeBatch,
 } from "firebase/firestore";
-import { History, RotateCcw, Trash2, X } from "lucide-react";
+import { CalendarDays, ChevronDown, History, RotateCcw, Search, Trash2, X } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { atletaPublicoRef } from "@/lib/publicAthletes";
 import { useActiveSession } from "@/lib/session/SessionProvider";
@@ -22,79 +23,173 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Button } from "@/components/ui/Button";
 import { ConfirmarPerigoModal } from "@/components/ui/ConfirmarPerigoModal";
 import { logAudit } from "@/lib/audit";
-import { formatDataTreino, formatDateTime, formatPontos } from "@/lib/format";
+import { formatDataTreino, formatDateTime, formatPontos, plural } from "@/lib/format";
+import { dataIsoLocal } from "@/lib/date";
 import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { EstornarModal } from "./EstornarModal";
 import type { AtletaDoc, HistoricoPontoDoc } from "@/lib/types";
 
-const LIMITE_GERAL = 50;
-const LIMITE_POR_ATLETA = 200;
+/** Quantos lançamentos cada "Carregar mais" traz. */
+const POR_PAGINA = 100;
+/** Limite do Firestore para `in`; acima disso o filtro de atleta vira local. */
+const MAX_IN = 30;
 const TAMANHO_LOTE = 400;
+
+/** Minúsculas e sem acento, para "joao" achar "João". */
+function normalizar(texto: string) {
+  return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
+/** Início e fim (exclusivo) do dia no fuso local. */
+function intervaloDoDia(dia: string) {
+  const [ano, mes, d] = dia.split("-").map(Number);
+  return { inicio: new Date(ano, mes - 1, d), fim: new Date(ano, mes - 1, d + 1) };
+}
 
 export function ExtratoTab() {
   const { uid, atleta, usuario } = useActiveSession();
   const { show } = useToast();
   const isAdmin = usuario.role === "administrador";
   const [atletas, setAtletas] = useState<AtletaDoc[] | null>(null);
-  const [atletaFiltro, setAtletaFiltro] = useState("");
+  const [buscaAtleta, setBuscaAtleta] = useState("");
+  const [termoAtleta, setTermoAtleta] = useState("");
+  const [dataRegistro, setDataRegistro] = useState("");
+  const [pessoa, setPessoa] = useState("");
+  const [quantidade, setQuantidade] = useState(POR_PAGINA);
   const [lancamentos, setLancamentos] = useState<HistoricoPontoDoc[] | null>(null);
+  const [temMais, setTemMais] = useState(false);
   const [alvo, setAlvo] = useState<HistoricoPontoDoc | null>(null);
   const [alvoExclusao, setAlvoExclusao] = useState<HistoricoPontoDoc[] | null>(null);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [ultimoIndice, setUltimoIndice] = useState<number | null>(null);
-  const atletaFiltroEfetivo =
-    atletaFiltro && atletas?.some((item) => item.id === atletaFiltro) ? atletaFiltro : "";
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "atletas"), (snap) => {
       setAtletas(
         snap.docs
           .map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)
-          .filter(perfilAtletaVisivel)
           .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
       );
     });
     return unsubscribe;
   }, []);
 
+  // Espera a pessoa parar de digitar antes de refazer a consulta.
   useEffect(() => {
-    if (atletas === null) return;
-    const atletaIdsVisiveis = new Set(atletas.map((item) => item.id));
-    const q = atletaFiltroEfetivo
-      ? query(
-          collection(db, "historico_pontos"),
-          where("atletaId", "==", atletaFiltroEfetivo),
-          orderBy("criadoEm", "desc"),
-          limit(LIMITE_POR_ATLETA),
-        )
-      : query(collection(db, "historico_pontos"), orderBy("criadoEm", "desc"), limit(LIMITE_GERAL));
+    const t = setTimeout(() => setTermoAtleta(normalizar(buscaAtleta)), 250);
+    return () => clearTimeout(t);
+  }, [buscaAtleta]);
+
+  const atletasVisiveis = useMemo(() => (atletas ?? []).filter(perfilAtletaVisivel), [atletas]);
+
+  /** Atletas cujo nome contém o texto digitado; null = sem filtro de atleta. */
+  const atletasDoFiltro = useMemo(
+    () => (termoAtleta ? atletasVisiveis.filter((a) => normalizar(a.nome).includes(termoAtleta)) : null),
+    [atletasVisiveis, termoAtleta],
+  );
+  const idsNaConsulta =
+    atletasDoFiltro && atletasDoFiltro.length > 0 && atletasDoFiltro.length <= MAX_IN
+      ? atletasDoFiltro.map((a) => a.id)
+      : null;
+  const chaveIds = idsNaConsulta?.join(",") ?? "";
+
+  /** Quem pode ter registrado: comitê e administradores, mais nomes já vistos nos lançamentos. */
+  const pessoas = useMemo(() => {
+    const mapa = new Map<string, string>();
+    for (const a of atletas ?? []) {
+      if ((a.role === "comite" || a.role === "administrador") && a.authUid) mapa.set(a.authUid, a.nome);
+    }
+    for (const l of lancamentos ?? []) {
+      if (l.criadoPor && !mapa.has(l.criadoPor)) mapa.set(l.criadoPor, l.criadoPorNome || "Sem nome");
+    }
+    return [...mapa.entries()]
+      .map(([id, nome]) => ({ id, nome }))
+      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  }, [atletas, lancamentos]);
+
+  const semAtletaEncontrado = atletasDoFiltro !== null && atletasDoFiltro.length === 0;
+
+  useEffect(() => {
+    if (atletas === null || semAtletaEncontrado) return;
+    const atletaIdsVisiveis = new Set(atletasVisiveis.map((item) => item.id));
+    const restricoes = [];
+    const ids = chaveIds ? chaveIds.split(",") : [];
+    if (ids.length === 1) restricoes.push(where("atletaId", "==", ids[0]));
+    else if (ids.length > 1) restricoes.push(where("atletaId", "in", ids));
+    if (dataRegistro) {
+      const { inicio, fim } = intervaloDoDia(dataRegistro);
+      restricoes.push(where("criadoEm", ">=", Timestamp.fromDate(inicio)));
+      restricoes.push(where("criadoEm", "<", Timestamp.fromDate(fim)));
+    }
+    const q = query(
+      collection(db, "historico_pontos"),
+      ...restricoes,
+      orderBy("criadoEm", "desc"),
+      limit(quantidade),
+    );
 
     const unsubscribe = onSnapshot(
       q,
-      (snap) =>
+      (snap) => {
+        setTemMais(snap.size >= quantidade);
         setLancamentos(
           snap.docs
             .map((d) => ({ id: d.id, ...d.data() }) as HistoricoPontoDoc)
             .filter((item) => atletaIdsVisiveis.has(item.atletaId)),
-        ),
-      () => setLancamentos([]),
+        );
+      },
+      () => {
+        setTemMais(false);
+        setLancamentos([]);
+      },
     );
     return unsubscribe;
-  }, [atletaFiltroEfetivo, atletas]);
+  }, [atletas, atletasVisiveis, chaveIds, dataRegistro, quantidade, semAtletaEncontrado]);
+
+  /** O que aparece na tabela: filtros que o banco não faz (pessoa e, com muitos atletas, o nome). */
+  const visiveis = useMemo(() => {
+    if (semAtletaEncontrado) return [];
+    let lista = lancamentos ?? [];
+    if (atletasDoFiltro && !idsNaConsulta) {
+      const ids = new Set(atletasDoFiltro.map((a) => a.id));
+      lista = lista.filter((l) => ids.has(l.atletaId));
+    }
+    if (pessoa) lista = lista.filter((l) => l.criadoPor === pessoa);
+    return lista;
+  }, [lancamentos, atletasDoFiltro, idsNaConsulta, pessoa, semAtletaEncontrado]);
+
+  const carregando = lancamentos === null && !semAtletaEncontrado;
+  const filtroAtivo = Boolean(buscaAtleta.trim() || dataRegistro || pessoa);
+
+  /** Mudar qualquer filtro volta para a primeira página e limpa a seleção. */
+  function aoMudarFiltro() {
+    setQuantidade(POR_PAGINA);
+    setSelecionados(new Set());
+    setUltimoIndice(null);
+  }
+
+  function limparFiltros() {
+    setBuscaAtleta("");
+    setDataRegistro("");
+    setPessoa("");
+    aoMudarFiltro();
+  }
 
   function toggleSelecionado(id: string, indice: number, shiftKey: boolean) {
     setSelecionados((prev) => {
       const next = new Set(prev);
-      if (shiftKey && ultimoIndice !== null && lancamentos) {
+      if (shiftKey && ultimoIndice !== null) {
         const inicio = Math.min(ultimoIndice, indice);
         const fim = Math.max(ultimoIndice, indice);
         const marcar = !prev.has(id);
         for (let i = inicio; i <= fim; i++) {
-          if (marcar) next.add(lancamentos[i].id);
-          else next.delete(lancamentos[i].id);
+          if (!visiveis[i]) continue;
+          if (marcar) next.add(visiveis[i].id);
+          else next.delete(visiveis[i].id);
         }
       } else if (next.has(id)) {
         next.delete(id);
@@ -107,9 +202,9 @@ export function ExtratoTab() {
   }
 
   function toggleSelecionarTodos() {
-    if (!lancamentos) return;
-    const todosMarcados = lancamentos.every((l) => selecionados.has(l.id));
-    setSelecionados(todosMarcados ? new Set() : new Set(lancamentos.map((l) => l.id)));
+    if (visiveis.length === 0) return;
+    const todosMarcados = visiveis.every((l) => selecionados.has(l.id));
+    setSelecionados(todosMarcados ? new Set() : new Set(visiveis.map((l) => l.id)));
     setUltimoIndice(null);
   }
 
@@ -234,25 +329,83 @@ export function ExtratoTab() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Card className="flex flex-wrap items-end gap-3">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-text-light">Filtrar por atleta</label>
-          <Select
-            className="w-56"
-            searchable
-            value={atletaFiltroEfetivo}
-            onChange={(e) => {
-              setAtletaFiltro(e.target.value);
-              setSelecionados(new Set());
-            }}
-          >
-            <option value="">Todos (últimos {LIMITE_GERAL})</option>
-            {(atletas ?? []).map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.nome}
-              </option>
-            ))}
-          </Select>
+      <Card className="flex flex-col gap-3">
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-text-light">Atleta</span>
+            <span className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-muted" />
+              <input
+                type="search"
+                value={buscaAtleta}
+                onChange={(e) => {
+                  setBuscaAtleta(e.target.value);
+                  aoMudarFiltro();
+                }}
+                placeholder="Digite o nome do atleta"
+                enterKeyHint="search"
+                autoComplete="off"
+                className="h-11 w-full rounded-[var(--radius)] border border-border bg-bg-card pl-9 pr-3 text-base text-text outline-none transition-colors placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/15 sm:text-sm"
+              />
+            </span>
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-text-light">Registrado em</span>
+            <span className="relative">
+              <CalendarDays className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-muted" />
+              <input
+                type="date"
+                value={dataRegistro}
+                max={dataIsoLocal()}
+                onChange={(e) => {
+                  setDataRegistro(e.target.value);
+                  aoMudarFiltro();
+                }}
+                className="h-11 w-full rounded-[var(--radius)] border border-border bg-bg-card pl-9 pr-3 text-base text-text outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15 sm:text-sm"
+              />
+            </span>
+          </label>
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-text-light">Registrado por</span>
+            <Select
+              searchable
+              value={pessoa}
+              onChange={(e) => {
+                setPessoa(e.target.value);
+                aoMudarFiltro();
+              }}
+            >
+              <option value="">Qualquer pessoa</option>
+              {pessoas.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nome}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-text-light">
+          <span aria-live="polite">
+            {carregando
+              ? "Carregando…"
+              : semAtletaEncontrado
+                ? "Nenhum atleta com esse nome."
+                : `${plural(visiveis.length, "lançamento")}${
+                    atletasDoFiltro && atletasDoFiltro.length === 1 ? ` de ${atletasDoFiltro[0].nome}` : ""
+                  }${
+                    atletasDoFiltro && atletasDoFiltro.length > 1 ? ` de ${atletasDoFiltro.length} atletas` : ""
+                  }${dataRegistro ? ` registrados em ${formatDataTreino(dataRegistro)}` : ""}`}
+          </span>
+          {filtroAtivo ? (
+            <button
+              type="button"
+              onClick={limparFiltros}
+              className="inline-flex min-h-8 items-center gap-1 font-semibold text-primary hover:text-primary-hover"
+            >
+              <X className="size-3.5" />
+              Limpar filtros
+            </button>
+          ) : null}
         </div>
       </Card>
 
@@ -271,9 +424,7 @@ export function ExtratoTab() {
               Limpar seleção
             </button>
             <button
-              onClick={() =>
-                setAlvoExclusao((lancamentos ?? []).filter((l) => selecionados.has(l.id)))
-              }
+              onClick={() => setAlvoExclusao(visiveis.filter((l) => selecionados.has(l.id)))}
               className="inline-flex items-center gap-1.5 rounded-[var(--radius)] bg-danger px-3 py-1.5 text-xs font-bold text-on-danger hover:bg-danger/90"
             >
               <Trash2 className="size-3.5" />
@@ -283,19 +434,31 @@ export function ExtratoTab() {
         </Card>
       )}
 
-      {lancamentos === null ? (
+      {carregando ? (
         <Card className="h-64 animate-pulse" />
-      ) : lancamentos.length === 0 ? (
+      ) : visiveis.length === 0 ? (
         <Card>
           <EmptyState
             icon={History}
             title="Nenhum lançamento encontrado"
             description={
-              atletaFiltroEfetivo
-                ? "Esse atleta ainda não tem lançamentos registrados."
-                : "Os lançamentos de pontos aparecem aqui assim que forem registrados."
+              semAtletaEncontrado
+                ? "Confira o nome digitado."
+                : filtroAtivo
+                  ? temMais
+                    ? "Nada com esses filtros entre os lançamentos carregados. Carregue mais para procurar nos anteriores."
+                    : "Nenhum lançamento com esses filtros."
+                  : "Os lançamentos de pontos aparecem aqui assim que forem registrados."
             }
           />
+          {temMais && filtroAtivo && !semAtletaEncontrado ? (
+            <div className="mt-2 flex justify-center">
+              <Button variant="secondary" onClick={() => setQuantidade((q) => q + POR_PAGINA)}>
+                Carregar mais {POR_PAGINA}
+                <ChevronDown className="size-4" />
+              </Button>
+            </div>
+          ) : null}
         </Card>
       ) : (
         <>
@@ -307,7 +470,8 @@ export function ExtratoTab() {
                     <th className="w-10 px-4 py-3">
                       <input
                         type="checkbox"
-                        checked={lancamentos.length > 0 && lancamentos.every((l) => selecionados.has(l.id))}
+                        checked={visiveis.length > 0 && visiveis.every((l) => selecionados.has(l.id))}
+                        aria-label="Selecionar todos os lançamentos da lista"
                         onChange={toggleSelecionarTodos}
                         className="size-4 rounded border-border accent-danger"
                       />
@@ -324,7 +488,7 @@ export function ExtratoTab() {
                 </tr>
               </thead>
               <tbody>
-                {lancamentos.map((l, indice) => (
+                {visiveis.map((l, indice) => (
                   <tr key={l.id} className="border-b border-border last:border-0">
                     {isAdmin && (
                       <td className="px-4 py-3">
@@ -394,10 +558,18 @@ export function ExtratoTab() {
               </tbody>
             </table>
           </Card>
-          {!atletaFiltroEfetivo && (
-            <p className="text-xs text-text-muted">
-              Mostrando os {LIMITE_GERAL} lançamentos mais recentes. Filtre por atleta pra ver o histórico completo dele.
-            </p>
+          {temMais ? (
+            <div className="flex flex-col items-center gap-2">
+              <Button variant="secondary" onClick={() => setQuantidade((q) => q + POR_PAGINA)}>
+                Carregar mais {POR_PAGINA}
+                <ChevronDown className="size-4" />
+              </Button>
+              <p className="text-xs text-text-muted">
+                {plural(lancamentos?.length ?? 0, "lançamento carregado", "lançamentos carregados")}, do mais recente para o mais antigo.
+              </p>
+            </div>
+          ) : (
+            <p className="text-center text-xs text-text-muted">Fim da lista.</p>
           )}
         </>
       )}
