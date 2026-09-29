@@ -118,6 +118,11 @@ export interface HistoricoMensalDoc {
   pontos: number;
   km: number;
   treinos: number;
+  /**
+   * Aderência do mês informada pelo comitê (0–100). Quando existe, substitui o
+   * cálculo pela agenda de treinos naquele mês (útil para meses anteriores à agenda).
+   */
+  aderencia?: number | null;
   criadoPor: string;
   criadoPorNome: string;
   criadoEm: unknown;

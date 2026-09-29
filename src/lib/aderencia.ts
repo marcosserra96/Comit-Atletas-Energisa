@@ -106,6 +106,8 @@ export interface ResultadoAderencia {
   previstos: number;
   /** 0–100, ou null quando não há treino previsto (agenda não configurada ou período sem treino). */
   percentual: number | null;
+  /** O período inclui mês com aderência informada pelo comitê no histórico mensal. */
+  informada?: boolean;
 }
 
 /**
@@ -125,15 +127,12 @@ export function calcularAderencia(params: {
   return { feitos, previstos, percentual: Math.round((feitos / previstos) * 100) };
 }
 
-/**
- * Aderência de um atleta num intervalo de datas, a partir dos lançamentos dele
- * (e do histórico mensal, que entra como treinos do mês).
- */
-export function aderenciaDoAtleta(params: {
+/** Aderência calculada pela agenda (lançamentos + treinos do histórico mensal). */
+function aderenciaCalculada(params: {
   modalidade: Modalidade;
   config: DiasTreinoConfigDoc;
   lancamentos: readonly HistoricoPontoDoc[];
-  resumosMensais?: readonly HistoricoMensalDoc[];
+  resumosMensais: readonly HistoricoMensalDoc[];
   de: string;
   ate: string;
   hoje?: string;
@@ -145,10 +144,88 @@ export function aderenciaDoAtleta(params: {
   const treinos = consolidarAtividades(doPeriodo).filter((a) => a.tipo === "treino").length;
   const competenciaDe = de.slice(0, 7);
   const competenciaAte = ate.slice(0, 7);
-  const treinosMensais = (params.resumosMensais ?? [])
+  const treinosMensais = params.resumosMensais
     .filter((r) => r.competencia >= competenciaDe && r.competencia <= competenciaAte)
     .reduce((s, r) => s + (r.treinos || 0), 0);
   return calcularAderencia({ previstas, treinosFeitos: treinos + treinosMensais, faltasJustificadas: faltas });
+}
+
+/** Competências "YYYY-MM" de `de` até `ate`, inclusive. */
+function competenciasEntre(de: string, ate: string) {
+  const lista: string[] = [];
+  let [ano, mes] = de.split("-").map(Number);
+  const [anoFim, mesFim] = ate.split("-").map(Number);
+  while (ano < anoFim || (ano === anoFim && mes <= mesFim)) {
+    lista.push(`${ano}-${String(mes).padStart(2, "0")}`);
+    mes += 1;
+    if (mes > 12) {
+      mes = 1;
+      ano += 1;
+    }
+  }
+  return lista;
+}
+
+/**
+ * Aderência de um atleta num intervalo de datas, a partir dos lançamentos dele
+ * (e do histórico mensal, que entra como treinos do mês).
+ *
+ * Mês com aderência informada no histórico mensal usa o valor informado: se a
+ * agenda previa treinos naquele mês, o valor vira treinos feitos proporcionais;
+ * se não previa (mês anterior à agenda), o mês entra com o peso de um mês comum.
+ */
+export function aderenciaDoAtleta(params: {
+  modalidade: Modalidade;
+  config: DiasTreinoConfigDoc;
+  lancamentos: readonly HistoricoPontoDoc[];
+  resumosMensais?: readonly HistoricoMensalDoc[];
+  de: string;
+  ate: string;
+  hoje?: string;
+}): ResultadoAderencia {
+  const resumosMensais = params.resumosMensais ?? [];
+  const informadas = new Map<string, number>();
+  for (const r of resumosMensais) {
+    if (r.aderencia == null || !Number.isFinite(r.aderencia)) continue;
+    if (r.competencia < params.de.slice(0, 7) || r.competencia > params.ate.slice(0, 7)) continue;
+    informadas.set(r.competencia, Math.min(100, Math.max(0, Math.round(r.aderencia))));
+  }
+  if (informadas.size === 0) return aderenciaCalculada({ ...params, resumosMensais });
+
+  let feitos = 0;
+  let previstos = 0;
+  let mesesComAgenda = 0;
+  const soPercentual: number[] = [];
+  for (const competencia of competenciasEntre(params.de.slice(0, 7), params.ate.slice(0, 7))) {
+    const limites = limitesDasCompetencias(competencia, competencia);
+    const de = params.de > limites.inicio ? params.de : limites.inicio;
+    const ate = params.ate < limites.fim ? params.ate : limites.fim;
+    const mes = aderenciaCalculada({ ...params, resumosMensais, de, ate });
+    const informada = informadas.get(competencia);
+    if (mes.previstos > 0) mesesComAgenda += 1;
+    if (informada == null) {
+      feitos += mes.feitos;
+      previstos += mes.previstos;
+    } else if (mes.previstos > 0) {
+      // Fração mantida: arredondar aqui distorce o percentual (95% de 9 viraria 100%).
+      feitos += (informada / 100) * mes.previstos;
+      previstos += mes.previstos;
+    } else {
+      soPercentual.push(informada);
+    }
+  }
+
+  // Meses só com o percentual entram com o peso médio dos meses com agenda (ou 1).
+  const peso = mesesComAgenda > 0 ? previstos / mesesComAgenda : 1;
+  const numerador = feitos + soPercentual.reduce((s, p) => s + (p / 100) * peso, 0);
+  const denominador = previstos + soPercentual.length * peso;
+  if (denominador === 0) return { feitos: 0, previstos: 0, percentual: null };
+  return {
+    feitos: Math.round(feitos),
+    previstos,
+    percentual: Math.round((numerador / denominador) * 100),
+    informada: true,
+  };
 }
 
 /** Aderência de vários atletas de uma vez (agrupa os lançamentos uma só vez). */

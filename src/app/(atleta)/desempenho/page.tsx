@@ -440,7 +440,9 @@ export default function DesempenhoPage() {
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-border px-4 py-3 text-xs text-text-light sm:px-5">
               {aderencia?.percentual != null ? (
                 <span>
-                  {aderencia.feitos} de {plural(aderencia.previstos, "treino previsto", "treinos previstos")}
+                  {aderencia.informada
+                    ? "Inclui aderência informada pelo comitê"
+                    : `${aderencia.feitos} de ${plural(aderencia.previstos, "treino previsto", "treinos previstos")}`}
                 </span>
               ) : null}
               {analise.variacaoTreinosPct !== null ? (
