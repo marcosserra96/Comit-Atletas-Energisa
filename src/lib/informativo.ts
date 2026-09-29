@@ -15,9 +15,12 @@ export const DIMENSOES: Record<FormatoInformativo, { largura: number; altura: nu
  * espaço com o cabeçalho e o pódio; as seguintes são só tabela (na paisagem,
  * em duas colunas).
  */
-export const CAPACIDADE: Record<FormatoInformativo, { primeira: number; seguintes: number }> = {
-  paisagem: { primeira: 14, seguintes: 30 },
-  vertical: { primeira: 10, seguintes: 27 },
+export const CAPACIDADE: Record<
+  FormatoInformativo,
+  { primeira: number; seguintes: number; primeiraComDestaques: number; seguintesComDestaques: number }
+> = {
+  paisagem: { primeira: 14, seguintes: 30, primeiraComDestaques: 10, seguintesComDestaques: 20 },
+  vertical: { primeira: 10, seguintes: 27, primeiraComDestaques: 8, seguintesComDestaques: 20 },
 };
 
 const MESES = [
@@ -72,6 +75,8 @@ export interface PaginaInformativo {
   /** Só na primeira página. */
   podio: DegrauPodio[] | null;
   linhas: LinhaRanking[];
+  /** Os destaques do período fecham sempre a última página (o espaço é reservado). */
+  destaques: boolean;
 }
 
 export interface DadosInformativo {
@@ -168,19 +173,39 @@ export function separarPodio(ranking: LinhaRanking[]) {
 /** Divide o ranking em páginas: a primeira com pódio, as demais só com tabela. Ninguém fica de fora. */
 export function paginar(ranking: LinhaRanking[], formato: FormatoInformativo): PaginaInformativo[] {
   // Sem ninguém pontuando, só a capa com o aviso: uma lista de zeros não informa nada.
-  if (ranking.every((l) => l.pontos <= 0)) return [{ numero: 1, total: 1, podio: [], linhas: [] }];
+  if (ranking.every((l) => l.pontos <= 0)) {
+    return [{ numero: 1, total: 1, podio: [], linhas: [], destaques: false }];
+  }
   const { podio, restantes } = separarPodio(ranking);
   const cap = CAPACIDADE[formato];
+
+  // Cabe tudo numa imagem só, com os destaques.
+  if (restantes.length <= cap.primeiraComDestaques) {
+    return [{ numero: 1, total: 1, podio, linhas: restantes, destaques: true }];
+  }
+
   const paginas: Omit<PaginaInformativo, "total">[] = [
-    { numero: 1, podio, linhas: restantes.slice(0, cap.primeira) },
+    { numero: 1, podio, linhas: restantes.slice(0, cap.primeira), destaques: false },
   ];
-  // O que sobra é dividido por igual entre as páginas de continuação, para a
-  // última não sair com dois ou três nomes perdidos.
   const sobra = restantes.slice(cap.primeira);
-  const quantas = Math.ceil(sobra.length / cap.seguintes);
-  const porPagina = quantas > 0 ? Math.ceil(sobra.length / quantas) : 0;
-  for (let i = 0; i < sobra.length; i += porPagina) {
-    paginas.push({ numero: paginas.length + 1, podio: null, linhas: sobra.slice(i, i + porPagina) });
+  if (sobra.length === 0) {
+    // A capa encheu sem espaço para os destaques: eles ganham uma página de fechamento.
+    paginas.push({ numero: 2, podio: null, linhas: [], destaques: true });
+  } else {
+    // O que sobra é dividido por igual entre as continuações, e a última guarda
+    // espaço para os destaques.
+    let quantas = Math.ceil(sobra.length / cap.seguintes);
+    while (Math.ceil(sobra.length / quantas) > cap.seguintesComDestaques) quantas++;
+    // Divisão exata: as páginas diferem em no máximo 1 nome, e as maiores vêm primeiro.
+    const base = Math.floor(sobra.length / quantas);
+    const comUmAMais = sobra.length % quantas;
+    let inicio = 0;
+    for (let i = 0; i < quantas; i++) {
+      const tamanho = base + (i < comUmAMais ? 1 : 0);
+      paginas.push({ numero: paginas.length + 1, podio: null, linhas: sobra.slice(inicio, inicio + tamanho), destaques: false });
+      inicio += tamanho;
+    }
+    paginas[paginas.length - 1].destaques = true;
   }
   return paginas.map((p) => ({ ...p, total: paginas.length }));
 }
