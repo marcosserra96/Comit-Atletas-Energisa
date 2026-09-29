@@ -91,6 +91,18 @@ texto.** Para hierarquia, use tamanho e peso, não cores mais apagadas.
 
 ---
 
+## Aderência e informativo
+
+- **Aderência** (`src/lib/aderencia.ts`): treinos feitos ÷ treinos previstos na agenda
+  (`configuracoes/dias_treino`, editada em Critérios), até hoje, sem as datas sem treino e sem
+  as faltas justificadas; teto de 100%. Sem agenda, mostra "—". Use sempre essas funções.
+- **Informativo** (`/gestao/informativo`): arte gerada em código (`ArteInformativo`), em 1920×1080
+  ou 1080×1920, exportada em PNG. Posição só por pontos, empates dividem a colocação
+  (`calcularPosicoesRanking`); ninguém fica de fora, as páginas extras são equilibradas. A arte
+  usa cores fixas e as fontes Barlow / Barlow Condensed, independentes do tema do portal.
+
+---
+
 ## Celular
 
 - **Navegação:** barra inferior nas duas áreas (`MobileBottomNav`; na gestão, 4 atalhos pelas

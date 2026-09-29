@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
-import { AlertTriangle, ListFilter, Save } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, ArrowRight, Images, Save } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
@@ -68,53 +69,22 @@ export function InformativoTab() {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
-          <h3 className="mb-1 flex items-center gap-2 text-sm font-bold text-text">
-            <ListFilter className="size-4 text-text-muted" />
-            Filtros e conteúdo
+        <Card className="flex flex-col gap-3">
+          <h3 className="flex items-center gap-2 text-sm font-bold text-text">
+            <Images className="size-4 text-text-muted" />
+            Informativo para divulgação
           </h3>
-          <p className="mb-4 text-xs text-text-light">
-            Define quais páginas saem no Informativo do Ranking exportado (o visual de cada página —
-            pódio, ranking geral e destaques — fica em{" "}
-            <span className="font-semibold text-text">Layout do informativo</span>).
+          <p className="text-sm text-text-light">
+            As artes de Corrida e Bike (16:9 e vertical) agora são montadas automaticamente, com pódio, tabela e
+            aderência. Não precisa mais de fundo nem de posições manuais.
           </p>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-text">Modalidade</label>
-              <Select
-                value={config.modalidade}
-                onChange={(e) => update({ modalidade: e.target.value as InformativoConfigDoc["modalidade"] })}
-              >
-                <option value="todos">Bike e Corrida</option>
-                <option value="bicicleta">Só Bike</option>
-                <option value="corrida">Só Corrida</option>
-              </Select>
-            </div>
-            <TextField
-              label="Limite de atletas por tabela"
-              type="number"
-              min={1}
-              value={String(config.limite)}
-              onChange={(e) => update({ limite: Math.max(1, Number(e.target.value) || 1) })}
-            />
-          </div>
-
-          <label className="mt-4 flex cursor-pointer items-start gap-2 text-sm text-text">
-            <input
-              type="checkbox"
-              checked={config.ocultarTop3NoRanking ?? false}
-              onChange={(e) => update({ ocultarTop3NoRanking: e.target.checked })}
-              className="mt-0.5 size-4 rounded border-border accent-primary"
-            />
-            <span>
-              Não repetir o top 3 no Ranking geral
-              <span className="block text-xs text-text-light">
-                Eles já aparecem no pódio. Com isso a tabela começa no 4º e sobram 3 vagas pra quem
-                ficaria de fora.
-              </span>
-            </span>
-          </label>
+          <Link
+            href="/gestao/informativo"
+            className="inline-flex min-h-11 w-fit items-center gap-2 rounded-[var(--radius)] bg-primary px-4 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover"
+          >
+            Abrir o gerador de informativo
+            <ArrowRight className="size-4" />
+          </Link>
         </Card>
 
         <Card>

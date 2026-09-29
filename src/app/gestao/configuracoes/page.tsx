@@ -8,7 +8,6 @@ import { TabPanel } from "@/components/ui/TabPanel";
 import { UsuariosTab } from "./UsuariosTab";
 import { IdentidadeVisualTab } from "./IdentidadeVisualTab";
 import { InformativoTab } from "./InformativoTab";
-import { InformativoLayoutTab } from "./InformativoLayoutTab";
 import { RankingVisibilityTab } from "./RankingVisibilityTab";
 import { ConsistenciaTab } from "./ConsistenciaTab";
 import { DiagnosticoTab } from "./DiagnosticoTab";
@@ -20,7 +19,6 @@ type Tab =
   | "usuarios"
   | "identidade"
   | "informativo"
-  | "informativo_layout"
   | "ranking"
   | "termos"
   | "perfis_ocultos"
@@ -37,8 +35,6 @@ function conteudoDaAba(tab: Tab) {
       return <IdentidadeVisualTab />;
     case "informativo":
       return <InformativoTab />;
-    case "informativo_layout":
-      return <InformativoLayoutTab />;
     case "ranking":
       return <RankingVisibilityTab />;
     case "termos":
@@ -78,8 +74,7 @@ export default function ConfigurarPortalPage() {
         options={[
           { value: "usuarios", label: "Usuários e permissões" },
           { value: "identidade", label: "Identidade visual" },
-          { value: "informativo", label: "Informativo do ranking" },
-          { value: "informativo_layout", label: "Layout do informativo" },
+          { value: "informativo", label: "Informativo e alertas" },
           { value: "ranking", label: "Visibilidade do ranking" },
           { value: "termos", label: "Documentos e aceites" },
           { value: "perfis_ocultos", label: "Perfis ocultos" },
