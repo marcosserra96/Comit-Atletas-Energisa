@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { collection, getDocs, onSnapshot, orderBy, query } from "firebase/firestore";
+import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import {
   IdCard,
   Search,
@@ -14,6 +14,7 @@ import {
   Eye,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { carregarTodosLancamentos } from "@/lib/lancamentosCache";
 import { consolidarAtividades } from "@/lib/activityConsolidation";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { Card } from "@/components/ui/Card";
@@ -28,7 +29,7 @@ import { cn } from "@/lib/cn";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { FichaAtletaModal } from "./ficha/FichaAtletaModal";
 import { PainelNumeros } from "@/components/ui/PainelNumeros";
-import type { AtletaDoc, Equipe, HistoricoPontoDoc } from "@/lib/types";
+import type { AtletaDoc, Equipe } from "@/lib/types";
 
 type FiltroModalidade = "todas" | "corrida" | "bicicleta";
 type Visualizacao = "cards" | "lista";
@@ -85,11 +86,8 @@ export function VerAtletasTab() {
   }, []);
 
   useEffect(() => {
-    getDocs(collection(db, "historico_pontos")).then((snap) => {
+    carregarTodosLancamentos().then((lancamentos) => {
       const acc: Record<string, Resumo> = {};
-      const lancamentos = snap.docs.map(
-        (documento) => ({ id: documento.id, ...documento.data() }) as HistoricoPontoDoc,
-      );
       for (const atividade of consolidarAtividades(lancamentos)) {
         const atual = acc[atividade.atletaId] ?? { km: 0, eventos: 0, ultimo: null };
         atual.km += atividade.km;
@@ -98,7 +96,7 @@ export function VerAtletasTab() {
         acc[atividade.atletaId] = atual;
       }
       setResumos(acc);
-    });
+    }, () => setResumos({}));
   }, []);
 
   const filtrados = useMemo(() => {

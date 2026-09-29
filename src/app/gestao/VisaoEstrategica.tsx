@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { db } from "@/lib/firebase";
+import { carregarTodosLancamentos } from "@/lib/lancamentosCache";
 import { formatBRL, formatDistancia, formatKm, formatPontos, formatShortDate, plural } from "@/lib/format";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { calcularEstatisticasDashboard } from "@/lib/dashboardStats";
@@ -83,17 +84,23 @@ export function VisaoEstrategica() {
   }, []);
 
   useEffect(() => {
-    Promise.all([
-      getDocs(collection(db, "historico_pontos")),
-      getDocs(collection(db, "historico_mensal")),
-    ]).then(([snapLancamentos, snapMensal]) => {
-      setLancamentos(
-        snapLancamentos.docs.map((d) => ({ id: d.id, ...d.data() }) as HistoricoPontoDoc),
-      );
-      setHistoricoMensal(
-        snapMensal.docs.map((d) => ({ id: d.id, ...d.data() }) as HistoricoMensalDoc),
-      );
-    });
+    let ativo = true;
+    Promise.all([carregarTodosLancamentos(), getDocs(collection(db, "historico_mensal"))])
+      .then(([todos, snapMensal]) => {
+        if (!ativo) return;
+        setLancamentos(todos);
+        setHistoricoMensal(
+          snapMensal.docs.map((d) => ({ id: d.id, ...d.data() }) as HistoricoMensalDoc),
+        );
+      })
+      .catch(() => {
+        if (!ativo) return;
+        setLancamentos([]);
+        setHistoricoMensal([]);
+      });
+    return () => {
+      ativo = false;
+    };
   }, []);
 
   useEffect(() => {

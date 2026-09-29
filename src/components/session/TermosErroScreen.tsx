@@ -4,9 +4,12 @@ import { RefreshCw, LogOut, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 export function TermosErroScreen({
+  limiteUso = false,
   onRetry,
   onLogout,
 }: {
+  /** O banco de dados atingiu o limite diário do plano: não adianta checar a conexão. */
+  limiteUso?: boolean;
   onRetry: () => Promise<void>;
   onLogout: () => void;
 }) {
@@ -18,9 +21,13 @@ export function TermosErroScreen({
         <span className="mx-auto mb-5 flex size-14 items-center justify-center rounded-2xl bg-warning/15 text-ranking-gold-text">
           <TriangleAlert className="size-6" aria-hidden="true" />
         </span>
-        <h1 className="text-lg font-bold text-text">Não foi possível verificar os termos</h1>
+        <h1 className="text-lg font-bold text-text">
+          {limiteUso ? "Portal temporariamente indisponível" : "Não foi possível verificar os termos"}
+        </h1>
         <p className="mt-2 text-sm leading-relaxed text-text-light">
-          Verifique sua conexão e tente novamente para continuar com segurança.
+          {limiteUso
+            ? "O portal atingiu o limite diário de acesso ao banco de dados. O acesso volta sozinho em algumas horas; se for urgente, avise o comitê."
+            : "Verifique sua conexão e tente novamente para continuar com segurança."}
         </p>
         <div className="mt-6 flex flex-col gap-2">
           <Button onClick={retry} className="w-full">

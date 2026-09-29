@@ -31,7 +31,7 @@ type Session =
       documentos: DocumentoProgramaDoc[];
       modalidade: Modalidade;
     } & ActiveSessionData)
-  | ({ status: "erro-termos" } & ActiveSessionData)
+  | ({ status: "erro-termos"; limiteUso?: boolean } & ActiveSessionData)
   | ({ status: "active" } & ActiveSessionData);
 
 interface SessionContextValue {
@@ -73,6 +73,17 @@ async function respostaJson(response: Response) {
   }
 }
 
+class ErroTermos extends Error {
+  constructor(
+    message: string,
+    readonly limiteUso: boolean,
+  ) {
+    super(message);
+  }
+}
+
+const limiteUsoDe = (erro: unknown) => erro instanceof ErroTermos && erro.limiteUso;
+
 async function consultarTermos(user: User, dados: ActiveSessionData): Promise<Session> {
   const token = await user.getIdToken();
   const response = await fetch("/api/termos/status", {
@@ -81,7 +92,10 @@ async function consultarTermos(user: User, dados: ActiveSessionData): Promise<Se
   });
   const body = await respostaJson(response);
   if (!response.ok) {
-    throw new Error(typeof body.error === "string" ? body.error : "Falha ao verificar os termos.");
+    throw new ErroTermos(
+      typeof body.error === "string" ? body.error : "Falha ao verificar os termos.",
+      body.codigo === "limite_uso",
+    );
   }
 
   if (body.exigido === true && Array.isArray(body.documentos) && body.documentos.length > 0) {
@@ -178,9 +192,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             .then((proximaSessao) => {
               if (verificacao === verificacaoAtual) setSession(proximaSessao);
             })
-            .catch(() => {
+            .catch((erro: unknown) => {
               if (verificacao === verificacaoAtual) {
-                setSession({ status: "erro-termos", ...dados });
+                setSession({ status: "erro-termos", limiteUso: limiteUsoDe(erro), ...dados });
               }
             });
         });
@@ -206,8 +220,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setSession({ status: "loading" });
     try {
       setSession(await consultarTermos(user, dados));
-    } catch {
-      setSession({ status: "erro-termos", ...dados });
+    } catch (erro) {
+      setSession({ status: "erro-termos", limiteUso: limiteUsoDe(erro), ...dados });
     }
   }
 
@@ -269,7 +283,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           onLogout={logout}
         />
       ) : session.status === "erro-termos" ? (
-        <TermosErroScreen onRetry={recarregarTermos} onLogout={logout} />
+        <TermosErroScreen limiteUso={session.limiteUso} onRetry={recarregarTermos} onLogout={logout} />
       ) : (
         children
       )}

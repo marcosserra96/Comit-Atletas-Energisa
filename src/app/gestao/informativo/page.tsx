@@ -17,7 +17,8 @@ import { ArteInformativo, type MarcaInformativo } from "@/components/informativo
 import { temPermissao } from "@/lib/permissoes";
 import { getStoredBranding } from "@/lib/branding";
 import { useDiasTreino } from "@/lib/useDiasTreino";
-import { descreverDias } from "@/lib/aderencia";
+import { descreverDias, limitesDasCompetencias } from "@/lib/aderencia";
+import { carregarLancamentosDoPeriodo } from "@/lib/lancamentosCache";
 import { plural } from "@/lib/format";
 import {
   DIMENSOES,
@@ -79,7 +80,6 @@ export default function InformativoPage() {
   const { show } = useToast();
   const diasTreino = useDiasTreino();
   const [atletas, setAtletas] = useState<AtletaDoc[] | null>(null);
-  const [lancamentos, setLancamentos] = useState<HistoricoPontoDoc[] | null>(null);
   const [mensais, setMensais] = useState<HistoricoMensalDoc[]>([]);
   const [erro, setErro] = useState(false);
 
@@ -107,13 +107,11 @@ export default function InformativoPage() {
     let ativo = true;
     Promise.all([
       getDocs(collection(db, "atletas")),
-      getDocs(collection(db, "historico_pontos")),
       getDocs(collection(db, "historico_mensal")).catch(() => null),
     ])
-      .then(([a, l, m]) => {
+      .then(([a, m]) => {
         if (!ativo) return;
         setAtletas(a.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc));
-        setLancamentos(l.docs.map((d) => ({ id: d.id, ...d.data() }) as HistoricoPontoDoc));
         setMensais(m ? m.docs.map((d) => ({ id: d.id, ...d.data() }) as HistoricoMensalDoc) : []);
       })
       .catch(() => ativo && setErro(true));
@@ -126,6 +124,22 @@ export default function InformativoPage() {
     if (modo === "mes") return { de, ate: de };
     return de <= ate ? { de, ate } : { de: ate, ate: de };
   }, [modo, de, ate]);
+
+  // Só os lançamentos do período: ler o histórico inteiro a cada abertura
+  // esgotava a cota diária do Firestore.
+  const chavePeriodo = `${periodo.de}|${periodo.ate}`;
+  const [lancamentosPeriodo, setLancamentosPeriodo] = useState<{ chave: string; lista: HistoricoPontoDoc[] } | null>(null);
+  useEffect(() => {
+    let ativo = true;
+    const { inicio, fim } = limitesDasCompetencias(periodo.de, periodo.ate);
+    carregarLancamentosDoPeriodo(inicio, fim)
+      .then((lista) => ativo && setLancamentosPeriodo({ chave: chavePeriodo, lista }))
+      .catch(() => ativo && setErro(true));
+    return () => {
+      ativo = false;
+    };
+  }, [chavePeriodo, periodo.de, periodo.ate]);
+  const lancamentos = lancamentosPeriodo?.chave === chavePeriodo ? lancamentosPeriodo.lista : null;
 
   const marca = useMemo<MarcaInformativo>(() => {
     const b = getStoredBranding();

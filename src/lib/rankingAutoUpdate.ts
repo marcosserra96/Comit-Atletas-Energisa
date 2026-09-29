@@ -1,4 +1,5 @@
 import { auth } from "@/lib/firebase";
+import { invalidarLancamentos } from "@/lib/lancamentosCache";
 import type { RankingPeriodsConfigDoc } from "@/lib/types";
 
 interface RankingUpdateResponse {
@@ -41,6 +42,8 @@ export async function atualizarRankingAutomaticamente(
   atletaIds: string[],
   origem: string,
 ): Promise<boolean> {
+  // Toda gravação de lançamentos passa por aqui: a cópia em memória fica velha.
+  invalidarLancamentos();
   const ids = [...new Set(atletaIds.filter(Boolean))];
   if (ids.length === 0) return true;
   try {

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { CalendarRange, FileSpreadsheet } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { carregarTodosLancamentos } from "@/lib/lancamentosCache";
 import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
@@ -49,11 +50,11 @@ export function ConsolidadoTab() {
   useEffect(() => {
     Promise.all([
       getDocs(collection(db, "atletas")),
-      getDocs(collection(db, "historico_pontos")),
+      carregarTodosLancamentos(),
       getDocs(collection(db, "historico_mensal")),
-    ]).then(([atletasSnap, historicoSnap, historicoMensalSnap]) => {
+    ]).then(([atletasSnap, lancamentos, historicoMensalSnap]) => {
       setAtletas(atletasSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc));
-      setHistorico(historicoSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as HistoricoPontoDoc));
+      setHistorico(lancamentos);
       setHistoricoMensal(
         historicoMensalSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as HistoricoMensalDoc),
       );
