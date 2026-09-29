@@ -75,7 +75,7 @@ export function NovaRegraModal({
         id: ref.id,
         descricao,
         modalidade,
-        pontos: Number(pontos),
+        pontos: Math.round(Number(pontos)),
         tiposLancamento: [...tiposSelecionados],
         regrasExcludentes: [...excludentes],
         criadoEm: regra?.criadoEm ?? serverTimestamp(),
@@ -113,6 +113,8 @@ export function NovaRegraModal({
             label="Pontos"
             type="number"
             min={0}
+            step={1}
+            inputMode="numeric"
             value={pontos}
             onChange={(e) => setPontos(e.target.value)}
             required

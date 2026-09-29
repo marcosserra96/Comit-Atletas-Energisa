@@ -61,6 +61,8 @@ export default function PontuacaoPage() {
     );
   }
 
+  const podeHistoricoMensal = temPermissao(usuario, "historicoMensal");
+
   if (!temPermissao(usuario, "registrar")) {
     return <NotAuthorized />;
   }
@@ -82,7 +84,7 @@ export default function PontuacaoPage() {
         onChange={setTab}
         options={[
           { value: "lancar", label: "Lançar pontos" },
-          { value: "historico", label: "Histórico mensal" },
+          ...(podeHistoricoMensal ? [{ value: "historico" as const, label: "Histórico mensal" }] : []),
           {
             value: "justificativas",
             label: pendentes > 0 ? `Justificativas (${pendentes})` : "Justificativas",
@@ -98,7 +100,7 @@ export default function PontuacaoPage() {
             justificativas={justificativas ?? []}
             erroJustificativas={erroJustificativas}
           />
-        ) : tab === "historico" ? (
+        ) : tab === "historico" && podeHistoricoMensal ? (
           <HistoricoMensalTab />
         ) : tab === "justificativas" ? (
           <JustificativasTab

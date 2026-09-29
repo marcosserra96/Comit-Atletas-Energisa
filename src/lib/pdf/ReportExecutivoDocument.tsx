@@ -3,7 +3,7 @@ import { Document, Page, View, Text, Image, Svg, Circle, Rect, StyleSheet } from
 import type { EventoDoc } from "@/lib/types";
 import type { EstatisticasDashboard, LoteResumo } from "@/lib/dashboardStats";
 import type { BrandingDoc } from "@/lib/types";
-import { formatKm, formatNumero, formatPontos, formatShortDate } from "@/lib/format";
+import { formatDistancia, formatKm, formatPontos, formatShortDate } from "@/lib/format";
 import { calcularPosicoesRanking } from "@/lib/rankingPosition";
 
 const NAVY = "#07192d";
@@ -477,7 +477,7 @@ export function ReportExecutivoDocument({
               descricao: l.descricao,
               atletas: String(l.atletasCount),
               pontos: String(l.pontos),
-              km: l.km > 0 ? formatNumero(l.km) : "—",
+              km: l.km > 0 ? formatDistancia(l.km) : "—",
             }))}
           />
         </View>

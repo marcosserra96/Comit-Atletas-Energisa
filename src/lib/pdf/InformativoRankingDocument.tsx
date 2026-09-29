@@ -10,7 +10,7 @@ import {
   type CampoId,
   type LayoutInformativo,
 } from "@/lib/informativoLayout";
-import { formatNumero } from "@/lib/format";
+import { formatDistancia, formatNumero, formatPontos } from "@/lib/format";
 
 const PAGE_W = 1672;
 const PAGE_H = 941;
@@ -135,13 +135,13 @@ function PodiumSlotView({
         {atleta.nome}
       </Campo>
       <Campo campo={slot.campos.pts} layout={layout}>
-        {formatNumero(atleta.pontosMes)} pts
+        {formatPontos(atleta.pontosMes)} pts
       </Campo>
       <Campo campo={slot.campos.treinos} layout={layout}>
         {formatNumero(atleta.treinosMes)} treinos
       </Campo>
       <Campo campo={slot.campos.km} layout={layout}>
-        {formatNumero(atleta.kmMes)} km
+        {formatDistancia(atleta.kmMes)} km
       </Campo>
     </>
   );
@@ -186,7 +186,7 @@ function PodiumCompartilhadoView({ atletas }: { atletas: ResumoAtletaClassificad
                 {atleta.nome}
               </Text>
               <Text style={{ marginTop: 7, color: "#cfe3f2", fontSize: 9 }}>
-                {formatNumero(atleta.pontosMes)} pts · {formatNumero(atleta.treinosMes)} treinos · {formatNumero(atleta.kmMes)} km
+                {formatPontos(atleta.pontosMes)} pts · {formatNumero(atleta.treinosMes)} treinos · {formatDistancia(atleta.kmMes)} km
               </Text>
             </View>
           </View>
@@ -284,13 +284,13 @@ function RankingColuna({
               {atleta.nome}
             </Campo>
             <Campo campo={spec.campos.pontos} layout={layout} offsetY={offsetY} bold={false}>
-              {formatNumero(atleta.pontosMes)}
+              {formatPontos(atleta.pontosMes)}
             </Campo>
             <Campo campo={spec.campos.treinos} layout={layout} offsetY={offsetY} bold={false}>
               {formatNumero(atleta.treinosMes)}
             </Campo>
             <Campo campo={spec.campos.km} layout={layout} offsetY={offsetY} bold={false}>
-              {formatNumero(atleta.kmMes)}
+              {formatDistancia(atleta.kmMes)}
             </Campo>
           </View>
         );
@@ -427,9 +427,9 @@ function PaginaModalidade({
           {k.texto}
         </Campo>
       ))}
-      <Campo campo="kpi1" layout={layout}>{`${formatNumero(totalPontos)} pts`}</Campo>
+      <Campo campo="kpi1" layout={layout}>{`${formatPontos(totalPontos)} pts`}</Campo>
       <Campo campo="kpi2" layout={layout}>{formatNumero(totalTreinos)}</Campo>
-      <Campo campo="kpi3" layout={layout}>{`${formatNumero(totalKm)} km`}</Campo>
+      <Campo campo="kpi3" layout={layout}>{`${formatDistancia(totalKm)} km`}</Campo>
       <Campo campo="kpi4" layout={layout}>{formatNumero(lista.length)}</Campo>
 
       {haEmpateNoPodio ? (
@@ -458,7 +458,7 @@ function PaginaModalidade({
         linhaCampo="destaque1Linha1"
         titulo="Maior quilometragem"
         lista={maiorKm}
-        formatar={(a) => `${formatNumero(a.kmMes)} km`}
+        formatar={(a) => `${formatDistancia(a.kmMes)} km`}
         layout={layout}
       />
       <DestaqueCard
@@ -474,7 +474,7 @@ function PaginaModalidade({
         linhaCampo="destaque3Linha1"
         titulo="Maior pontuação"
         lista={maiorPontuacao}
-        formatar={(a) => `${formatNumero(a.pontosMes)} pts`}
+        formatar={(a) => `${formatPontos(a.pontosMes)} pts`}
         layout={layout}
         posicoes={posicoesPorId}
       />

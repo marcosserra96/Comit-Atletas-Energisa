@@ -78,6 +78,13 @@ const CENARIOS: CenarioDef[] = [
     avaliar: (u) => temPermissao(u, "registrar"),
   },
   {
+    chave: "historico_mensal",
+    categoria: "Pontuação",
+    label: "Lançar ou editar o histórico mensal",
+    regra: "Requer as permissões \"Registrar\" e \"Histórico mensal\".",
+    avaliar: (u) => temPermissao(u, "historicoMensal"),
+  },
+  {
     chave: "analisar_justificativas",
     categoria: "Pontuação",
     label: "Analisar justificativas de ausência",

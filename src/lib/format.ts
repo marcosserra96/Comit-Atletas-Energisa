@@ -77,7 +77,7 @@ export function formatDecimal(value: number, casas = 1) {
 /**
  * Número para exibição: no máximo `maxCasas` casas, sem zeros sobrando à
  * direita e com separador de milhar. 8.299999 → "8,3"; 10 → "10"; 1234.5 → "1.234,5".
- * Padrão do portal para pontos, km e qualquer total calculado.
+ * Para pontos use `formatPontos` (inteiro) e para km `formatKm`/`formatDistancia` (2 casas).
  */
 export function formatNumero(value: number, maxCasas = 1) {
   return new Intl.NumberFormat("pt-BR", {
@@ -86,14 +86,19 @@ export function formatNumero(value: number, maxCasas = 1) {
   }).format(Number.isFinite(value) ? value : 0);
 }
 
-/** Pontos: "25", "2,5", "1.250". */
+/** Pontos são sempre inteiros: "25", "1.250". */
 export function formatPontos(value: number) {
-  return formatNumero(value);
+  return formatNumero(value, 0);
 }
 
-/** Quilometragem: "10 km", "12,5 km". */
+/** Distância sem a unidade (para colunas "Km"): até 2 casas, "12,35", "10". */
+export function formatDistancia(value: number) {
+  return formatNumero(value, 2);
+}
+
+/** Quilometragem: "10 km", "12,35 km". */
 export function formatKm(value: number) {
-  return `${formatNumero(value)} km`;
+  return `${formatDistancia(value)} km`;
 }
 
 /**

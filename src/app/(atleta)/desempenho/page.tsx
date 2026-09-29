@@ -28,7 +28,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { formatDataTreino, formatKm, formatNumero, formatPontos, plural } from "@/lib/format";
+import { formatDataTreino, formatDistancia, formatKm, formatNumero, formatPontos, plural } from "@/lib/format";
 import {
   calcularDesempenhoAtleta,
   obterInicioPeriodo,
@@ -409,7 +409,7 @@ export default function DesempenhoPage() {
           <Card className="p-0">
             <dl className="grid grid-cols-3 divide-x divide-border">
               <ResumoNumero rotulo="Treinos" valor={String(analise.totalTreinos)} />
-              <ResumoNumero rotulo="Km" valor={formatNumero(analise.totalKm)} />
+              <ResumoNumero rotulo="Km" valor={formatDistancia(analise.totalKm)} />
               <ResumoNumero rotulo="Pontos" valor={formatPontos(analise.totalPontos)} />
             </dl>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-border px-4 py-3 text-xs text-text-light sm:px-5">
@@ -537,7 +537,7 @@ export default function DesempenhoPage() {
                     : "var(--color-accent)"
                 }
                 formatarValor={(valor) =>
-                  formatNumero(valor)
+                  metricaVolume === "km" ? formatDistancia(valor) : formatPontos(valor)
                 }
                 vazio={
                   metricaVolume === "km"

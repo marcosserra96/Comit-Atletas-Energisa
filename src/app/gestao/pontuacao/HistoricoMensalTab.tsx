@@ -46,6 +46,16 @@ function numero(valor: string) {
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
+/** Pontos são sempre inteiros. */
+function pontosDe(valor: string) {
+  return Math.round(numero(valor));
+}
+
+/** Km com no máximo 2 casas, sem ruído de ponto flutuante. */
+function kmDe(valor: string) {
+  return Math.round(numero(valor) * 100) / 100;
+}
+
 function competenciaAnterior() {
   const d = new Date();
   d.setDate(1);
@@ -174,8 +184,8 @@ export function HistoricoMensalTab() {
     return atletas.reduce(
       (acc, atleta) => {
         const v = valoresDoAtleta(atleta.id);
-        const pontos = numero(v.pontos);
-        const km = numero(v.km);
+        const pontos = pontosDe(v.pontos);
+        const km = kmDe(v.km);
         const treinos = Math.floor(numero(v.treinos));
         if (pontos > 0 || km > 0 || treinos > 0) acc.atletas += 1;
         acc.pontos += pontos;
@@ -225,8 +235,8 @@ export function HistoricoMensalTab() {
         const detalhado = sobreposicoes.get(atleta.id);
         const v = valoresDoAtleta(atleta.id);
 
-        const totalPontos = numero(v.pontos);
-        const totalKm = numero(v.km);
+        const totalPontos = pontosDe(v.pontos);
+        const totalKm = kmDe(v.km);
         const totalTreinos = Math.floor(numero(v.treinos));
 
         const pontos = Math.max(0, totalPontos - (detalhado?.pontos ?? 0));
@@ -331,8 +341,8 @@ export function HistoricoMensalTab() {
           const v = valoresDoAtleta(a.id);
           return {
             Atleta: a.nome,
-            Pontos: numero(v.pontos) || "",
-            KM: numero(v.km) || "",
+            Pontos: pontosDe(v.pontos) || "",
+            KM: kmDe(v.km) || "",
             Treinos: Math.floor(numero(v.treinos)) || "",
           };
         }),
@@ -602,6 +612,7 @@ function TabelaInput({
       type="number"
       min={0}
       step={step}
+      inputMode={step === "1" ? "numeric" : "decimal"}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className="h-9 w-full rounded-[var(--radius-sm)] border border-border bg-bg px-2 text-center text-sm tabular-nums text-text outline-none focus:border-primary"
@@ -628,7 +639,7 @@ function Campo({
         type="number"
         min={0}
         step={step}
-        inputMode="decimal"
+        inputMode={step === "1" ? "numeric" : "decimal"}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="h-11 w-full rounded-[var(--radius)] border border-border bg-bg px-2 text-center text-sm tabular-nums text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"

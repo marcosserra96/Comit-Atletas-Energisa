@@ -11,7 +11,7 @@ import { RequireRole } from "@/components/session/RequireRole";
 import { getStoredBranding, loginBackground } from "@/lib/branding";
 import { normalizarInformativoConfig } from "@/lib/informativoConfig";
 import { atletaEstaEmAlerta, calcularResumoRankingMensal, ordenarRankingMensal, type ResumoAtletaMensal } from "@/lib/rankingMensal";
-import { formatNumero, formatShortDate } from "@/lib/format";
+import { formatDistancia, formatNumero, formatPontos, formatShortDate } from "@/lib/format";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { calcularPosicoesRanking } from "@/lib/rankingPosition";
 import type { AtletaDoc, BrandingDoc, EventoDoc, HistoricoPontoDoc, InformativoConfigDoc } from "@/lib/types";
@@ -94,9 +94,9 @@ function SlideHero({
       <p className="mt-3 text-2xl text-white/70">{mesLabel} · Comitê Atletas Energisa</p>
 
       <div className="mt-12 grid grid-cols-2 gap-5 lg:grid-cols-4">
-        <KpiTile label="Pontos" value={formatNumero(totalPontos)} cor={branding.primary} />
+        <KpiTile label="Pontos" value={formatPontos(totalPontos)} cor={branding.primary} />
         <KpiTile label="Treinos" value={formatNumero(totalTreinos)} cor={branding.secondary} />
-        <KpiTile label="KM" value={formatNumero(totalKm)} cor={branding.primary} />
+        <KpiTile label="KM" value={formatDistancia(totalKm)} cor={branding.primary} />
         <KpiTile label="Alertas" value={formatNumero(totalAlertas)} cor={branding.accent} />
       </div>
     </div>
@@ -125,7 +125,7 @@ function Top3Card({ titulo, icon: Icon, lista }: { titulo: string; icon: typeof 
               <span className="w-7 shrink-0 font-extrabold text-white/70">{posicoes[i]}º</span>
               <strong className="min-w-0 flex-1 truncate text-white">{a.nome}</strong>
               <em className="font-extrabold not-italic" style={{ color: "var(--color-primary)" }}>
-                {formatNumero(a.pontosMes)} pts
+                {formatPontos(a.pontosMes)} pts
               </em>
             </div>
           ))}

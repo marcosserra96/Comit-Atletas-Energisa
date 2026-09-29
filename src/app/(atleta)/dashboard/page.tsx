@@ -40,7 +40,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/cn";
 import { isWaitlisted, modalidadeFromEquipe } from "@/lib/labels";
-import { formatDataTreino, formatKm, formatNumero, formatPontos, formatShortDate, plural } from "@/lib/format";
+import { formatDataTreino, formatDistancia, formatKm, formatPontos, formatShortDate, plural } from "@/lib/format";
 import { calcularInsightsAtleta } from "@/lib/athleteStats";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import {
@@ -412,7 +412,7 @@ export default function DashboardPage() {
                     <dt className="text-xs text-text-muted">{insights.treinosMes === 1 ? "treino" : "treinos"}</dt>
                   </div>
                   <div className="px-2">
-                    <dd className="text-2xl font-black tabular-nums text-text">{formatNumero(insights.kmMes)}</dd>
+                    <dd className="text-2xl font-black tabular-nums text-text">{formatDistancia(insights.kmMes)}</dd>
                     <dt className="text-xs text-text-muted">km</dt>
                   </div>
                   <div className="px-2">

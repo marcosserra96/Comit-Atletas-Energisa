@@ -5,6 +5,7 @@ export type PermissaoChave =
   | "atletas"
   | "regras"
   | "registrar"
+  | "historicoMensal"
   | "eventos"
   | "noticias"
   | "financeiro";
@@ -14,6 +15,7 @@ export const PERMISSAO_LABEL: Record<PermissaoChave, string> = {
   atletas: "Atletas (gestão de base)",
   regras: "Critérios de pontuação",
   registrar: "Registrar (pontos e justificativas)",
+  historicoMensal: "Histórico mensal (lançar e editar totais do mês)",
   eventos: "Eventos",
   noticias: "Notícias",
   financeiro: "Financeiro (acesso e edição)",
@@ -24,10 +26,19 @@ export const PERMISSAO_ORDEM: PermissaoChave[] = [
   "atletas",
   "regras",
   "registrar",
+  "historicoMensal",
   "eventos",
   "noticias",
   "financeiro",
 ];
+
+/**
+ * Permissões que só valem junto com outra (a tela fica dentro da área da outra).
+ * O histórico mensal é uma aba de "Lançar pontos", então também exige "Registrar".
+ */
+export const PERMISSAO_REQUER: Partial<Record<PermissaoChave, PermissaoChave>> = {
+  historicoMensal: "registrar",
+};
 
 /** Permissões padrão para um Comitê recém-criado, sem nada configurado ainda. */
 export const PERMISSOES_PADRAO: PermissaoChave[] = ["inicio"];
@@ -48,7 +59,9 @@ export function temPermissao(
   chave: PermissaoChave,
 ): boolean {
   if (usuario.role === "administrador") return true;
-  return (usuario.permissoes ?? PERMISSOES_PADRAO).includes(chave);
+  const permissoes = usuario.permissoes ?? PERMISSOES_PADRAO;
+  const requer = PERMISSAO_REQUER[chave];
+  return permissoes.includes(chave) && (!requer || permissoes.includes(requer));
 }
 
 const ROTA_POR_PERMISSAO: Record<PermissaoChave, string> = {
@@ -56,6 +69,7 @@ const ROTA_POR_PERMISSAO: Record<PermissaoChave, string> = {
   atletas: "/gestao/atletas",
   regras: "/gestao/criterios",
   registrar: "/gestao/pontuacao",
+  historicoMensal: "/gestao/pontuacao",
   eventos: "/gestao/eventos",
   noticias: "/gestao/noticias",
   financeiro: "/gestao/financeiro",
