@@ -40,6 +40,8 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/cn";
 import { isWaitlisted, modalidadeFromEquipe } from "@/lib/labels";
+import { dataIsoLocal } from "@/lib/date";
+import { motion } from "framer-motion";
 import { formatDataTreino, formatDistancia, formatKm, formatPontos, formatShortDate, plural } from "@/lib/format";
 import { calcularInsightsAtleta } from "@/lib/athleteStats";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
@@ -48,6 +50,8 @@ import {
   rankingOcultoAgora,
 } from "@/lib/rankingVisibility";
 import { noticiaVisivel } from "@/lib/noticias";
+import { useDiasTreino } from "@/lib/useDiasTreino";
+import { aderenciaDoAtleta } from "@/lib/aderencia";
 import type {
   AtletaPublicoDoc,
   EventoDoc,
@@ -237,6 +241,21 @@ export default function DashboardPage() {
     });
   }, [atleta, companheiros, meusLancamentos, meuHistoricoMensal, rankingIndisponivel]);
 
+  const diasTreino = useDiasTreino();
+  const aderenciaMes = useMemo(() => {
+    const modalidade = modalidadeFromEquipe(atleta.equipe);
+    if (!diasTreino || !meusLancamentos || !modalidade) return null;
+    const hoje = dataIsoLocal();
+    return aderenciaDoAtleta({
+      modalidade,
+      config: diasTreino,
+      lancamentos: meusLancamentos,
+      resumosMensais: meuHistoricoMensal ?? [],
+      de: `${hoje.slice(0, 7)}-01`,
+      ate: hoje,
+    });
+  }, [atleta.equipe, diasTreino, meusLancamentos, meuHistoricoMensal]);
+
   const ultimosLancamentos = useMemo(
     () => [...(meusLancamentos ?? [])].sort((a, b) => b.dataTreino.localeCompare(a.dataTreino)).slice(0, 5),
     [meusLancamentos],
@@ -423,6 +442,26 @@ export default function DashboardPage() {
               ) : (
                 <div className="mt-4 h-[76px] animate-pulse rounded-[var(--radius)] bg-bg-inset" />
               )}
+
+              {aderenciaMes?.percentual != null ? (
+                <div className="mt-3 px-1">
+                  <div className="flex items-baseline justify-between gap-3 text-sm">
+                    <span className="font-semibold text-text">Aderência aos treinos</span>
+                    <span className="font-bold tabular-nums text-text">{aderenciaMes.percentual}%</span>
+                  </div>
+                  <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-bg-inset" aria-hidden="true">
+                    <motion.div
+                      className="h-full origin-left rounded-full bg-secondary"
+                      initial={{ scaleX: 0 }}
+                      animate={{ scaleX: aderenciaMes.percentual / 100 }}
+                      transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-text-light">
+                    {aderenciaMes.feitos} de {plural(aderenciaMes.previstos, "treino previsto", "treinos previstos")} até hoje
+                  </p>
+                </div>
+              ) : null}
 
               {linhaRanking ? (
                 linhaRanking.link ? (

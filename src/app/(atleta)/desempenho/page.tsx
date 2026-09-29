@@ -36,6 +36,10 @@ import {
   type PeriodoDesempenho,
   type SerieMensalDesempenho,
 } from "@/lib/athletePerformance";
+import { useDiasTreino } from "@/lib/useDiasTreino";
+import { aderenciaDoAtleta, formatAderencia } from "@/lib/aderencia";
+import { modalidadeFromEquipe } from "@/lib/labels";
+import { dataIsoLocal } from "@/lib/date";
 import type { HistoricoMensalDoc, HistoricoPontoDoc, TipoLancamento } from "@/lib/types";
 
 const tipoLabel: Record<TipoLancamento, string> = {
@@ -307,6 +311,20 @@ export default function DesempenhoPage() {
     [lancamentos, resumosMensais, periodo],
   );
 
+  const diasTreino = useDiasTreino();
+  const modalidade = modalidadeFromEquipe(atleta.equipe);
+  const aderencia = useMemo(() => {
+    if (!lancamentos || !diasTreino || !modalidade) return null;
+    return aderenciaDoAtleta({
+      modalidade,
+      config: diasTreino,
+      lancamentos,
+      resumosMensais,
+      de: obterInicioPeriodo(periodo),
+      ate: dataIsoLocal(),
+    });
+  }, [lancamentos, resumosMensais, diasTreino, modalidade, periodo]);
+
   const historicoFiltrado = useMemo<ItemHistoricoDados[]>(() => {
     if (!lancamentos) return [];
     const inicio = obterInicioPeriodo(periodo);
@@ -407,12 +425,24 @@ export default function DesempenhoPage() {
       ) : (
         <>
           <Card className="p-0">
-            <dl className="grid grid-cols-3 divide-x divide-border">
+            <dl
+              className={
+                "grid divide-x divide-border " + (aderencia?.percentual != null ? "grid-cols-4" : "grid-cols-3")
+              }
+            >
               <ResumoNumero rotulo="Treinos" valor={String(analise.totalTreinos)} />
               <ResumoNumero rotulo="Km" valor={formatDistancia(analise.totalKm)} />
               <ResumoNumero rotulo="Pontos" valor={formatPontos(analise.totalPontos)} />
+              {aderencia?.percentual != null ? (
+                <ResumoNumero rotulo="Aderência" valor={formatAderencia(aderencia.percentual)} />
+              ) : null}
             </dl>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-border px-4 py-3 text-xs text-text-light sm:px-5">
+              {aderencia?.percentual != null ? (
+                <span>
+                  {aderencia.feitos} de {plural(aderencia.previstos, "treino previsto", "treinos previstos")}
+                </span>
+              ) : null}
               {analise.variacaoTreinosPct !== null ? (
                 <span className="flex items-center gap-1">
                   <TrendIndicator value={analise.variacaoTreinosPct} />

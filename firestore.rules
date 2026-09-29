@@ -225,6 +225,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Agenda de treinos: quem cuida dos critérios também define os dias.
+    match /configuracoes/dias_treino {
+      allow read: if hasUsuario();
+      allow write: if isAdmin() || comitePode("regras");
+    }
+
     match /configuracoes/{docId} {
       allow read: if hasUsuario();
       allow write: if isAdmin();
