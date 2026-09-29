@@ -10,6 +10,7 @@ import "@fontsource/barlow/700.css";
 import { forwardRef, type CSSProperties, type ReactNode } from "react";
 import { formatDistancia, formatPontos, plural } from "@/lib/format";
 import {
+  CAPACIDADE,
   DIMENSOES,
   rotuloPeriodo,
   type DadosInformativo,
@@ -596,10 +597,12 @@ function Destaques({
   const maisKm = [...pontuaram].sort((a, b) => b.km - a.km)[0];
   const maisTreinos = [...pontuaram].sort((a, b) => b.treinos - a.treinos)[0];
   const cheios = dados.ranking.filter((l) => l.aderencia === 100).length;
+  // Mesmo card para as duas modalidades; só muda quando não há agenda de treinos.
+  const temAgenda = dados.ranking.some((l) => l.aderencia != null);
   const itens = [
     { rotulo: "Mais quilômetros", valor: `${formatDistancia(maisKm.km)} km`, nome: maisKm.nome },
     { rotulo: "Mais treinos", valor: plural(maisTreinos.treinos, "treino"), nome: maisTreinos.nome },
-    cheios > 0
+    temAgenda
       ? { rotulo: "Aderência de 100%", valor: plural(cheios, "atleta"), nome: "presentes em todos os treinos" }
       : { rotulo: "Treinos no período", valor: String(dados.totais.treinos), nome: `${formatDistancia(dados.totais.km)} km somados` },
   ];
@@ -713,7 +716,13 @@ function TopLista({
 /** Quantos atletas em cada faixa de aderência, em barras. */
 function DistribuicaoAderencia({ dados, cor, fonte }: { dados: DadosInformativo; cor: string; fonte: number }) {
   const valores = dados.ranking.map((l) => l.aderencia).filter((v): v is number => v != null);
-  if (valores.length === 0) return null;
+  if (valores.length === 0) {
+    return (
+      <div style={{ fontFamily: TEXTO, fontWeight: 600, fontSize: fonte * 0.85, color: COR.fraco }}>
+        Aderência do grupo: agenda de treinos não configurada.
+      </div>
+    );
+  }
   const faixas = [
     { rotulo: "100%", n: valores.filter((v) => v === 100).length, opacidade: 1 },
     { rotulo: "75 a 99%", n: valores.filter((v) => v >= 75 && v < 100).length, opacidade: 0.75 },
@@ -774,21 +783,23 @@ function DistribuicaoAderencia({ dados, cor, fonte }: { dados: DadosInformativo;
   );
 }
 
-/** Página de fechamento só com destaques: números grandes e dois top 5. */
-function DestaquesCompletos({
+/**
+ * Resumo do período: fecha todo informativo, com os mesmos blocos para Corrida
+ * e Bike — os três destaques, top 5 de quilômetros, top 5 de aderência e a
+ * aderência do grupo. `compacto` quando divide a página com nomes da tabela.
+ */
+function ResumoPeriodo({
   dados,
   cor,
   formato,
-  cardsLadoALado = false,
+  compacto,
 }: {
   dados: DadosInformativo;
   cor: string;
   formato: FormatoInformativo;
-  /** No vertical, os três números numa linha só (para caber abaixo de alguns nomes). */
-  cardsLadoALado?: boolean;
+  compacto: boolean;
 }) {
   const vertical = formato === "vertical";
-  const larguraLista = vertical ? (936 - 40) / 2 : (1760 - 56) / 2;
   const comTreino = dados.ranking.filter((l) => l.treinos > 0);
   const porKm = [...comTreino]
     .sort((a, b) => b.km - a.km)
@@ -799,34 +810,37 @@ function DestaquesCompletos({
     .sort((a, b) => (b.aderencia ?? 0) - (a.aderencia ?? 0) || b.treinos - a.treinos)
     .slice(0, 5)
     .map((l) => ({ id: l.id, nome: l.nome, valor: `${l.aderencia}%` }));
-  const fonte = vertical ? (cardsLadoALado ? 24 : 26) : 22;
+  // Sem agenda de treinos não há aderência: a lista vira "Mais treinos".
+  const segundaLista =
+    porAderencia.length > 0 ? (
+      { titulo: "Maior aderência", itens: porAderencia }
+    ) : (
+      {
+        titulo: "Mais treinos",
+        itens: [...comTreino]
+          .sort((a, b) => b.treinos - a.treinos)
+          .slice(0, 5)
+          .map((l) => ({ id: l.id, nome: l.nome, valor: plural(l.treinos, "treino") })),
+      }
+    );
+
+  const fonteCards = vertical ? (compacto ? 17 : 22) : compacto ? 16 : 23;
+  const fonteListas = vertical ? (compacto ? 21 : 25) : compacto ? 18 : 25;
+  // Vertical com a página só para o resumo: listas empilhadas em largura total.
+  const colunas = vertical ? (compacto ? 2 : 1) : 3;
+  const vao = vertical ? 40 : 48;
+  const larguraLista = ((vertical ? 936 : 1760) - vao * (colunas - 1)) / colunas;
+  const distribuicao = <DistribuicaoAderencia dados={dados} cor={cor} fonte={fonteListas * 0.95} />;
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: vertical && !cardsLadoALado ? 64 : 40 }}>
-      <Destaques
-        dados={dados}
-        cor={cor}
-        fonte={vertical && !cardsLadoALado ? 22 : 19}
-        colunas={vertical && !cardsLadoALado ? 1 : 3}
-        semTitulo
-      />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: vertical ? 40 : 56 }}>
-        <TopLista titulo="Mais quilômetros" itens={porKm} cor={cor} fonte={fonte} largura={larguraLista} />
-        {porAderencia.length > 0 ? (
-          <TopLista titulo="Maior aderência" itens={porAderencia} cor={cor} fonte={fonte} largura={larguraLista} />
-        ) : (
-          <TopLista
-            titulo="Mais treinos"
-            itens={[...comTreino]
-              .sort((a, b) => b.treinos - a.treinos)
-              .slice(0, 5)
-              .map((l) => ({ id: l.id, nome: l.nome, valor: String(l.treinos) }))}
-            cor={cor}
-            fonte={fonte}
-            largura={larguraLista}
-          />
-        )}
+    <div style={{ display: "flex", flexDirection: "column", gap: compacto ? 32 : 56 }}>
+      <Destaques dados={dados} cor={cor} fonte={fonteCards} colunas={3} semTitulo />
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${colunas}, minmax(0, 1fr))`, gap: vao }}>
+        <TopLista titulo="Mais quilômetros" itens={porKm} cor={cor} fonte={fonteListas} largura={larguraLista} />
+        <TopLista titulo={segundaLista.titulo} itens={segundaLista.itens} cor={cor} fonte={fonteListas} largura={larguraLista} />
+        {vertical ? null : distribuicao}
       </div>
-      {vertical && !cardsLadoALado ? <DistribuicaoAderencia dados={dados} cor={cor} fonte={24} /> : null}
+      {vertical ? distribuicao : null}
     </div>
   );
 }
@@ -903,6 +917,19 @@ function SemPontuacao({ fonte }: { fonte: number }) {
 
 /* ---------- Layouts ---------- */
 
+/**
+ * Altura e fonte das linhas da capa. Quando a capa estica para não deixar
+ * poucos nomes sozinhos na página seguinte, as linhas ficam um pouco mais baixas
+ * para ocupar a mesma altura.
+ */
+function linhasDaCapa(pagina: PaginaInformativo, formato: FormatoInformativo) {
+  const base = formato === "vertical" ? { alturaLinha: 50, fonte: 25 } : { alturaLinha: 52, fonte: 24 };
+  const cabem = CAPACIDADE[formato].primeira;
+  if (pagina.linhas.length <= cabem) return base;
+  const fator = cabem / pagina.linhas.length;
+  return { alturaLinha: Math.floor(base.alturaLinha * fator), fonte: Math.round(base.fonte * Math.max(fator, 0.84)) };
+}
+
 function PaisagemCapa({ dados, pagina, marca }: Omit<PropsArte, "formato">) {
   const cor = corDaModalidade(dados, marca);
   const semPontos = dados.totais.pontos === 0;
@@ -933,12 +960,7 @@ function PaisagemCapa({ dados, pagina, marca }: Omit<PropsArte, "formato">) {
           {semPontos ? (
             <SemPontuacao fonte={56} />
           ) : pagina.linhas.length > 0 ? (
-            <Tabela linhas={pagina.linhas} cor={cor} alturaLinha={52} fonte={24} largura={920} />
-          ) : null}
-          {!semPontos && pagina.destaques ? (
-            <div style={{ marginTop: 32 }}>
-              <Destaques dados={dados} cor={cor} fonte={17} colunas={3} />
-            </div>
+            <Tabela linhas={pagina.linhas} cor={cor} {...linhasDaCapa(pagina, "paisagem")} largura={920} />
           ) : null}
         </div>
         <Rodape pagina={pagina} fonte={17} />
@@ -979,11 +1001,14 @@ function PaisagemContinuacao({ dados, pagina, marca }: Omit<PropsArte, "formato"
           ) : null}
         </div>
       </div>
-      {pagina.destaques && pagina.linhas.length === 0 ? (
-        <DestaquesCompletos dados={dados} cor={cor} formato="paisagem" />
-      ) : pagina.destaques ? (
-        <div style={{ marginTop: 36 }}>
-          <Destaques dados={dados} cor={cor} fonte={19} colunas={3} />
+      {pagina.destaques ? (
+        <div style={{ marginTop: pagina.linhas.length > 0 ? 40 : 8 }}>
+          {pagina.linhas.length > 0 ? (
+            <div style={{ marginBottom: 20 }}>
+              <Sobrancelha cor={cor}>Destaques do período</Sobrancelha>
+            </div>
+          ) : null}
+          <ResumoPeriodo dados={dados} cor={cor} formato="paisagem" compacto={pagina.linhas.length > 0} />
         </div>
       ) : null}
       </div>
@@ -1016,12 +1041,7 @@ function VerticalCapa({ dados, pagina, marca }: Omit<PropsArte, "formato">) {
           </div>
           <div style={{ marginTop: 36, flex: 1, minHeight: 0, overflow: "hidden" }}>
             {pagina.linhas.length > 0 ? (
-              <Tabela linhas={pagina.linhas} cor={cor} alturaLinha={50} fonte={25} largura={936} />
-            ) : null}
-            {pagina.destaques ? (
-              <div style={{ marginTop: 28 }}>
-                <Destaques dados={dados} cor={cor} fonte={15} colunas={3} />
-              </div>
+              <Tabela linhas={pagina.linhas} cor={cor} {...linhasDaCapa(pagina, "vertical")} largura={936} />
             ) : null}
           </div>
         </>
@@ -1034,8 +1054,6 @@ function VerticalCapa({ dados, pagina, marca }: Omit<PropsArte, "formato">) {
 function VerticalContinuacao({ dados, pagina, marca }: Omit<PropsArte, "formato">) {
   const cor = corDaModalidade(dados, marca);
   const temLinhas = pagina.linhas.length > 0;
-  // Poucos nomes na última página: o resumo completo ocupa o espaço que sobraria.
-  const resumoCompleto = pagina.destaques && pagina.linhas.length <= 12;
   return (
     <div style={{ position: "absolute", inset: 0, padding: "72px 72px 60px", display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24 }}>
@@ -1052,20 +1070,16 @@ function VerticalContinuacao({ dados, pagina, marca }: Omit<PropsArte, "formato"
       <div style={{ marginTop: 18 }}>
         <Sobrancelha cor={cor}>{temLinhas ? "Classificação · continuação" : "Resumo do período"}</Sobrancelha>
       </div>
-      <div style={{ marginTop: 28, flex: 1, minHeight: 0, overflow: "hidden" }}>
+      <div style={{ marginTop: 20, flex: 1, minHeight: 0, overflow: "hidden" }}>
         {temLinhas ? <Tabela linhas={pagina.linhas} cor={cor} alturaLinha={50} fonte={24} largura={936} /> : null}
-        {resumoCompleto ? (
-          <div style={{ marginTop: temLinhas ? 56 : 24 }}>
+        {pagina.destaques ? (
+          <div style={{ marginTop: temLinhas ? 48 : 24 }}>
             {temLinhas ? (
               <div style={{ marginBottom: 24 }}>
                 <Sobrancelha cor={cor}>Destaques do período</Sobrancelha>
               </div>
             ) : null}
-            <DestaquesCompletos dados={dados} cor={cor} formato="vertical" cardsLadoALado={temLinhas} />
-          </div>
-        ) : pagina.destaques ? (
-          <div style={{ marginTop: 48 }}>
-            <Destaques dados={dados} cor={cor} fonte={20} colunas={3} />
+            <ResumoPeriodo dados={dados} cor={cor} formato="vertical" compacto={temLinhas} />
           </div>
         ) : null}
       </div>

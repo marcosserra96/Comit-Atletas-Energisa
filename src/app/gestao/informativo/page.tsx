@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { collection, getDocs } from "firebase/firestore";
-import { ArrowLeft, Bike, CalendarCog, Download, Footprints, Loader2, Share2 } from "lucide-react";
+import { Bike, CalendarCog, Download, Footprints, Loader2, Share2 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
@@ -229,13 +229,6 @@ export default function InformativoPage() {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <Link
-          href="/gestao"
-          className="mb-2 inline-flex min-h-9 items-center gap-1.5 text-sm font-semibold text-text-light hover:text-text"
-        >
-          <ArrowLeft className="size-4" />
-          Visão estratégica
-        </Link>
         <h1 className="text-2xl font-extrabold text-text">Informativo para divulgação</h1>
         <p className="text-sm text-text-light">
           Ranking de pontos com pódio, tabela e aderência. Pronto para postar ou mandar no WhatsApp.
