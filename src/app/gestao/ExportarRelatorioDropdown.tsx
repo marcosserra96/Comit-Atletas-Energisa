@@ -2,6 +2,7 @@
 
 import { dataIsoLocal } from "@/lib/date";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { pdf } from "@react-pdf/renderer";
 import { doc, getDoc } from "firebase/firestore";
 import { ChevronDown, Download, FileText, Presentation, Trophy, Users } from "lucide-react";
@@ -14,16 +15,7 @@ import { formatBRL } from "@/lib/format";
 import { agruparUltimosLancamentos, type EstatisticasDashboard } from "@/lib/dashboardStats";
 import { calcularResumoRankingPeriodo, diasUteisNoMes } from "@/lib/rankingMensal";
 import { normalizarInformativoConfig } from "@/lib/informativoConfig";
-import { CAPACIDADE_RANKING } from "@/lib/informativoLayout";
-import { carregarLayoutInformativo } from "@/lib/informativoLayoutStore";
-import {
-  GerarInformativoModal,
-  labelPeriodo,
-  sufixoArquivo,
-  type PeriodoInformativo,
-} from "./GerarInformativoModal";
 import { ReportExecutivoDocument } from "@/lib/pdf/ReportExecutivoDocument";
-import { InformativoRankingDocument } from "@/lib/pdf/InformativoRankingDocument";
 import { ReportTimeDocument } from "@/lib/pdf/ReportTimeDocument";
 import type { AtletaDoc, EventoDoc, HistoricoPontoDoc, InformativoConfigDoc } from "@/lib/types";
 
@@ -40,8 +32,8 @@ export function ExportarRelatorioDropdown({
 }) {
   const { show } = useToast();
   const [open, setOpen] = useState(false);
-  const [gerando, setGerando] = useState<"pdf" | "informativo" | "time" | null>(null);
-  const [escolhendoMes, setEscolhendoMes] = useState(false);
+  const [gerando, setGerando] = useState<"pdf" | "time" | null>(null);
+  const router = useRouter();
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -138,71 +130,7 @@ export function ExportarRelatorioDropdown({
     }
   }
 
-  async function handleExportarInformativo(periodo: PeriodoInformativo) {
-    setGerando("informativo");
-    try {
-      const snap = await getDoc(doc(db, "configuracoes", "informativo"));
-      const config: InformativoConfigDoc = normalizarInformativoConfig(
-        snap.exists() ? (snap.data() as Partial<InformativoConfigDoc>) : undefined,
-      );
-      const layout = await carregarLayoutInformativo();
-      const fundoCorrida = `${window.location.origin}/informativo-fundo-corrida.png`;
-      const fundoBike = `${window.location.origin}/informativo-fundo-bike.png`;
 
-      const resumo = calcularResumoRankingPeriodo({
-        atletas,
-        lancamentos,
-        de: periodo.de,
-        ate: periodo.ate,
-      });
-      const bike = resumo.filter((a) => a.equipe === "bicicleta");
-      const corrida = resumo.filter((a) => a.equipe === "corrida");
-
-      const documento = (
-        <InformativoRankingDocument
-          bike={bike}
-          corrida={corrida}
-          mesLabel={labelPeriodo(periodo)}
-          modalidadeFiltro={config.modalidade}
-          limite={config.limite}
-          fundoBike={fundoBike}
-          fundoCorrida={fundoCorrida}
-          layout={layout}
-          ocultarTop3={config.ocultarTop3NoRanking ?? false}
-        />
-      );
-      const blob = await pdf(documento).toBlob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `informativo-ranking-${sufixoArquivo(periodo)}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-      setEscolhendoMes(false);
-
-      const totalNoPeriodo = resumo.reduce((s, r) => s + r.treinosMes, 0);
-      // A arte tem um número fixo de linhas — avisa em vez de cortar em silêncio.
-      const cabem = CAPACIDADE_RANKING + (config.ocultarTop3NoRanking ? 3 : 0);
-      const sobrando =
-        (config.modalidade !== "corrida" ? Math.max(0, bike.length - cabem) : 0) +
-        (config.modalidade !== "bicicleta" ? Math.max(0, corrida.length - cabem) : 0);
-
-      if (totalNoPeriodo === 0) {
-        show("info", `Informativo gerado, mas não há nenhum treino lançado em ${labelPeriodo(periodo)}.`);
-      } else if (sobrando > 0) {
-        show(
-          "info",
-          `Informativo gerado. ${sobrando === 1 ? "1 atleta ficou" : `${sobrando} atletas ficaram`} de fora: só cabem ${cabem} por modalidade na arte — a lista completa está em Lançar pontos › Visão consolidada.`,
-        );
-      } else {
-        show("success", `Informativo de ${labelPeriodo(periodo)} gerado com sucesso.`);
-      }
-    } catch {
-      show("error", "Não foi possível gerar o informativo agora. Tente novamente.");
-    } finally {
-      setGerando(null);
-    }
-  }
 
   return (
     <div ref={rootRef} className="relative">
@@ -232,12 +160,12 @@ export function ExportarRelatorioDropdown({
             role="menuitem"
             onClick={() => {
               setOpen(false);
-              setEscolhendoMes(true);
+              router.push("/gestao/informativo");
             }}
             className="flex w-full items-center gap-2.5 rounded-[calc(var(--radius)-2px)] px-2.5 py-2.5 text-left text-sm font-medium text-text hover:bg-bg"
           >
             <Trophy className="size-4 text-primary" />
-            Informativo do ranking
+            Informativo para divulgação
           </button>
           <button
             role="menuitem"
@@ -261,12 +189,6 @@ export function ExportarRelatorioDropdown({
         </div>
       )}
 
-      <GerarInformativoModal
-        open={escolhendoMes}
-        gerando={gerando === "informativo"}
-        onClose={() => setEscolhendoMes(false)}
-        onGerar={handleExportarInformativo}
-      />
     </div>
   );
 }

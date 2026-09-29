@@ -25,6 +25,8 @@ import { db } from "@/lib/firebase";
 import { formatBRL, formatDistancia, formatKm, formatPontos, formatShortDate, plural } from "@/lib/format";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { calcularEstatisticasDashboard } from "@/lib/dashboardStats";
+import { aderenciaPorAtleta, mediaAderencia } from "@/lib/aderencia";
+import { useDiasTreino } from "@/lib/useDiasTreino";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { calcularPosicoesRanking } from "@/lib/rankingPosition";
 import { ExportarRelatorioDropdown } from "./ExportarRelatorioDropdown";
@@ -142,6 +144,27 @@ export function VisaoEstrategica() {
       }),
     [atletas, lancamentos, historicoMensal, despesas, eventos, regras],
   );
+
+  const diasTreino = useDiasTreino();
+  /** Aderência média de cada modalidade nos últimos 30 dias (mesma janela do engajamento). */
+  const aderenciaModalidade = useMemo(() => {
+    if (!diasTreino || !atletas || !lancamentos) return { corrida: null, bicicleta: null };
+    const hoje = new Date();
+    const ate = dataIsoLocal(hoje);
+    const de = dataIsoLocal(new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - 29));
+    const ativos = atletas.filter((a) => a.ativo && (a.equipe === "corrida" || a.equipe === "bicicleta"));
+    const porAtleta = aderenciaPorAtleta({
+      atletas: ativos,
+      config: diasTreino,
+      lancamentos,
+      resumosMensais: historicoMensal ?? [],
+      de,
+      ate,
+    });
+    const media = (equipe: string) =>
+      mediaAderencia(ativos.filter((a) => a.equipe === equipe).map((a) => porAtleta.get(a.id)));
+    return { corrida: media("corrida"), bicicleta: media("bicicleta") };
+  }, [diasTreino, atletas, lancamentos, historicoMensal]);
 
   const lancamentosVisiveis = useMemo(() => {
     if (!atletas || !lancamentos) return [];
@@ -417,19 +440,21 @@ export function VisaoEstrategica() {
       <section aria-labelledby="titulo-modalidades" className={painel}>
         <h2 id="titulo-modalidades" className="text-base font-bold text-text">Modalidades</h2>
         <p className="mt-0.5 text-xs text-text-light">
-          Pontos, participações e km desde o início, os mesmos do Ranking geral. Atividade: últimos 30 dias.
+          Pontos, participações e km desde o início, os mesmos do Ranking geral. Atividade e aderência: últimos 30 dias.
         </p>
         <div className="mt-4 grid grid-cols-1 divide-y divide-border md:grid-cols-2 md:divide-x md:divide-y-0">
           <ColunaModalidade
             modalidade="corrida"
             stats={stats.corrida}
             podio={stats.podioCorrida}
+            aderencia={aderenciaModalidade.corrida}
             className="pb-5 md:pb-0 md:pr-6"
           />
           <ColunaModalidade
             modalidade="bicicleta"
             stats={stats.bike}
             podio={stats.podioBike}
+            aderencia={aderenciaModalidade.bicicleta}
             className="pt-5 md:pl-6 md:pt-0"
           />
         </div>
@@ -497,10 +522,13 @@ function ColunaModalidade({
   modalidade,
   stats,
   podio,
+  aderencia,
   className,
 }: {
   modalidade: "corrida" | "bicicleta";
   stats: ModStats;
+  /** Aderência média nos últimos 30 dias; null sem agenda de treinos. */
+  aderencia: number | null;
   /** `pontuacaoTotal` já é a pontuação calculada (a do Ranking geral). */
   podio: AtletaDoc[];
   className?: string;
@@ -517,6 +545,7 @@ function ColunaModalidade({
     ["Participações", String(stats.participacoes)],
     ["Pontos", formatPontos(stats.pontos)],
     ["Por atleta", formatPontos(stats.media)],
+    ...(aderencia != null ? ([["Aderência", `${aderencia}%`]] as [string, string][]) : []),
     ...(stats.km > 0 ? ([["Km", formatDistancia(stats.km)]] as [string, string][]) : []),
   ];
 
@@ -552,7 +581,7 @@ function ColunaModalidade({
       <dl
         className={cn(
           "grid gap-x-4 gap-y-3",
-          numeros.length === 4 ? "grid-cols-2 sm:grid-cols-4 md:grid-cols-2 xl:grid-cols-4" : "grid-cols-3",
+          numeros.length === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4 md:grid-cols-2 xl:grid-cols-4",
         )}
       >
         {numeros.map(([rotulo, valor]) => (

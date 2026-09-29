@@ -6,6 +6,8 @@ import { ListChecks, Pencil, Plus, Trash2 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useToast } from "@/components/ui/Toast";
 import { Card } from "@/components/ui/Card";
+import { useDiasTreino } from "@/lib/useDiasTreino";
+import { DiasTreinoCard } from "./DiasTreinoCard";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmActionModal } from "@/components/ui/ConfirmActionModal";
@@ -20,6 +22,7 @@ const modalidadeLabel: Record<RegraPontuacaoDoc["modalidade"], string> = {
 };
 
 export function CriteriosTab() {
+  const diasTreino = useDiasTreino();
   const { show } = useToast();
   const [regras, setRegras] = useState<RegraPontuacaoDoc[] | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -48,9 +51,9 @@ export function CriteriosTab() {
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold text-text">Critérios de pontuação</h1>
+          <h1 className="text-2xl font-extrabold text-text">Critérios e treinos</h1>
           <p className="text-sm text-text-light">
-            Defina as regras usadas para pontuar treinos, eventos e lançamentos avulsos.
+            Regras de pontuação e a agenda oficial de treinos de cada modalidade.
           </p>
         </div>
         <Button
@@ -112,6 +115,12 @@ export function CriteriosTab() {
             ))}
           </ul>
         </Card>
+      )}
+
+      {diasTreino ? (
+        <DiasTreinoCard config={diasTreino} podeEditar />
+      ) : (
+        <Card className="h-56 animate-pulse" />
       )}
 
       <ConfirmActionModal
