@@ -96,9 +96,13 @@ texto.** Para hierarquia, use tamanho e peso, não cores mais apagadas.
 - **Aderência** (`src/lib/aderencia.ts`): treinos feitos ÷ treinos previstos na agenda
   (`configuracoes/dias_treino`, editada em Critérios), até hoje, sem as datas sem treino e sem
   as faltas justificadas; teto de 100%. Sem agenda, mostra "—". Use sempre essas funções.
+  O histórico mensal aceita uma aderência informada (0–100) que substitui o cálculo naquele mês;
+  em períodos de vários meses, um mês informado sem agenda pesa como um mês comum. Quando o
+  resultado inclui valor informado (`informada`), não mostre "X de Y treinos previstos".
 - **Informativo** (`/gestao/informativo`): arte gerada em código (`ArteInformativo`), em 1920×1080
   ou 1080×1920, exportada em PNG. Posição só por pontos, empates dividem a colocação
-  (`calcularPosicoesRanking`); ninguém fica de fora, as páginas extras são equilibradas. A arte
+  (`calcularPosicoesRanking`); ninguém fica de fora e todo informativo fecha com o mesmo
+  resumo do período (`ResumoPeriodo`), igual para Corrida e Bike. A arte
   usa cores fixas e as fontes Barlow / Barlow Condensed, independentes do tema do portal.
 
 ---

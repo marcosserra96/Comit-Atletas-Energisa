@@ -458,7 +458,9 @@ export default function DashboardPage() {
                     />
                   </div>
                   <p className="mt-1 text-xs text-text-light">
-                    {aderenciaMes.feitos} de {plural(aderenciaMes.previstos, "treino previsto", "treinos previstos")} até hoje
+                    {aderenciaMes.informada
+                      ? "Informada pelo comitê no histórico do mês"
+                      : `${aderenciaMes.feitos} de ${plural(aderenciaMes.previstos, "treino previsto", "treinos previstos")} até hoje`}
                   </p>
                 </div>
               ) : null}

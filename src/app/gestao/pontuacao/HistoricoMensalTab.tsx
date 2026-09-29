@@ -14,6 +14,7 @@ import {
 } from "firebase/firestore";
 import { AlertTriangle, FileSpreadsheet, History } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { cn } from "@/lib/cn";
 import { atletaPublicoRef } from "@/lib/publicAthletes";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
@@ -26,12 +27,16 @@ import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { formatKm, formatPontos, plural } from "@/lib/format";
 import { consolidarAtividades } from "@/lib/activityConsolidation";
+import { calcularAderencia, datasPrevistas, limitesDasCompetencias } from "@/lib/aderencia";
+import { useDiasTreino } from "@/lib/useDiasTreino";
 import type { AtletaDoc, HistoricoMensalDoc, HistoricoPontoDoc, Modalidade } from "@/lib/types";
 
 interface ValoresHistoricos {
   pontos: string;
   km: string;
   treinos: string;
+  /** Opcional: vazio = aderência calculada pela agenda de treinos. */
+  aderencia: string;
 }
 
 interface SobreposicaoResumo {
@@ -49,6 +54,12 @@ function numero(valor: string) {
 /** Pontos são sempre inteiros. */
 function pontosDe(valor: string) {
   return Math.round(numero(valor));
+}
+
+/** Aderência informada: inteiro de 0 a 100, ou null quando o campo está vazio. */
+function aderenciaDe(valor: string): number | null {
+  if (valor.trim() === "") return null;
+  return Math.min(100, Math.max(0, Math.round(numero(valor))));
 }
 
 /** Km com no máximo 2 casas, sem ruído de ponto flutuante. */
@@ -77,6 +88,8 @@ export function HistoricoMensalTab() {
   const [atletas, setAtletas] = useState<AtletaDoc[] | null>(null);
   const [existentes, setExistentes] = useState<Map<string, HistoricoMensalDoc>>(new Map());
   const [sobreposicoes, setSobreposicoes] = useState<Map<string, SobreposicaoResumo>>(new Map());
+  const [faltasPorAtleta, setFaltasPorAtleta] = useState<Map<string, string[]>>(new Map());
+  const diasTreino = useDiasTreino();
   const [sobreposicaoConfirmada, setSobreposicaoConfirmada] = useState(false);
   const [valores, setValores] = useState<Record<string, ValoresHistoricos>>({});
   const [salvando, setSalvando] = useState(false);
@@ -130,9 +143,14 @@ export function HistoricoMensalTab() {
       .then((snap) => {
         if (!ativo) return;
         const porAtleta = new Map<string, HistoricoPontoDoc[]>();
+        const faltas = new Map<string, string[]>();
         snap.docs.forEach((d) => {
           const item = { id: d.id, ...d.data() } as HistoricoPontoDoc;
-          if (item.estornado || item.regraId === "falta_justificada") return;
+          if (item.estornado) return;
+          if (item.regraId === "falta_justificada") {
+            faltas.set(item.atletaId, [...(faltas.get(item.atletaId) ?? []), item.dataTreino]);
+            return;
+          }
           const lista = porAtleta.get(item.atletaId) ?? [];
           lista.push(item);
           porAtleta.set(item.atletaId, lista);
@@ -148,9 +166,12 @@ export function HistoricoMensalTab() {
           });
         });
         setSobreposicoes(mapa);
+        setFaltasPorAtleta(faltas);
       })
       .catch(() => {
-        if (ativo) setSobreposicoes(new Map());
+        if (!ativo) return;
+        setSobreposicoes(new Map());
+        setFaltasPorAtleta(new Map());
       });
 
     return () => {
@@ -174,9 +195,28 @@ export function HistoricoMensalTab() {
         pontos: pontos ? String(pontos) : "",
         km: km ? String(km) : "",
         treinos: treinos ? String(treinos) : "",
+        aderencia: complemento?.aderencia != null ? String(complemento.aderencia) : "",
       };
     },
     [existentes, sobreposicoes, valores],
+  );
+
+  /** Datas com treino previsto no mês, pela agenda da modalidade. */
+  const previstasDoMes = useMemo(() => {
+    if (!diasTreino) return [];
+    const { inicio, fim } = limitesDasCompetencias(competencia, competencia);
+    return datasPrevistas(diasTreino[modalidade], inicio, fim, diasTreino.semTreino);
+  }, [diasTreino, competencia, modalidade]);
+
+  /** Aderência que o portal calcularia com os treinos digitados (sugestão no campo). */
+  const aderenciaSugerida = useCallback(
+    (atletaId: string, treinos: string) =>
+      calcularAderencia({
+        previstas: previstasDoMes,
+        treinosFeitos: Math.floor(numero(treinos)),
+        faltasJustificadas: faltasPorAtleta.get(atletaId),
+      }).percentual,
+    [previstasDoMes, faltasPorAtleta],
   );
 
   const totais = useMemo(() => {
@@ -243,14 +283,16 @@ export function HistoricoMensalTab() {
         const km = Math.max(0, totalKm - (detalhado?.km ?? 0));
         const treinos = Math.max(0, totalTreinos - (detalhado?.treinos ?? 0));
 
+        const aderencia = aderenciaDe(v.aderencia);
         const temComplemento = pontos > 0 || km > 0 || treinos > 0;
+        const temDados = temComplemento || aderencia != null;
         const docId = `${competencia}_${atleta.id}`;
         const ref = doc(db, "historico_mensal", docId);
 
-        if (!temComplemento && !atual) continue;
+        if (!temDados && !atual) continue;
 
         const deltaPontos = pontos - (atual?.pontos ?? 0);
-        if (!temComplemento && atual) {
+        if (!temDados && atual) {
           batch.delete(ref);
         } else {
           batch.set(
@@ -264,6 +306,7 @@ export function HistoricoMensalTab() {
               pontos,
               km,
               treinos,
+              aderencia,
               criadoPor: atual?.criadoPor ?? uid,
               criadoPorNome: atual?.criadoPorNome ?? autor.nome,
               criadoEm: atual?.criadoEm ?? serverTimestamp(),
@@ -344,6 +387,7 @@ export function HistoricoMensalTab() {
             Pontos: pontosDe(v.pontos) || "",
             KM: kmDe(v.km) || "",
             Treinos: Math.floor(numero(v.treinos)) || "",
+            "Aderência": aderenciaDe(v.aderencia) ?? "",
           };
         }),
         campos: [
@@ -372,6 +416,12 @@ export function HistoricoMensalTab() {
             largura: 12,
             exemplo: 8,
             descricao: "Quantidade total de treinos do atleta no mês.",
+          },
+          {
+            coluna: "Aderência",
+            largura: 12,
+            exemplo: 85,
+            descricao: "Opcional. Aderência do mês em % (0 a 100). Em branco, o portal calcula pela agenda de treinos.",
           },
         ],
       });
@@ -403,6 +453,7 @@ export function HistoricoMensalTab() {
           pontos: linha["pontos"] ?? "",
           km: linha["km"] ?? "",
           treinos: linha["treinos"] ?? "",
+          aderencia: String(linha["aderência"] ?? linha["aderencia"] ?? "").replace("%", "").trim(),
         };
         encontrados += 1;
       }
@@ -432,7 +483,7 @@ export function HistoricoMensalTab() {
           <div>
             <h2 className="font-bold text-text">Histórico mensal consolidado</h2>
             <p className="text-sm text-text-light">
-              Os campos já consideram os lançamentos existentes no mês. Informe o total mensal desejado e o sistema grava somente o complemento que ainda falta.
+              Os campos já consideram os lançamentos existentes no mês. Informe o total mensal desejado e o sistema grava somente o complemento que ainda falta. A aderência é opcional: em branco, vale o cálculo pela agenda de treinos (sugerido em cinza).
             </p>
           </div>
         </div>
@@ -534,10 +585,19 @@ export function HistoricoMensalTab() {
                       </p>
                     ) : null}
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     <Campo label="Pontos" value={v.pontos} onChange={(x) => alterar(a.id, "pontos", x)} step="1" />
                     <Campo label="KM" value={v.km} onChange={(x) => alterar(a.id, "km", x)} step="0.01" />
                     <Campo label="Treinos" value={v.treinos} onChange={(x) => alterar(a.id, "treinos", x)} step="1" />
+                    <Campo
+                      label="Aderência"
+                      value={v.aderencia}
+                      onChange={(x) => alterar(a.id, "aderencia", x)}
+                      step="1"
+                      max={100}
+                      sufixo="%"
+                      placeholder={formatSugestao(aderenciaSugerida(a.id, v.treinos))}
+                    />
                   </div>
                 </Card>
               );
@@ -545,13 +605,16 @@ export function HistoricoMensalTab() {
           </div>
 
           <Card className="hidden overflow-x-auto p-0 md:block">
-            <table className="w-full min-w-[680px] text-sm">
+            <table className="w-full min-w-[780px] text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-xs uppercase text-text-muted">
                   <th className="px-4 py-3 font-semibold">Atleta</th>
-                  <th className="px-3 py-3 text-center font-semibold">Pontos</th>
-                  <th className="px-3 py-3 text-center font-semibold">KM</th>
-                  <th className="px-3 py-3 text-center font-semibold">Treinos</th>
+                  <th className="w-[16%] px-3 py-3 text-center font-semibold">Pontos</th>
+                  <th className="w-[16%] px-3 py-3 text-center font-semibold">KM</th>
+                  <th className="w-[16%] px-3 py-3 text-center font-semibold">Treinos</th>
+                  <th className="w-[16%] px-3 py-3 text-center font-semibold" title="Opcional. Em branco, vale o cálculo pela agenda de treinos.">
+                    Aderência %
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -572,6 +635,17 @@ export function HistoricoMensalTab() {
                       <td className="px-3 py-2"><TabelaInput value={v.pontos} onChange={(x) => alterar(a.id, "pontos", x)} step="1" /></td>
                       <td className="px-3 py-2"><TabelaInput value={v.km} onChange={(x) => alterar(a.id, "km", x)} step="0.01" /></td>
                       <td className="px-3 py-2"><TabelaInput value={v.treinos} onChange={(x) => alterar(a.id, "treinos", x)} step="1" /></td>
+                      <td className="px-3 py-2">
+                        <TabelaInput
+                          value={v.aderencia}
+                          onChange={(x) => alterar(a.id, "aderencia", x)}
+                          step="1"
+                          max={100}
+                          sufixo="%"
+                          placeholder={formatSugestao(aderenciaSugerida(a.id, v.treinos))}
+                          ariaLabel={`Aderência de ${a.nome}`}
+                        />
+                      </td>
                     </tr>
                   );
                 })}
@@ -598,26 +672,49 @@ export function HistoricoMensalTab() {
   );
 }
 
+/** Sugestão exibida no campo de aderência vazio: o que o portal calcularia. */
+function formatSugestao(percentual: number | null) {
+  return percentual == null ? "—" : `${percentual}`;
+}
+
 function TabelaInput({
   value,
   onChange,
   step,
+  max,
+  sufixo,
+  placeholder = "0",
+  ariaLabel,
 }: {
   value: string;
   onChange: (value: string) => void;
   step: string;
+  max?: number;
+  sufixo?: string;
+  placeholder?: string;
+  ariaLabel?: string;
 }) {
   return (
-    <input
-      type="number"
-      min={0}
-      step={step}
-      inputMode={step === "1" ? "numeric" : "decimal"}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="h-9 w-full rounded-[var(--radius-sm)] border border-border bg-bg px-2 text-center text-sm tabular-nums text-text outline-none focus:border-primary"
-      placeholder="0"
-    />
+    <div className="relative">
+      <input
+        type="number"
+        min={0}
+        max={max}
+        step={step}
+        inputMode={step === "1" ? "numeric" : "decimal"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={ariaLabel}
+        className={cn(
+          "h-9 w-full rounded-[var(--radius-sm)] border border-border bg-bg px-2 text-center text-sm tabular-nums text-text outline-none placeholder:text-text-muted focus:border-primary",
+          sufixo && "pr-6",
+        )}
+        placeholder={placeholder}
+      />
+      {sufixo ? (
+        <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-xs text-text-muted">{sufixo}</span>
+      ) : null}
+    </div>
   );
 }
 
@@ -626,25 +723,40 @@ function Campo({
   value,
   onChange,
   step,
+  max,
+  sufixo,
+  placeholder = "0",
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   step: string;
+  max?: number;
+  sufixo?: string;
+  placeholder?: string;
 }) {
   return (
-    <label className="flex flex-col gap-1">
-      <span className="text-xs font-semibold text-text-light">{label}</span>
-      <input
-        type="number"
-        min={0}
-        step={step}
-        inputMode={step === "1" ? "numeric" : "decimal"}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-11 w-full rounded-[var(--radius)] border border-border bg-bg px-2 text-center text-sm tabular-nums text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-        placeholder="0"
-      />
+    <label className="flex min-w-0 flex-col gap-1">
+      <span className="truncate text-xs font-semibold text-text-light">{label}</span>
+      <span className="relative">
+        <input
+          type="number"
+          min={0}
+          max={max}
+          step={step}
+          inputMode={step === "1" ? "numeric" : "decimal"}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={cn(
+            "h-11 w-full rounded-[var(--radius)] border border-border bg-bg px-2 text-center text-base tabular-nums text-text outline-none placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/15 sm:text-sm",
+            sufixo && "pr-5",
+          )}
+          placeholder={placeholder}
+        />
+        {sufixo ? (
+          <span className="pointer-events-none absolute inset-y-0 right-1.5 flex items-center text-xs text-text-muted">{sufixo}</span>
+        ) : null}
+      </span>
     </label>
   );
 }
