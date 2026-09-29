@@ -3,10 +3,11 @@
 import { dataIsoLocal } from "@/lib/date";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, where } from "firebase/firestore";
+import { collection, doc, getDoc, onSnapshot, orderBy, query, where } from "firebase/firestore";
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle, Bike, CalendarDays, ChevronLeft, ChevronRight, Footprints, Medal, Trophy, X } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { carregarTodosLancamentos } from "@/lib/lancamentosCache";
 import { RequireRole } from "@/components/session/RequireRole";
 import { getStoredBranding, loginBackground } from "@/lib/branding";
 import { normalizarInformativoConfig } from "@/lib/informativoConfig";
@@ -32,9 +33,7 @@ function useDadosApresentacao() {
           .filter(perfilAtletaVisivel),
       );
     });
-    getDocs(collection(db, "historico_pontos")).then((snap) => {
-      setLancamentos(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as HistoricoPontoDoc));
-    });
+    void carregarTodosLancamentos().then(setLancamentos, () => setLancamentos([]));
     const isoHoje = dataIsoLocal();
     const unsubEventos = onSnapshot(
       query(collection(db, "agenda_eventos"), where("data", ">=", isoHoje), orderBy("data", "asc")),

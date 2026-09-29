@@ -57,6 +57,28 @@ export function apiErrorResponse(error: unknown, fallback: string) {
     return Response.json({ error: error.message }, { status: 503 });
   }
 
+  if (cotaEsgotada(error)) {
+    console.error("Cota do Firestore esgotada:", error);
+    return Response.json(
+      {
+        error: "O portal atingiu o limite diário de uso do banco de dados. O acesso volta sozinho em algumas horas.",
+        codigo: "limite_uso",
+      },
+      { status: 503 },
+    );
+  }
+
   console.error(fallback, error);
   return Response.json({ error: fallback }, { status: 500 });
+}
+
+/** Firestore responde RESOURCE_EXHAUSTED (código gRPC 8) quando a cota do plano acaba. */
+function cotaEsgotada(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const { code, message } = error as { code?: unknown; message?: unknown };
+  return (
+    code === 8 ||
+    code === "resource-exhausted" ||
+    (typeof message === "string" && /RESOURCE_EXHAUSTED|quota exceeded/i.test(message))
+  );
 }
