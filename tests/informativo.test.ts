@@ -39,9 +39,9 @@ test("paginação não deixa ninguém de fora", () => {
     assert.equal(total, 60);
     assert.equal(paginas[0].linhas.length, CAPACIDADE[formato].primeira);
     assert.ok(paginas.every((p) => p.total === paginas.length));
-    // Continuações equilibradas: nenhuma com muito menos que as outras.
-    const cont = paginas.slice(1).map((p) => p.linhas.length);
-    assert.ok(Math.max(...cont) - Math.min(...cont) <= 1);
+    // Continuações cheias, só a última pode ter menos.
+    const cont = paginas.slice(1, -1).map((p) => p.linhas.length);
+    assert.ok(cont.every((n) => n === CAPACIDADE[formato].seguintes));
   }
 });
 
