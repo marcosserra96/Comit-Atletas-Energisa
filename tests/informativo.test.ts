@@ -56,3 +56,19 @@ test("sem pontuação no período sai só a capa", () => {
   assert.equal(paginas.length, 1);
   assert.equal(paginas[0].linhas.length, 0);
 });
+
+test("destaques sempre fecham a última página, com espaço reservado", () => {
+  for (const n of [5, 12, 13, 14, 17, 30, 42, 60, 90]) {
+    for (const formato of ["paisagem", "vertical"] as const) {
+      const paginas = paginar(ranking(Array.from({ length: n }, (_, i) => 200 - i)), formato);
+      const ultima = paginas.at(-1)!;
+      assert.equal(ultima.destaques, true, `${formato} ${n}`);
+      assert.ok(paginas.slice(0, -1).every((p) => !p.destaques));
+      const cap = CAPACIDADE[formato];
+      const limite = ultima.numero === 1 ? cap.primeiraComDestaques : cap.seguintesComDestaques;
+      assert.ok(ultima.linhas.length <= limite, `${formato} ${n}: ${ultima.linhas.length} > ${limite}`);
+      const total = paginas.reduce((s, p) => s + p.linhas.length + (p.podio?.reduce((x, d) => x + d.atletas.length, 0) ?? 0), 0);
+      assert.equal(total, n);
+    }
+  }
+});
