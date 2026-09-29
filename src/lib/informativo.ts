@@ -19,8 +19,8 @@ export const CAPACIDADE: Record<
   FormatoInformativo,
   { primeira: number; seguintes: number; primeiraComDestaques: number; seguintesComDestaques: number }
 > = {
-  paisagem: { primeira: 14, seguintes: 30, primeiraComDestaques: 10, seguintesComDestaques: 20 },
-  vertical: { primeira: 10, seguintes: 27, primeiraComDestaques: 8, seguintesComDestaques: 20 },
+  paisagem: { primeira: 14, seguintes: 30, primeiraComDestaques: 8, seguintesComDestaques: 18 },
+  vertical: { primeira: 9, seguintes: 30, primeiraComDestaques: 7, seguintesComDestaques: 24 },
 };
 
 const MESES = [
@@ -192,16 +192,13 @@ export function paginar(ranking: LinhaRanking[], formato: FormatoInformativo): P
     // A capa encheu sem espaço para os destaques: eles ganham uma página de fechamento.
     paginas.push({ numero: 2, podio: null, linhas: [], destaques: true });
   } else {
-    // O que sobra é dividido por igual entre as continuações, e a última guarda
-    // espaço para os destaques.
-    let quantas = Math.ceil(sobra.length / cap.seguintes);
-    while (Math.ceil(sobra.length / quantas) > cap.seguintesComDestaques) quantas++;
-    // Divisão exata: as páginas diferem em no máximo 1 nome, e as maiores vêm primeiro.
-    const base = Math.floor(sobra.length / quantas);
-    const comUmAMais = sobra.length % quantas;
+    // Páginas cheias; a última recebe o que sobra (até o limite que deixa espaço
+    // para os destaques). Se sobrar pouco, a arte completa o espaço com o resumo.
+    let quantas = 1;
+    while ((quantas - 1) * cap.seguintes + cap.seguintesComDestaques < sobra.length) quantas++;
     let inicio = 0;
     for (let i = 0; i < quantas; i++) {
-      const tamanho = base + (i < comUmAMais ? 1 : 0);
+      const tamanho = i < quantas - 1 ? cap.seguintes : sobra.length - inicio;
       paginas.push({ numero: paginas.length + 1, podio: null, linhas: sobra.slice(inicio, inicio + tamanho), destaques: false });
       inicio += tamanho;
     }

@@ -41,6 +41,14 @@ function competenciasRecentes(hoje = new Date()) {
   });
 }
 
+/** Alguma área da arte está escondendo conteúdo (ex.: uma linha da tabela)? */
+function temConteudoCortado(arte: HTMLElement) {
+  return [...arte.querySelectorAll<HTMLElement>("*")].some((el) => {
+    if (el.clientHeight < 100) return false;
+    return getComputedStyle(el).overflow === "hidden" && el.scrollHeight > el.clientHeight + 2;
+  });
+}
+
 /** Mostra a arte em tamanho real reduzida para caber na largura disponível. */
 function PreviaEscalada({ largura, altura, children }: { largura: number; altura: number; children: React.ReactNode }) {
   const caixa = useRef<HTMLDivElement>(null);
@@ -83,6 +91,17 @@ export default function InformativoPage() {
   const [formato, setFormato] = useState<FormatoInformativo>("vertical");
   const [exportando, setExportando] = useState<"baixar" | "compartilhar" | null>(null);
   const artes = useRef<(HTMLDivElement | null)[]>([]);
+  // Os nomes são medidos com a fonte da arte; ao terminar de carregar, redesenha.
+  const [, setFontesProntas] = useState(false);
+  useEffect(() => {
+    void Promise.all([
+      document.fonts.load("600 24px Barlow"),
+      document.fonts.load("700 24px 'Barlow Condensed'"),
+      document.fonts.load("800 24px 'Barlow Condensed'"),
+    ])
+      .catch(() => undefined)
+      .then(() => setFontesProntas(true));
+  }, []);
 
   useEffect(() => {
     let ativo = true;
@@ -141,6 +160,9 @@ export default function InformativoPage() {
     const { toBlob, getFontEmbedCSS } = await import("html-to-image");
     await document.fonts.ready;
     const nos = artes.current.slice(0, paginas.length).filter((n): n is HTMLDivElement => !!n);
+    if (nos.some(temConteudoCortado)) {
+      show("error", "Algum nome não coube na arte. Confira a prévia antes de publicar.");
+    }
     // As fontes são embutidas uma vez e reaproveitadas em todas as páginas.
     const fontEmbedCSS = await getFontEmbedCSS(nos[0]);
     const arquivos: File[] = [];
