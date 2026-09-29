@@ -15,6 +15,7 @@ import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { FichaAtletaModal } from "./ficha/FichaAtletaModal";
 import { MotivoMovimentacaoModal } from "./MotivoMovimentacaoModal";
 import type { AtletaDoc, Equipe } from "@/lib/types";
+import { formatPontos } from "@/lib/format";
 
 function useAtletasPorEquipe(equipe: Equipe, ordenarPorFila = false) {
   const [atletas, setAtletas] = useState<AtletaDoc[] | null>(null);
@@ -52,7 +53,7 @@ function ListaSimples({ atletas, vazio }: { atletas: AtletaDoc[] | null; vazio: 
         {atletas.map((a) => (
           <tr key={a.id} className="border-b border-border last:border-0">
             <td className="px-4 py-3 font-medium text-text">{a.nome}</td>
-            <td className="px-4 py-3 text-right text-text-light">{a.pontuacaoTotal} pts</td>
+            <td className="px-4 py-3 text-right text-text-light">{formatPontos(a.pontuacaoTotal)} pts</td>
           </tr>
         ))}
       </tbody>

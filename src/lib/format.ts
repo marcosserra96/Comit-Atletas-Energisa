@@ -74,9 +74,26 @@ export function formatDecimal(value: number, casas = 1) {
   }).format(Number.isFinite(value) ? value : 0);
 }
 
-/** Quilometragem no padrão brasileiro: "12,5 km". */
+/**
+ * Número para exibição: no máximo `maxCasas` casas, sem zeros sobrando à
+ * direita e com separador de milhar. 8.299999 → "8,3"; 10 → "10"; 1234.5 → "1.234,5".
+ * Padrão do portal para pontos, km e qualquer total calculado.
+ */
+export function formatNumero(value: number, maxCasas = 1) {
+  return new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: maxCasas,
+  }).format(Number.isFinite(value) ? value : 0);
+}
+
+/** Pontos: "25", "2,5", "1.250". */
+export function formatPontos(value: number) {
+  return formatNumero(value);
+}
+
+/** Quilometragem: "10 km", "12,5 km". */
 export function formatKm(value: number) {
-  return `${formatDecimal(value)} km`;
+  return `${formatNumero(value)} km`;
 }
 
 /**

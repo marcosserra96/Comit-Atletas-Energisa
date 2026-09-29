@@ -52,7 +52,7 @@ export function StaffTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }
       <button
         onClick={onOpenMobileNav}
         aria-label="Abrir menu"
-        className="flex size-9 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-white/70 hover:bg-white/10 hover:text-white lg:hidden"
+        className="-ml-2 flex size-11 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-white/70 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
       >
         <Menu className="size-5" />
       </button>
@@ -73,7 +73,10 @@ export function StaffTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           placeholder="Buscar atleta…"
-          className="h-9 w-full rounded-[var(--radius)] border border-white/10 bg-white/[0.08] pl-[34px] pr-4 text-sm text-white outline-none placeholder:text-white/35 focus:border-primary/50 focus:bg-white/[0.13] focus:ring-2 focus:ring-primary/15"
+          type="search"
+          enterKeyHint="search"
+          aria-label="Buscar atleta"
+          className="h-10 w-full rounded-[var(--radius)] border border-white/10 bg-white/[0.08] pl-[34px] pr-4 text-sm text-white outline-none placeholder:text-white/35 focus:border-primary/50 focus:bg-white/[0.13] focus:ring-2 focus:ring-primary/15"
         />
       </form>
 
@@ -92,12 +95,16 @@ export function StaffTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }
           onClick={toggleTheme}
           aria-label="Alternar tema"
           title="Alternar tema"
-          className="flex size-9 items-center justify-center rounded-[var(--radius-sm)] bg-white/[0.06] text-white/65 transition-colors hover:bg-white/[0.14] hover:text-white"
+          className="hidden size-9 items-center justify-center rounded-[var(--radius-sm)] bg-white/[0.06] text-white/65 transition-colors hover:bg-white/[0.14] hover:text-white lg:flex"
         >
           {theme === "light" ? <Moon className="size-[18px]" /> : <Sun className="size-[18px]" />}
         </button>
 
-        <div className="flex items-center gap-2.5 rounded-full border border-white/10 bg-white/[0.07] py-1 pl-1 pr-3">
+        <Link
+          href="/gestao/conta"
+          aria-label="Minha conta"
+          className="flex min-h-11 items-center gap-2.5 rounded-full p-1.5 transition-colors hover:bg-white/10 sm:min-h-0 sm:border sm:border-white/10 sm:bg-white/[0.07] sm:py-1 sm:pl-1 sm:pr-3"
+        >
           <span className="flex size-[30px] shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-on-primary">
             {initial}
           </span>
@@ -107,13 +114,13 @@ export function StaffTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }
               {roleLabel[usuario.role]}
             </p>
           </div>
-        </div>
+        </Link>
 
         <button
           onClick={logout}
           aria-label="Sair"
           title="Sair"
-          className="flex size-9 items-center justify-center rounded-[var(--radius-sm)] bg-white/[0.06] text-white/65 transition-colors hover:bg-white/[0.14] hover:text-white"
+          className="hidden size-9 items-center justify-center rounded-[var(--radius-sm)] bg-white/[0.06] text-white/65 transition-colors hover:bg-white/[0.14] hover:text-white lg:flex"
         >
           <LogOut className="size-[18px]" />
         </button>

@@ -24,7 +24,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { baixarModeloImportacao, readExcelFile } from "@/lib/excel";
 import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
-import { plural } from "@/lib/format";
+import { formatKm, formatPontos, plural } from "@/lib/format";
 import { consolidarAtividades } from "@/lib/activityConsolidation";
 import type { AtletaDoc, HistoricoMensalDoc, HistoricoPontoDoc, Modalidade } from "@/lib/types";
 
@@ -40,7 +40,6 @@ interface SobreposicaoResumo {
   treinos: number;
 }
 
-const vazio = (): ValoresHistoricos => ({ pontos: "", km: "", treinos: "" });
 
 function numero(valor: string) {
   const n = Number(valor.replace(",", "."));
@@ -521,7 +520,7 @@ export function HistoricoMensalTab() {
                     {sobreposicao ? (
                       <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-ranking-gold-text">
                         <AlertTriangle className="size-3.5" aria-hidden="true" />
-                        Já existente: {sobreposicao.pontos} pts · {sobreposicao.km.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km · {sobreposicao.treinos} treinos
+                        Já existente: {formatPontos(sobreposicao.pontos)} pts · {formatKm(sobreposicao.km)} · {sobreposicao.treinos} treinos
                       </p>
                     ) : null}
                   </div>
@@ -556,7 +555,7 @@ export function HistoricoMensalTab() {
                         {sobreposicao ? (
                           <div className="mt-1 flex items-center gap-1 text-xs font-semibold text-ranking-gold-text">
                             <AlertTriangle className="size-3.5" aria-hidden="true" />
-                            Já existente: {sobreposicao.pontos} pts · {sobreposicao.km.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km · {sobreposicao.treinos} treinos
+                            Já existente: {formatPontos(sobreposicao.pontos)} pts · {formatKm(sobreposicao.km)} · {sobreposicao.treinos} treinos
                           </div>
                         ) : null}
                       </td>
@@ -572,9 +571,9 @@ export function HistoricoMensalTab() {
         </>
       )}
 
-      <div className="sticky bottom-0 z-10 -mx-4 flex flex-col gap-2 border-t border-border bg-bg-card px-4 py-3 sm:static sm:mx-0 sm:flex-row sm:items-center sm:justify-between sm:border-0 sm:bg-transparent sm:p-0">
+      <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 -mx-4 flex flex-col gap-2 border-t border-border bg-bg-card/95 px-4 py-3 shadow-[0_-8px_24px_-12px_rgba(7,25,45,0.25)] backdrop-blur sm:static sm:shadow-none sm:backdrop-blur-none sm:mx-0 sm:flex-row sm:items-center sm:justify-between sm:border-0 sm:bg-transparent sm:p-0">
         <p className="text-sm text-text-light">
-          {totais.atletas} com dados · {totais.pontos.toLocaleString("pt-BR")} pts · {totais.km.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km · {totais.treinos} treinos
+          {totais.atletas} com dados · {formatPontos(totais.pontos)} pts · {formatKm(totais.km)} · {totais.treinos} treinos
         </p>
         <Button
           onClick={handleSalvar}

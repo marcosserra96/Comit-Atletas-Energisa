@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { db } from "@/lib/firebase";
-import { formatBRL, formatDecimal, formatShortDate, formatKm, plural } from "@/lib/format";
+import { formatBRL, formatKm, formatNumero, formatPontos, formatShortDate, plural } from "@/lib/format";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { calcularEstatisticasDashboard } from "@/lib/dashboardStats";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
@@ -515,9 +515,9 @@ function ColunaModalidade({
   ];
   const numeros: [string, string][] = [
     ["Participações", String(stats.participacoes)],
-    ["Pontos", String(stats.pontos)],
-    ["Por atleta", String(stats.media)],
-    ...(stats.km > 0 ? ([["Km", formatDecimal(stats.km)]] as [string, string][]) : []),
+    ["Pontos", formatPontos(stats.pontos)],
+    ["Por atleta", formatPontos(stats.media)],
+    ...(stats.km > 0 ? ([["Km", formatNumero(stats.km)]] as [string, string][]) : []),
   ];
 
   return (
@@ -580,7 +580,7 @@ function ColunaModalidade({
                   {posicoes[i]}
                 </span>
                 <span className="min-w-0 flex-1 truncate font-medium text-text">{a.nome}</span>
-                <span className="shrink-0 font-semibold tabular-nums text-text-secondary">{a.pontuacaoTotal} pts</span>
+                <span className="shrink-0 font-semibold tabular-nums text-text-secondary">{formatPontos(a.pontuacaoTotal)} pts</span>
               </li>
             ))}
           </ol>

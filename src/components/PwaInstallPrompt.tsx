@@ -88,7 +88,7 @@ export function PwaInstallPrompt() {
 
   return (
     <aside
-      className="fixed bottom-20 left-4 right-4 z-[70] ml-auto max-w-md rounded-[var(--radius-lg)] border border-primary/20 bg-bg-card p-4 shadow-[var(--shadow-elevated)] lg:bottom-6 lg:left-auto lg:right-6"
+      className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] left-4 right-4 z-[70] ml-auto max-w-md rounded-[var(--radius-lg)] border border-primary/20 bg-bg-card p-4 shadow-[var(--shadow-elevated)] lg:bottom-6 lg:left-auto lg:right-6"
       aria-label="Instalar aplicativo"
     >
       <button

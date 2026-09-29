@@ -11,16 +11,12 @@ import { RequireRole } from "@/components/session/RequireRole";
 import { getStoredBranding, loginBackground } from "@/lib/branding";
 import { normalizarInformativoConfig } from "@/lib/informativoConfig";
 import { atletaEstaEmAlerta, calcularResumoRankingMensal, ordenarRankingMensal, type ResumoAtletaMensal } from "@/lib/rankingMensal";
-import { formatShortDate } from "@/lib/format";
+import { formatNumero, formatShortDate } from "@/lib/format";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { calcularPosicoesRanking } from "@/lib/rankingPosition";
 import type { AtletaDoc, BrandingDoc, EventoDoc, HistoricoPontoDoc, InformativoConfigDoc } from "@/lib/types";
 
 const MEDAL_COR = ["#facc15", "#cbd5e1", "#d97706"];
-
-function formatarNumero(valor: number, casas = 0) {
-  return valor.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas });
-}
 
 function useDadosApresentacao() {
   const [atletas, setAtletas] = useState<AtletaDoc[] | null>(null);
@@ -98,10 +94,10 @@ function SlideHero({
       <p className="mt-3 text-2xl text-white/70">{mesLabel} · Comitê Atletas Energisa</p>
 
       <div className="mt-12 grid grid-cols-2 gap-5 lg:grid-cols-4">
-        <KpiTile label="Pontos" value={formatarNumero(totalPontos)} cor={branding.primary} />
-        <KpiTile label="Treinos" value={formatarNumero(totalTreinos)} cor={branding.secondary} />
-        <KpiTile label="KM" value={formatarNumero(totalKm, 1)} cor={branding.primary} />
-        <KpiTile label="Alertas" value={formatarNumero(totalAlertas)} cor={branding.accent} />
+        <KpiTile label="Pontos" value={formatNumero(totalPontos)} cor={branding.primary} />
+        <KpiTile label="Treinos" value={formatNumero(totalTreinos)} cor={branding.secondary} />
+        <KpiTile label="KM" value={formatNumero(totalKm)} cor={branding.primary} />
+        <KpiTile label="Alertas" value={formatNumero(totalAlertas)} cor={branding.accent} />
       </div>
     </div>
   );
@@ -129,7 +125,7 @@ function Top3Card({ titulo, icon: Icon, lista }: { titulo: string; icon: typeof 
               <span className="w-7 shrink-0 font-extrabold text-white/70">{posicoes[i]}º</span>
               <strong className="min-w-0 flex-1 truncate text-white">{a.nome}</strong>
               <em className="font-extrabold not-italic" style={{ color: "var(--color-primary)" }}>
-                {formatarNumero(a.pontosMes)} pts
+                {formatNumero(a.pontosMes)} pts
               </em>
             </div>
           ))}
@@ -175,7 +171,7 @@ function SlideAlertas({ alertas }: { alertas: ResumoAtletaMensal[] }) {
                   color: "var(--color-accent)",
                 }}
               >
-                {a.nome} · {formatarNumero(a.treinosMes)} treino{a.treinosMes === 1 ? "" : "s"}
+                {a.nome} · {formatNumero(a.treinosMes)} treino{a.treinosMes === 1 ? "" : "s"}
               </div>
             ))}
           </div>

@@ -23,7 +23,7 @@ import { SportBadge } from "@/components/ui/SportBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
-import { formatShortDate, plural } from "@/lib/format";
+import { formatKm, formatShortDate, plural } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { modalidadeFromEquipe, modalidadeLabel } from "@/lib/labels";
 import type { EventoDoc } from "@/lib/types";
@@ -123,7 +123,7 @@ function EventoCard({
             ) : (
               <SportBadge modalidade={evento.modalidade} size="sm" />
             )}
-            {evento.km ? <Badge tone="neutral">{evento.km} km</Badge> : null}
+            {evento.km ? <Badge tone="neutral">{formatKm(evento.km)}</Badge> : null}
             <span className="inline-flex items-center gap-1 text-xs text-text-light">
               <Users className="size-3.5" aria-hidden="true" />
               {plural(inscritos, "confirmado")}

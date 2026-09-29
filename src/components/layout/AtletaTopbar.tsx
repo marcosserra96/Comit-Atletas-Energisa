@@ -24,7 +24,7 @@ const titleByPath: Record<string, string> = {
 export function AtletaTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
   const pathname = usePathname();
   const { atleta: sessionAtleta, usuario, logout } = useActiveSession();
-  const { atleta, isPreview } = useAthleteView();
+  const { atleta, isPreview, withPreview } = useAthleteView();
   const title = titleByPath[pathname] ?? "";
   const mostrarTitulo = useTituloDaPaginaForaDaTela(pathname);
   const initial = atleta.nome.trim().charAt(0).toUpperCase();
@@ -36,7 +36,7 @@ export function AtletaTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
         <button
           onClick={onOpenMobileNav}
           aria-label="Abrir menu"
-          className="flex size-9 items-center justify-center rounded-[var(--radius)] text-text-muted hover:bg-bg lg:hidden"
+          className="-ml-2 flex size-11 items-center justify-center rounded-[var(--radius)] text-text-muted transition-colors hover:bg-bg active:bg-bg lg:hidden"
         >
           <Menu className="size-5" />
         </button>
@@ -51,7 +51,7 @@ export function AtletaTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
         </p>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 lg:gap-4">
         {(tambemComite || isPreview) && (
           <Link
             href={isPreview ? "/gestao/atletas?tab=ver" : "/gestao"}
@@ -62,7 +62,11 @@ export function AtletaTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
           </Link>
         )}
 
-        <div className="flex items-center gap-2.5">
+        <Link
+          href={withPreview("/perfil")}
+          aria-label={`Perfil de ${atleta.nome}`}
+          className="-mr-1.5 flex min-h-11 items-center gap-2.5 rounded-full p-1.5 transition-colors hover:bg-bg lg:mr-0"
+        >
           <span className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
             {initial}
           </span>
@@ -74,12 +78,12 @@ export function AtletaTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
               </span>
             )}
           </div>
-        </div>
+        </Link>
         <button
           onClick={logout}
           aria-label="Sair"
           title="Sair"
-          className="flex size-9 items-center justify-center rounded-[var(--radius)] text-text-muted transition-colors hover:bg-bg hover:text-danger"
+          className="hidden size-9 items-center justify-center rounded-[var(--radius)] text-text-muted transition-colors hover:bg-bg hover:text-danger lg:flex"
         >
           <LogOut className="size-[18px]" />
         </button>

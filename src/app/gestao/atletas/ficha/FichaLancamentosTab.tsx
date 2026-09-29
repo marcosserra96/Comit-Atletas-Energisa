@@ -19,7 +19,7 @@ import { useToast } from "@/components/ui/Toast";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { logAudit } from "@/lib/audit";
-import { formatDataTreino } from "@/lib/format";
+import { formatDataTreino, formatKm, formatPontos } from "@/lib/format";
 import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
 import { EstornarModal } from "../../pontuacao/EstornarModal";
 import type { AtletaDoc, HistoricoPontoDoc } from "@/lib/types";
@@ -113,7 +113,7 @@ export function FichaLancamentosTab({ atleta }: { atleta: AtletaDoc }) {
               <p className="truncate text-sm font-semibold text-text">{l.regraDesc}</p>
               <p className="text-xs text-text-muted">
                 {formatDataTreino(l.dataTreino, l.dataAproximada)}
-                {l.kmPercorrido ? ` · ${l.kmPercorrido} km` : ""}
+                {l.kmPercorrido ? ` · ${formatKm(l.kmPercorrido)}` : ""}
               </p>
               {l.observacao ? (
                 <p className="mt-1 max-w-xl whitespace-pre-wrap text-xs text-text-light">
@@ -123,7 +123,7 @@ export function FichaLancamentosTab({ atleta }: { atleta: AtletaDoc }) {
             </div>
             <div className="flex shrink-0 items-center gap-2.5">
               <span className={`text-sm font-bold ${l.estornado ? "text-text-muted line-through" : "text-success"}`}>
-                +{l.pontos}
+                +{formatPontos(l.pontos)}
               </span>
               <Badge tone={l.estornado ? "danger" : "success"}>{l.estornado ? "Estornado" : "Válido"}</Badge>
               {l.justificativaAusenciaId ? (

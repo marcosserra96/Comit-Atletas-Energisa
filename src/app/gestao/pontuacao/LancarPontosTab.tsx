@@ -24,7 +24,7 @@ import { Select } from "@/components/ui/Select";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { formatShortDate, plural } from "@/lib/format";
+import { formatPontos, formatShortDate, plural } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
@@ -596,7 +596,7 @@ export function LancarPontosTab({
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-semibold text-text">{a.nome}</p>
                   <span className="shrink-0 text-sm font-bold tabular-nums text-text">
-                    {isFalta ? "Falta" : `${pontosDoAtleta(a.id)} pts`}
+                    {isFalta ? "Falta" : `${formatPontos(pontosDoAtleta(a.id))} pts`}
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -619,7 +619,7 @@ export function LancarPontosTab({
                           className="size-5 shrink-0 rounded border-border accent-primary"
                         />
                         <span>
-                          {r.descricao} <span className="text-text-light">· {r.pontos} pts</span>
+                          {r.descricao} <span className="text-text-light">· {formatPontos(r.pontos)} pts</span>
                         </span>
                       </label>
                     );
@@ -687,7 +687,7 @@ export function LancarPontosTab({
                   <th key={r.id} className="px-3 py-3 text-center font-semibold">
                     {r.descricao}
                     <span className="block font-normal normal-case text-text-muted">
-                      {r.pontos} pts
+                      {formatPontos(r.pontos)} pts
                     </span>
                   </th>
                 ))}
@@ -811,7 +811,7 @@ export function LancarPontosTab({
       )}
 
       {/* No celular a barra de salvar fica presa ao pé da tela, sempre à mão. */}
-      <div className="sticky bottom-0 z-10 -mx-4 flex flex-col gap-2 border-t border-border bg-bg-card px-4 py-3 sm:static sm:mx-0 sm:flex-row sm:items-center sm:justify-between sm:border-0 sm:bg-transparent sm:p-0">
+      <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 -mx-4 flex flex-col gap-2 border-t border-border bg-bg-card/95 px-4 py-3 shadow-[0_-8px_24px_-12px_rgba(7,25,45,0.25)] backdrop-blur sm:static sm:shadow-none sm:backdrop-blur-none sm:mx-0 sm:flex-row sm:items-center sm:justify-between sm:border-0 sm:bg-transparent sm:p-0">
         <p className="text-sm text-text-light">
           {totalAtletasEnvolvidos === 1 ? "1 atleta receberá" : `${totalAtletasEnvolvidos} atletas receberão`} este lançamento (pontos ou falta justificada).
         </p>

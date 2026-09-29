@@ -26,7 +26,7 @@ import { analisarDuplicidade, gravarLancamentos, type LinhaParaGravar } from "@/
 import { RevisarImportacaoModal, type LinhaDuplicada, type LinhaImportacao, type ResultadoAnalise } from "./RevisarImportacaoModal";
 import type { AtletaDoc, HistoricoPontoDoc, Modalidade, RegraPontuacaoDoc } from "@/lib/types";
 import type ExcelJS from "exceljs";
-import { plural } from "@/lib/format";
+import { formatPontos, plural } from "@/lib/format";
 
 type Passo = "arquivo" | "mapeamento";
 
@@ -376,7 +376,7 @@ export function ImportarControleAntigoModal({ open, onClose }: { open: boolean; 
                   {combos.map((combo) => (
                     <tr key={combo.chave} className="border-b border-border last:border-0">
                       <td className="px-3 py-2 font-medium text-text">{combo.diaSemana}</td>
-                      <td className="px-3 py-2 text-center text-text-light">{combo.pontos}</td>
+                      <td className="px-3 py-2 text-center text-text-light">{formatPontos(combo.pontos)}</td>
                       <td className="px-3 py-2 text-center text-text-light">{combo.quantidade}</td>
                       <td className="px-3 py-2">
                         <Select
@@ -388,7 +388,7 @@ export function ImportarControleAntigoModal({ open, onClose }: { open: boolean; 
                           <option value="">Não importar</option>
                           {(regras ?? []).map((r) => (
                             <option key={r.id} value={r.id}>
-                              {r.descricao} ({r.pontos} pts)
+                              {r.descricao} ({formatPontos(r.pontos)} pts)
                             </option>
                           ))}
                         </Select>
@@ -430,7 +430,7 @@ export function ImportarControleAntigoModal({ open, onClose }: { open: boolean; 
                     <option value="">Escolha a regra pros treinos extras</option>
                     {(regras ?? []).map((r) => (
                       <option key={r.id} value={r.id}>
-                        {r.descricao} ({r.pontos} pts)
+                        {r.descricao} ({formatPontos(r.pontos)} pts)
                       </option>
                     ))}
                   </Select>

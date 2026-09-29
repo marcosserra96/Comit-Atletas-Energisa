@@ -1,7 +1,7 @@
 "use client";
 
 import { consolidarAtividades, type AtividadeConsolidada } from "@/lib/activityConsolidation";
-import type { HistoricoPontoDoc } from "@/lib/types";
+import type { HistoricoMensalDoc, HistoricoPontoDoc } from "@/lib/types";
 export type { AtividadeConsolidada } from "@/lib/activityConsolidation";
 
 export type PeriodoDesempenho = "6m" | "12m" | "ano";
@@ -25,6 +25,8 @@ export interface AnaliseDesempenho {
   serieMensal: SerieMensalDesempenho[];
   atividades: AtividadeConsolidada[];
   lancamentosValidos: HistoricoPontoDoc[];
+  /** Totais mensais da planilha antiga dentro do período, mais recentes primeiro. */
+  resumosMensais: HistoricoMensalDoc[];
   totalTreinos: number;
   totalParticipacoes: number;
   totalPontos: number;
@@ -120,6 +122,8 @@ function construirMeses(periodo: PeriodoDesempenho, hoje: Date) {
 
 export function calcularDesempenhoAtleta(params: {
   lancamentos: HistoricoPontoDoc[];
+  /** Totais mensais legados do atleta (sem dia de cada treino). */
+  resumosMensais?: HistoricoMensalDoc[];
   periodo: PeriodoDesempenho;
   hoje?: Date;
 }): AnaliseDesempenho {
@@ -147,9 +151,32 @@ export function calcularDesempenhoAtleta(params: {
     if (atividade.tipo === "treino") mes.treinos += 1;
   }
 
-  const totalPontos = lancamentosValidos.reduce((soma, l) => soma + l.pontos, 0);
-  const totalKm = atividades.reduce((soma, atividade) => soma + atividade.km, 0);
-  const kmTreinos = treinos.reduce((soma, atividade) => soma + atividade.km, 0);
+  // Histórico mensal: soma nos meses e nos totais, como no Ranking. Fica fora
+  // da regularidade semanal, porque não sabemos o dia de cada treino.
+  const resumosMensais = (params.resumosMensais ?? [])
+    .filter((r) => porMes.has(r.competencia))
+    .sort((a, b) => b.competencia.localeCompare(a.competencia));
+  let pontosResumos = 0;
+  let kmResumos = 0;
+  let treinosResumos = 0;
+  for (const resumo of resumosMensais) {
+    const mes = porMes.get(resumo.competencia)!;
+    const pontos = resumo.pontos || 0;
+    const km = resumo.km || 0;
+    const qtd = resumo.treinos || 0;
+    mes.pontos += pontos;
+    mes.km += km;
+    mes.treinos += qtd;
+    mes.participacoes += qtd;
+    pontosResumos += pontos;
+    kmResumos += km;
+    treinosResumos += qtd;
+  }
+
+  const totalPontos = lancamentosValidos.reduce((soma, l) => soma + l.pontos, 0) + pontosResumos;
+  const totalKm = atividades.reduce((soma, atividade) => soma + atividade.km, 0) + kmResumos;
+  const kmTreinos = treinos.reduce((soma, atividade) => soma + atividade.km, 0) + kmResumos;
+  const totalTreinos = treinos.length + treinosResumos;
   const diasAtivos = new Set(treinos.map((treino) => treino.data)).size;
   const semanasAtivas = new Set(treinos.map((treino) => chaveSemana(treino.data)).filter(Boolean)).size;
 
@@ -178,6 +205,9 @@ export function calcularDesempenhoAtleta(params: {
     const regra = lancamento.regraDesc || "Sem critério";
     pontosPorRegraMap.set(regra, (pontosPorRegraMap.get(regra) ?? 0) + lancamento.pontos);
   }
+  if (pontosResumos !== 0) {
+    pontosPorRegraMap.set("Histórico mensal", (pontosPorRegraMap.get("Histórico mensal") ?? 0) + pontosResumos);
+  }
   const pontosPorRegra = [...pontosPorRegraMap.entries()]
     .map(([regra, pontos]) => ({ regra, pontos }))
     .filter((item) => item.pontos !== 0)
@@ -187,13 +217,14 @@ export function calcularDesempenhoAtleta(params: {
     serieMensal,
     atividades,
     lancamentosValidos,
-    totalTreinos: treinos.length,
-    totalParticipacoes: atividades.length,
+    resumosMensais,
+    totalTreinos,
+    totalParticipacoes: atividades.length + treinosResumos,
     totalPontos,
     totalKm,
     kmTreinos,
-    mediaTreinosMes: serieMensal.length > 0 ? treinos.length / serieMensal.length : 0,
-    mediaKmTreino: treinos.length > 0 ? kmTreinos / treinos.length : 0,
+    mediaTreinosMes: serieMensal.length > 0 ? totalTreinos / serieMensal.length : 0,
+    mediaKmTreino: totalTreinos > 0 ? kmTreinos / totalTreinos : 0,
     diasAtivos,
     semanasAtivas,
     totalSemanasPeriodo,

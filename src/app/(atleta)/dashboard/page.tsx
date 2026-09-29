@@ -40,7 +40,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/cn";
 import { isWaitlisted, modalidadeFromEquipe } from "@/lib/labels";
-import { formatDataTreino, formatShortDate, formatDecimal, plural } from "@/lib/format";
+import { formatDataTreino, formatKm, formatNumero, formatPontos, formatShortDate, plural } from "@/lib/format";
 import { calcularInsightsAtleta } from "@/lib/athleteStats";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import {
@@ -299,7 +299,7 @@ export default function DashboardPage() {
     if (waitlisted || !modalidade) return null;
     if (!insights?.posicao) return null;
     return {
-      texto: `${insights.posicao}º lugar na ${nomeModalidade} · ${plural(atleta.pontuacaoTotal, "ponto")} no total`,
+      texto: `${insights.posicao}º lugar na ${nomeModalidade} · ${formatPontos(atleta.pontuacaoTotal)} ${atleta.pontuacaoTotal === 1 ? "ponto" : "pontos"} no total`,
       link: true,
     };
   })();
@@ -412,11 +412,11 @@ export default function DashboardPage() {
                     <dt className="text-xs text-text-muted">{insights.treinosMes === 1 ? "treino" : "treinos"}</dt>
                   </div>
                   <div className="px-2">
-                    <dd className="text-2xl font-black tabular-nums text-text">{formatDecimal(insights.kmMes)}</dd>
+                    <dd className="text-2xl font-black tabular-nums text-text">{formatNumero(insights.kmMes)}</dd>
                     <dt className="text-xs text-text-muted">km</dt>
                   </div>
                   <div className="px-2">
-                    <dd className="text-2xl font-black tabular-nums text-text">{insights.pontosMes}</dd>
+                    <dd className="text-2xl font-black tabular-nums text-text">{formatPontos(insights.pontosMes)}</dd>
                     <dt className="text-xs text-text-muted">{insights.pontosMes === 1 ? "ponto" : "pontos"}</dt>
                   </div>
                 </dl>
@@ -613,7 +613,7 @@ export default function DashboardPage() {
                       </span>
                       {!item.estornado ? (
                         <span className="shrink-0 text-sm font-bold tabular-nums text-success">
-                          +{item.pontos} pts
+                          +{formatPontos(item.pontos)} pts
                         </span>
                       ) : null}
                     </li>
@@ -712,7 +712,7 @@ export default function DashboardPage() {
                       : eventoAberto.modalidade === "bicicleta"
                         ? modalidadeLabel.bicicleta
                         : "Corrida"}
-                    {eventoAberto.km ? ` · ${eventoAberto.km} km` : ""}
+                    {eventoAberto.km ? ` · ${formatKm(eventoAberto.km)}` : ""}
                   </p>
                 </div>
               </div>

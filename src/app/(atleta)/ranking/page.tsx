@@ -17,7 +17,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
-import { formatShortDate, formatDecimal, formatKm, formatRelativeTime, plural } from "@/lib/format";
+import { formatKm, formatNumero, formatPontos, formatRelativeTime, formatShortDate, plural } from "@/lib/format";
 import { normalizarRankingPeriods } from "@/lib/rankingPeriods";
 import { calcularPosicoesRanking } from "@/lib/rankingPosition";
 import {
@@ -78,7 +78,7 @@ function Place({ atleta }: { atleta?: RankedAtleta }) {
               {atleta.nome}
             </span>
             <span className="text-xs font-extrabold sm:text-sm" style={{ color }}>
-              {atleta.pontuacaoTotal} pts
+              {formatPontos(atleta.pontuacaoTotal)} pts
             </span>
             {atleta.treinos !== undefined ? (
               <span className="mt-0.5 text-xs text-text-muted">
@@ -443,7 +443,7 @@ export default function RankingPage() {
       ) : (
         <div className="flex flex-col">
           {myRankAtleta ? (
-            <div className="mb-1 flex items-center gap-3 rounded-[var(--radius-lg)] border border-primary/20 bg-primary-subtle p-3 sm:p-4">
+            <div className="mb-3 flex items-center gap-3 rounded-[var(--radius-lg)] border border-primary/20 bg-primary-subtle p-3 sm:p-4">
               <RankingPosition
                 position={myRankAtleta.rank}
                 size="md"
@@ -467,7 +467,7 @@ export default function RankingPage() {
               >
                 <div>
                   <strong className="block text-sm tabular-nums text-text">
-                    {myRankAtleta.pontuacaoTotal}
+                    {formatPontos(myRankAtleta.pontuacaoTotal)}
                   </strong>
                   <span className="text-xs text-text-muted">pontos</span>
                 </div>
@@ -483,7 +483,7 @@ export default function RankingPage() {
                     </div>
                     <div>
                       <strong className="block text-sm tabular-nums text-text">
-                        {formatDecimal(myRankAtleta.km ?? 0)}
+                        {formatNumero(myRankAtleta.km ?? 0)}
                       </strong>
                       <span className="text-xs text-text-muted">km</span>
                     </div>
@@ -535,62 +535,51 @@ export default function RankingPage() {
                     return (
                       <li
                         key={atleta.id}
+                        aria-current={isMe ? "true" : undefined}
                         className={cn(
-                          "flex flex-col gap-3 border-l-4 px-3 py-3 transition-colors hover:bg-bg-inset sm:flex-row sm:items-center sm:gap-4 sm:px-5 sm:py-4",
+                          "flex items-center gap-3 border-l-4 px-3 py-3 transition-colors hover:bg-bg-inset sm:gap-4 sm:px-5 sm:py-4",
                           isMe
                             ? "border-l-primary bg-[var(--color-primary-subtle)]"
                             : "border-l-transparent",
                         )}
                       >
-                        <div className="flex w-full min-w-0 items-center gap-3 sm:flex-1">
-                          <RankingPosition
-                            position={atleta.rank}
-                            size={isTop3 ? "md" : "sm"}
-                            className={cn(!isTop3 && "bg-bg text-text-muted")}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <span
-                              className={cn(
-                                "block truncate text-sm font-medium text-text sm:text-base",
-                                isMe && "font-bold text-primary",
-                              )}
-                            >
-                              {atleta.nome}
-                              {isMe ? (
-                                <span className="ml-1 text-xs font-normal">(você)</span>
-                              ) : null}
+                        <RankingPosition
+                          position={atleta.rank}
+                          size={isTop3 ? "md" : "sm"}
+                          className={cn("shrink-0", !isTop3 && "bg-bg text-text-muted")}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <span
+                            className={cn(
+                              "block truncate text-sm font-medium text-text sm:text-base",
+                              isMe && "font-bold text-primary",
+                            )}
+                          >
+                            {atleta.nome}
+                            {isMe ? <span className="ml-1 text-xs font-normal">(você)</span> : null}
+                          </span>
+                          {atleta.treinos !== undefined ? (
+                            <span className="block truncate text-xs text-text-light sm:hidden">
+                              {plural(atleta.treinos, "treino")} · {formatKm(atleta.km ?? 0)}
                             </span>
-                          </div>
+                          ) : null}
                         </div>
                         <div
-                          className="grid w-full grid-cols-3 divide-x divide-border rounded-[var(--radius)] border border-border bg-bg py-2 text-center sm:w-[280px] sm:shrink-0 sm:border-0 sm:bg-transparent sm:py-0"
+                          className="hidden w-[280px] shrink-0 grid-cols-3 text-center sm:grid"
                           aria-label={`Desempenho de ${atleta.nome}`}
                         >
-                          <div className="px-2">
-                            <strong className="block text-sm tabular-nums text-text">
-                              {atleta.treinos ?? "—"}
-                            </strong>
-                            <span className="mt-0.5 block text-xs text-text-muted sm:hidden">
-                              treinos
-                            </span>
-                          </div>
-                          <div className="px-2">
-                            <strong className="block text-sm tabular-nums text-text">
-                              {atleta.km === undefined ? "—" : formatDecimal(atleta.km)}
-                            </strong>
-                            <span className="mt-0.5 block text-xs text-text-muted sm:hidden">
-                              km
-                            </span>
-                          </div>
-                          <div className="px-2">
-                            <strong className="block text-sm tabular-nums text-text sm:text-base">
-                              {atleta.pontuacaoTotal}
-                            </strong>
-                            <span className="mt-0.5 block text-xs text-text-muted sm:hidden">
-                              pontos
-                            </span>
-                          </div>
+                          <strong className="text-sm tabular-nums text-text">{atleta.treinos ?? "—"}</strong>
+                          <strong className="text-sm tabular-nums text-text">
+                            {atleta.km === undefined ? "—" : formatNumero(atleta.km)}
+                          </strong>
+                          <strong className="text-base tabular-nums text-text">
+                            {formatPontos(atleta.pontuacaoTotal)}
+                          </strong>
                         </div>
+                        <strong className="shrink-0 text-right text-base tabular-nums text-text sm:hidden">
+                          {formatPontos(atleta.pontuacaoTotal)}
+                          <span className="ml-0.5 text-xs font-medium text-text-muted">pts</span>
+                        </strong>
                       </li>
                     );
                   })}

@@ -13,7 +13,7 @@ import { logAudit } from "@/lib/audit";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { atualizarVisibilidadePerfil } from "@/lib/athleteVisibilityClient";
 import { equipeLabel } from "@/lib/labels";
-import { formatShortDate, formatKm } from "@/lib/format";
+import { formatKm, formatPontos, formatShortDate } from "@/lib/format";
 import type { AtletaDoc, HistoricoPontoDoc } from "@/lib/types";
 
 const sexoLabel: Record<string, string> = { M: "Masculino", F: "Feminino", Outro: "Prefiro não informar" };
@@ -115,7 +115,7 @@ export function FichaResumoTab({ atleta }: { atleta: AtletaDoc }) {
           <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-text-muted">
             Total de pontos
           </span>
-          <h3 className="text-xl font-extrabold text-text">{atleta.pontuacaoTotal}</h3>
+          <h3 className="text-xl font-extrabold text-text">{formatPontos(atleta.pontuacaoTotal)}</h3>
         </div>
         <div className="rounded-[var(--radius)] border border-border bg-bg p-4">
           <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-text-muted">

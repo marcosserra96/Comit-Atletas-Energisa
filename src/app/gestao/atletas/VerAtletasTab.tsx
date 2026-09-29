@@ -8,10 +8,6 @@ import {
   Search,
   Users,
   LinkIcon,
-  Route,
-  Bike,
-  Footprints,
-  Filter,
   LayoutGrid,
   List,
   FileSpreadsheet,
@@ -26,11 +22,12 @@ import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { equipeLabel, isWaitlisted, ehMembroDoElenco } from "@/lib/labels";
-import { formatShortDate, formatKm } from "@/lib/format";
+import { formatKm, formatPontos, formatShortDate } from "@/lib/format";
 import { exportToExcel } from "@/lib/excel";
 import { cn } from "@/lib/cn";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { FichaAtletaModal } from "./ficha/FichaAtletaModal";
+import { PainelNumeros } from "@/components/ui/PainelNumeros";
 import type { AtletaDoc, Equipe, HistoricoPontoDoc } from "@/lib/types";
 
 type FiltroModalidade = "todas" | "corrida" | "bicicleta";
@@ -149,12 +146,14 @@ export function VerAtletasTab() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiCard icon={Route} color="var(--color-primary)" label="KM total" value={formatKm(kmTotal)} desc="Soma coletiva dos atletas" />
-        <KpiCard icon={Bike} color="var(--color-accent)" label="Bike" value={formatKm(kmBike)} desc="Quilometragem acumulada" />
-        <KpiCard icon={Footprints} color="var(--color-secondary)" label="Corrida" value={formatKm(kmCorrida)} desc="Quilometragem acumulada" />
-        <KpiCard icon={Filter} color="#8b5cf6" label="Filtrados" value={String(filtrados.length)} desc={`${totalParticipacoes} participações`} />
-      </div>
+      <PainelNumeros
+        itens={[
+          { rotulo: "Km total", valor: formatKm(kmTotal), detalhe: "Soma dos atletas" },
+          { rotulo: "Bike", valor: formatKm(kmBike) },
+          { rotulo: "Corrida", valor: formatKm(kmCorrida) },
+          { rotulo: "Na lista", valor: String(filtrados.length), detalhe: `${totalParticipacoes} participações` },
+        ]}
+      />
 
       <Card>
         <div className="mb-3.5 flex flex-wrap items-center justify-between gap-3">
@@ -167,7 +166,7 @@ export function VerAtletasTab() {
             <FileSpreadsheet className="size-3.5" />
             Exportar
           </Button>
-          <div className="flex w-fit gap-1 rounded-[var(--radius-sm)] border border-border bg-bg p-[3px]">
+          <div className="hidden w-fit gap-1 rounded-[var(--radius-sm)] border border-border bg-bg p-[3px] sm:flex">
             <button
               onClick={() => setVisualizacao("cards")}
               className={cn(
@@ -279,7 +278,7 @@ export function VerAtletasTab() {
                 <Badge tone={isWaitlisted(a.equipe) ? "warning" : a.ativo ? "success" : "neutral"}>
                   {isWaitlisted(a.equipe) ? "Na fila" : a.ativo ? "Ativo" : "Inativo"}
                 </Badge>
-                <Badge tone="primary">{a.pontuacaoTotal} pts</Badge>
+                <Badge tone="primary">{formatPontos(a.pontuacaoTotal)} pts</Badge>
                 {!a.authUid && (
                   <Badge tone="neutral">
                     <LinkIcon className="size-3" />
@@ -326,8 +325,8 @@ export function VerAtletasTab() {
                       <p className="text-xs text-text-light">{a.email ?? "—"}</p>
                     </td>
                     <td className="px-3.5 py-2.5 text-text-light">{equipeLabel[a.equipe]}</td>
-                    <td className="px-3.5 py-2.5 text-text-light">{a.pontuacaoTotal}</td>
-                    <td className="px-3.5 py-2.5 text-text-light">{resumo?.km ?? 0} km</td>
+                    <td className="px-3.5 py-2.5 text-text-light">{formatPontos(a.pontuacaoTotal)}</td>
+                    <td className="px-3.5 py-2.5 text-text-light">{formatKm(resumo?.km ?? 0)}</td>
                     <td className="px-3.5 py-2.5 text-text-light">{resumo?.eventos ?? 0}</td>
                     <td className="px-3.5 py-2.5 text-text-light">
                       {resumo?.ultimo ? formatShortDate(resumo.ultimo) : "—"}
@@ -373,35 +372,3 @@ export function VerAtletasTab() {
   );
 }
 
-function KpiCard({
-  icon: Icon,
-  color,
-  label,
-  value,
-  desc,
-}: {
-  icon: typeof Route;
-  color: string;
-  label: string;
-  value: string;
-  desc: string;
-}) {
-  return (
-    <div
-      className="flex items-center gap-3.5 rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-sm"
-      style={{ borderLeft: `3px solid ${color}` }}
-    >
-      <span
-        className="flex size-9 shrink-0 items-center justify-center rounded-[var(--radius-sm)]"
-        style={{ backgroundColor: `color-mix(in srgb, ${color} 10%, transparent)`, color }}
-      >
-        <Icon className="size-[18px]" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs font-bold uppercase tracking-wide text-text-light">{label}</p>
-        <p className="text-[1.35rem] font-extrabold leading-tight text-text">{value}</p>
-        <p className="text-xs text-text-muted">{desc}</p>
-      </div>
-    </div>
-  );
-}

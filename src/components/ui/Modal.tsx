@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useRef, useSyncExternalStore, type ReactNode } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useDragControls, type PanInfo } from "framer-motion";
 import { X } from "lucide-react";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { useDialogFocus } from "@/lib/useDialogFocus";
@@ -72,6 +72,12 @@ export function Modal({
 
   useDialogFocus(open, dialogRef, onClose);
   const comoSheet = useEhCelular() && mobileSheet;
+  const arrasto = useDragControls();
+
+  // Sheet: arrastar para baixo pela alça ou pelo título fecha, como nos apps nativos.
+  function aoSoltar(_: unknown, info: PanInfo) {
+    if (info.offset.y > 120 || info.velocity.y > 600) onClose();
+  }
 
   return (
     <AnimatePresence>
@@ -101,6 +107,16 @@ export function Modal({
               tabIndex={-1}
               onClick={(event) => event.stopPropagation()}
               {...(comoSheet ? ANIMACAO_SHEET : ANIMACAO_MODAL)}
+              {...(comoSheet
+                ? {
+                    drag: "y" as const,
+                    dragControls: arrasto,
+                    dragListener: false,
+                    dragConstraints: { top: 0, bottom: 0 },
+                    dragElastic: { top: 0, bottom: 0.9 },
+                    onDragEnd: aoSoltar,
+                  }
+                : {})}
               className={cn(
                 "w-full border border-border bg-bg-card p-4 shadow-[var(--shadow-modal)] sm:p-6",
                 SIZES[size],
@@ -109,7 +125,19 @@ export function Modal({
                   : "rounded-[var(--radius-lg)]",
               )}
             >
-              <div className="mb-1 flex items-start justify-between gap-3">
+              {comoSheet ? (
+                <div
+                  aria-hidden="true"
+                  onPointerDown={(evento) => arrasto.start(evento)}
+                  className="-mx-4 -mt-4 flex h-6 touch-none cursor-grab items-center justify-center"
+                >
+                  <span className="h-1 w-10 rounded-full bg-border-strong" />
+                </div>
+              ) : null}
+              <div
+                onPointerDown={comoSheet ? (evento) => arrasto.start(evento) : undefined}
+                className={cn("mb-1 flex items-start justify-between gap-3", comoSheet && "touch-none")}
+              >
                 <h2 id={titleId} className="text-lg font-bold text-text">
                   {title}
                 </h2>
