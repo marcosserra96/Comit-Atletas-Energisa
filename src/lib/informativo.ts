@@ -11,16 +11,19 @@ export const DIMENSOES: Record<FormatoInformativo, { largura: number; altura: nu
 };
 
 /**
- * Quantas linhas de tabela cabem em cada página. A primeira página divide
- * espaço com o cabeçalho e o pódio; as seguintes são só tabela (na paisagem,
- * em duas colunas).
+ * Quantas linhas de tabela cabem em cada página.
+ * - `primeira`: capa (divide espaço com cabeçalho e pódio). A capa estica até
+ *   `primeiraMax` (linhas um pouco mais baixas) para não deixar 1 ou 2 nomes
+ *   sozinhos na página seguinte.
+ * - `seguintes`: páginas só de tabela (na paisagem, em duas colunas).
+ * - `comResumo`: nomes que cabem na última página junto com o resumo do período.
  */
 export const CAPACIDADE: Record<
   FormatoInformativo,
-  { primeira: number; seguintes: number; primeiraComDestaques: number; seguintesComDestaques: number }
+  { primeira: number; primeiraMax: number; seguintes: number; comResumo: number }
 > = {
-  paisagem: { primeira: 14, seguintes: 30, primeiraComDestaques: 8, seguintesComDestaques: 18 },
-  vertical: { primeira: 9, seguintes: 30, primeiraComDestaques: 7, seguintesComDestaques: 24 },
+  paisagem: { primeira: 14, primeiraMax: 17, seguintes: 30, comResumo: 10 },
+  vertical: { primeira: 9, primeiraMax: 11, seguintes: 30, comResumo: 12 },
 };
 
 const MESES = [
@@ -75,7 +78,7 @@ export interface PaginaInformativo {
   /** Só na primeira página. */
   podio: DegrauPodio[] | null;
   linhas: LinhaRanking[];
-  /** Os destaques do período fecham sempre a última página (o espaço é reservado). */
+  /** O resumo do período fecha sempre a última página (nunca a capa). */
   destaques: boolean;
 }
 
@@ -170,7 +173,11 @@ export function separarPodio(ranking: LinhaRanking[]) {
   return { podio, restantes: ranking.filter((l) => !noPodio.has(l.id)) };
 }
 
-/** Divide o ranking em páginas: a primeira com pódio, as demais só com tabela. Ninguém fica de fora. */
+/**
+ * Divide o ranking em páginas: a capa com pódio, as seguintes só com tabela e,
+ * sempre por último, o resumo do período (os mesmos blocos para Corrida e Bike).
+ * Ninguém fica de fora.
+ */
 export function paginar(ranking: LinhaRanking[], formato: FormatoInformativo): PaginaInformativo[] {
   // Sem ninguém pontuando, só a capa com o aviso: uma lista de zeros não informa nada.
   if (ranking.every((l) => l.pontos <= 0)) {
@@ -179,30 +186,22 @@ export function paginar(ranking: LinhaRanking[], formato: FormatoInformativo): P
   const { podio, restantes } = separarPodio(ranking);
   const cap = CAPACIDADE[formato];
 
-  // Cabe tudo numa imagem só, com os destaques.
-  if (restantes.length <= cap.primeiraComDestaques) {
-    return [{ numero: 1, total: 1, podio, linhas: restantes, destaques: true }];
-  }
-
+  const naCapa = restantes.length <= cap.primeiraMax ? restantes.length : cap.primeira;
   const paginas: Omit<PaginaInformativo, "total">[] = [
-    { numero: 1, podio, linhas: restantes.slice(0, cap.primeira), destaques: false },
+    { numero: 1, podio, linhas: restantes.slice(0, naCapa), destaques: false },
   ];
-  const sobra = restantes.slice(cap.primeira);
-  if (sobra.length === 0) {
-    // A capa encheu sem espaço para os destaques: eles ganham uma página de fechamento.
-    paginas.push({ numero: 2, podio: null, linhas: [], destaques: true });
-  } else {
-    // Páginas cheias; a última recebe o que sobra (até o limite que deixa espaço
-    // para os destaques). Se sobrar pouco, a arte completa o espaço com o resumo.
-    let quantas = 1;
-    while ((quantas - 1) * cap.seguintes + cap.seguintesComDestaques < sobra.length) quantas++;
-    let inicio = 0;
-    for (let i = 0; i < quantas; i++) {
-      const tamanho = i < quantas - 1 ? cap.seguintes : sobra.length - inicio;
-      paginas.push({ numero: paginas.length + 1, podio: null, linhas: sobra.slice(inicio, inicio + tamanho), destaques: false });
-      inicio += tamanho;
-    }
-    paginas[paginas.length - 1].destaques = true;
+  const sobra = restantes.slice(naCapa);
+
+  // Páginas cheias; a última fica com até `comResumo` nomes e recebe o resumo.
+  // Se as cheias levarem todos, o resumo ganha uma página própria.
+  let quantas = 1;
+  while ((quantas - 1) * cap.seguintes + cap.comResumo < sobra.length) quantas++;
+  let inicio = 0;
+  for (let i = 0; i < quantas; i++) {
+    const tamanho = i < quantas - 1 ? cap.seguintes : sobra.length - inicio;
+    paginas.push({ numero: paginas.length + 1, podio: null, linhas: sobra.slice(inicio, inicio + tamanho), destaques: false });
+    inicio += tamanho;
   }
+  paginas[paginas.length - 1].destaques = true;
   return paginas.map((p) => ({ ...p, total: paginas.length }));
 }
