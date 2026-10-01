@@ -9,6 +9,7 @@ import { ChevronDown, Download, FileText, Presentation, Trophy, Users } from "lu
 import { db } from "@/lib/firebase";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { temPermissao } from "@/lib/permissoes";
+import { useRegrasDeTreino } from "@/lib/useRegrasDeTreino";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
@@ -35,6 +36,7 @@ export function ExportarRelatorioDropdown({
   const { show } = useToast();
   const { usuario } = useActiveSession();
   const podeInformativo = temPermissao(usuario, "informativo");
+  const regrasTreino = useRegrasDeTreino();
   const [open, setOpen] = useState(false);
   const [gerando, setGerando] = useState<"pdf" | "time" | null>(null);
   const router = useRouter();
@@ -98,11 +100,16 @@ export function ExportarRelatorioDropdown({
       const mes = hoje.getMonth() + 1;
       const mesLabel = hoje.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 
-      const de = `${ano}-${String(mes).padStart(2, "0")}-01`;
-      const ultimoDia = new Date(ano, mes, 0).getDate();
-      const ate = `${ano}-${String(mes).padStart(2, "0")}-${String(ultimoDia).padStart(2, "0")}`;
+      // O cálculo trabalha com competências "YYYY-MM" (antes recebia datas e zerava o mês).
+      const competencia = `${ano}-${String(mes).padStart(2, "0")}`;
 
-      const resumo = calcularResumoRankingPeriodo({ atletas, lancamentos, de, ate });
+      const resumo = calcularResumoRankingPeriodo({
+        atletas,
+        lancamentos,
+        de: competencia,
+        ate: competencia,
+        regrasTreino: regrasTreino ?? undefined,
+      });
       const bike = resumo.filter((a) => a.equipe === "bicicleta");
       const corrida = resumo.filter((a) => a.equipe === "corrida");
 

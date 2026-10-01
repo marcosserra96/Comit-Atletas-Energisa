@@ -17,6 +17,7 @@ import { ArteInformativo, type MarcaInformativo } from "@/components/informativo
 import { temPermissao } from "@/lib/permissoes";
 import { getStoredBranding } from "@/lib/branding";
 import { useDiasTreino } from "@/lib/useDiasTreino";
+import { useRegrasDeTreino } from "@/lib/useRegrasDeTreino";
 import { descreverDias, limitesDasCompetencias } from "@/lib/aderencia";
 import { carregarLancamentosDoPeriodo } from "@/lib/lancamentosCache";
 import { plural } from "@/lib/format";
@@ -151,10 +152,19 @@ export default function InformativoPage() {
     };
   }, []);
 
+  const regrasTreino = useRegrasDeTreino();
   const dados = useMemo(() => {
-    if (!atletas || !lancamentos || !diasTreino) return null;
-    return montarInformativo({ modalidade, periodo, atletas, lancamentos, resumosMensais: mensais, diasTreino });
-  }, [atletas, lancamentos, mensais, diasTreino, modalidade, periodo]);
+    if (!atletas || !lancamentos || !diasTreino || !regrasTreino) return null;
+    return montarInformativo({
+      modalidade,
+      periodo,
+      atletas,
+      lancamentos,
+      resumosMensais: mensais,
+      diasTreino,
+      regrasTreino,
+    });
+  }, [atletas, lancamentos, mensais, diasTreino, regrasTreino, modalidade, periodo]);
 
   const paginas = useMemo(() => (dados ? paginar(dados.ranking, formato) : []), [dados, formato]);
   const { largura, altura } = DIMENSOES[formato];

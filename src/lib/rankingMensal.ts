@@ -1,4 +1,4 @@
-import { consolidarAtividades } from "@/lib/activityConsolidation";
+import { consolidarAtividades, type RegrasDeTreino } from "@/lib/activityConsolidation";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import type { AlertaCriterio, AtletaDoc, Equipe, HistoricoMensalDoc, HistoricoPontoDoc } from "@/lib/types";
 
@@ -19,10 +19,11 @@ export function calcularResumoRankingMensal(params: {
   resumosMensais?: HistoricoMensalDoc[];
   ano: number;
   mes: number;
+  regrasTreino?: RegrasDeTreino;
 }): ResumoAtletaMensal[] {
-  const { atletas, lancamentos, resumosMensais = [], ano, mes } = params;
+  const { atletas, lancamentos, resumosMensais = [], ano, mes, regrasTreino } = params;
   const competencia = `${ano}-${String(mes).padStart(2, "0")}`;
-  return calcularResumoRankingPeriodo({ atletas, lancamentos, resumosMensais, de: competencia, ate: competencia });
+  return calcularResumoRankingPeriodo({ atletas, lancamentos, resumosMensais, de: competencia, ate: competencia, regrasTreino });
 }
 
 /**
@@ -36,6 +37,8 @@ export function calcularResumoRankingPeriodo(params: {
   resumosMensais?: HistoricoMensalDoc[];
   de: string;
   ate: string;
+  /** Critérios que contam como treino mesmo lançados como Avulso. */
+  regrasTreino?: RegrasDeTreino;
 }): ResumoAtletaMensal[] {
   const { atletas, lancamentos, resumosMensais = [] } = params;
   const de = params.de <= params.ate ? params.de : params.ate;
@@ -64,7 +67,7 @@ export function calcularResumoRankingPeriodo(params: {
     lancamentosDoPeriodo.push(lancamento);
   }
 
-  for (const atividade of consolidarAtividades(lancamentosDoPeriodo)) {
+  for (const atividade of consolidarAtividades(lancamentosDoPeriodo, params.regrasTreino)) {
     const item = porAtleta.get(atividade.atletaId);
     if (!item) continue;
     item.kmMes += atividade.km;

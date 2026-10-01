@@ -29,6 +29,7 @@ import { formatKm, formatPontos, plural } from "@/lib/format";
 import { consolidarAtividades } from "@/lib/activityConsolidation";
 import { calcularAderencia, datasPrevistas, limitesDasCompetencias } from "@/lib/aderencia";
 import { useDiasTreino } from "@/lib/useDiasTreino";
+import { useRegrasDeTreino } from "@/lib/useRegrasDeTreino";
 import type { AtletaDoc, HistoricoMensalDoc, HistoricoPontoDoc, Modalidade } from "@/lib/types";
 
 interface ValoresHistoricos {
@@ -87,7 +88,9 @@ export function HistoricoMensalTab() {
   const [competencia, setCompetencia] = useState(competenciaAnterior);
   const [atletas, setAtletas] = useState<AtletaDoc[] | null>(null);
   const [existentes, setExistentes] = useState<Map<string, HistoricoMensalDoc>>(new Map());
-  const [sobreposicoes, setSobreposicoes] = useState<Map<string, SobreposicaoResumo>>(new Map());
+  /** Lançamentos detalhados do mês por atleta (sem estornos e faltas justificadas). */
+  const [lancamentosDoMes, setLancamentosDoMes] = useState<Map<string, HistoricoPontoDoc[]>>(new Map());
+  const regrasTreino = useRegrasDeTreino();
   const [faltasPorAtleta, setFaltasPorAtleta] = useState<Map<string, string[]>>(new Map());
   const diasTreino = useDiasTreino();
   const [sobreposicaoConfirmada, setSobreposicaoConfirmada] = useState(false);
@@ -156,21 +159,12 @@ export function HistoricoMensalTab() {
           porAtleta.set(item.atletaId, lista);
         });
 
-        const mapa = new Map<string, SobreposicaoResumo>();
-        porAtleta.forEach((lista, atletaId) => {
-          const atividades = consolidarAtividades(lista);
-          mapa.set(atletaId, {
-            pontos: lista.reduce((total, item) => total + (item.pontos || 0), 0),
-            km: atividades.reduce((total, atividade) => total + atividade.km, 0),
-            treinos: atividades.filter((atividade) => atividade.tipo === "treino").length,
-          });
-        });
-        setSobreposicoes(mapa);
+        setLancamentosDoMes(porAtleta);
         setFaltasPorAtleta(faltas);
       })
       .catch(() => {
         if (!ativo) return;
-        setSobreposicoes(new Map());
+        setLancamentosDoMes(new Map());
         setFaltasPorAtleta(new Map());
       });
 
@@ -178,6 +172,20 @@ export function HistoricoMensalTab() {
       ativo = false;
     };
   }, [competencia]);
+
+  // Mesma contagem de treinos e km das outras telas (critérios que contam como treino).
+  const sobreposicoes = useMemo(() => {
+    const mapa = new Map<string, SobreposicaoResumo>();
+    lancamentosDoMes.forEach((lista, atletaId) => {
+      const atividades = consolidarAtividades(lista, regrasTreino ?? undefined);
+      mapa.set(atletaId, {
+        pontos: lista.reduce((total, item) => total + (item.pontos || 0), 0),
+        km: atividades.reduce((total, atividade) => total + atividade.km, 0),
+        treinos: atividades.filter((atividade) => atividade.tipo === "treino").length,
+      });
+    });
+    return mapa;
+  }, [lancamentosDoMes, regrasTreino]);
 
   const valoresDoAtleta = useCallback(
     (atletaId: string): ValoresHistoricos => {

@@ -38,6 +38,7 @@ import {
 } from "@/lib/athletePerformance";
 import { useDiasTreino } from "@/lib/useDiasTreino";
 import { aderenciaDoAtleta, formatAderencia } from "@/lib/aderencia";
+import { useRegrasDeTreino } from "@/lib/useRegrasDeTreino";
 import { modalidadeFromEquipe } from "@/lib/labels";
 import { dataIsoLocal } from "@/lib/date";
 import type { HistoricoMensalDoc, HistoricoPontoDoc, TipoLancamento } from "@/lib/types";
@@ -306,15 +307,19 @@ export default function DesempenhoPage() {
     return unsubscribe;
   }, [atleta.id]);
 
+  const regrasTreino = useRegrasDeTreino();
   const analise = useMemo(
-    () => (lancamentos ? calcularDesempenhoAtleta({ lancamentos, resumosMensais, periodo }) : null),
-    [lancamentos, resumosMensais, periodo],
+    () =>
+      lancamentos && regrasTreino
+        ? calcularDesempenhoAtleta({ lancamentos, resumosMensais, periodo, regrasTreino })
+        : null,
+    [lancamentos, resumosMensais, periodo, regrasTreino],
   );
 
   const diasTreino = useDiasTreino();
   const modalidade = modalidadeFromEquipe(atleta.equipe);
   const aderencia = useMemo(() => {
-    if (!lancamentos || !diasTreino || !modalidade) return null;
+    if (!lancamentos || !diasTreino || !modalidade || !regrasTreino) return null;
     return aderenciaDoAtleta({
       modalidade,
       config: diasTreino,
@@ -322,8 +327,9 @@ export default function DesempenhoPage() {
       resumosMensais,
       de: obterInicioPeriodo(periodo),
       ate: dataIsoLocal(),
+      regrasTreino,
     });
-  }, [lancamentos, resumosMensais, diasTreino, modalidade, periodo]);
+  }, [lancamentos, resumosMensais, diasTreino, modalidade, periodo, regrasTreino]);
 
   const historicoFiltrado = useMemo<ItemHistoricoDados[]>(() => {
     if (!lancamentos) return [];

@@ -1,7 +1,7 @@
 import { dataIsoLocal } from "@/lib/date";
 import { ehMembroDoElenco } from "@/lib/labels";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
-import { consolidarAtividades, type AtividadeConsolidada } from "@/lib/activityConsolidation";
+import { consolidarAtividades, regrasDeTreino, type AtividadeConsolidada } from "@/lib/activityConsolidation";
 import type {
   AtletaDoc,
   DespesaDoc,
@@ -66,6 +66,7 @@ export function calcularEstatisticasDashboard(params: {
   regras: RegraPontuacaoDoc[];
 }): EstatisticasDashboard {
   const { atletas, lancamentos, resumosMensais = [], despesas, eventos, regras } = params;
+  const regrasTreino = regrasDeTreino(regras);
   const hoje = new Date();
   const ha30dias = new Date(hoje.getTime() - 30 * 24 * 60 * 60 * 1000);
   const iso30 = dataIsoLocal(ha30dias);
@@ -100,7 +101,7 @@ export function calcularEstatisticasDashboard(params: {
   const pontosPorAtleta = new Map<string, number>();
   const ultimoPorAtleta = new Map<string, string>();
   for (const [atletaId, lista] of lancamentosPorAtleta) {
-    const atividades = consolidarAtividades(lista);
+    const atividades = consolidarAtividades(lista, regrasTreino);
     if (atividades.length === 0) continue;
     atividadesPorAtleta.set(atletaId, atividades);
     participacoesPorAtleta.set(atletaId, atividades.length);

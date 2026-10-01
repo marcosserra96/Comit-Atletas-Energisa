@@ -27,6 +27,7 @@ import { formatBRL, formatDistancia, formatKm, formatPontos, formatShortDate, pl
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { calcularEstatisticasDashboard } from "@/lib/dashboardStats";
 import { aderenciaPorAtleta, mediaAderencia } from "@/lib/aderencia";
+import { regrasDeTreino } from "@/lib/activityConsolidation";
 import { useDiasTreino } from "@/lib/useDiasTreino";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { calcularPosicoesRanking } from "@/lib/rankingPosition";
@@ -155,7 +156,7 @@ export function VisaoEstrategica() {
   const diasTreino = useDiasTreino();
   /** Aderência média de cada modalidade nos últimos 30 dias (mesma janela do engajamento). */
   const aderenciaModalidade = useMemo(() => {
-    if (!diasTreino || !atletas || !lancamentos) return { corrida: null, bicicleta: null };
+    if (!diasTreino || !atletas || !lancamentos || !regras) return { corrida: null, bicicleta: null };
     const hoje = new Date();
     const ate = dataIsoLocal(hoje);
     const de = dataIsoLocal(new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - 29));
@@ -167,11 +168,12 @@ export function VisaoEstrategica() {
       resumosMensais: historicoMensal ?? [],
       de,
       ate,
+      regrasTreino: regrasDeTreino(regras),
     });
     const media = (equipe: string) =>
       mediaAderencia(ativos.filter((a) => a.equipe === equipe).map((a) => porAtleta.get(a.id)));
     return { corrida: media("corrida"), bicicleta: media("bicicleta") };
-  }, [diasTreino, atletas, lancamentos, historicoMensal]);
+  }, [diasTreino, atletas, lancamentos, historicoMensal, regras]);
 
   const lancamentosVisiveis = useMemo(() => {
     if (!atletas || !lancamentos) return [];

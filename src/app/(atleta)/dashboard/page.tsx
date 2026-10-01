@@ -52,6 +52,7 @@ import {
 import { noticiaVisivel } from "@/lib/noticias";
 import { useDiasTreino } from "@/lib/useDiasTreino";
 import { aderenciaDoAtleta } from "@/lib/aderencia";
+import { useRegrasDeTreino } from "@/lib/useRegrasDeTreino";
 import type {
   AtletaPublicoDoc,
   EventoDoc,
@@ -226,25 +227,28 @@ export default function DashboardPage() {
     return unsubscribe;
   }, []);
 
+  const regrasTreino = useRegrasDeTreino();
   const insights = useMemo(() => {
     const companheirosParaInsights = rankingIndisponivel ? [] : companheiros;
     if (
       companheirosParaInsights === null ||
       meusLancamentos === null ||
-      meuHistoricoMensal === null
+      meuHistoricoMensal === null ||
+      regrasTreino === null
     ) return null;
     return calcularInsightsAtleta({
       atleta,
       companheiros: companheirosParaInsights,
       meusLancamentos,
       historicoMensal: meuHistoricoMensal,
+      regrasTreino,
     });
-  }, [atleta, companheiros, meusLancamentos, meuHistoricoMensal, rankingIndisponivel]);
+  }, [atleta, companheiros, meusLancamentos, meuHistoricoMensal, rankingIndisponivel, regrasTreino]);
 
   const diasTreino = useDiasTreino();
   const aderenciaMes = useMemo(() => {
     const modalidade = modalidadeFromEquipe(atleta.equipe);
-    if (!diasTreino || !meusLancamentos || !modalidade) return null;
+    if (!diasTreino || !meusLancamentos || !modalidade || !regrasTreino) return null;
     const hoje = dataIsoLocal();
     return aderenciaDoAtleta({
       modalidade,
@@ -253,8 +257,9 @@ export default function DashboardPage() {
       resumosMensais: meuHistoricoMensal ?? [],
       de: `${hoje.slice(0, 7)}-01`,
       ate: hoje,
+      regrasTreino,
     });
-  }, [atleta.equipe, diasTreino, meusLancamentos, meuHistoricoMensal]);
+  }, [atleta.equipe, diasTreino, meusLancamentos, meuHistoricoMensal, regrasTreino]);
 
   const ultimosLancamentos = useMemo(
     () => [...(meusLancamentos ?? [])].sort((a, b) => b.dataTreino.localeCompare(a.dataTreino)).slice(0, 5),

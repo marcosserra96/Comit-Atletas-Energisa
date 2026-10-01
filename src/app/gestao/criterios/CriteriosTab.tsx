@@ -1,5 +1,6 @@
 "use client";
 
+import { regraContaComoTreino } from "@/lib/activityConsolidation";
 import { useEffect, useState } from "react";
 import { collection, deleteDoc, doc, onSnapshot } from "firebase/firestore";
 import { ListChecks, Pencil, Plus, Trash2 } from "lucide-react";
@@ -84,7 +85,10 @@ export function CriteriosTab() {
               <li key={r.id} className="flex items-center gap-3 py-2 pl-4 pr-2 sm:pl-5">
                 <div className="min-w-0 flex-1 py-1">
                   <p className="font-medium text-text">{r.descricao}</p>
-                  <p className="mt-0.5 text-xs text-text-light">{modalidadeLabel[r.modalidade]}</p>
+                  <p className="mt-0.5 text-xs text-text-light">
+                    {modalidadeLabel[r.modalidade]}
+                    {regraContaComoTreino(r) ? " · conta como treino" : ""}
+                  </p>
                 </div>
                 <span className="shrink-0 text-base font-bold tabular-nums text-text">
                   {formatPontos(r.pontos)}

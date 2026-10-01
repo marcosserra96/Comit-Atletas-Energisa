@@ -9,6 +9,7 @@ import { Modal } from "@/components/ui/Modal";
 import { TextField } from "@/components/ui/TextField";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
+import { regraContaComoTreino } from "@/lib/activityConsolidation";
 import type { RegraPontuacaoDoc, TipoLancamento } from "@/lib/types";
 
 const tipos: { value: TipoLancamento; label: string }[] = [
@@ -40,7 +41,10 @@ export function NovaRegraModal({
   const [excludentes, setExcludentes] = useState<Set<string>>(
     new Set(regra?.regrasExcludentes ?? []),
   );
+  const [contaComoTreino, setContaComoTreino] = useState(regra ? regraContaComoTreino(regra) : true);
   const [loading, setLoading] = useState(false);
+  // Lançado como Treino sempre conta; a opção só decide para Avulso.
+  const valeComoTreino = tiposSelecionados.has("treino");
 
   function toggleTipo(tipo: TipoLancamento) {
     setTiposSelecionados((prev) => {
@@ -78,6 +82,7 @@ export function NovaRegraModal({
         pontos: Math.round(Number(pontos)),
         tiposLancamento: [...tiposSelecionados],
         regrasExcludentes: [...excludentes],
+        contaComoTreino: valeComoTreino || contaComoTreino,
         criadoEm: regra?.criadoEm ?? serverTimestamp(),
       });
       show("success", regra ? "Regra atualizada." : "Regra criada.");
@@ -136,6 +141,28 @@ export function NovaRegraModal({
             ))}
           </div>
         </div>
+        <label
+          className={
+            "flex items-start gap-2.5 rounded-[var(--radius)] border border-border bg-bg p-3.5 text-sm " +
+            (valeComoTreino ? "cursor-default" : "cursor-pointer")
+          }
+        >
+          <input
+            type="checkbox"
+            checked={valeComoTreino || contaComoTreino}
+            disabled={valeComoTreino}
+            onChange={(e) => setContaComoTreino(e.target.checked)}
+            className="mt-0.5 size-4 shrink-0 rounded border-border accent-primary disabled:opacity-60"
+          />
+          <span>
+            <span className="font-semibold text-text">Conta como treino</span>
+            <span className="mt-0.5 block text-xs text-text-light">
+              {valeComoTreino
+                ? "Lançamentos do tipo Treino sempre contam na quantidade de treinos e na aderência."
+                : "Entra na quantidade de treinos e na aderência mesmo lançado como Avulso (ex.: treino avulso, treino extra). Desmarque para ajustes e bônus."}
+            </span>
+          </span>
+        </label>
         <div className="rounded-[var(--radius)] border border-accent/25 bg-accent/5 p-3.5">
           <label className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-accent">
             <LinkIcon className="size-3.5" />

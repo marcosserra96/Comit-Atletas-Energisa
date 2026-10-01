@@ -1,6 +1,6 @@
 "use client";
 
-import { consolidarAtividades, type AtividadeConsolidada } from "@/lib/activityConsolidation";
+import { consolidarAtividades, type AtividadeConsolidada, type RegrasDeTreino } from "@/lib/activityConsolidation";
 import type { HistoricoMensalDoc, HistoricoPontoDoc } from "@/lib/types";
 export type { AtividadeConsolidada } from "@/lib/activityConsolidation";
 
@@ -126,6 +126,8 @@ export function calcularDesempenhoAtleta(params: {
   resumosMensais?: HistoricoMensalDoc[];
   periodo: PeriodoDesempenho;
   hoje?: Date;
+  /** Critérios que contam como treino mesmo lançados como Avulso. */
+  regrasTreino?: RegrasDeTreino;
 }): AnaliseDesempenho {
   const hoje = params.hoje ?? new Date();
   const inicio = obterInicioPeriodo(params.periodo, hoje);
@@ -133,7 +135,7 @@ export function calcularDesempenhoAtleta(params: {
   const lancamentosValidos = params.lancamentos.filter(
     (l) => !l.estornado && l.dataTreino >= inicio && l.dataTreino <= fim,
   );
-  const atividades = consolidarAtividades(lancamentosValidos);
+  const atividades = consolidarAtividades(lancamentosValidos, params.regrasTreino);
   const treinos = atividades.filter((a) => a.tipo === "treino");
   const serieMensal = construirMeses(params.periodo, hoje);
   const porMes = new Map(serieMensal.map((mes) => [mes.chave, mes]));
