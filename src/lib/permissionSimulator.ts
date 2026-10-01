@@ -113,6 +113,13 @@ const CENARIOS: CenarioDef[] = [
     avaliar: (u) => temPermissao(u, "noticias"),
   },
   {
+    chave: "gerar_informativo",
+    categoria: "Notícias",
+    label: "Gerar e baixar o informativo para divulgação",
+    regra: "Requer a permissão \"Informativo\".",
+    avaliar: (u) => temPermissao(u, "informativo"),
+  },
+  {
     chave: "gerir_financeiro",
     categoria: "Financeiro",
     label: "Ver e registrar despesas financeiras",

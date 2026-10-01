@@ -7,6 +7,8 @@ import { pdf } from "@react-pdf/renderer";
 import { doc, getDoc } from "firebase/firestore";
 import { ChevronDown, Download, FileText, Presentation, Trophy, Users } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { useActiveSession } from "@/lib/session/SessionProvider";
+import { temPermissao } from "@/lib/permissoes";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
@@ -31,6 +33,8 @@ export function ExportarRelatorioDropdown({
   atletas: AtletaDoc[];
 }) {
   const { show } = useToast();
+  const { usuario } = useActiveSession();
+  const podeInformativo = temPermissao(usuario, "informativo");
   const [open, setOpen] = useState(false);
   const [gerando, setGerando] = useState<"pdf" | "time" | null>(null);
   const router = useRouter();
@@ -156,17 +160,19 @@ export function ExportarRelatorioDropdown({
             <FileText className="size-4 text-primary" />
             Report executivo (PDF)
           </button>
-          <button
-            role="menuitem"
-            onClick={() => {
-              setOpen(false);
-              router.push("/gestao/informativo");
-            }}
-            className="flex w-full items-center gap-2.5 rounded-[calc(var(--radius)-2px)] px-2.5 py-2.5 text-left text-sm font-medium text-text hover:bg-bg"
-          >
-            <Trophy className="size-4 text-primary" />
-            Informativo para divulgação
-          </button>
+          {podeInformativo ? (
+            <button
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                router.push("/gestao/informativo");
+              }}
+              className="flex w-full items-center gap-2.5 rounded-[calc(var(--radius)-2px)] px-2.5 py-2.5 text-left text-sm font-medium text-text hover:bg-bg"
+            >
+              <Trophy className="size-4 text-primary" />
+              Informativo para divulgação
+            </button>
+          ) : null}
           <button
             role="menuitem"
             onClick={handleExportarTime}

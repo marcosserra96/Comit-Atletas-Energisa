@@ -224,7 +224,7 @@ export default function InformativoPage() {
     }
   }
 
-  if (!temPermissao(usuario, "inicio")) return <NotAuthorized />;
+  if (!temPermissao(usuario, "informativo")) return <NotAuthorized />;
 
   return (
     <div className="flex flex-col gap-5">

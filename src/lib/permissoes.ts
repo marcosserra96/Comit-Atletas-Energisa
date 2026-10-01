@@ -8,6 +8,7 @@ export type PermissaoChave =
   | "historicoMensal"
   | "eventos"
   | "noticias"
+  | "informativo"
   | "financeiro";
 
 export const PERMISSAO_LABEL: Record<PermissaoChave, string> = {
@@ -18,6 +19,7 @@ export const PERMISSAO_LABEL: Record<PermissaoChave, string> = {
   historicoMensal: "Histórico mensal (lançar e editar totais do mês)",
   eventos: "Eventos",
   noticias: "Notícias",
+  informativo: "Informativo (gerar e baixar as artes de divulgação)",
   financeiro: "Financeiro (acesso e edição)",
 };
 
@@ -29,6 +31,7 @@ export const PERMISSAO_ORDEM: PermissaoChave[] = [
   "historicoMensal",
   "eventos",
   "noticias",
+  "informativo",
   "financeiro",
 ];
 
@@ -50,7 +53,7 @@ export const PERFIS_RAPIDOS: Record<string, { label: string; permissoes: Permiss
   gestao: { label: "Comitê Gestão", permissoes: ["inicio", "atletas"] },
   geral: {
     label: "Comitê Geral",
-    permissoes: ["inicio", "atletas", "regras", "registrar", "eventos", "noticias", "financeiro"],
+    permissoes: ["inicio", "atletas", "regras", "registrar", "eventos", "noticias", "informativo", "financeiro"],
   },
 };
 
@@ -72,6 +75,7 @@ const ROTA_POR_PERMISSAO: Record<PermissaoChave, string> = {
   historicoMensal: "/gestao/pontuacao",
   eventos: "/gestao/eventos",
   noticias: "/gestao/noticias",
+  informativo: "/gestao/informativo",
   financeiro: "/gestao/financeiro",
 };
 
