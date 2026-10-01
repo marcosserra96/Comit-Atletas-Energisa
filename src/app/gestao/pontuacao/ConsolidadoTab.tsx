@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { CalendarRange, FileSpreadsheet } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { consolidarAtividades } from "@/lib/activityConsolidation";
 import { carregarTodosLancamentos } from "@/lib/lancamentosCache";
 import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
@@ -103,29 +104,33 @@ export function ConsolidadoTab() {
     return elegiveis
       .map((atleta) => {
         const porMes: Record<number, Acumulado> = {};
-        const lotesPorMes: Record<number, Set<string>> = {};
         const total = acumuladoVazio();
-        historicoAno
-          .filter((h) => h.atletaId === atleta.id)
-          .forEach((h) => {
-            const mes = Number(h.dataTreino.split("-")[1]);
-            if (!meses.includes(mes)) return;
-            const atual = porMes[mes] ?? acumuladoVazio();
-            atual.pontos += h.pontos;
-            atual.km += h.kmPercorrido ?? 0;
-            total.pontos += h.pontos;
-            total.km += h.kmPercorrido ?? 0;
-            if (h.regraId !== "falta_justificada") {
-              const lotes = lotesPorMes[mes] ?? new Set<string>();
-              if (!lotes.has(h.loteId)) {
-                lotes.add(h.loteId);
-                atual.treinos += 1;
-                total.treinos += 1;
-              }
-              lotesPorMes[mes] = lotes;
-            }
-            porMes[mes] = atual;
-          });
+        const doAtleta = historicoAno.filter((h) => {
+          if (h.atletaId !== atleta.id) return false;
+          return meses.includes(Number(h.dataTreino.split("-")[1]));
+        });
+        // Pontos: soma de todos os critérios.
+        for (const h of doAtleta) {
+          const mes = Number(h.dataTreino.split("-")[1]);
+          const atual = porMes[mes] ?? acumuladoVazio();
+          atual.pontos += h.pontos;
+          total.pontos += h.pontos;
+          porMes[mes] = atual;
+        }
+        // Treinos e km: mesma consolidação do Ranking e do informativo — cada
+        // atividade (atleta + dia + lote) conta uma vez e usa o maior km informado.
+        // Antes contava lotes distintos, e uma importação inteira virava 1 treino.
+        for (const atividade of consolidarAtividades(doAtleta)) {
+          const mes = Number(atividade.data.split("-")[1]);
+          const atual = porMes[mes] ?? acumuladoVazio();
+          atual.km += atividade.km;
+          total.km += atividade.km;
+          if (atividade.tipo === "treino") {
+            atual.treinos += 1;
+            total.treinos += 1;
+          }
+          porMes[mes] = atual;
+        }
 
         historicoMensal
           .filter((h) => h.atletaId === atleta.id && h.competencia.startsWith(ano))
