@@ -1,4 +1,4 @@
-import { consolidarAtividades } from "@/lib/activityConsolidation";
+import { consolidarAtividades, type RegrasDeTreino } from "@/lib/activityConsolidation";
 import { dataIsoLocal } from "@/lib/date";
 import type { HistoricoMensalDoc, HistoricoPontoDoc, Modalidade } from "@/lib/types";
 
@@ -136,12 +136,13 @@ function aderenciaCalculada(params: {
   de: string;
   ate: string;
   hoje?: string;
+  regrasTreino?: RegrasDeTreino;
 }): ResultadoAderencia {
   const { modalidade, config, de, ate } = params;
   const previstas = datasPrevistas(config[modalidade], de, ate, config.semTreino, params.hoje);
   const doPeriodo = params.lancamentos.filter((l) => !l.estornado && l.dataTreino >= de && l.dataTreino <= ate);
   const faltas = doPeriodo.filter((l) => l.regraId === "falta_justificada").map((l) => l.dataTreino);
-  const treinos = consolidarAtividades(doPeriodo).filter((a) => a.tipo === "treino").length;
+  const treinos = consolidarAtividades(doPeriodo, params.regrasTreino).filter((a) => a.tipo === "treino").length;
   const competenciaDe = de.slice(0, 7);
   const competenciaAte = ate.slice(0, 7);
   const treinosMensais = params.resumosMensais
@@ -182,6 +183,7 @@ export function aderenciaDoAtleta(params: {
   de: string;
   ate: string;
   hoje?: string;
+  regrasTreino?: RegrasDeTreino;
 }): ResultadoAderencia {
   const resumosMensais = params.resumosMensais ?? [];
   const informadas = new Map<string, number>();
@@ -237,6 +239,7 @@ export function aderenciaPorAtleta(params: {
   de: string;
   ate: string;
   hoje?: string;
+  regrasTreino?: RegrasDeTreino;
 }): Map<string, ResultadoAderencia> {
   const lancPorAtleta = new Map<string, HistoricoPontoDoc[]>();
   for (const l of params.lancamentos) {
@@ -263,6 +266,7 @@ export function aderenciaPorAtleta(params: {
         de: params.de,
         ate: params.ate,
         hoje: params.hoje,
+        regrasTreino: params.regrasTreino,
       }),
     );
   }

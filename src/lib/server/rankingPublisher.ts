@@ -2,12 +2,14 @@ import "server-only";
 
 import type { Firestore } from "firebase-admin/firestore";
 import { calcularResultadosRanking, normalizarRankingPeriods } from "@/lib/rankingPeriods";
+import { regrasDeTreino, type RegrasDeTreino } from "@/lib/activityConsolidation";
 import type {
   AtletaDoc,
   HistoricoMensalDoc,
   HistoricoPontoDoc,
   RankingPeriodsConfigDoc,
   RankingResultadoDoc,
+  RegraPontuacaoDoc,
 } from "@/lib/types";
 
 const TAMANHO_LOTE = 400;
@@ -32,6 +34,12 @@ async function gravarEmLotes(
   }
 }
 
+/** Critérios que contam como treino (mesma regra das telas do portal). */
+async function carregarRegrasDeTreino(db: Firestore): Promise<RegrasDeTreino> {
+  const snap = await db.collection("regras_pontuacao").get();
+  return regrasDeTreino(snap.docs.map((d) => ({ ...(d.data() as RegraPontuacaoDoc), id: d.id })));
+}
+
 function resultadosDoPeriodo(
   atletas: AtletaDoc[],
   historico: HistoricoPontoDoc[],
@@ -39,8 +47,9 @@ function resultadosDoPeriodo(
   config: RankingPeriodsConfigDoc,
   geracaoId: string,
   geradoEm: FirebaseFirestore.Timestamp,
+  regrasTreino: RegrasDeTreino,
 ) {
-  const geral = calcularResultadosRanking(atletas, historico, "geral", undefined, undefined, resumosMensais);
+  const geral = calcularResultadosRanking(atletas, historico, "geral", undefined, undefined, resumosMensais, regrasTreino);
   const trimestral = config.trimestre.ativo
     ? calcularResultadosRanking(
         atletas,
@@ -49,6 +58,7 @@ function resultadosDoPeriodo(
         config.trimestre.inicio,
         config.trimestre.fim,
         resumosMensais,
+        regrasTreino,
       )
     : [];
   const resultados: RankingResultadoDoc[] = [...geral, ...trimestral].map((resultado) => ({
@@ -69,12 +79,13 @@ export async function publicarRankingCompleto(params: {
   const { db, uid, autorNome, configOverride, modo = "manual" } = params;
   const [{ FieldValue, Timestamp }] = await Promise.all([import("firebase-admin/firestore")]);
   const configRef = db.collection("configuracoes").doc("ranking_periodos");
-  const [configSnap, atletasSnap, historicoSnap, resumosSnap, resultadosAntigosSnap] = await Promise.all([
+  const [configSnap, atletasSnap, historicoSnap, resumosSnap, resultadosAntigosSnap, regrasTreino] = await Promise.all([
     configRef.get(),
     db.collection("atletas").get(),
     db.collection("historico_pontos").get(),
     db.collection("historico_mensal").get(),
     db.collection("ranking_resultados").get(),
+    carregarRegrasDeTreino(db),
   ]);
   const config = normalizarRankingPeriods(
     configSnap.exists ? (configSnap.data() as Partial<RankingPeriodsConfigDoc>) : undefined,
@@ -98,6 +109,7 @@ export async function publicarRankingCompleto(params: {
     config,
     geracaoId,
     Timestamp.now(),
+    regrasTreino,
   );
 
   await gravarEmLotes(
@@ -212,7 +224,10 @@ export async function atualizarRankingDosAtletas(params: {
         }),
     ),
   );
-  const { atletas, historico, resumosMensais } = await carregarDadosDosAtletas(db, atletaIds);
+  const [{ atletas, historico, resumosMensais }, regrasTreino] = await Promise.all([
+    carregarDadosDosAtletas(db, atletaIds),
+    carregarRegrasDeTreino(db),
+  ]);
   const { resultados } = resultadosDoPeriodo(
     atletas,
     historico,
@@ -220,6 +235,7 @@ export async function atualizarRankingDosAtletas(params: {
     config,
     geracaoId,
     Timestamp.now(),
+    regrasTreino,
   );
   const resultadoPorChave = new Map(
     resultados.map((resultado) => [`${resultado.periodoId}_${resultado.atletaId}`, resultado]),

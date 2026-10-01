@@ -1,4 +1,4 @@
-import { consolidarAtividades } from "@/lib/activityConsolidation";
+import { consolidarAtividades, type RegrasDeTreino } from "@/lib/activityConsolidation";
 import { dataIsoLocal } from "@/lib/date";
 import { calcularPosicoesRanking } from "@/lib/rankingPosition";
 import type { AtletaDoc, AtletaPublicoDoc, HistoricoMensalDoc, HistoricoPontoDoc } from "@/lib/types";
@@ -33,6 +33,8 @@ export function calcularInsightsAtleta(params: {
   meusLancamentos: HistoricoPontoDoc[];
   /** Totais mensais legados do próprio atleta. */
   historicoMensal?: HistoricoMensalDoc[];
+  /** Critérios que contam como treino mesmo lançados como Avulso. */
+  regrasTreino?: RegrasDeTreino;
 }): AtletaInsights {
   const { atleta, companheiros, meusLancamentos, historicoMensal = [] } = params;
   const hoje = new Date();
@@ -65,7 +67,7 @@ export function calcularInsightsAtleta(params: {
   const mes = hoje.getMonth() + 1;
   const prefixoMes = `${ano}-${String(mes).padStart(2, "0")}`;
 
-  const atividades = consolidarAtividades(validos);
+  const atividades = consolidarAtividades(validos, params.regrasTreino);
   const atividadesMes = atividades.filter((atividade) => atividade.data.startsWith(prefixoMes));
   const resumoMes = historicoMensal.find((item) => item.competencia === prefixoMes);
   const pontosMes =

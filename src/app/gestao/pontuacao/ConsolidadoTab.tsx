@@ -5,6 +5,7 @@ import { collection, getDocs } from "firebase/firestore";
 import { CalendarRange, FileSpreadsheet } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { consolidarAtividades } from "@/lib/activityConsolidation";
+import { useRegrasDeTreino } from "@/lib/useRegrasDeTreino";
 import { carregarTodosLancamentos } from "@/lib/lancamentosCache";
 import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
@@ -47,6 +48,7 @@ export function ConsolidadoTab() {
   const [equipeFiltro, setEquipeFiltro] = useState<EquipeFiltro>("");
   const [mesesSelecionados, setMesesSelecionados] = useState<Set<number>>(() => new Set(TODOS_MESES));
   const [metricasExtras, setMetricasExtras] = useState<Set<Metrica>>(new Set());
+  const regrasTreino = useRegrasDeTreino();
 
   useEffect(() => {
     Promise.all([
@@ -92,7 +94,7 @@ export function ConsolidadoTab() {
   );
 
   const linhas = useMemo(() => {
-    if (!atletas || !historico || !historicoMensal) return [];
+    if (!atletas || !historico || !historicoMensal || !regrasTreino) return [];
     const elegiveis = atletas.filter(
       (a) =>
         perfilAtletaVisivel(a) &&
@@ -120,7 +122,7 @@ export function ConsolidadoTab() {
         // Treinos e km: mesma consolidação do Ranking e do informativo — cada
         // atividade (atleta + dia + lote) conta uma vez e usa o maior km informado.
         // Antes contava lotes distintos, e uma importação inteira virava 1 treino.
-        for (const atividade of consolidarAtividades(doAtleta)) {
+        for (const atividade of consolidarAtividades(doAtleta, regrasTreino ?? undefined)) {
           const mes = Number(atividade.data.split("-")[1]);
           const atual = porMes[mes] ?? acumuladoVazio();
           atual.km += atividade.km;
@@ -150,7 +152,7 @@ export function ConsolidadoTab() {
         return { atleta, porMes, total };
       })
       .sort((a, b) => a.atleta.nome.localeCompare(b.atleta.nome, "pt-BR"));
-  }, [atletas, historico, historicoMensal, ano, equipeFiltro, meses]);
+  }, [atletas, historico, historicoMensal, regrasTreino, ano, equipeFiltro, meses]);
 
   function handleExportar() {
     const linhasExportadas = linhas.flatMap(({ atleta, porMes, total }) =>

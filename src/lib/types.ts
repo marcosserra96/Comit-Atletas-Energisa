@@ -185,6 +185,11 @@ export interface RegraPontuacaoDoc {
   tiposLancamento: TipoLancamento[];
   /** IDs de outras regras que não podem ser pontuadas junto com esta, para o mesmo atleta no mesmo lançamento. */
   regrasExcludentes?: string[];
+  /**
+   * Lançamentos deste critério contam como treino (quantidade de treinos e
+   * aderência), mesmo lançados como Avulso. Sem valor: vale `regraContaComoTreino`.
+   */
+  contaComoTreino?: boolean;
   criadoEm: unknown;
 }
 

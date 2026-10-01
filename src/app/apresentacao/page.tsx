@@ -14,6 +14,7 @@ import { normalizarInformativoConfig } from "@/lib/informativoConfig";
 import { atletaEstaEmAlerta, calcularResumoRankingMensal, ordenarRankingMensal, type ResumoAtletaMensal } from "@/lib/rankingMensal";
 import { formatDistancia, formatNumero, formatPontos, formatShortDate } from "@/lib/format";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
+import { useRegrasDeTreino } from "@/lib/useRegrasDeTreino";
 import { calcularPosicoesRanking } from "@/lib/rankingPosition";
 import type { AtletaDoc, BrandingDoc, EventoDoc, HistoricoPontoDoc, InformativoConfigDoc } from "@/lib/types";
 
@@ -213,11 +214,13 @@ function SlideEventos({ eventos }: { eventos: EventoDoc[] }) {
 function ApresentacaoContent() {
   const router = useRouter();
   const { atletas, lancamentos, eventos, config } = useDadosApresentacao();
+  const regrasTreino = useRegrasDeTreino();
   const [branding] = useState<BrandingDoc>(() => getStoredBranding());
   const [slide, setSlide] = useState(0);
   const [direcao, setDirecao] = useState(1);
 
-  const carregando = atletas === null || lancamentos === null || eventos === null || config === null;
+  const carregando =
+    atletas === null || lancamentos === null || eventos === null || config === null || regrasTreino === null;
 
   const dados = useMemo(() => {
     if (carregando) return null;
@@ -228,7 +231,7 @@ function ApresentacaoContent() {
       .toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
       .replace(/^./, (c) => c.toUpperCase());
 
-    const resumo = calcularResumoRankingMensal({ atletas: atletas!, lancamentos: lancamentos!, ano, mes });
+    const resumo = calcularResumoRankingMensal({ atletas: atletas!, lancamentos: lancamentos!, ano, mes, regrasTreino: regrasTreino! });
     const bike = resumo.filter((a) => a.equipe === "bicicleta").sort(ordenarRankingMensal);
     const corrida = resumo.filter((a) => a.equipe === "corrida").sort(ordenarRankingMensal);
     const todos = [...bike, ...corrida];
@@ -243,7 +246,7 @@ function ApresentacaoContent() {
       totalKm: todos.reduce((s, a) => s + a.kmMes, 0),
       totalTreinos: todos.reduce((s, a) => s + a.treinosMes, 0),
     };
-  }, [carregando, atletas, lancamentos, config]);
+  }, [carregando, atletas, lancamentos, config, regrasTreino]);
 
   const totalSlides = 4;
 

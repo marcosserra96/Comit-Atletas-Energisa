@@ -1,5 +1,6 @@
 import { aderenciaPorAtleta, limitesDasCompetencias, mediaAderencia, type DiasTreinoConfigDoc } from "@/lib/aderencia";
 import { calcularResumoRankingPeriodo } from "@/lib/rankingMensal";
+import type { RegrasDeTreino } from "@/lib/activityConsolidation";
 import { calcularPosicoesRanking } from "@/lib/rankingPosition";
 import type { AtletaDoc, HistoricoMensalDoc, HistoricoPontoDoc, Modalidade } from "@/lib/types";
 
@@ -104,6 +105,7 @@ export function montarInformativo(params: {
   resumosMensais: HistoricoMensalDoc[];
   diasTreino: DiasTreinoConfigDoc;
   hoje?: string;
+  regrasTreino?: RegrasDeTreino;
 }): DadosInformativo {
   const { modalidade, periodo } = params;
   const resumo = calcularResumoRankingPeriodo({
@@ -112,6 +114,7 @@ export function montarInformativo(params: {
     resumosMensais: params.resumosMensais,
     de: periodo.de,
     ate: periodo.ate,
+    regrasTreino: params.regrasTreino,
   }).filter((r) => r.equipe === modalidade);
 
   const { inicio, fim } = limitesDasCompetencias(periodo.de, periodo.ate);
@@ -123,6 +126,7 @@ export function montarInformativo(params: {
     de: inicio,
     ate: fim,
     hoje: params.hoje,
+    regrasTreino: params.regrasTreino,
   });
 
   const ordenado = [...resumo].sort((a, b) => b.pontosMes - a.pontosMes || a.nome.localeCompare(b.nome, "pt-BR"));

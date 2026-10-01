@@ -1,4 +1,4 @@
-import { consolidarAtividades } from "@/lib/activityConsolidation";
+import { consolidarAtividades, type RegrasDeTreino } from "@/lib/activityConsolidation";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import type {
   AtletaDoc,
@@ -44,6 +44,7 @@ export function calcularResultadosRanking(
   inicio?: string,
   fim?: string,
   resumosMensais: HistoricoMensalDoc[] = [],
+  regrasTreino?: RegrasDeTreino,
 ): Omit<RankingResultadoDoc, "geracaoId" | "geradoEm">[] {
   const porAtleta = new Map<string, HistoricoPontoDoc[]>();
 
@@ -64,7 +65,7 @@ export function calcularResultadosRanking(
       return [];
     }
 
-    const atividades = consolidarAtividades(porAtleta.get(atleta.id) ?? []);
+    const atividades = consolidarAtividades(porAtleta.get(atleta.id) ?? [], regrasTreino);
     const competenciaInicio = inicio?.slice(0, 7);
     const competenciaFim = fim?.slice(0, 7);
     const resumosDoAtleta = resumosMensais.filter(
