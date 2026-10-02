@@ -55,6 +55,20 @@ export async function atualizarRankingAutomaticamente(
   }
 }
 
+/**
+ * Um critério passou a contar (ou deixou de contar) como treino: as contagens de
+ * todos os atletas mudam, então o ranking publicado é recalculado por inteiro.
+ */
+export async function recalcularRankingPorCriterio(): Promise<boolean> {
+  try {
+    await requisitarAtualizacao({ modo: "criterios" });
+    return true;
+  } catch (error) {
+    console.error("Falha ao recalcular o ranking após mudar o critério:", error);
+    return false;
+  }
+}
+
 export function recalcularEPublicarRanking(
   trimestre: RankingPeriodsConfigDoc["trimestre"],
 ) {

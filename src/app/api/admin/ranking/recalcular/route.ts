@@ -2,7 +2,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 interface RecalcularBody {
-  modo?: "automatico" | "completo";
+  /** "criterios": um critério mudou o que conta como treino; recalcula todos com a config salva. */
+  modo?: "automatico" | "completo" | "criterios";
   atletaIds?: unknown;
   origem?: unknown;
   trimestre?: unknown;
@@ -36,19 +37,37 @@ export async function POST(request: Request) {
     const usuarioSnap = await db.collection("usuarios").doc(decodedToken.uid).get();
     const usuario = usuarioSnap.data();
     const body = (await request.json()) as RecalcularBody;
-    const modo = body.modo === "completo" ? "completo" : "automatico";
+    const modo = body.modo === "completo" || body.modo === "criterios" ? body.modo : "automatico";
     const isAdmin = usuarioSnap.exists && usuario?.role === "administrador";
-    const podeRegistrar =
+    const comitePode = (chave: string) =>
       usuarioSnap.exists &&
       usuario?.role === "comite" &&
       Array.isArray(usuario.permissoes) &&
-      usuario.permissoes.includes("registrar");
+      usuario.permissoes.includes(chave);
 
-    if (!isAdmin && (!podeRegistrar || modo === "completo")) {
+    const permitido =
+      isAdmin ||
+      (modo === "automatico" && comitePode("registrar")) ||
+      (modo === "criterios" && comitePode("regras"));
+    if (!permitido) {
       throw new ApiAuthError("Você não tem permissão para atualizar o ranking.", 403);
     }
 
     const autorNome = decodedToken.name || decodedToken.email || "Equipe do programa";
+    if (modo === "criterios") {
+      // Sem ranking publicado ainda, não há o que recalcular.
+      const configSnap = await db.collection("configuracoes").doc("ranking_periodos").get();
+      if (!configSnap.data()?.geracaoPublicada) {
+        return Response.json({ geracaoId: null, atletas: 0, resultados: 0, atualizadoEm: new Date().toISOString() });
+      }
+      const resultado = await rankingModule.publicarRankingCompleto({
+        db,
+        uid: decodedToken.uid,
+        autorNome,
+        modo: "automatico",
+      });
+      return Response.json({ ...resultado, atualizadoEm: new Date().toISOString() });
+    }
     if (modo === "completo") {
       const trimestre = trimestreValido(body.trimestre);
       if (!trimestre) {

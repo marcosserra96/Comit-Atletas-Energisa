@@ -10,6 +10,7 @@ import { TextField } from "@/components/ui/TextField";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { regraContaComoTreino } from "@/lib/activityConsolidation";
+import { recalcularRankingPorCriterio } from "@/lib/rankingAutoUpdate";
 import type { RegraPontuacaoDoc, TipoLancamento } from "@/lib/types";
 
 const tipos: { value: TipoLancamento; label: string }[] = [
@@ -75,6 +76,9 @@ export function NovaRegraModal({
     setLoading(true);
     try {
       const ref = regra ? doc(db, "regras_pontuacao", regra.id) : doc(collection(db, "regras_pontuacao"));
+      const contaAgora = valeComoTreino || contaComoTreino;
+      // Critério novo ainda não tem lançamentos; um existente que mudou muda as contagens.
+      const mudouContagem = regra ? regraContaComoTreino(regra) !== contaAgora : false;
       await setDoc(ref, {
         id: ref.id,
         descricao,
@@ -82,11 +86,22 @@ export function NovaRegraModal({
         pontos: Math.round(Number(pontos)),
         tiposLancamento: [...tiposSelecionados],
         regrasExcludentes: [...excludentes],
-        contaComoTreino: valeComoTreino || contaComoTreino,
+        contaComoTreino: contaAgora,
         criadoEm: regra?.criadoEm ?? serverTimestamp(),
       });
-      show("success", regra ? "Regra atualizada." : "Regra criada.");
       onClose();
+      if (mudouContagem) {
+        show("info", "Regra atualizada. Recalculando o ranking com a nova contagem de treinos…");
+        const ok = await recalcularRankingPorCriterio();
+        show(
+          ok ? "success" : "info",
+          ok
+            ? "Ranking recalculado com a nova contagem de treinos."
+            : "Regra atualizada, mas o ranking não recalculou. Use \"Recalcular agora\" em Configurar portal.",
+        );
+      } else {
+        show("success", regra ? "Regra atualizada." : "Regra criada.");
+      }
     } catch {
       show("error", "Não foi possível salvar agora. Tente novamente.");
     } finally {
