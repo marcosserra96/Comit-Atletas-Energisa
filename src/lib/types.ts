@@ -316,7 +316,8 @@ export interface BrandingDoc {
 export type AlertaCriterio = "sem_treino_mes" | "sem_treino_30d" | "ate_x_treinos" | "ate_x_pontos";
 
 /** configuracoes/informativo — padrão do Informativo do Ranking, definido pelo Administrador. */
-export type RankingPeriodKey = "geral" | "trimestre";
+/** "mes" = mês corrente (horário de Brasília), reinicia no dia 1º. */
+export type RankingPeriodKey = "geral" | "trimestre" | "mes";
 
 export interface RankingPeriodsConfigDoc {
   trimestre: {
@@ -326,6 +327,8 @@ export interface RankingPeriodsConfigDoc {
     fim: string;
   };
   geracaoPublicada?: string;
+  /** A geração publicada já inclui o ranking do mês (publicação completa depois da novidade). */
+  mesPublicado?: boolean;
   rankingAtualizadoEm?: unknown;
   rankingAtualizacaoModo?: "automatico" | "manual";
   rankingAtualizacaoOrigem?: string;
@@ -339,6 +342,8 @@ export interface RankingResultadoDoc extends AtletaPublicoDoc {
   atletaId: string;
   treinos: number;
   km: number;
+  /** Só no período "mes": competência "YYYY-MM" calculada. Outra competência = mês já virou. */
+  competencia?: string;
   geradoEm: unknown;
 }
 
