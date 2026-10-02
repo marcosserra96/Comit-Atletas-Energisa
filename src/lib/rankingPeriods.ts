@@ -18,6 +18,25 @@ export const RANKING_PERIODS_DEFAULT: RankingPeriodsConfigDoc = {
   },
 };
 
+/** Competência "YYYY-MM" de agora no horário de Brasília (o servidor roda em UTC). */
+export function competenciaAtualBrasil(agora = new Date()) {
+  const partes = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(agora);
+  const ano = partes.find((p) => p.type === "year")?.value;
+  const mes = partes.find((p) => p.type === "month")?.value;
+  return `${ano}-${mes}`;
+}
+
+/** Primeiro e último dia (YYYY-MM-DD) de uma competência "YYYY-MM". */
+export function limitesDaCompetencia(competencia: string) {
+  const [ano, mes] = competencia.split("-").map(Number);
+  const ultimo = new Date(ano, mes, 0).getDate();
+  return { inicio: `${competencia}-01`, fim: `${competencia}-${String(ultimo).padStart(2, "0")}` };
+}
+
 export function normalizarRankingPeriods(
   value?: Partial<RankingPeriodsConfigDoc>,
 ): RankingPeriodsConfigDoc {
@@ -29,6 +48,7 @@ export function normalizarRankingPeriods(
       fim: value?.trimestre?.fim ?? "",
     },
     geracaoPublicada: value?.geracaoPublicada,
+    mesPublicado: value?.mesPublicado === true,
     rankingAtualizadoEm: value?.rankingAtualizadoEm,
     rankingAtualizacaoModo: value?.rankingAtualizacaoModo,
     rankingAtualizacaoOrigem: value?.rankingAtualizacaoOrigem,

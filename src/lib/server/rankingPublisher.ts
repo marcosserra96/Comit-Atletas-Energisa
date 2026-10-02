@@ -1,12 +1,18 @@
 import "server-only";
 
 import type { Firestore } from "firebase-admin/firestore";
-import { calcularResultadosRanking, normalizarRankingPeriods } from "@/lib/rankingPeriods";
+import {
+  calcularResultadosRanking,
+  competenciaAtualBrasil,
+  limitesDaCompetencia,
+  normalizarRankingPeriods,
+} from "@/lib/rankingPeriods";
 import { regrasDeTreino, type RegrasDeTreino } from "@/lib/activityConsolidation";
 import type {
   AtletaDoc,
   HistoricoMensalDoc,
   HistoricoPontoDoc,
+  RankingPeriodKey,
   RankingPeriodsConfigDoc,
   RankingResultadoDoc,
   RegraPontuacaoDoc,
@@ -61,7 +67,13 @@ function resultadosDoPeriodo(
         regrasTreino,
       )
     : [];
-  const resultados: RankingResultadoDoc[] = [...geral, ...trimestral].map((resultado) => ({
+  // Ranking do mês corrente; a competência fica gravada para a tela saber quando o mês virou.
+  const competencia = competenciaAtualBrasil();
+  const { inicio, fim } = limitesDaCompetencia(competencia);
+  const mensal = calcularResultadosRanking(atletas, historico, "mes", inicio, fim, resumosMensais, regrasTreino).map(
+    (resultado) => ({ ...resultado, competencia }),
+  );
+  const resultados: RankingResultadoDoc[] = [...geral, ...trimestral, ...mensal].map((resultado) => ({
     ...resultado,
     geracaoId,
     geradoEm,
@@ -129,6 +141,7 @@ export async function publicarRankingCompleto(params: {
   finalBatch.set(configRef, {
     trimestre: config.trimestre,
     geracaoPublicada: geracaoId,
+    mesPublicado: true,
     rankingAtualizadoEm: FieldValue.serverTimestamp(),
     rankingAtualizacaoModo: modo,
     atualizadoEm: FieldValue.serverTimestamp(),
@@ -240,7 +253,12 @@ export async function atualizarRankingDosAtletas(params: {
   const resultadoPorChave = new Map(
     resultados.map((resultado) => [`${resultado.periodoId}_${resultado.atletaId}`, resultado]),
   );
-  const periodos = config.trimestre.ativo ? (["geral", "trimestre"] as const) : (["geral"] as const);
+  // "mes" só depois que uma publicação completa criou o ranking do mês para todos.
+  const periodos: RankingPeriodKey[] = [
+    "geral",
+    ...(config.trimestre.ativo ? (["trimestre"] as const) : []),
+    ...(config.mesPublicado ? (["mes"] as const) : []),
+  ];
   let atletasAtualizados = 0;
   for (const grupo of gruposDe(atletaIds, 100)) {
     atletasAtualizados += await db.runTransaction(async (transaction) => {

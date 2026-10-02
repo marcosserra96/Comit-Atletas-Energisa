@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { collection, doc, onSnapshot, orderBy, query, where } from "firebase/firestore";
-import { AlertCircle, EyeOff, RefreshCw, Search, Trophy } from "lucide-react";
+import { AlertCircle, CalendarDays, EyeOff, RefreshCw, Search, Trophy } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useAthleteView } from "@/lib/session/AthleteViewProvider";
 import { useActiveSession } from "@/lib/session/SessionProvider";
@@ -18,7 +18,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { formatDistancia, formatKm, formatPontos, formatRelativeTime, formatShortDate, plural } from "@/lib/format";
-import { normalizarRankingPeriods } from "@/lib/rankingPeriods";
+import { competenciaAtualBrasil, normalizarRankingPeriods } from "@/lib/rankingPeriods";
 import { calcularPosicoesRanking } from "@/lib/rankingPosition";
 import {
   modalidadeDoAtleta,
@@ -34,6 +34,11 @@ import type {
   RankingVisibilityConfigDoc,
 } from "@/lib/types";
 import { modalidadeLabel } from "@/lib/labels";
+
+const MESES = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
 
 interface RankingEntry extends AtletaPublicoDoc {
   treinos?: number;
@@ -133,7 +138,8 @@ export default function RankingPage() {
   const athleteModality = modalidadeDoAtleta(myAtleta.equipe);
 
   const [modalidade, setModalidade] = useState<Modalidade>(athleteModality ?? "corrida");
-  const [periodo, setPeriodo] = useState<RankingPeriodKey>("geral");
+  // O mês corrente é a visão padrão: é o que o atleta acompanha no dia a dia.
+  const [periodo, setPeriodo] = useState<RankingPeriodKey>("mes");
   const [legacy, setLegacy] = useState<AtletaPublicoDoc[] | null>(null);
   const [resultados, setResultados] = useState<RankingResultadoDoc[] | null>(null);
   const [search, setSearch] = useState("");
@@ -181,8 +187,15 @@ export default function RankingPage() {
     };
   }, []);
 
+  const mesDisponivel = Boolean(periods?.geracaoPublicada) && periods?.mesPublicado === true;
   const periodoEfetivo: RankingPeriodKey =
-    periodo === "trimestre" && periods?.trimestre.ativo ? "trimestre" : "geral";
+    periodo === "mes" && mesDisponivel
+      ? "mes"
+      : periodo === "trimestre" && periods?.trimestre.ativo
+        ? "trimestre"
+        : "geral";
+  const competenciaAtual = competenciaAtualBrasil();
+  const nomeMesAtual = MESES[Number(competenciaAtual.slice(5, 7)) - 1];
   const possuiResultadosPublicados = Boolean(periods?.geracaoPublicada);
   const corridaOculta =
     !isStaff && visibility ? rankingOcultoAgora(visibility, "corrida") : false;
@@ -219,7 +232,13 @@ export default function RankingPage() {
         setResultados(
           snap.docs
             .map((item) => item.data() as RankingResultadoDoc)
-            .filter(perfilAtletaVisivel),
+            .filter(perfilAtletaVisivel)
+            // Mês virou e o atleta ainda não teve lançamento recalculado: zera no mês novo.
+            .map((item) =>
+              item.periodoId === "mes" && item.competencia !== competenciaAtual
+                ? { ...item, pontuacaoTotal: 0, treinos: 0, km: 0 }
+                : item,
+            ),
         );
         setErroRanking(false);
       },
@@ -235,6 +254,7 @@ export default function RankingPage() {
     modalidade,
     podeConsultar,
     periodoEfetivo,
+    competenciaAtual,
     periods?.geracaoPublicada,
     possuiResultadosPublicados,
     rankingDesativado,
@@ -317,7 +337,10 @@ export default function RankingPage() {
       : atletasComRank;
   }, [atletasComRank, search]);
 
-  const top3 = atletasComRank?.slice(0, 3) ?? [];
+  // Quem não pontuou não sobe ao pódio (no começo do mês, quase todos estão zerados).
+  const top3 = atletasComRank?.filter((atleta) => atleta.pontuacaoTotal > 0).slice(0, 3) ?? [];
+  const ninguemPontuouNoMes =
+    periodoEfetivo === "mes" && (atletasComRank?.every((atleta) => atleta.pontuacaoTotal <= 0) ?? false);
   const myRankAtleta = atletasComRank?.find((atleta) => atleta.id === myAtleta.id);
   const trimestreDisponivel =
     Boolean(periods?.geracaoPublicada) && periods?.trimestre.ativo === true;
@@ -340,7 +363,7 @@ export default function RankingPage() {
         badge={<SportBadge modalidade={modalidade} size="md" />}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            {trimestreDisponivel ? (
+            {mesDisponivel || trimestreDisponivel ? (
               <SegmentedControl
                 value={periodoEfetivo}
                 onChange={(value) => {
@@ -349,8 +372,11 @@ export default function RankingPage() {
                   setSearch("");
                 }}
                 options={[
+                  ...(mesDisponivel ? [{ value: "mes", label: nomeMesAtual }] : []),
                   { value: "geral", label: "Geral" },
-                  { value: "trimestre", label: periods?.trimestre.nome ?? "Trimestre" },
+                  ...(trimestreDisponivel
+                    ? [{ value: "trimestre", label: periods?.trimestre.nome ?? "Trimestre" }]
+                    : []),
                 ]}
               />
             ) : null}
@@ -372,6 +398,19 @@ export default function RankingPage() {
           </div>
         }
       />
+
+      {periodoEfetivo === "mes" ? (
+        <div className="flex items-center gap-2 rounded-[var(--radius)] border border-border bg-bg-card px-4 py-3 text-sm text-text-light">
+          <CalendarDays className="size-4 shrink-0 text-text-muted" aria-hidden="true" />
+          <span>
+            <strong className="text-text">
+              {nomeMesAtual} de {competenciaAtual.slice(0, 4)}
+            </strong>
+            <span className="mx-2 text-text-muted">·</span>
+            Só os pontos deste mês. Recomeça no dia 1º.
+          </span>
+        </div>
+      ) : null}
 
       {periodoEfetivo === "trimestre" && periods?.trimestre.ativo ? (
         <div className="rounded-[var(--radius)] border border-border bg-bg-card px-4 py-3 text-sm text-text-light">
@@ -433,6 +472,25 @@ export default function RankingPage() {
             <RefreshCw className="size-4" />
             Tentar novamente
           </Button>
+        </Card>
+      ) : ninguemPontuouNoMes ? (
+        <Card>
+          <EmptyState
+            icon={CalendarDays}
+            title={`Ninguém pontuou em ${nomeMesAtual.toLowerCase()} ainda`}
+            description="O ranking do mês aparece assim que os primeiros treinos forem lançados."
+            action={
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setPeriodo("geral");
+                  setResultados(null);
+                }}
+              >
+                Ver ranking geral
+              </Button>
+            }
+          />
         </Card>
       ) : atletasAtuais.length === 0 ? (
         <EmptyState
