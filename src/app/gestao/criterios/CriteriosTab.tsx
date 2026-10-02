@@ -1,6 +1,7 @@
 "use client";
 
 import { regraContaComoTreino } from "@/lib/activityConsolidation";
+import { recalcularRankingPorCriterio } from "@/lib/rankingAutoUpdate";
 import { useEffect, useState } from "react";
 import { collection, deleteDoc, doc, onSnapshot } from "firebase/firestore";
 import { ListChecks, Pencil, Plus, Trash2 } from "lucide-react";
@@ -40,9 +41,20 @@ export function CriteriosTab() {
   async function handleExcluir() {
     if (!excluindo) return;
     try {
+      const contavaComoTreino = regraContaComoTreino(excluindo);
       await deleteDoc(doc(db, "regras_pontuacao", excluindo.id));
       setExcluindo(null);
-      show("success", "Regra removida.");
+      if (contavaComoTreino) {
+        // Lançamentos desse critério deixam de contar como treino (se não forem do tipo Treino).
+        show("info", "Regra removida. Recalculando o ranking…");
+        const ok = await recalcularRankingPorCriterio();
+        show(
+          ok ? "success" : "info",
+          ok ? "Regra removida e ranking recalculado." : "Regra removida, mas o ranking não recalculou. Use \"Recalcular agora\".",
+        );
+      } else {
+        show("success", "Regra removida.");
+      }
     } catch {
       show("error", "Não foi possível remover agora. Tente novamente.");
     }
