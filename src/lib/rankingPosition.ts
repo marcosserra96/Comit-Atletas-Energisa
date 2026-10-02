@@ -1,7 +1,6 @@
 /**
- * Calcula a colocação competitiva de uma lista já ordenada por pontos.
- * Empates compartilham a posição e a colocação seguinte é pulada:
- * 1º, 2º, 2º, 4º.
+ * Colocação de uma lista já ordenada por pontos. Empates dividem a posição e a
+ * contagem segue sem pular: 1º, 1º, 2º, 3º (regra definida pelo comitê).
  */
 export function calcularPosicoesRanking(
   pontuacoes: readonly number[],
@@ -11,7 +10,7 @@ export function calcularPosicoesRanking(
 
   return pontuacoes.map((pontuacao, indice) => {
     if (indice === 0 || pontuacao !== pontuacaoAnterior) {
-      posicaoAtual = indice + 1;
+      posicaoAtual += 1;
     }
     pontuacaoAnterior = pontuacao;
     return posicaoAtual;

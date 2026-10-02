@@ -103,9 +103,12 @@ texto.** Para hierarquia, use tamanho e peso, não cores mais apagadas.
   ou de critério que conta como treino (`regraContaComoTreino`: marcação "Conta como treino" no
   critério; sem marcação, tipo Treino ou "treino" no nome). Toda contagem de treinos e aderência
   passa `regrasTreino` (`useRegrasDeTreino` no cliente, `carregarRegrasDeTreino` no servidor).
+- **Ranking do atleta**: abre em "Mensal" no mês atual (horário de Brasília), com navegador
+  ‹ mês › até `mesesDesde`; Geral e trimestre continuam. Resultados mensais ficam em
+  `ranking_resultados` com `periodoId: "mes"` e `competencia`, só de quem pontuou no mês.
 - **Informativo** (`/gestao/informativo`): arte gerada em código (`ArteInformativo`), em 1920×1080
-  ou 1080×1920, exportada em PNG. Posição só por pontos, empates dividem a colocação
-  (`calcularPosicoesRanking`); ninguém fica de fora e todo informativo fecha com o mesmo
+  ou 1080×1920, exportada em PNG. Posição só por pontos, empates dividem a colocação e a
+  contagem segue sem pular — 1º, 1º, 2º, 3º (`calcularPosicoesRanking`); ninguém fica de fora e todo informativo fecha com o mesmo
   resumo do período (`ResumoPeriodo`), igual para Corrida e Bike. A arte
   usa cores fixas e as fontes Barlow / Barlow Condensed, independentes do tema do portal.
 

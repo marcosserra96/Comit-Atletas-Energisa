@@ -95,7 +95,7 @@ export const NOMES_POR_DEGRAU = 2;
 
 /**
  * Ranking de uma modalidade no período: só pontos definem a posição, empates
- * dividem a colocação (1º, 2º, 2º, 4º). Treinos, km e aderência são informativos.
+ * dividem a colocação sem pular a seguinte (1º, 1º, 2º, 3º). Treinos, km e aderência são informativos.
  */
 export function montarInformativo(params: {
   modalidade: Modalidade;
