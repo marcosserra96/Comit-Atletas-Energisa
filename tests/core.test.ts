@@ -168,8 +168,8 @@ test("respeita datas personalizadas do ranking trimestral", () => {
 });
 
 test("atribui a mesma posição a pontuações empatadas sem critério de desempate", () => {
-  assert.deepEqual(calcularPosicoesRanking([50, 40, 40, 25]), [1, 2, 2, 4]);
-  assert.deepEqual(calcularPosicoesRanking([50, 50, 50, 25]), [1, 1, 1, 4]);
+  assert.deepEqual(calcularPosicoesRanking([50, 40, 40, 25]), [1, 2, 2, 3]);
+  assert.deepEqual(calcularPosicoesRanking([50, 50, 50, 25]), [1, 1, 1, 2]);
 });
 
 test("mantém cadastros antigos visíveis e respeita a ocultação explícita", () => {

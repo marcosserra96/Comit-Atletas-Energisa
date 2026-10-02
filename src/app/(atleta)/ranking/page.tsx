@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { collection, doc, onSnapshot, orderBy, query, where } from "firebase/firestore";
-import { AlertCircle, CalendarDays, EyeOff, RefreshCw, Search, Trophy } from "lucide-react";
+import { AlertCircle, CalendarDays, ChevronLeft, ChevronRight, EyeOff, RefreshCw, Search, Trophy } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useAthleteView } from "@/lib/session/AthleteViewProvider";
 import { useActiveSession } from "@/lib/session/SessionProvider";
@@ -18,7 +18,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { formatDistancia, formatKm, formatPontos, formatRelativeTime, formatShortDate, plural } from "@/lib/format";
-import { competenciaAtualBrasil, normalizarRankingPeriods } from "@/lib/rankingPeriods";
+import { competenciaAtualBrasil, normalizarRankingPeriods, somarMeses } from "@/lib/rankingPeriods";
 import { calcularPosicoesRanking } from "@/lib/rankingPosition";
 import {
   modalidadeDoAtleta,
@@ -130,6 +130,69 @@ function Podium({ atletas }: { atletas: RankedAtleta[] }) {
   );
 }
 
+function rotuloCompetencia(competencia: string) {
+  return `${MESES[Number(competencia.slice(5, 7)) - 1]} de ${competencia.slice(0, 4)}`;
+}
+
+/** ‹ Setembro de 2026 › — do primeiro mês publicado até o mês atual. */
+function NavegadorMes({
+  competencia,
+  atual,
+  desde,
+  onChange,
+}: {
+  competencia: string;
+  atual: string;
+  desde: string;
+  onChange: (competencia: string) => void;
+}) {
+  const podeVoltar = competencia > desde;
+  const podeAvancar = competencia < atual;
+  const ehAtual = competencia === atual;
+  const botao =
+    "flex size-11 shrink-0 items-center justify-center rounded-[var(--radius)] text-text-light transition-[background-color,color,scale] duration-150 hover:bg-bg-subtle hover:text-text active:scale-[0.96] disabled:pointer-events-none disabled:opacity-30";
+  return (
+    <div className="flex items-center gap-1 rounded-[var(--radius-lg)] border border-border bg-bg-card p-1.5">
+      <button
+        type="button"
+        className={botao}
+        disabled={!podeVoltar}
+        onClick={() => onChange(somarMeses(competencia, -1))}
+        aria-label="Mês anterior"
+      >
+        <ChevronLeft className="size-5" />
+      </button>
+      <div className="min-w-0 flex-1 text-center" aria-live="polite">
+        <p className="truncate text-base font-bold text-text">{rotuloCompetencia(competencia)}</p>
+        <p className="truncate text-xs text-text-light">
+          {ehAtual ? "Mês em andamento · recomeça no dia 1º" : "Mês encerrado"}
+          {!ehAtual && competencia < somarMeses(atual, -1) ? (
+            <>
+              {" · "}
+              <button
+                type="button"
+                onClick={() => onChange(atual)}
+                className="font-semibold text-primary underline-offset-2 hover:underline"
+              >
+                ir para o mês atual
+              </button>
+            </>
+          ) : null}
+        </p>
+      </div>
+      <button
+        type="button"
+        className={botao}
+        disabled={!podeAvancar}
+        onClick={() => onChange(somarMeses(competencia, 1))}
+        aria-label="Próximo mês"
+      >
+        <ChevronRight className="size-5" />
+      </button>
+    </div>
+  );
+}
+
 export default function RankingPage() {
   const { atleta: myAtleta } = useAthleteView();
   const { usuario } = useActiveSession();
@@ -187,7 +250,8 @@ export default function RankingPage() {
     };
   }, []);
 
-  const mesDisponivel = Boolean(periods?.geracaoPublicada) && periods?.mesPublicado === true;
+  const mesesDesde = periods?.mesesDesde;
+  const mesDisponivel = Boolean(periods?.geracaoPublicada) && Boolean(mesesDesde);
   const periodoEfetivo: RankingPeriodKey =
     periodo === "mes" && mesDisponivel
       ? "mes"
@@ -195,7 +259,16 @@ export default function RankingPage() {
         ? "trimestre"
         : "geral";
   const competenciaAtual = competenciaAtualBrasil();
-  const nomeMesAtual = MESES[Number(competenciaAtual.slice(5, 7)) - 1];
+  // Sempre abre no mês atual; o navegador troca o mês.
+  const [competenciaEscolhida, setCompetenciaEscolhida] = useState(competenciaAtual);
+  const competencia =
+    mesesDesde && competenciaEscolhida < mesesDesde
+      ? mesesDesde
+      : competenciaEscolhida > competenciaAtual
+        ? competenciaAtual
+        : competenciaEscolhida;
+  const nomeMes = MESES[Number(competencia.slice(5, 7)) - 1];
+  const ehMesAtual = competencia === competenciaAtual;
   const possuiResultadosPublicados = Boolean(periods?.geracaoPublicada);
   const corridaOculta =
     !isStaff && visibility ? rankingOcultoAgora(visibility, "corrida") : false;
@@ -225,6 +298,7 @@ export default function RankingPage() {
       where("geracaoId", "==", periods.geracaoPublicada),
       where("periodoId", "==", periodoEfetivo),
       where("equipe", "==", modalidade),
+      ...(periodoEfetivo === "mes" ? [where("competencia", "==", competencia)] : []),
     );
     const unsubscribe = onSnapshot(
       q,
@@ -232,13 +306,7 @@ export default function RankingPage() {
         setResultados(
           snap.docs
             .map((item) => item.data() as RankingResultadoDoc)
-            .filter(perfilAtletaVisivel)
-            // Mês virou e o atleta ainda não teve lançamento recalculado: zera no mês novo.
-            .map((item) =>
-              item.periodoId === "mes" && item.competencia !== competenciaAtual
-                ? { ...item, pontuacaoTotal: 0, treinos: 0, km: 0 }
-                : item,
-            ),
+            .filter(perfilAtletaVisivel),
         );
         setErroRanking(false);
       },
@@ -254,7 +322,7 @@ export default function RankingPage() {
     modalidade,
     podeConsultar,
     periodoEfetivo,
-    competenciaAtual,
+    competencia,
     periods?.geracaoPublicada,
     possuiResultadosPublicados,
     rankingDesativado,
@@ -372,7 +440,7 @@ export default function RankingPage() {
                   setSearch("");
                 }}
                 options={[
-                  ...(mesDisponivel ? [{ value: "mes", label: nomeMesAtual }] : []),
+                  ...(mesDisponivel ? [{ value: "mes", label: "Mensal" }] : []),
                   { value: "geral", label: "Geral" },
                   ...(trimestreDisponivel
                     ? [{ value: "trimestre", label: periods?.trimestre.nome ?? "Trimestre" }]
@@ -399,17 +467,17 @@ export default function RankingPage() {
         }
       />
 
-      {periodoEfetivo === "mes" ? (
-        <div className="flex items-center gap-2 rounded-[var(--radius)] border border-border bg-bg-card px-4 py-3 text-sm text-text-light">
-          <CalendarDays className="size-4 shrink-0 text-text-muted" aria-hidden="true" />
-          <span>
-            <strong className="text-text">
-              {nomeMesAtual} de {competenciaAtual.slice(0, 4)}
-            </strong>
-            <span className="mx-2 text-text-muted">·</span>
-            Só os pontos deste mês. Recomeça no dia 1º.
-          </span>
-        </div>
+      {periodoEfetivo === "mes" && mesesDesde ? (
+        <NavegadorMes
+          competencia={competencia}
+          atual={competenciaAtual}
+          desde={mesesDesde}
+          onChange={(novo) => {
+            setCompetenciaEscolhida(novo);
+            setResultados(null);
+            setSearch("");
+          }}
+        />
       ) : null}
 
       {periodoEfetivo === "trimestre" && periods?.trimestre.ativo ? (
@@ -477,8 +545,12 @@ export default function RankingPage() {
         <Card>
           <EmptyState
             icon={CalendarDays}
-            title={`Ninguém pontuou em ${nomeMesAtual.toLowerCase()} ainda`}
-            description="O ranking do mês aparece assim que os primeiros treinos forem lançados."
+            title={`Ninguém pontuou em ${nomeMes.toLowerCase()}${ehMesAtual ? " ainda" : ""}`}
+            description={
+              ehMesAtual
+                ? "O ranking do mês aparece assim que os primeiros treinos forem lançados."
+                : "Não há pontos lançados para este mês."
+            }
             action={
               <Button
                 variant="secondary"
@@ -549,6 +621,11 @@ export default function RankingPage() {
                 ) : null}
               </div>
             </div>
+          ) : periodoEfetivo === "mes" && !isStaff ? (
+            <p className="mb-3 rounded-[var(--radius-lg)] border border-dashed border-border px-4 py-3 text-sm text-text-light">
+              Você não pontuou em {nomeMes.toLowerCase()}
+              {ehMesAtual ? " ainda. Seus treinos lançados neste mês entram aqui." : "."}
+            </p>
           ) : null}
 
           {!search.trim() ? <Podium atletas={top3} /> : null}

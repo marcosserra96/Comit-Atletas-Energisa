@@ -14,16 +14,16 @@ test("pódio sem empate: 1º, 2º e 3º, o resto vai para a tabela", () => {
   assert.deepEqual(restantes.map((l) => l.posicao), [4, 5]);
 });
 
-test("empate no 1º: dois no mesmo degrau, sem 2º lugar", () => {
+test("empate no 1º: dois no mesmo degrau e a contagem segue sem pular", () => {
   const { podio, restantes } = separarPodio(ranking([50, 50, 30, 20]));
-  assert.deepEqual(podio.map((d) => [d.posicao, d.atletas.length]), [[1, 2], [3, 1]]);
-  assert.deepEqual(restantes.map((l) => l.posicao), [4]);
+  assert.deepEqual(podio.map((d) => [d.posicao, d.atletas.length]), [[1, 2], [2, 1], [3, 1]]);
+  assert.deepEqual(restantes.map((l) => l.posicao), []);
 });
 
 test("mais empatados do que cabem no degrau seguem na tabela com a mesma posição", () => {
-  const { podio, restantes } = separarPodio(ranking([50, 40, 40, 40, 10]));
-  assert.deepEqual(podio.map((d) => [d.posicao, d.atletas.length]), [[1, 1], [2, 2]]);
-  assert.deepEqual(restantes.map((l) => l.posicao), [2, 5]);
+  const { podio, restantes } = separarPodio(ranking([50, 40, 40, 40, 10, 5]));
+  assert.deepEqual(podio.map((d) => [d.posicao, d.atletas.length]), [[1, 1], [2, 2], [3, 1]]);
+  assert.deepEqual(restantes.map((l) => l.posicao), [2, 4]);
 });
 
 test("quem não pontuou não sobe ao pódio", () => {

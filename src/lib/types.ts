@@ -327,8 +327,13 @@ export interface RankingPeriodsConfigDoc {
     fim: string;
   };
   geracaoPublicada?: string;
-  /** A geração publicada já inclui o ranking do mês (publicação completa depois da novidade). */
+  /** @deprecated substituído por `mesesDesde`. */
   mesPublicado?: boolean;
+  /**
+   * Primeira competência ("YYYY-MM") com ranking mensal publicado. Existe só depois
+   * de uma publicação completa que gerou os meses; a navegação vai daqui até o mês atual.
+   */
+  mesesDesde?: string;
   rankingAtualizadoEm?: unknown;
   rankingAtualizacaoModo?: "automatico" | "manual";
   rankingAtualizacaoOrigem?: string;
@@ -342,7 +347,7 @@ export interface RankingResultadoDoc extends AtletaPublicoDoc {
   atletaId: string;
   treinos: number;
   km: number;
-  /** Só no período "mes": competência "YYYY-MM" calculada. Outra competência = mês já virou. */
+  /** Só no período "mes": competência "YYYY-MM" do resultado. */
   competencia?: string;
   geradoEm: unknown;
 }

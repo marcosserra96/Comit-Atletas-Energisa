@@ -2,9 +2,11 @@ import "server-only";
 
 import type { Firestore } from "firebase-admin/firestore";
 import {
+  calcularResultadosMensais,
   calcularResultadosRanking,
   competenciaAtualBrasil,
-  limitesDaCompetencia,
+  competenciasDoRanking,
+  idResultadoRanking,
   normalizarRankingPeriods,
 } from "@/lib/rankingPeriods";
 import { regrasDeTreino, type RegrasDeTreino } from "@/lib/activityConsolidation";
@@ -54,6 +56,7 @@ function resultadosDoPeriodo(
   geracaoId: string,
   geradoEm: FirebaseFirestore.Timestamp,
   regrasTreino: RegrasDeTreino,
+  competencias: readonly string[],
 ) {
   const geral = calcularResultadosRanking(atletas, historico, "geral", undefined, undefined, resumosMensais, regrasTreino);
   const trimestral = config.trimestre.ativo
@@ -67,12 +70,8 @@ function resultadosDoPeriodo(
         regrasTreino,
       )
     : [];
-  // Ranking do mês corrente; a competência fica gravada para a tela saber quando o mês virou.
-  const competencia = competenciaAtualBrasil();
-  const { inicio, fim } = limitesDaCompetencia(competencia);
-  const mensal = calcularResultadosRanking(atletas, historico, "mes", inicio, fim, resumosMensais, regrasTreino).map(
-    (resultado) => ({ ...resultado, competencia }),
-  );
+  // Um ranking por mês (só quem pontuou no mês), para o atleta navegar entre meses.
+  const mensal = calcularResultadosMensais(atletas, historico, resumosMensais, competencias, regrasTreino);
   const resultados: RankingResultadoDoc[] = [...geral, ...trimestral, ...mensal].map((resultado) => ({
     ...resultado,
     geracaoId,
@@ -114,6 +113,7 @@ export async function publicarRankingCompleto(params: {
     (item) => ({ id: item.id, ...item.data() }) as HistoricoMensalDoc,
   );
   const geracaoId = db.collection("ranking_resultados").doc().id;
+  const competencias = competenciasDoRanking(historico, resumosMensais, competenciaAtualBrasil());
   const { geral, resultados } = resultadosDoPeriodo(
     atletas,
     historico,
@@ -122,18 +122,14 @@ export async function publicarRankingCompleto(params: {
     geracaoId,
     Timestamp.now(),
     regrasTreino,
+    competencias,
   );
 
   await gravarEmLotes(
     db,
     resultados.map(
       (resultado) => (batch) =>
-        batch.set(
-          db
-            .collection("ranking_resultados")
-            .doc(`${geracaoId}_${resultado.periodoId}_${resultado.atletaId}`),
-          resultado,
-        ),
+        batch.set(db.collection("ranking_resultados").doc(idResultadoRanking(geracaoId, resultado)), resultado),
     ),
   );
 
@@ -141,7 +137,7 @@ export async function publicarRankingCompleto(params: {
   finalBatch.set(configRef, {
     trimestre: config.trimestre,
     geracaoPublicada: geracaoId,
-    mesPublicado: true,
+    mesesDesde: competencias[0],
     rankingAtualizadoEm: FieldValue.serverTimestamp(),
     rankingAtualizacaoModo: modo,
     atualizadoEm: FieldValue.serverTimestamp(),
@@ -241,6 +237,10 @@ export async function atualizarRankingDosAtletas(params: {
     carregarDadosDosAtletas(db, atletaIds),
     carregarRegrasDeTreino(db),
   ]);
+  // Meses só depois que uma publicação completa criou o ranking mensal de todos.
+  const competencias = config.mesesDesde
+    ? competenciasDoRanking(historico, resumosMensais, competenciaAtualBrasil(), config.mesesDesde)
+    : [];
   const { resultados } = resultadosDoPeriodo(
     atletas,
     historico,
@@ -249,18 +249,22 @@ export async function atualizarRankingDosAtletas(params: {
     geracaoId,
     Timestamp.now(),
     regrasTreino,
+    competencias,
   );
-  const resultadoPorChave = new Map(
-    resultados.map((resultado) => [`${resultado.periodoId}_${resultado.atletaId}`, resultado]),
+  const resultadoPorId = new Map(
+    resultados.map((resultado) => [idResultadoRanking(geracaoId, resultado), resultado]),
   );
-  // "mes" só depois que uma publicação completa criou o ranking do mês para todos.
-  const periodos: RankingPeriodKey[] = [
-    "geral",
-    ...(config.trimestre.ativo ? (["trimestre"] as const) : []),
-    ...(config.mesPublicado ? (["mes"] as const) : []),
+  const periodos: RankingPeriodKey[] = ["geral", ...(config.trimestre.ativo ? (["trimestre"] as const) : [])];
+  /** Todos os documentos de um atleta nesta geração (os sem resultado são apagados). */
+  const idsDoAtleta = (atletaId: string) => [
+    ...periodos.map((periodoId) => idResultadoRanking(geracaoId, { periodoId, atletaId })),
+    ...competencias.map((competencia) => idResultadoRanking(geracaoId, { periodoId: "mes", atletaId, competencia })),
   ];
+  // Transação aceita até 500 escritas: ajusta o grupo ao número de meses.
+  const escritasPorAtleta = periodos.length + competencias.length + 2;
+  const tamanhoGrupo = Math.max(1, Math.min(100, Math.floor(450 / escritasPorAtleta)));
   let atletasAtualizados = 0;
-  for (const grupo of gruposDe(atletaIds, 100)) {
+  for (const grupo of gruposDe(atletaIds, tamanhoGrupo)) {
     atletasAtualizados += await db.runTransaction(async (transaction) => {
       const locks = await Promise.all(
         grupo.map((atletaId) =>
@@ -272,13 +276,14 @@ export async function atualizarRankingDosAtletas(params: {
       grupo.forEach((atletaId, indice) => {
         if (locks[indice].data()?.requisicaoId !== requisicaoId) return;
         atualizadosNoGrupo += 1;
-        for (const periodoId of periodos) {
-          const chave = `${periodoId}_${atletaId}`;
-          const ref = db.collection("ranking_resultados").doc(`${geracaoId}_${chave}`);
-          const resultado = resultadoPorChave.get(chave);
+        for (const id of idsDoAtleta(atletaId)) {
+          const ref = db.collection("ranking_resultados").doc(id);
+          const resultado = resultadoPorId.get(id);
           if (resultado) transaction.set(ref, resultado);
           else transaction.delete(ref);
         }
+        // Formato da versão anterior (um único "mês atual" por atleta).
+        transaction.delete(db.collection("ranking_resultados").doc(`${geracaoId}_mes_${atletaId}`));
         if (!config.trimestre.ativo) {
           transaction.delete(
             db
@@ -298,6 +303,10 @@ export async function atualizarRankingDosAtletas(params: {
         rankingAtualizadoEm: FieldValue.serverTimestamp(),
         rankingAtualizacaoModo: "automatico",
         rankingAtualizacaoOrigem: params.origem || "alteracao_pontuacao",
+        // Lançamento num mês mais antigo amplia a navegação.
+        ...(config.mesesDesde && competencias[0] && competencias[0] < config.mesesDesde
+          ? { mesesDesde: competencias[0] }
+          : {}),
       },
       { merge: true },
     );

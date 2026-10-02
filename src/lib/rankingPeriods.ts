@@ -37,6 +37,66 @@ export function limitesDaCompetencia(competencia: string) {
   return { inicio: `${competencia}-01`, fim: `${competencia}-${String(ultimo).padStart(2, "0")}` };
 }
 
+/** Quantos meses para trás o ranking mensal guarda. */
+export const MESES_RANKING_MENSAL = 24;
+
+/** Soma `delta` meses a uma competência "YYYY-MM". */
+export function somarMeses(competencia: string, delta: number) {
+  const [ano, mes] = competencia.split("-").map(Number);
+  const d = new Date(ano, mes - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/**
+ * Competências do ranking mensal: do primeiro mês com dados (no máximo
+ * `MESES_RANKING_MENSAL` meses atrás) até o mês atual, em ordem.
+ */
+export function competenciasDoRanking(
+  lancamentos: readonly Pick<HistoricoPontoDoc, "dataTreino" | "estornado">[],
+  resumosMensais: readonly Pick<HistoricoMensalDoc, "competencia">[],
+  atual: string,
+  desde?: string,
+) {
+  const limite = somarMeses(atual, -(MESES_RANKING_MENSAL - 1));
+  let primeira = desde && desde < atual ? desde : atual;
+  for (const l of lancamentos) {
+    if (l.estornado || !l.dataTreino) continue;
+    const c = l.dataTreino.slice(0, 7);
+    if (c < primeira) primeira = c;
+  }
+  for (const r of resumosMensais) if (r.competencia && r.competencia < primeira) primeira = r.competencia;
+  if (primeira < limite) primeira = limite;
+  const lista: string[] = [];
+  for (let c = primeira; c <= atual; c = somarMeses(c, 1)) lista.push(c);
+  return lista;
+}
+
+/** Ranking de cada mês; só entra quem pontuou, treinou ou rodou no mês. */
+export function calcularResultadosMensais(
+  atletas: AtletaDoc[],
+  lancamentos: HistoricoPontoDoc[],
+  resumosMensais: HistoricoMensalDoc[],
+  competencias: readonly string[],
+  regrasTreino?: RegrasDeTreino,
+) {
+  return competencias.flatMap((competencia) => {
+    const { inicio, fim } = limitesDaCompetencia(competencia);
+    return calcularResultadosRanking(atletas, lancamentos, "mes", inicio, fim, resumosMensais, regrasTreino)
+      .filter((r) => r.pontuacaoTotal > 0 || r.treinos > 0 || r.km > 0)
+      .map((r) => ({ ...r, competencia }));
+  });
+}
+
+/** Id do documento de um resultado (o mensal leva a competência). */
+export function idResultadoRanking(
+  geracaoId: string,
+  resultado: { periodoId: RankingPeriodKey; atletaId: string; competencia?: string },
+) {
+  return resultado.periodoId === "mes"
+    ? `${geracaoId}_mes_${resultado.competencia}_${resultado.atletaId}`
+    : `${geracaoId}_${resultado.periodoId}_${resultado.atletaId}`;
+}
+
 export function normalizarRankingPeriods(
   value?: Partial<RankingPeriodsConfigDoc>,
 ): RankingPeriodsConfigDoc {
@@ -48,7 +108,7 @@ export function normalizarRankingPeriods(
       fim: value?.trimestre?.fim ?? "",
     },
     geracaoPublicada: value?.geracaoPublicada,
-    mesPublicado: value?.mesPublicado === true,
+    mesesDesde: typeof value?.mesesDesde === "string" ? value.mesesDesde : undefined,
     rankingAtualizadoEm: value?.rankingAtualizadoEm,
     rankingAtualizacaoModo: value?.rankingAtualizacaoModo,
     rankingAtualizacaoOrigem: value?.rankingAtualizacaoOrigem,
