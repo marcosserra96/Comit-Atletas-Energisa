@@ -43,7 +43,15 @@ export function ForgotPasswordModal({
 
     try {
       const normalizedEmail = email.trim().toLowerCase();
-      await sendPasswordResetEmail(auth, normalizedEmail);
+      try {
+        // Depois de criar a senha na página do Firebase, o botão "Continuar" volta ao login do portal.
+        await sendPasswordResetEmail(auth, normalizedEmail, { url: `${window.location.origin}/login` });
+      } catch (comRetorno) {
+        const codigo = firebaseErrorCode(comRetorno);
+        // Endereço do portal fora dos domínios autorizados: envia mesmo assim, sem o botão de volta.
+        if (codigo !== "auth/unauthorized-continue-uri" && codigo !== "auth/invalid-continue-uri") throw comRetorno;
+        await sendPasswordResetEmail(auth, normalizedEmail);
+      }
       show("success", "Enviamos um link de redefinição para o seu e-mail.");
       onClose();
     } catch (requestError) {

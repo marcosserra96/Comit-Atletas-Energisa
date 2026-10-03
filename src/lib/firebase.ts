@@ -22,6 +22,9 @@ const firebaseConfig = useEmulator
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
+// E-mails do Firebase (redefinição de senha, verificação) e telas padrão em português.
+// O modelo do projeto não pode ser editado no console; o padrão traduzido é o melhor disponível.
+auth.languageCode = "pt-BR";
 export const db = getFirestore(app);
 
 // Evita reconectar em cada hot-reload do Next.js em dev.
