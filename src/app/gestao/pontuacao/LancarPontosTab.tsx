@@ -1,5 +1,6 @@
 "use client";
 
+import { useBuscaDaUrl } from "@/lib/useBuscaDaUrl";
 import { dataIsoLocal } from "@/lib/date";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -80,6 +81,18 @@ export function LancarPontosTab({
   const [observacoes, setObservacoes] = useState<Record<string, string>>({});
   const [kmPorAtleta, setKmPorAtleta] = useState<Record<string, string>>({});
   const [salvando, setSalvando] = useState(false);
+
+  // Vindo do Início ("evento sem pontos lançados"): já abre com o evento escolhido.
+  const busca = useBuscaDaUrl();
+  const eventoDaUrl = busca ? new URLSearchParams(busca).get("evento") : null;
+  const [eventoDaUrlAplicado, setEventoDaUrlAplicado] = useState<string | null>(null);
+  if (eventoDaUrl && eventos && eventoDaUrlAplicado !== eventoDaUrl) {
+    setEventoDaUrlAplicado(eventoDaUrl);
+    if (eventos.some((e) => e.id === eventoDaUrl && !ehReuniao(e))) {
+      setTipo("evento");
+      handleEventoChange(eventoDaUrl);
+    }
+  }
 
   useEffect(() => {
     const unsubscribe = onSnapshot(

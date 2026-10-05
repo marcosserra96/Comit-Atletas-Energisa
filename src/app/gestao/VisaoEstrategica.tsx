@@ -3,35 +3,22 @@
 import { dataIsoLocal } from "@/lib/date";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { collection, getDocs, onSnapshot, orderBy, query, where } from "firebase/firestore";
-import {
-  Activity,
-  AlertTriangle,
-  Bike,
-  CalendarClock,
-  CalendarDays,
-  CheckCircle2,
-  ChevronRight,
-  Clock4,
-  Footprints,
-  ListChecks,
-  Sparkles,
-  UserX,
-  Users,
-} from "lucide-react";
+import { Activity, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { db } from "@/lib/firebase";
 import { carregarTodosLancamentos } from "@/lib/lancamentosCache";
-import { formatBRL, formatDistancia, formatKm, formatPontos, formatShortDate, plural } from "@/lib/format";
+import { formatBRL, formatKm, formatShortDate, plural } from "@/lib/format";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { calcularEstatisticasDashboard } from "@/lib/dashboardStats";
 import { aderenciaPorAtleta, mediaAderencia } from "@/lib/aderencia";
 import { regrasDeTreino } from "@/lib/activityConsolidation";
 import { useDiasTreino } from "@/lib/useDiasTreino";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
-import { calcularPosicoesRanking } from "@/lib/rankingPosition";
 import { ExportarRelatorioDropdown } from "./ExportarRelatorioDropdown";
+import { PainelAtencao, type DadosAtencao } from "./PainelAtencao";
+import { ComparativoModalidades } from "./ComparativoModalidades";
+import { temPermissao } from "@/lib/permissoes";
 import type {
   AtletaDoc,
   DespesaDoc,
@@ -41,7 +28,6 @@ import type {
   RegraPontuacaoDoc,
   SolicitacaoAcessoDoc,
 } from "@/lib/types";
-import { modalidadeLabel } from "@/lib/labels";
 
 /** Arredonda o teto do eixo Y pra um número "redondo" (1/2/5 × potência de 10) e devolve os ticks de 0 até ele. */
 function calcularTicksGrafico(valorMaximo: number, alvoTicks = 4): number[] {
@@ -125,7 +111,12 @@ export function VisaoEstrategica() {
   useEffect(() => {
     const unsubscribe = onSnapshot(
       query(collection(db, "solicitacoes_acesso"), where("status", "==", "pendente")),
-      (snap) => setPendentes(snap.docs.map((d) => d.data() as SolicitacaoAcessoDoc)),
+      (snap) =>
+        setPendentes(
+          snap.docs
+            .map((d) => d.data() as SolicitacaoAcessoDoc)
+            .sort((a, b) => Number((a.criadoEm as { seconds?: number })?.seconds ?? 0) - Number((b.criadoEm as { seconds?: number })?.seconds ?? 0)),
+        ),
       () => setPendentes([]),
     );
     return unsubscribe;
@@ -195,40 +186,15 @@ export function VisaoEstrategica() {
   const tetoGrafico = ticksGrafico[ticksGrafico.length - 1];
   const mesAtualIdx = stats.seriesMensal.length - 1;
 
-  const prioridades: Prioridade[] = [
-    ...(isAdmin && (pendentes?.length ?? 0) > 0
-      ? [{
-          href: "/gestao/atletas?tab=pendentes",
-          icon: Clock4,
-          texto: plural(pendentes!.length, "solicitação de acesso", "solicitações de acesso"),
-          destaque: true,
-        }]
-      : []),
-    ...(stats.filaAguardando > 0
-      ? [{ href: "/gestao/atletas?tab=equipes", icon: Users, texto: `${stats.filaAguardando} na fila de espera` }]
-      : []),
-    ...(stats.eventosPendentesLancamento > 0
-      ? [{
-          href: "/gestao/pontuacao",
-          icon: CalendarClock,
-          texto: plural(stats.eventosPendentesLancamento, "evento sem pontos lançados", "eventos sem pontos lançados"),
-        }]
-      : []),
-    ...(stats.atletasSemAtividade > 0
-      ? [{
-          href: "/gestao/atletas?tab=ver",
-          icon: UserX,
-          texto: plural(stats.atletasSemAtividade, "atleta sem nenhuma participação", "atletas sem nenhuma participação"),
-        }]
-      : []),
-    ...(isAdmin && stats.regrasSemUso > 0
-      ? [{
-          href: "/gestao/criterios",
-          icon: ListChecks,
-          texto: plural(stats.regrasSemUso, "critério nunca usado", "critérios nunca usados"),
-        }]
-      : []),
-  ];
+  const dadosAtencao: DadosAtencao = {
+    solicitacoes: pendentes,
+    atletasSemVinculo: (atletas ?? []).filter((a) => !a.authUid),
+    fila: stats.filaLista,
+    eventosPendentes: stats.eventosPendentesLista,
+    inativos30d: [...stats.corrida.inativosList, ...stats.bike.inativosList].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
+    semParticipacao: stats.atletasSemAtividadeLista,
+    criteriosSemUso: stats.regrasSemUsoLista,
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -253,44 +219,16 @@ export function VisaoEstrategica() {
         )}
       </div>
 
-      {/* 1. O que precisa de ação agora — vem antes dos números. */}
-      <section aria-labelledby="titulo-atencao" className={painel}>
-        <h2 id="titulo-atencao" className="flex items-center gap-2 text-base font-bold text-text">
-          <Sparkles className="size-4 text-primary" aria-hidden="true" />
-          Precisa da sua atenção
-        </h2>
-        {carregando ? (
-          <div className="mt-3 h-12 animate-pulse rounded-[var(--radius)] bg-bg-inset" />
-        ) : prioridades.length === 0 ? (
-          <p className="mt-3 flex items-center gap-2 text-sm text-text-light">
-            <CheckCircle2 className="size-4 text-success" aria-hidden="true" />
-            Tudo em ordem — nenhuma ação pendente.
-          </p>
-        ) : (
-          <ul className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
-            {prioridades.map((item) => (
-              <li key={item.href + item.texto}>
-                <Link
-                  href={item.href}
-                  className={cn(
-                    "group flex min-h-12 items-center gap-3 rounded-[var(--radius)] border px-3 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                    item.destaque
-                      ? "border-accent/30 bg-accent-subtle hover:bg-accent/15"
-                      : "border-border bg-bg hover:bg-bg-inset",
-                  )}
-                >
-                  <item.icon
-                    className={cn("size-4 shrink-0", item.destaque ? "text-accent" : "text-text-light")}
-                    aria-hidden="true"
-                  />
-                  <span className="min-w-0 flex-1 font-medium text-text">{item.texto}</span>
-                  <ChevronRight className="size-4 shrink-0 text-text-muted transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      {/* 1. O que precisa de ação agora — cada item abre a lista com a ação. */}
+      <PainelAtencao
+        carregando={carregando || pendentes === null}
+        dados={dadosAtencao}
+        permissoes={{
+          admin: isAdmin,
+          atletas: temPermissao(usuario, "atletas"),
+          registrar: temPermissao(usuario, "registrar"),
+        }}
+      />
 
       {/* 2. Números do programa — mesmo estilo para todos, sem cores competindo. */}
       <section
@@ -445,42 +383,20 @@ export function VisaoEstrategica() {
         </section>
       </div>
 
-      {/* 3. Corrida × Bike lado a lado, com pódio e inativos de cada uma. */}
-      <section aria-labelledby="titulo-modalidades" className={painel}>
-        <h2 id="titulo-modalidades" className="text-base font-bold text-text">Modalidades</h2>
-        <p className="mt-0.5 text-xs text-text-light">
-          Pontos, participações e km desde o início, os mesmos do Ranking geral. Atividade e aderência: últimos 30 dias.
-        </p>
-        <div className="mt-4 grid grid-cols-1 divide-y divide-border md:grid-cols-2 md:divide-x md:divide-y-0">
-          <ColunaModalidade
-            modalidade="corrida"
-            stats={stats.corrida}
-            podio={stats.podioCorrida}
-            aderencia={aderenciaModalidade.corrida}
-            className="pb-5 md:pb-0 md:pr-6"
-          />
-          <ColunaModalidade
-            modalidade="bicicleta"
-            stats={stats.bike}
-            podio={stats.podioBike}
-            aderencia={aderenciaModalidade.bicicleta}
-            className="pt-5 md:pl-6 md:pt-0"
-          />
-        </div>
-      </section>
+      {/* 3. Corrida × Bike numa tabela só, números alinhados. */}
+      <ComparativoModalidades
+        corrida={stats.corrida}
+        bicicleta={stats.bike}
+        podioCorrida={stats.podioCorrida}
+        podioBicicleta={stats.podioBike}
+        aderencia={aderenciaModalidade}
+      />
     </div>
   );
 }
 
 const painel =
   "rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-[var(--shadow-card)] sm:p-5";
-
-interface Prioridade {
-  href: string;
-  icon: typeof Clock4;
-  texto: string;
-  destaque?: boolean;
-}
 
 function Numero({
   rotulo,
@@ -503,164 +419,6 @@ function Numero({
         </div>
       ) : null}
       {detalhe ? <dd className="mt-1 text-xs text-text-light">{detalhe}</dd> : null}
-    </div>
-  );
-}
-
-interface ModStats {
-  total: number;
-  engajamento: number;
-  ativos30d: number;
-  inativos: number;
-  participacoes: number;
-  pontos: number;
-  media: number;
-  km: number;
-  top: AtletaDoc | undefined;
-  inativosList: AtletaDoc[];
-}
-
-const identidadeModalidade = {
-  corrida: { icon: Footprints, caixa: "bg-sport-running-subtle text-sport-running" },
-  bicicleta: { icon: Bike, caixa: "bg-sport-cycling-subtle text-sport-cycling" },
-} as const;
-
-const LIMITE_INATIVOS = 6;
-
-function ColunaModalidade({
-  modalidade,
-  stats,
-  podio,
-  aderencia,
-  className,
-}: {
-  modalidade: "corrida" | "bicicleta";
-  stats: ModStats;
-  /** Aderência média nos últimos 30 dias; null sem agenda de treinos. */
-  aderencia: number | null;
-  /** `pontuacaoTotal` já é a pontuação calculada (a do Ranking geral). */
-  podio: AtletaDoc[];
-  className?: string;
-}) {
-  const { icon: Icon, caixa } = identidadeModalidade[modalidade];
-  const nome = modalidadeLabel[modalidade];
-  const posicoes = calcularPosicoesRanking(podio.map((atleta) => atleta.pontuacaoTotal));
-  const medalha = [
-    "bg-ranking-gold-bg text-ranking-gold-text",
-    "bg-ranking-silver-bg text-ranking-silver-text",
-    "bg-ranking-bronze-bg text-ranking-bronze-text",
-  ];
-  const numeros: [string, string][] = [
-    ["Participações", String(stats.participacoes)],
-    ["Pontos", formatPontos(stats.pontos)],
-    ["Por atleta", formatPontos(stats.media)],
-    ...(aderencia != null ? ([["Aderência", `${aderencia}%`]] as [string, string][]) : []),
-    ...(stats.km > 0 ? ([["Km", formatDistancia(stats.km)]] as [string, string][]) : []),
-  ];
-
-  return (
-    <div className={cn("flex min-w-0 flex-col gap-4", className)}>
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className={cn("flex size-9 items-center justify-center rounded-[var(--radius)]", caixa)}>
-            <Icon className="size-[18px]" aria-hidden="true" />
-          </span>
-          <div>
-            <h3 className="font-bold text-text">{nome}</h3>
-            <p className="text-xs text-text-light">{plural(stats.total, "atleta")}</p>
-          </div>
-        </div>
-        <strong className="text-2xl font-extrabold tabular-nums text-text">{stats.engajamento}%</strong>
-      </div>
-
-      <div>
-        <div className="h-1.5 overflow-hidden rounded-full bg-bg-inset" aria-hidden="true">
-          <motion.div
-            className="h-full origin-left rounded-full bg-primary"
-            initial={{ scaleX: 0 }}
-            animate={{ scaleX: Math.min(100, stats.engajamento) / 100 }}
-            transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
-          />
-        </div>
-        <p className="mt-1.5 text-xs text-text-light">
-          {stats.ativos30d} de {stats.total} {stats.total === 1 ? "ativo" : "ativos"} nos últimos 30 dias
-        </p>
-      </div>
-
-      <dl
-        className={cn(
-          "grid gap-x-4 gap-y-3",
-          numeros.length === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4 md:grid-cols-2 xl:grid-cols-4",
-        )}
-      >
-        {numeros.map(([rotulo, valor]) => (
-          <div key={rotulo} className="min-w-0">
-            <dt className="truncate text-xs text-text-light">{rotulo}</dt>
-            <dd className="text-base font-bold tabular-nums text-text">{valor}</dd>
-          </div>
-        ))}
-      </dl>
-
-      <div>
-        <h4 className="text-xs font-bold uppercase tracking-wide text-text-light">Pódio</h4>
-        {podio.length === 0 ? (
-          <p className="mt-2 text-sm text-text-light">Sem pontuação ainda.</p>
-        ) : (
-          <ol className="mt-2 flex flex-col gap-1.5">
-            {podio.map((a, i) => (
-              <li key={a.id} className="flex items-center gap-2.5 text-sm">
-                <span
-                  className={cn(
-                    "flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold",
-                    medalha[Math.min(posicoes[i], 3) - 1],
-                  )}
-                >
-                  {posicoes[i]}
-                </span>
-                <span className="min-w-0 flex-1 truncate font-medium text-text">{a.nome}</span>
-                <span className="shrink-0 font-semibold tabular-nums text-text-secondary">{formatPontos(a.pontuacaoTotal)} pts</span>
-              </li>
-            ))}
-          </ol>
-        )}
-      </div>
-
-      <div>
-        <h4 className="text-xs font-bold uppercase tracking-wide text-text-light">
-          Sem atividade há mais de 30 dias
-        </h4>
-        {stats.inativosList.length === 0 ? (
-          <p className="mt-2 flex items-center gap-1.5 text-sm text-text-light">
-            <CheckCircle2 className="size-4 text-success" aria-hidden="true" />
-            Ninguém
-          </p>
-        ) : (
-          <ul className="mt-2 flex flex-wrap gap-1.5">
-            {stats.inativosList.slice(0, LIMITE_INATIVOS).map((a) => (
-              <li key={a.id}>
-                <Link
-                  href={`/gestao/atletas?tab=ver&ficha=${encodeURIComponent(a.id)}`}
-                  aria-label={`Abrir ficha de ${a.nome}`}
-                  className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-accent/30 bg-accent-subtle px-2.5 py-1 text-xs font-medium text-text transition-colors hover:border-accent/60"
-                >
-                  <AlertTriangle className="size-3.5 shrink-0 text-accent" aria-hidden="true" />
-                  {a.nome}
-                </Link>
-              </li>
-            ))}
-            {stats.inativosList.length > LIMITE_INATIVOS ? (
-              <li>
-                <Link
-                  href="/gestao/atletas?tab=ver"
-                  className="inline-flex min-h-8 items-center px-1.5 text-xs font-semibold text-primary hover:text-primary-hover"
-                >
-                  e mais {stats.inativosList.length - LIMITE_INATIVOS}
-                </Link>
-              </li>
-            ) : null}
-          </ul>
-        )}
-      </div>
     </div>
   );
 }
