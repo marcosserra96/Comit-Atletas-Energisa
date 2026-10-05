@@ -71,7 +71,8 @@ export interface SolicitacaoAcessoDoc {
   atualizadoEm?: unknown;
 }
 
-export type TipoLancamento = "treino" | "evento" | "avulso" | "importacao";
+/** "reuniao": só presença; soma pontos, nunca conta como treino nem entra na aderência. */
+export type TipoLancamento = "treino" | "evento" | "avulso" | "importacao" | "reuniao";
 
 export interface HistoricoPontoDoc {
   id: string;
@@ -106,6 +107,8 @@ export interface HistoricoPontoDoc {
   justificativaDescricao?: string;
   justificativaInicio?: string;
   justificativaFim?: string;
+  /** Presença em reunião: "manual" (comitê) ou "qrcode" (confirmada pelo atleta). */
+  origemPresenca?: "manual" | "qrcode";
 }
 
 export interface HistoricoMensalDoc {
@@ -200,6 +203,13 @@ export interface EventoDoc {
   modalidade: "ambas" | Modalidade;
   data: string;
   km?: number;
+  /** Ausente = evento esportivo (prova, treinão). "reuniao" = encontro do programa, vale presença. */
+  tipo?: "evento" | "reuniao";
+  /** Reunião: horário "HH:MM" de início e fim (horário de Brasília). */
+  horaInicio?: string;
+  horaFim?: string;
+  /** Reunião online: link da chamada (Teams, Meet…). */
+  linkOnline?: string;
   criadoEm: unknown;
   criadoPor: string;
   atualizadoEm?: unknown;

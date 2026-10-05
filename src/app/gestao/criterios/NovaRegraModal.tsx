@@ -17,6 +17,7 @@ const tipos: { value: TipoLancamento; label: string }[] = [
   { value: "treino", label: "Treino" },
   { value: "evento", label: "Evento" },
   { value: "avulso", label: "Avulso" },
+  { value: "reuniao", label: "Reunião" },
 ];
 
 export function NovaRegraModal({
@@ -46,6 +47,8 @@ export function NovaRegraModal({
   const [loading, setLoading] = useState(false);
   // Lançado como Treino sempre conta; a opção só decide para Avulso.
   const valeComoTreino = tiposSelecionados.has("treino");
+  // Evento e Reunião nunca contam como treino: a opção só aparece quando faz diferença.
+  const mostrarOpcaoTreino = valeComoTreino || tiposSelecionados.has("avulso");
 
   function toggleTipo(tipo: TipoLancamento) {
     setTiposSelecionados((prev) => {
@@ -76,7 +79,7 @@ export function NovaRegraModal({
     setLoading(true);
     try {
       const ref = regra ? doc(db, "regras_pontuacao", regra.id) : doc(collection(db, "regras_pontuacao"));
-      const contaAgora = valeComoTreino || contaComoTreino;
+      const contaAgora = valeComoTreino || (mostrarOpcaoTreino && contaComoTreino);
       // Critério novo ainda não tem lançamentos; um existente que mudou muda as contagens.
       const mudouContagem = regra ? regraContaComoTreino(regra) !== contaAgora : false;
       await setDoc(ref, {
@@ -156,6 +159,7 @@ export function NovaRegraModal({
             ))}
           </div>
         </div>
+        {mostrarOpcaoTreino ? (
         <label
           className={
             "flex items-start gap-2.5 rounded-[var(--radius)] border border-border bg-bg p-3.5 text-sm " +
@@ -178,6 +182,7 @@ export function NovaRegraModal({
             </span>
           </span>
         </label>
+        ) : null}
         <div className="rounded-[var(--radius)] border border-accent/25 bg-accent/5 p-3.5">
           <label className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-accent">
             <LinkIcon className="size-3.5" />

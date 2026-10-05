@@ -2,7 +2,7 @@
 
 import { FormEvent, useId, useState } from "react";
 import { collection, doc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
-import { MapPin } from "lucide-react";
+import { CalendarCheck, Link2, MapPin, UsersRound } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { dataIsoLocal } from "@/lib/date";
 import { useActiveSession } from "@/lib/session/SessionProvider";
@@ -11,6 +11,7 @@ import { Modal } from "@/components/ui/Modal";
 import { TextField } from "@/components/ui/TextField";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import type { EventoDoc } from "@/lib/types";
 
 /**
@@ -35,18 +36,36 @@ export function EventoModal({
   const [modalidade, setModalidade] = useState<EventoDoc["modalidade"]>(evento?.modalidade ?? "ambas");
   const [data, setData] = useState(evento?.data ?? "");
   const [km, setKm] = useState(evento?.km != null ? String(evento.km) : "");
+  const [tipo, setTipo] = useState<"evento" | "reuniao">(evento?.tipo === "reuniao" ? "reuniao" : "evento");
+  const [horaInicio, setHoraInicio] = useState(evento?.horaInicio ?? "");
+  const [horaFim, setHoraFim] = useState(evento?.horaFim ?? "");
+  const [linkOnline, setLinkOnline] = useState(evento?.linkOnline ?? "");
+  const reuniao = tipo === "reuniao";
   const [loading, setLoading] = useState(false);
   const confirmados = evento?.inscritos?.length ?? 0;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (reuniao && horaInicio && horaFim && horaFim <= horaInicio) {
+      show("info", "O horário de fim precisa ser depois do início.");
+      return;
+    }
+    const link = linkOnline.trim();
+    if (reuniao && link && !/^https?:\/\//i.test(link)) {
+      show("info", "Cole o link completo da reunião, começando com https://");
+      return;
+    }
     setLoading(true);
     const dados = {
       titulo: titulo.trim(),
       local: local.trim(),
       modalidade,
       data,
-      km: km ? Number(km.replace(",", ".")) : null,
+      tipo,
+      km: !reuniao && km ? Number(km.replace(",", ".")) : null,
+      horaInicio: reuniao ? horaInicio : null,
+      horaFim: reuniao ? horaFim : null,
+      linkOnline: reuniao && link ? link : null,
     };
     try {
       if (evento) {
@@ -54,7 +73,7 @@ export function EventoModal({
           ...dados,
           atualizadoEm: serverTimestamp(),
         });
-        show("success", "Evento atualizado.");
+        show("success", reuniao ? "Reunião atualizada." : "Evento atualizado.");
       } else {
         const novoEvento = doc(collection(db, "agenda_eventos"));
         await setDoc(novoEvento, {
@@ -63,7 +82,7 @@ export function EventoModal({
           criadoEm: serverTimestamp(),
           criadoPor: uid,
         });
-        show("success", "Evento publicado na agenda.");
+        show("success", reuniao ? "Reunião publicada na agenda." : "Evento publicado na agenda.");
       }
       onClose();
     } catch {
@@ -74,11 +93,32 @@ export function EventoModal({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={editando ? "Editar evento" : "Novo evento"} mobileSheet>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={editando ? (reuniao ? "Editar reunião" : "Editar evento") : reuniao ? "Nova reunião" : "Novo evento"}
+      mobileSheet
+    >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium text-text">Tipo</span>
+          <SegmentedControl
+            value={tipo}
+            onChange={(valor) => setTipo(valor as "evento" | "reuniao")}
+            options={[
+              { value: "evento", label: "Evento esportivo", icon: CalendarCheck },
+              { value: "reuniao", label: "Reunião", icon: UsersRound },
+            ]}
+          />
+          {reuniao ? (
+            <p className="text-xs text-text-muted">
+              Reunião vale presença: os pontos vêm do critério do tipo Reunião e não contam como treino.
+            </p>
+          ) : null}
+        </div>
         <TextField
           label="Título"
-          placeholder="Ex: Circuito das Estações — Etapa 2"
+          placeholder={reuniao ? "Ex: Reunião mensal do programa" : "Ex: Circuito das Estações — Etapa 2"}
           value={titulo}
           onChange={(e) => setTitulo(e.target.value)}
           required
@@ -87,11 +127,22 @@ export function EventoModal({
         <TextField
           label="Local"
           icon={<MapPin className="size-[18px]" />}
-          placeholder="Local do evento"
+          placeholder={reuniao ? "Sala, auditório ou \"Online\"" : "Local do evento"}
           value={local}
           onChange={(e) => setLocal(e.target.value)}
           required
         />
+        {reuniao ? (
+          <TextField
+            label="Link da reunião online"
+            icon={<Link2 className="size-[18px]" />}
+            type="url"
+            inputMode="url"
+            placeholder="Opcional · https://teams.microsoft.com/…"
+            value={linkOnline}
+            onChange={(e) => setLinkOnline(e.target.value)}
+          />
+        ) : null}
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
             <label htmlFor={idModalidade} className="text-sm font-medium text-text">
@@ -107,25 +158,55 @@ export function EventoModal({
               <option value="bicicleta">Bike</option>
             </Select>
           </div>
-          <TextField
-            label="Distância (km)"
-            type="number"
-            inputMode="decimal"
-            min={0}
-            step="any"
-            placeholder="Opcional"
-            value={km}
-            onChange={(e) => setKm(e.target.value)}
-          />
+          {reuniao ? (
+            <TextField
+              label="Data"
+              type="date"
+              value={data}
+              min={editando ? undefined : dataIsoLocal()}
+              onChange={(e) => setData(e.target.value)}
+              required
+            />
+          ) : (
+            <TextField
+              label="Distância (km)"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="any"
+              placeholder="Opcional"
+              value={km}
+              onChange={(e) => setKm(e.target.value)}
+            />
+          )}
         </div>
-        <TextField
-          label="Data"
-          type="date"
-          value={data}
-          min={editando ? undefined : dataIsoLocal()}
-          onChange={(e) => setData(e.target.value)}
-          required
-        />
+        {reuniao ? (
+          <div className="grid grid-cols-2 gap-3">
+            <TextField
+              label="Início"
+              type="time"
+              value={horaInicio}
+              onChange={(e) => setHoraInicio(e.target.value)}
+              required
+            />
+            <TextField
+              label="Fim"
+              type="time"
+              value={horaFim}
+              onChange={(e) => setHoraFim(e.target.value)}
+              required
+            />
+          </div>
+        ) : (
+          <TextField
+            label="Data"
+            type="date"
+            value={data}
+            min={editando ? undefined : dataIsoLocal()}
+            onChange={(e) => setData(e.target.value)}
+            required
+          />
+        )}
         {editando && confirmados > 0 && (
           <p className="text-xs text-text-muted">
             {confirmados === 1
@@ -138,7 +219,7 @@ export function EventoModal({
             Cancelar
           </Button>
           <Button type="submit" loading={loading}>
-            {editando ? "Salvar alterações" : "Publicar evento"}
+            {editando ? "Salvar alterações" : reuniao ? "Publicar reunião" : "Publicar evento"}
           </Button>
         </div>
       </form>

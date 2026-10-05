@@ -1,5 +1,6 @@
 "use client";
 
+import { ehReuniao, horarioDoEvento } from "@/lib/eventos";
 import { useEffect, useMemo, useState } from "react";
 import { collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query } from "firebase/firestore";
 import { CalendarCheck, ChevronRight, FileSpreadsheet, MapPin, Pencil, Plus, Trash2, Users } from "lucide-react";
@@ -72,8 +73,12 @@ function EventoCard({
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <Badge tone="primary">{modalidadeDoEvento[evento.modalidade]}</Badge>
-        <Badge tone="neutral">{formatShortDate(evento.data)}</Badge>
-        {evento.km ? <Badge tone="neutral">{formatKm(evento.km)}</Badge> : null}
+        {ehReuniao(evento) ? <Badge tone="accent">Reunião</Badge> : null}
+        <Badge tone="neutral">
+          {formatShortDate(evento.data)}
+          {horarioDoEvento(evento) ? ` · ${horarioDoEvento(evento)}` : ""}
+        </Badge>
+        {evento.km && !ehReuniao(evento) ? <Badge tone="neutral">{formatKm(evento.km)}</Badge> : null}
       </div>
       <button
         type="button"

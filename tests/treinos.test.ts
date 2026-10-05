@@ -42,3 +42,11 @@ test("treinos lançados como Avulso de critério de treino entram na contagem", 
   assert.equal(r.treinosMes, 9);
   assert.equal(r.pontosMes, 5 + 8 + 5);
 });
+
+test("presença em reunião soma pontos mas nunca conta como treino", () => {
+  const reuniao = { ...lanc("05", "reuniao_regra", "reuniao", 3), eventoId: "r1", loteId: "reuniao_r1" } as HistoricoPontoDoc;
+  // Mesmo que o critério estivesse marcado como treino, reunião não vira treino.
+  const atividades = consolidarAtividades([reuniao], new Set(["reuniao_regra"]));
+  assert.equal(atividades.filter((a) => a.tipo === "treino").length, 0);
+  assert.equal(atividades[0].pontos, 3);
+});
