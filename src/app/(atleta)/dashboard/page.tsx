@@ -63,6 +63,7 @@ import type {
 } from "@/lib/types";
 import { modalidadeLabel } from "@/lib/labels";
 import { rotuloRsvp } from "@/lib/eventos";
+import { PendenciasNoInicio } from "@/components/avisos/CentralDeAvisos";
 
 function hojeIsoLocal() {
   const hoje = new Date();
@@ -409,6 +410,8 @@ export default function DashboardPage() {
             </p>
           </div>
         ) : null}
+
+        {isPreview ? null : <PendenciasNoInicio className="mb-5 lg:mb-6" />}
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-start lg:gap-6">
           {/* Coluna principal: como estou e o que vem pela frente. */}

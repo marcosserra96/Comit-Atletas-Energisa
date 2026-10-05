@@ -15,14 +15,13 @@ import {
   Trophy,
   ChevronsLeft,
   ChevronsRight,
-  X, ClipboardList } from "lucide-react";
+  X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { RodapeDaGaveta } from "@/components/layout/RodapeDaGaveta";
 import { useGavetaMobile } from "@/components/layout/useGavetaMobile";
 import { useAthleteView } from "@/lib/session/AthleteViewProvider";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { souTambemAtleta } from "@/lib/session/dualRole";
-import { usePesquisasDoAtleta } from "@/components/pesquisas/PesquisasAtleta";
 
 const navItems = [
   { href: "/dashboard", label: "Início", icon: LayoutDashboard },
@@ -32,7 +31,6 @@ const navItems = [
   { href: "/justificativas", label: "Justificativas", icon: CalendarOff },
   { href: "/documentos", label: "Documentos", icon: BookOpenCheck },
   { href: "/noticias", label: "Notícias", icon: Newspaper },
-  { href: "/pesquisas", label: "Pesquisas", icon: ClipboardList },
   { href: "/ranking", label: "Ranking", icon: Trophy },
 ];
 
@@ -52,7 +50,6 @@ export function AtletaSidebar({
   const painelRef = useRef<HTMLElement>(null);
   const gestos = useGavetaMobile(mobileOpen, onCloseMobile, painelRef);
   const tambemComite = !isPreview && souTambemAtleta(usuario, sessionAtleta);
-  const { pendentes } = usePesquisasDoAtleta();
 
   return (
     <>
@@ -104,8 +101,7 @@ export function AtletaSidebar({
 
         <nav className="mt-2 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3 pb-3" aria-label="Menu do atleta">
           {navItems.filter(({ href }) => rankingDisponivel || href !== "/ranking").map(({ href, label, icon: Icon }) => {
-            const active = pathname === href || (href === "/pesquisas" && pathname.startsWith("/pesquisas/"));
-            const aviso = href === "/pesquisas" ? pendentes.length : 0;
+            const active = pathname === href;
             return (
               <Link
                 key={href}
@@ -120,24 +116,8 @@ export function AtletaSidebar({
                 )}
                 title={collapsed ? label : undefined}
               >
-                <span className="relative shrink-0">
-                  <Icon className="size-[18px]" />
-                  {aviso > 0 && collapsed ? (
-                    <span className="absolute -right-1 -top-1 hidden size-2 rounded-full bg-secondary lg:block" aria-hidden="true" />
-                  ) : null}
-                </span>
+                <Icon className="size-[18px] shrink-0" />
                 <span className={cn(collapsed && "lg:hidden")}>{label}</span>
-                {aviso > 0 ? (
-                  <span
-                    className={cn(
-                      "ml-auto flex min-w-5 items-center justify-center rounded-full bg-secondary px-1.5 text-xs font-bold text-navy",
-                      collapsed && "lg:hidden",
-                    )}
-                    aria-label={`${aviso} pendente${aviso > 1 ? "s" : ""}`}
-                  >
-                    {aviso}
-                  </span>
-                ) : null}
               </Link>
             );
           })}

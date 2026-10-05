@@ -11,11 +11,11 @@ import { MobileBottomNav } from "@/components/ui/MobileBottomNav";
 import { AthleteViewProvider, useAthleteView } from "@/lib/session/AthleteViewProvider";
 import { useRankingAvailability } from "@/lib/session/useRankingAvailability";
 import { AvisoPesquisa, PesquisasAtletaProvider } from "@/components/pesquisas/PesquisasAtleta";
-import { AvisoReuniao, useReuniaoAgora } from "@/components/reunioes/AvisoReuniao";
+import { AvisoReuniao, ReuniaoAgoraProvider, useReuniaoAgora } from "@/components/reunioes/AvisoReuniao";
 
 /** Um aviso por vez: a reunião em andamento vem antes da pesquisa. */
 function AvisosDoAtleta() {
-  const reuniao = useReuniaoAgora();
+  const { reuniao } = useReuniaoAgora();
   return reuniao ? <AvisoReuniao key={reuniao.id} reuniao={reuniao} /> : <AvisoPesquisa />;
 }
 
@@ -37,6 +37,7 @@ function AtletaShellInner({ children }: { children: React.ReactNode }) {
 
   return (
     <PesquisasAtletaProvider>
+    <ReuniaoAgoraProvider>
     <div className="flex min-h-dvh">
       <AtletaSidebar
         mobileOpen={mobileOpen}
@@ -66,6 +67,7 @@ function AtletaShellInner({ children }: { children: React.ReactNode }) {
       </div>
       <AvisosDoAtleta />
     </div>
+    </ReuniaoAgoraProvider>
     </PesquisasAtletaProvider>
   );
 }

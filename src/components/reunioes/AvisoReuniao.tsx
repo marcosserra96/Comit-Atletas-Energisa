@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { collection, doc, getDoc, onSnapshot, query, where } from "firebase/firestore";
 import { CalendarClock, ExternalLink, UsersRound } from "lucide-react";
@@ -30,19 +30,18 @@ function dispensadaNestaSessao(id: string) {
 
 /**
  * Reunião de hoje com a confirmação pelo app aberta e sem presença do atleta.
- * Escuta só os eventos do dia (uma consulta pequena) e reavalia a cada minuto.
+ * Escuta só os eventos do dia (uma consulta pequena): quando o comitê ativa a
+ * confirmação, o aviso aparece na hora. O relógio reavalia a janela a cada
+ * 15 s e ao voltar para o app.
  */
-export function useReuniaoAgora() {
+function useReuniaoAgoraInterna() {
   const { atleta, isPreview } = useAthleteView();
   const [hoje, setHoje] = useState<EventoDoc[]>([]);
   const [agora, setAgora] = useState(() => Date.now());
   const [confirmadas, setConfirmadas] = useState<Set<string>>(new Set());
   const [conferidas, setConferidas] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    const t = setInterval(() => setAgora(Date.now()), 60_000);
-    return () => clearInterval(t);
-  }, []);
+  useRelogio(setAgora);
 
   const dia = useMemo(() => {
     void agora; // vira o dia com o app aberto
@@ -90,7 +89,43 @@ export function useReuniaoAgora() {
     };
   }, [chave, atleta.id]);
 
-  return abertas.find((e) => conferidas.has(e.id) && !confirmadas.has(e.id)) ?? null;
+  const marcarConfirmada = useCallback((id: string) => setConfirmadas((atual) => new Set(atual).add(id)), []);
+  const reuniao = abertas.find((e) => conferidas.has(e.id) && !confirmadas.has(e.id)) ?? null;
+  return { reuniao, marcarConfirmada };
+}
+
+/** Atualiza "agora" a cada 15 s e sempre que o app volta a ficar visível. */
+export function useRelogio(setAgora: (t: number) => void, intervaloMs = 15_000) {
+  useEffect(() => {
+    const tique = () => setAgora(Date.now());
+    const t = setInterval(tique, intervaloMs);
+    const aoVoltar = () => {
+      if (document.visibilityState === "visible") tique();
+    };
+    document.addEventListener("visibilitychange", aoVoltar);
+    window.addEventListener("focus", tique);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", aoVoltar);
+      window.removeEventListener("focus", tique);
+    };
+  }, [setAgora, intervaloMs]);
+}
+
+interface ReuniaoAgora {
+  reuniao: EventoDoc | null;
+  marcarConfirmada: (id: string) => void;
+}
+
+const Contexto = createContext<ReuniaoAgora>({ reuniao: null, marcarConfirmada: () => undefined });
+
+export function ReuniaoAgoraProvider({ children }: { children: ReactNode }) {
+  const valor = useReuniaoAgoraInterna();
+  return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
+}
+
+export function useReuniaoAgora() {
+  return useContext(Contexto);
 }
 
 /**
@@ -99,6 +134,7 @@ export function useReuniaoAgora() {
  */
 export function AvisoReuniao({ reuniao }: { reuniao: EventoDoc }) {
   const pathname = usePathname();
+  const { marcarConfirmada } = useReuniaoAgora();
   const [dispensada, setDispensada] = useState(() => dispensadaNestaSessao(reuniao.id));
   const [concluida, setConcluida] = useState(false);
 
@@ -111,6 +147,7 @@ export function AvisoReuniao({ reuniao }: { reuniao: EventoDoc }) {
       // Sem armazenamento: some só nesta tela.
     }
     setDispensada(true);
+    if (concluida) marcarConfirmada(reuniao.id);
   }
 
   return (
