@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import QRCode from "qrcode";
 import {
   collection,
   doc,
@@ -24,6 +23,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { DataHoraField } from "@/components/ui/DataHoraField";
+import { useQrDataUrl } from "@/lib/useQrDataUrl";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { NotAuthorized } from "@/components/ui/NotAuthorized";
 import { ConfirmActionModal } from "@/components/ui/ConfirmActionModal";
@@ -81,21 +81,6 @@ function useCodigoAtual(segredo: SegredoCheckinDoc | null, dinamico: boolean) {
     codigo: dinamicoAtual?.janela === janela ? dinamicoAtual.codigo : "",
     restanteMs: JANELA_CODIGO_MS - (agora % JANELA_CODIGO_MS),
   };
-}
-
-function useQrDataUrl(conteudo: string, tamanho: number) {
-  const [url, setUrl] = useState<{ conteudo: string; dataUrl: string } | null>(null);
-  useEffect(() => {
-    if (!conteudo) return;
-    let ativo = true;
-    QRCode.toDataURL(conteudo, { width: tamanho, margin: 2, errorCorrectionLevel: "M", color: { dark: "#07192d", light: "#ffffff" } })
-      .then((dataUrl) => ativo && setUrl({ conteudo, dataUrl }))
-      .catch(() => undefined);
-    return () => {
-      ativo = false;
-    };
-  }, [conteudo, tamanho]);
-  return url?.conteudo === conteudo ? url.dataUrl : "";
 }
 
 export default function PresencaReuniaoPage() {
