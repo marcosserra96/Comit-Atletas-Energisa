@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
 import { doc, onSnapshot, runTransaction, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
@@ -125,6 +125,9 @@ async function consultarTermos(user: User, dados: ActiveSessionData): Promise<Se
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session>({ status: "loading" });
+  // Termos já conferidos nesta sessão (uid + modalidade). Mudanças comuns no
+  // cadastro do atleta (pontos, perfil) não voltam a tela de carregamento.
+  const termosConferidos = useRef<string | null>(null);
 
   useEffect(() => {
     let unsubUsuario: (() => void) | undefined;
@@ -144,6 +147,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       clearNested();
 
       if (!user) {
+        termosConferidos.current = null;
         setSession({ status: "signed-out" });
         return;
       }
@@ -186,11 +190,19 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             usuario,
             atleta: { id: atletaSnap.id, ...atletaSnap.data() } as AtletaDoc,
           };
+          const chaveTermos = `${user.uid}|${dados.atleta.equipe}`;
+          if (termosConferidos.current === chaveTermos) {
+            ++verificacaoAtual;
+            setSession({ status: "active", ...dados });
+            return;
+          }
           const verificacao = ++verificacaoAtual;
           setSession({ status: "loading" });
           void consultarTermos(user, dados)
             .then((proximaSessao) => {
-              if (verificacao === verificacaoAtual) setSession(proximaSessao);
+              if (verificacao !== verificacaoAtual) return;
+              if (proximaSessao.status === "active") termosConferidos.current = chaveTermos;
+              setSession(proximaSessao);
             })
             .catch((erro: unknown) => {
               if (verificacao === verificacaoAtual) {

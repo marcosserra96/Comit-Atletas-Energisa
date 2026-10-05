@@ -11,6 +11,13 @@ import { MobileBottomNav } from "@/components/ui/MobileBottomNav";
 import { AthleteViewProvider, useAthleteView } from "@/lib/session/AthleteViewProvider";
 import { useRankingAvailability } from "@/lib/session/useRankingAvailability";
 import { AvisoPesquisa, PesquisasAtletaProvider } from "@/components/pesquisas/PesquisasAtleta";
+import { AvisoReuniao, useReuniaoAgora } from "@/components/reunioes/AvisoReuniao";
+
+/** Um aviso por vez: a reunião em andamento vem antes da pesquisa. */
+function AvisosDoAtleta() {
+  const reuniao = useReuniaoAgora();
+  return reuniao ? <AvisoReuniao key={reuniao.id} reuniao={reuniao} /> : <AvisoPesquisa />;
+}
 
 const bottomNavItems = [
   { href: "/dashboard", label: "Início", icon: LayoutDashboard },
@@ -57,7 +64,7 @@ function AtletaShellInner({ children }: { children: React.ReactNode }) {
         <main className="min-w-0 flex-1 bg-bg p-4 pb-32 sm:p-6 lg:pb-6">{children}</main>
         <MobileBottomNav items={mobileItems} />
       </div>
-      <AvisoPesquisa />
+      <AvisosDoAtleta />
     </div>
     </PesquisasAtletaProvider>
   );

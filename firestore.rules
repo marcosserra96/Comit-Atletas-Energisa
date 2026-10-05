@@ -220,6 +220,16 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Segredo da confirmação de presença por QR code: só o comitê (para exibir
+    // o QR) e o servidor (para validar). Tentativas erradas: só o servidor.
+    match /reunioes_checkin/{id} {
+      allow read, write: if isAdmin() || comitePode("eventos");
+
+      match /tentativas/{atletaId} {
+        allow read, write: if false;
+      }
+    }
+
     // Questionários. O atleta lê só os publicados e responde uma vez, dentro do
     // período, a pesquisa do seu público; as respostas são identificadas.
     function pesquisa(id) {

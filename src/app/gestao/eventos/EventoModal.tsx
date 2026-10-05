@@ -12,6 +12,7 @@ import { TextField } from "@/components/ui/TextField";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { gerarCodigoFixo, gerarSegredo } from "@/lib/reunioes";
 import type { EventoDoc } from "@/lib/types";
 
 /**
@@ -79,9 +80,18 @@ export function EventoModal({
         await setDoc(novoEvento, {
           id: novoEvento.id,
           ...dados,
+          // Reunião já nasce com a confirmação pelo app ativa (janela padrão, código fixo).
+          ...(reuniao ? { checkin: { ativo: true, dinamico: false } } : {}),
           criadoEm: serverTimestamp(),
           criadoPor: uid,
         });
+        if (reuniao) {
+          await setDoc(doc(db, "reunioes_checkin", novoEvento.id), {
+            segredo: gerarSegredo(),
+            codigoFixo: gerarCodigoFixo(),
+            atualizadoEm: serverTimestamp(),
+          });
+        }
         show("success", reuniao ? "Reunião publicada na agenda." : "Evento publicado na agenda.");
       }
       onClose();

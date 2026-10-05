@@ -30,6 +30,7 @@ import {
   useSession,
 } from "@/lib/session/SessionProvider";
 import { homeForRole } from "@/lib/session/routing";
+import { lerVoltarPara } from "@/lib/session/voltarPara";
 import { souTambemAtleta } from "@/lib/session/dualRole";
 import { ForgotPasswordModal } from "./ForgotPasswordModal";
 
@@ -75,7 +76,12 @@ export default function LoginPage() {
             : "/escolher-area";
     }
 
-    router.replace(destino);
+    // Veio de um link do app (ex.: QR code da reunião) sem estar logado.
+    const voltar = lerVoltarPara();
+    const podeVoltar =
+      voltar !== null &&
+      (session.usuario.role === "atleta" || souTambemAtleta(session.usuario, session.atleta));
+    router.replace(podeVoltar ? voltar : destino);
   }, [session, router]);
 
   function trocarModo(proximoModo: Mode) {

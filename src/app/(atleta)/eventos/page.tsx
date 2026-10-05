@@ -1,6 +1,8 @@
 "use client";
 
-import { ehReuniao, horarioDoEvento } from "@/lib/eventos";
+import Link from "next/link";
+import { ehReuniao, rotuloRsvp, horarioDoEvento } from "@/lib/eventos";
+import { situacaoCheckin } from "@/lib/reunioes";
 import { useEffect, useMemo, useState } from "react";
 import {
   arrayRemove,
@@ -12,7 +14,7 @@ import {
   query,
   updateDoc,
 } from "firebase/firestore";
-import { AlertCircle, CalendarCheck, CalendarPlus, Check, MapPin, Navigation, RefreshCw, Users, Video } from "lucide-react";
+import { AlertCircle, CalendarCheck, CalendarPlus, Check, MapPin, Navigation, RefreshCw, Users, Video, QrCode } from "lucide-react";
 import type { ReactNode } from "react";
 import { db } from "@/lib/firebase";
 import { useAthleteView } from "@/lib/session/AthleteViewProvider";
@@ -179,12 +181,17 @@ function EventoCard({
           disabled={somenteVisualizacao || bloqueado}
           onClick={onAlternar}
         >
-          {somenteVisualizacao
-            ? "Somente visualização"
-            : confirmado
-              ? "Cancelar presença"
-              : "Confirmar presença"}
+          {somenteVisualizacao ? "Somente visualização" : rotuloRsvp(evento, confirmado)}
         </Button>
+        {ehReuniao(evento) && !somenteVisualizacao && situacaoCheckin(evento) === "aberto" ? (
+          <Link
+            href={`/presenca/${evento.id}`}
+            className="inline-flex min-h-9 w-full shrink-0 items-center justify-center gap-1.5 rounded-[var(--radius)] bg-secondary px-3 text-sm font-semibold text-navy shadow-sm transition-colors hover:brightness-95 sm:w-auto"
+          >
+            <QrCode className="size-4" aria-hidden="true" />
+            Registrar presença
+          </Link>
+        ) : null}
       </div>
     </Card>
   );

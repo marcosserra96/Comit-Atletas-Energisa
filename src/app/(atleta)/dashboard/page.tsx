@@ -62,6 +62,7 @@ import type {
   RankingVisibilityConfigDoc,
 } from "@/lib/types";
 import { modalidadeLabel } from "@/lib/labels";
+import { rotuloRsvp } from "@/lib/eventos";
 
 function hojeIsoLocal() {
   const hoje = new Date();
@@ -547,11 +548,7 @@ export default function DashboardPage() {
                     loading={inscrevendo}
                     disabled={isPreview}
                   >
-                    {isPreview
-                      ? "Somente visualização"
-                      : jaConfirmado
-                        ? "Cancelar presença"
-                        : "Confirmar presença"}
+                    {isPreview ? "Somente visualização" : rotuloRsvp(evento, jaConfirmado)}
                   </Button>
 
                   {eventosPosteriores.length > 0 ? (
@@ -806,11 +803,7 @@ export default function DashboardPage() {
               loading={inscrevendo}
               disabled={isPreview}
             >
-              {isPreview
-                ? "Somente visualização"
-                : eventoAbertoConfirmado
-                  ? "Cancelar presença"
-                  : "Confirmar presença"}
+              {isPreview ? "Somente visualização" : rotuloRsvp(eventoAberto, eventoAbertoConfirmado)}
             </Button>
           </div>
         ) : null}

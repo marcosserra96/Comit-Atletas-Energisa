@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { ehReuniao, horarioDoEvento } from "@/lib/eventos";
 import { useEffect, useMemo, useState } from "react";
 import { collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query } from "firebase/firestore";
-import { CalendarCheck, ChevronRight, FileSpreadsheet, MapPin, Pencil, Plus, Trash2, Users } from "lucide-react";
+import { CalendarCheck, ChevronRight, FileSpreadsheet, MapPin, Pencil, Plus, Trash2, Users, QrCode } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { dataIsoLocal } from "@/lib/date";
 import { useActiveSession } from "@/lib/session/SessionProvider";
@@ -80,6 +81,15 @@ function EventoCard({
         </Badge>
         {evento.km && !ehReuniao(evento) ? <Badge tone="neutral">{formatKm(evento.km)}</Badge> : null}
       </div>
+      {ehReuniao(evento) ? (
+        <Link
+          href={`/gestao/eventos/${evento.id}/presenca`}
+          className="flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius)] border border-primary/30 bg-primary-subtle text-sm font-semibold text-primary transition-colors hover:bg-primary/15"
+        >
+          <QrCode className="size-4" />
+          Presença e QR code
+        </Link>
+      ) : null}
       <button
         type="button"
         onClick={onConfirmados}
