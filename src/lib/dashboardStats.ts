@@ -46,13 +46,18 @@ export interface EstatisticasDashboard {
   podioBike: AtletaDoc[];
   podioCorrida: AtletaDoc[];
   filaAguardando: number;
+  /** Quem está nas filas de espera, na ordem de entrada. */
+  filaLista: AtletaDoc[];
   seriesMensal: { label: string; count: number }[];
   /** Atletas ativos que nunca tiveram nenhuma participação registrada. */
   atletasSemAtividade: number;
+  atletasSemAtividadeLista: AtletaDoc[];
   /** Eventos que já ocorreram (últimos 7 dias) e ainda não tiveram pontos lançados. */
   eventosPendentesLancamento: number;
+  eventosPendentesLista: EventoDoc[];
   /** Critérios de pontuação nunca usados em nenhum lançamento. */
   regrasSemUso: number;
+  regrasSemUsoLista: RegraPontuacaoDoc[];
   modalidadeMaisKm: "Bike" | "Corrida" | "—";
   analisesExecutivas: string[];
 }
@@ -185,9 +190,10 @@ export function calcularEstatisticasDashboard(params: {
   const custoKm = kmTotal > 0 ? investimentoTotal / kmTotal : 0;
   const custoPorAtleta = ativos.length > 0 ? investimentoTotal / ativos.length : 0;
 
-  const filaAguardando = atletasProgram.filter(
-    (a) => a.equipe === "fila_bicicleta" || a.equipe === "fila_corrida",
-  ).length;
+  const filaLista = atletasProgram
+    .filter((a) => a.equipe === "fila_bicicleta" || a.equipe === "fila_corrida")
+    .sort((a, b) => (a.ordemFila ?? 1e9) - (b.ordemFila ?? 1e9) || a.nome.localeCompare(b.nome, "pt-BR"));
+  const filaAguardando = filaLista.length;
 
   const seriesMensal = Array.from({ length: 6 }, (_, i) => {
     const ref = new Date(hoje.getFullYear(), hoje.getMonth() - (5 - i), 1);
@@ -202,18 +208,23 @@ export function calcularEstatisticasDashboard(params: {
     return { label: MESES[ref.getMonth()], count };
   });
 
-  const atletasSemAtividade = ativos.filter((a) => !participacoesPorAtleta.has(a.id)).length;
+  const atletasSemAtividadeLista = ativos
+    .filter((a) => !participacoesPorAtleta.has(a.id))
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  const atletasSemAtividade = atletasSemAtividadeLista.length;
 
   const eventosLancados = new Set(validos.filter((l) => l.eventoId).map((l) => l.eventoId));
   const limiteInferior = new Date(hoje);
   limiteInferior.setDate(limiteInferior.getDate() - 7);
   const isoHoje = dataIsoLocal(hoje);
   const isoLimite = dataIsoLocal(limiteInferior);
-  const eventosPendentesLancamento = eventos.filter(
-    (e) => !eventosLancados.has(e.id) && e.data < isoHoje && e.data >= isoLimite,
-  ).length;
+  const eventosPendentesLista = eventos
+    .filter((e) => !eventosLancados.has(e.id) && e.data < isoHoje && e.data >= isoLimite)
+    .sort((a, b) => b.data.localeCompare(a.data));
+  const eventosPendentesLancamento = eventosPendentesLista.length;
 
-  const regrasSemUso = regras.filter((r) => !regrasUsadas.has(r.id)).length;
+  const regrasSemUsoLista = regras.filter((r) => !regrasUsadas.has(r.id));
+  const regrasSemUso = regrasSemUsoLista.length;
 
   const modalidadeMaisKm: EstatisticasDashboard["modalidadeMaisKm"] =
     bike.km === 0 && corrida.km === 0 ? "—" : bike.km >= corrida.km ? "Bike" : "Corrida";
@@ -246,10 +257,14 @@ export function calcularEstatisticasDashboard(params: {
     podioBike: podio("bicicleta"),
     podioCorrida: podio("corrida"),
     filaAguardando,
+    filaLista,
     seriesMensal,
     atletasSemAtividade,
+    atletasSemAtividadeLista,
     eventosPendentesLancamento,
+    eventosPendentesLista,
     regrasSemUso,
+    regrasSemUsoLista,
     modalidadeMaisKm,
     analisesExecutivas,
   };
