@@ -220,6 +220,37 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Questionários. O atleta lê só os publicados e responde uma vez, dentro do
+    // período, a pesquisa do seu público; as respostas são identificadas.
+    function pesquisa(id) {
+      return get(/databases/$(database)/documents/pesquisas/$(id)).data;
+    }
+
+    function pesquisaAbertaParaMim(id) {
+      let p = pesquisa(id);
+      return p.publicada == true &&
+        request.time >= p.abreEmTs &&
+        request.time < p.fechaEmTs &&
+        (p.publico == "todos" || p.publico == minhaModalidade());
+    }
+
+    match /pesquisas/{id} {
+      allow read: if isAdmin() || comitePode("pesquisas") ||
+        (hasUsuario() && resource.data.publicada == true);
+      allow write: if isAdmin() || comitePode("pesquisas");
+
+      match /respostas/{atletaId} {
+        allow read: if isAdmin() || comitePode("pesquisas") ||
+          (hasUsuario() && atletaId == meuAtletaId());
+        allow create: if hasUsuario() &&
+          atletaId == meuAtletaId() &&
+          request.resource.data.atletaId == atletaId &&
+          request.resource.data.keys().hasOnly(["atletaId", "atletaNome", "equipe", "respostas", "respondidoEm"]) &&
+          pesquisaAbertaParaMim(id);
+        allow update, delete: if isAdmin();
+      }
+    }
+
     match /configuracoes/branding {
       allow read: if true;
       allow write: if isAdmin();
