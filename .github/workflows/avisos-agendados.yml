@@ -1,0 +1,20 @@
+name: Avisos agendados
+
+# Dispara os avisos automáticos (pesquisa que abriu, lembrete do último dia,
+# reunião com a confirmação aberta). A rota é idempotente: cada aviso sai uma
+# vez só, então rodar a mais não duplica nada. O GitHub pode atrasar alguns
+# minutos; ações do comitê (publicar pesquisa, ativar reunião) já disparam na hora.
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  processar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Processar avisos
+        run: curl -fsS --max-time 60 "https://atletas-energisa-portal.vercel.app/api/push/processar"

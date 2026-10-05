@@ -1,5 +1,6 @@
 "use client";
 
+import { PreferenciaNotificacoes } from "@/components/push/Notificacoes";
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { doc, serverTimestamp, writeBatch } from "firebase/firestore";
@@ -229,6 +230,7 @@ export default function PerfilPage() {
             </Card>
           ) : (
             <>
+              <PreferenciaNotificacoes />
               <AparenciaCard />
               <SenhaCard />
             </>

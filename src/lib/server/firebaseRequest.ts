@@ -49,6 +49,25 @@ export async function authenticatedAdminRequest(request: Request) {
   return context;
 }
 
+/** Usuário da equipe com a permissão pedida (administrador sempre pode). */
+export async function authenticatedPermissionRequest(
+  request: Request,
+  chave: import("@/lib/permissoes").PermissaoChave,
+) {
+  const context = await authenticatedFirebaseRequest(request);
+  const snap = await context.db.collection("usuarios").doc(context.decodedToken.uid).get();
+  const usuario = snap.data() as { role?: string; permissoes?: string[]; nome?: string } | undefined;
+  const { temPermissao } = await import("@/lib/permissoes");
+  if (
+    !usuario ||
+    (usuario.role !== "administrador" && usuario.role !== "comite") ||
+    !temPermissao(usuario as { role: "administrador" | "comite"; permissoes?: string[] }, chave)
+  ) {
+    throw new ApiAuthError("Você não tem permissão para esta ação.", 403);
+  }
+  return { ...context, usuario };
+}
+
 export function apiErrorResponse(error: unknown, fallback: string) {
   if (error instanceof ApiAuthError) {
     return Response.json({ error: error.message }, { status: error.status });

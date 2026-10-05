@@ -127,6 +127,13 @@ const CENARIOS: CenarioDef[] = [
     avaliar: (u) => temPermissao(u, "pesquisas"),
   },
   {
+    chave: "enviar_notificacoes",
+    categoria: "Notícias",
+    label: "Enviar notificações no celular dos atletas",
+    regra: "Requer a permissão \"Notificações\".",
+    avaliar: (u) => temPermissao(u, "notificacoes"),
+  },
+  {
     chave: "gerir_financeiro",
     categoria: "Financeiro",
     label: "Ver e registrar despesas financeiras",

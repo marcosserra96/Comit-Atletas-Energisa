@@ -19,7 +19,8 @@ const firebaseConfig = useEmulator
       appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
     };
 
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+export const usandoEmulador = useEmulator;
 
 export const auth = getAuth(app);
 // E-mails do Firebase (redefinição de senha, verificação) e telas padrão em português.

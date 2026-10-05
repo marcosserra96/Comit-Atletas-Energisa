@@ -115,3 +115,10 @@ export function getFirebaseAdmin() {
     db: getFirestore(app),
   };
 }
+
+/** Envio de notificações push (FCM). No emulador não existe: devolve null. */
+export async function getFirebaseMessaging() {
+  if (usaEmulador()) return null;
+  const { getMessaging } = await import("firebase-admin/messaging");
+  return getMessaging(adminApp());
+}

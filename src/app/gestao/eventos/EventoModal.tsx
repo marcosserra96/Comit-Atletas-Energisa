@@ -1,5 +1,6 @@
 "use client";
 
+import { dispararAvisosAgora } from "@/lib/push/comite";
 import { FormEvent, useId, useState } from "react";
 import { collection, doc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { CalendarCheck, Link2, MapPin, UsersRound } from "lucide-react";
@@ -98,6 +99,7 @@ export function EventoModal({
           ...dados,
           atualizadoEm: serverTimestamp(),
         });
+        if (reuniao) dispararAvisosAgora();
         show("success", reuniao ? "Reunião atualizada." : "Evento atualizado.");
       } else {
         const novoEvento = doc(collection(db, "agenda_eventos"));
@@ -116,6 +118,7 @@ export function EventoModal({
             atualizadoEm: serverTimestamp(),
           });
         }
+        if (reuniao) dispararAvisosAgora();
         show("success", reuniao ? "Reunião publicada na agenda." : "Evento publicado na agenda.");
       }
       onClose();

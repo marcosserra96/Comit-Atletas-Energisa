@@ -400,5 +400,12 @@ export function linhasExportacao(
 export function formatarDataHora(iso: string) {
   if (!iso) return "—";
   const d = new Date(iso);
-  return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).replace(", ", " às ");
+  return d.toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      // Mesmo horário no servidor (texto das notificações) e no celular.
+      timeZone: "America/Sao_Paulo",
+    }).replace(", ", " às ");
 }
