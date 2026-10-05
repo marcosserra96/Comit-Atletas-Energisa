@@ -220,6 +220,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   async function logout() {
+    // Este aparelho para de receber os avisos de quem saiu.
+    const { removerAparelhoAoSair } = await import("@/lib/push/cliente");
+    await removerAparelhoAoSair().catch(() => undefined);
     await signOut(auth);
   }
 

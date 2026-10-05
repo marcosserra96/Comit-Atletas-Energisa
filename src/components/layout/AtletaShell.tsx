@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Eye, LayoutDashboard, Activity, CalendarCheck, Trophy, UserCircle } from "lucide-react";
@@ -36,6 +36,11 @@ const bottomNavItems = [
 function AtletaShellInner({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { atleta, isPreview, withPreview } = useAthleteView();
+
+  // Quem já ativou as notificações continua inscrito (token renovado 1x/dia).
+  useEffect(() => {
+    if (!isPreview) void import("@/lib/push/cliente").then((m) => m.sincronizarPush());
+  }, [isPreview]);
   const { rankingDisponivel } = useRankingAvailability();
   const mobileItems = bottomNavItems
     .filter((item) => rankingDisponivel || item.href !== "/ranking")

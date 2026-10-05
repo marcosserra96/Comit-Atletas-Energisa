@@ -1,5 +1,6 @@
 "use client";
 
+import { dispararAvisosAgora } from "@/lib/push/comite";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -357,6 +358,7 @@ export default function EditarPesquisaPage() {
         criadoPorNome: existente?.criadoPorNome ?? autor.nome,
         atualizadoEm: serverTimestamp(),
       });
+      if (publicar) dispararAvisosAgora();
       show(
         "success",
         publicar

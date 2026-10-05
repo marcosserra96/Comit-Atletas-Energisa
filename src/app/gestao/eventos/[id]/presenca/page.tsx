@@ -1,5 +1,6 @@
 "use client";
 
+import { dispararAvisosAgora } from "@/lib/push/comite";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -179,6 +180,7 @@ export default function PresencaReuniaoPage() {
         atualizadoEm: serverTimestamp(),
       });
       setConfig(null);
+      dispararAvisosAgora();
       show("success", "Configuração da presença salva.");
     } catch {
       show("error", "Não foi possível salvar agora.");

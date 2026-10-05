@@ -2,6 +2,7 @@
 
 import { FormEvent, useId, useState } from "react";
 import { collection, doc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
+import { enviarPushDeNoticia } from "@/lib/push/comite";
 import { db } from "@/lib/firebase";
 import { dataIsoLocal } from "@/lib/date";
 import { formatShortDate } from "@/lib/format";
@@ -43,6 +44,7 @@ export function NoticiaModal({
   const [fixado, setFixado] = useState(noticia?.fixado ?? false);
   const [visivelAte, setVisivelAte] = useState(noticia?.visivelAte ?? "");
   const [loading, setLoading] = useState(false);
+  const [notificar, setNotificar] = useState(false);
 
   const hoje = dataIsoLocal();
   const prazoPassado = !!visivelAte && visivelAte < hoje;
@@ -73,7 +75,21 @@ export function NoticiaModal({
           autorUid: uid,
           criadoEm: serverTimestamp(),
         });
-        show("success", "Notícia publicada.");
+        if (notificar) {
+          try {
+            const r = await enviarPushDeNoticia(nova.id);
+            show(
+              "success",
+              r.atletas > 0
+                ? `Notícia publicada e enviada para ${r.atletas} atleta${r.atletas > 1 ? "s" : ""} com notificações ativas.`
+                : "Notícia publicada. Ainda não há atletas com notificações ativas.",
+            );
+          } catch {
+            show("info", "Notícia publicada, mas a notificação não saiu. Tente pela tela Notificações.");
+          }
+        } else {
+          show("success", "Notícia publicada.");
+        }
       }
       onClose();
     } catch {
@@ -172,6 +188,19 @@ export function NoticiaModal({
           />
           Fixar no topo
         </label>
+
+        {editando ? null : (
+          <label className="-mt-2 flex min-h-11 items-center gap-2.5 text-sm font-medium text-text">
+            <input
+              type="checkbox"
+              checked={notificar}
+              onChange={(e) => setNotificar(e.target.checked)}
+              className="size-4 rounded border-border accent-primary"
+            />
+            Avisar os atletas no celular
+            <span className="font-normal text-text-muted">(notificação com o título)</span>
+          </label>
+        )}
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="ghost" onClick={onClose}>

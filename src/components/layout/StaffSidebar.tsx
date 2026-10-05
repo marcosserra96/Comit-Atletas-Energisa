@@ -21,6 +21,7 @@ import {
   X,
   Bike,
   Footprints,
+  BellRing,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { RodapeDaGaveta } from "@/components/layout/RodapeDaGaveta";
@@ -39,6 +40,7 @@ const baseItems: { href: string; label: string; icon: typeof LayoutDashboard; pe
   { href: "/gestao/noticias", label: "Notícias", icon: Newspaper, permissao: "noticias" },
   { href: "/gestao/informativo", label: "Informativo", icon: Megaphone, permissao: "informativo" },
   { href: "/gestao/pesquisas", label: "Pesquisas", icon: ClipboardList, permissao: "pesquisas" },
+  { href: "/gestao/notificacoes", label: "Notificações", icon: BellRing, permissao: "notificacoes" },
   { href: "/gestao/financeiro", label: "Financeiro", icon: Wallet, permissao: "financeiro" },
 ];
 

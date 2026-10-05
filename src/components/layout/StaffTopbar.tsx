@@ -23,6 +23,7 @@ const titleByPath: Record<string, string> = {
   "/gestao/conta": "Minha conta",
   "/gestao/informativo": "Informativo",
   "/gestao/pesquisas": "Pesquisas",
+  "/gestao/notificacoes": "Notificações",
 };
 
 export function StaffTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
