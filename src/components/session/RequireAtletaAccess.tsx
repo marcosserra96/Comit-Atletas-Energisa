@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "@/lib/session/SessionProvider";
+import { guardarVoltarPara, limparVoltarPara } from "@/lib/session/voltarPara";
 import { souTambemAtleta } from "@/lib/session/dualRole";
 import { FullScreenLoader } from "@/components/ui/FullScreenLoader";
 
@@ -24,7 +25,10 @@ export function RequireAtletaAccess({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (session.status === "signed-out") {
+      guardarVoltarPara(window.location.pathname + window.location.search);
       router.replace("/login");
+    } else if (session.status === "active" && podeAcessar) {
+      limparVoltarPara();
     } else if (session.status === "active" && !podeAcessar) {
       router.replace("/gestao");
     }

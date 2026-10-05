@@ -196,6 +196,17 @@ export interface RegraPontuacaoDoc {
   criadoEm: unknown;
 }
 
+/** Configuração pública da confirmação de presença (o segredo fica em `reunioes_checkin`). */
+export interface CheckinReuniao {
+  ativo: boolean;
+  /** ISO. Ausente = 15 min antes do início. */
+  abreEm?: string;
+  /** ISO. Ausente = 30 min depois do fim. */
+  fechaEm?: string;
+  /** Código que muda a cada 30 s (só para apresentar pelo portal). */
+  dinamico: boolean;
+}
+
 export interface EventoDoc {
   id: string;
   titulo: string;
@@ -210,6 +221,8 @@ export interface EventoDoc {
   horaFim?: string;
   /** Reunião online: link da chamada (Teams, Meet…). */
   linkOnline?: string;
+  /** Reunião: confirmação de presença pelo app (QR code ou código). */
+  checkin?: CheckinReuniao;
   criadoEm: unknown;
   criadoPor: string;
   atualizadoEm?: unknown;
