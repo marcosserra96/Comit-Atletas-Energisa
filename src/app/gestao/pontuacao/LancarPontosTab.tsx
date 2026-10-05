@@ -14,7 +14,7 @@ import {
   where,
   writeBatch,
 } from "firebase/firestore";
-import { Activity, AlertCircle, CalendarCheck, PlusCircle, Target } from "lucide-react";
+import { Activity, AlertCircle, CalendarCheck, PlusCircle, Target, UsersRound } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { atletaPublicoRef } from "@/lib/publicAthletes";
 import { useActiveSession } from "@/lib/session/SessionProvider";
@@ -34,6 +34,8 @@ import {
   resumoJustificativa,
 } from "@/lib/justificativasAusencia";
 import { ImportarPontuacoesCard } from "./ImportarPontuacoesCard";
+import { PresencaReuniao } from "./PresencaReuniao";
+import { ehReuniao } from "@/lib/eventos";
 import type {
   AtletaDoc,
   EventoDoc,
@@ -47,6 +49,7 @@ const tipoOptions: { value: TipoLancamento; label: string; icon: typeof Activity
   { value: "treino", label: "Treino", icon: Activity },
   { value: "evento", label: "Evento", icon: CalendarCheck },
   { value: "avulso", label: "Avulso", icon: PlusCircle },
+  { value: "reuniao", label: "Reunião", icon: UsersRound },
 ];
 
 export function LancarPontosTab({
@@ -128,7 +131,9 @@ export function LancarPontosTab({
     limite.setDate(limite.getDate() - 7);
     const limiteStr = dataIsoLocal(limite);
 
-    const disponiveis = eventos.filter((e) => e.id === eventoId || !eventosJaLancados.has(e.id));
+    const disponiveis = eventos.filter(
+      (e) => !ehReuniao(e) && (e.id === eventoId || !eventosJaLancados.has(e.id)),
+    );
     const proximos = disponiveis
       .filter((e) => e.data >= hoje)
       .sort((a, b) => a.data.localeCompare(b.data));
@@ -458,6 +463,12 @@ export function LancarPontosTab({
           <label className="text-xs font-semibold text-text-light">Tipo de lançamento</label>
           <SegmentedControl value={tipo} onChange={handleTipoChange} options={tipoOptions} />
         </div>
+        {tipo === "reuniao" ? (
+          <p className="text-sm text-text-light">
+            Reunião vale só presença: marque quem esteve e cada um recebe os pontos do critério de reunião.
+          </p>
+        ) : (
+          <>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {tipo === "evento" && (
@@ -549,7 +560,14 @@ export function LancarPontosTab({
             </p>
           </div>
         </div>
+          </>
+        )}
       </Card>
+
+      {tipo === "reuniao" ? (
+        <PresencaReuniao />
+      ) : (
+      <>
 
       {atletas === null || regras === null ? (
         <Card className="h-64 animate-pulse" />
@@ -824,6 +842,9 @@ export function LancarPontosTab({
           Salvar lançamento
         </Button>
       </div>
+
+      </>
+      )}
 
       {/* Importação em lote é ocasional; fica depois do lançamento do dia a dia. */}
       <ImportarPontuacoesCard />

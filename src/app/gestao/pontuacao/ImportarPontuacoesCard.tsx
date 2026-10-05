@@ -29,7 +29,7 @@ import { BotaoImportarControleAntigo } from "./ImportarControleAntigoModal";
 import type { AtletaDoc, HistoricoPontoDoc, Modalidade, RegraPontuacaoDoc, TipoLancamento } from "@/lib/types";
 import { plural } from "@/lib/format";
 
-const TIPOS_VALIDOS: TipoLancamento[] = ["treino", "evento", "avulso"];
+const TIPOS_VALIDOS: TipoLancamento[] = ["treino", "evento", "avulso", "reuniao"];
 const DATA_ISO_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const DATA_BR_REGEX = /^(\d{2})\/(\d{2})\/(\d{4})$/;
 

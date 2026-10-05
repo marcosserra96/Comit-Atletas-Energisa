@@ -1,5 +1,6 @@
 "use client";
 
+import { ehReuniao, horarioDoEvento } from "@/lib/eventos";
 import { useEffect, useMemo, useState } from "react";
 import {
   arrayRemove,
@@ -11,7 +12,7 @@ import {
   query,
   updateDoc,
 } from "firebase/firestore";
-import { AlertCircle, CalendarCheck, CalendarPlus, Check, MapPin, Navigation, RefreshCw, Users } from "lucide-react";
+import { AlertCircle, CalendarCheck, CalendarPlus, Check, MapPin, Navigation, RefreshCw, Users, Video } from "lucide-react";
 import type { ReactNode } from "react";
 import { db } from "@/lib/firebase";
 import { useAthleteView } from "@/lib/session/AthleteViewProvider";
@@ -51,6 +52,8 @@ function escaparIcs(valor: string) {
 
 function baixarEventoCalendario(evento: EventoDoc) {
   const inicio = evento.data.replaceAll("-", "");
+  const comHorario = Boolean(evento.horaInicio);
+  const hora = (valor: string) => valor.replace(":", "") + "00";
   const fimData = new Date(evento.data + "T12:00:00");
   fimData.setDate(fimData.getDate() + 1);
   const fim = [
@@ -64,10 +67,14 @@ function baixarEventoCalendario(evento: EventoDoc) {
     "PRODID:-//Atletas Energisa//Eventos//PT-BR",
     "BEGIN:VEVENT",
     "UID:" + evento.id + "@atletas-energisa",
-    "DTSTART;VALUE=DATE:" + inicio,
-    "DTEND;VALUE=DATE:" + fim,
+    ...(comHorario
+      ? [
+          "DTSTART:" + inicio + "T" + hora(evento.horaInicio!),
+          "DTEND:" + inicio + "T" + hora(evento.horaFim || evento.horaInicio!),
+        ]
+      : ["DTSTART;VALUE=DATE:" + inicio, "DTEND;VALUE=DATE:" + fim]),
     "SUMMARY:" + escaparIcs(evento.titulo),
-    "LOCATION:" + escaparIcs(evento.local),
+    "LOCATION:" + escaparIcs(evento.linkOnline || evento.local),
     "END:VEVENT",
     "END:VCALENDAR",
   ].join("\r\n");
@@ -123,7 +130,9 @@ function EventoCard({
             ) : (
               <SportBadge modalidade={evento.modalidade} size="sm" />
             )}
-            {evento.km ? <Badge tone="neutral">{formatKm(evento.km)}</Badge> : null}
+            {ehReuniao(evento) ? <Badge tone="accent">Reunião</Badge> : null}
+            {horarioDoEvento(evento) ? <Badge tone="neutral">{horarioDoEvento(evento)}</Badge> : null}
+            {evento.km && !ehReuniao(evento) ? <Badge tone="neutral">{formatKm(evento.km)}</Badge> : null}
             <span className="inline-flex items-center gap-1 text-xs text-text-light">
               <Users className="size-3.5" aria-hidden="true" />
               {plural(inscritos, "confirmado")}
@@ -140,15 +149,23 @@ function EventoCard({
 
       <div className="flex flex-col gap-2 border-t border-border-subtle pt-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 sm:-ml-2">
-          <a
-            href={"https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(evento.local)}
-            target="_blank"
-            rel="noreferrer"
-            className={linkSecundario}
-          >
-            <Navigation className="size-4" aria-hidden="true" />
-            Ver mapa
-          </a>
+          {evento.linkOnline ? (
+            <a href={evento.linkOnline} target="_blank" rel="noreferrer" className={linkSecundario}>
+              <Video className="size-4" aria-hidden="true" />
+              Entrar na reunião
+            </a>
+          ) : null}
+          {!/^online$/i.test(evento.local.trim()) ? (
+            <a
+              href={"https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(evento.local)}
+              target="_blank"
+              rel="noreferrer"
+              className={linkSecundario}
+            >
+              <Navigation className="size-4" aria-hidden="true" />
+              Ver mapa
+            </a>
+          ) : null}
           <button type="button" onClick={() => baixarEventoCalendario(evento)} className={cn(linkSecundario, "cursor-pointer")}>
             <CalendarPlus className="size-4" aria-hidden="true" />
             Salvar na agenda

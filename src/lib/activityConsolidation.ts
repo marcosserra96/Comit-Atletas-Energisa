@@ -24,7 +24,7 @@ export function regrasDeTreino(
 /** O lançamento conta como treino: lançado como Treino ou de um critério que conta como treino. */
 export function lancamentoContaComoTreino(lancamento: HistoricoPontoDoc, regrasTreino?: RegrasDeTreino) {
   if (lancamento.tipoLancamento === "treino") return true;
-  if (lancamento.tipoLancamento === "evento") return false;
+  if (lancamento.tipoLancamento === "evento" || lancamento.tipoLancamento === "reuniao") return false;
   return Boolean(regrasTreino?.has(lancamento.regraId));
 }
 

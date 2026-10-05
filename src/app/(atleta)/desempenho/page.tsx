@@ -16,6 +16,7 @@ import {
   Search,
   Sparkles,
   Trophy,
+  UsersRound,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useAthleteView } from "@/lib/session/AthleteViewProvider";
@@ -48,6 +49,7 @@ const tipoLabel: Record<TipoLancamento, string> = {
   evento: "Evento",
   avulso: "Avulso",
   importacao: "Importação",
+  reuniao: "Reunião",
 };
 
 type MetricaVolume = "km" | "pontos";
@@ -67,6 +69,7 @@ const FILTROS_TIPO: { value: FiltroTipo; label: string }[] = [
   { value: "evento", label: "Eventos" },
   { value: "avulso", label: "Avulsos" },
   { value: "importacao", label: "Importações" },
+  { value: "reuniao", label: "Reuniões" },
 ];
 
 const POR_PAGINA = 15;
@@ -76,6 +79,7 @@ const iconePorTipo: Record<TipoLancamento, typeof Footprints> = {
   evento: Medal,
   avulso: Sparkles,
   importacao: FileSpreadsheet,
+  reuniao: UsersRound,
 };
 
 const formatoDiaMes = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" });

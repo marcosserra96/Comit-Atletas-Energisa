@@ -74,7 +74,7 @@ export default function PontuacaoPage() {
           Lançar pontos
         </h1>
         <p className="text-sm text-text-light">
-          Registre pontuação por treino, evento ou lançamento avulso.
+          Registre pontuação por treino, evento, reunião ou lançamento avulso.
         </p>
       </div>
 
