@@ -35,11 +35,11 @@ export function EventoModal({
   const [titulo, setTitulo] = useState(evento?.titulo ?? "");
   const [local, setLocal] = useState(evento?.local ?? "");
   const [modalidade, setModalidade] = useState<EventoDoc["modalidade"]>(evento?.modalidade ?? "ambas");
-  const [data, setData] = useState(evento?.data ?? "");
+  const [dataEstado, setData] = useState(evento?.data ?? "");
   const [km, setKm] = useState(evento?.km != null ? String(evento.km) : "");
   const [tipo, setTipo] = useState<"evento" | "reuniao">(evento?.tipo === "reuniao" ? "reuniao" : "evento");
-  const [horaInicio, setHoraInicio] = useState(evento?.horaInicio ?? "");
-  const [horaFim, setHoraFim] = useState(evento?.horaFim ?? "");
+  const [horaInicioEstado, setHoraInicio] = useState(evento?.horaInicio ?? "");
+  const [horaFimEstado, setHoraFim] = useState(evento?.horaFim ?? "");
   const [linkOnline, setLinkOnline] = useState(evento?.linkOnline ?? "");
   const reuniao = tipo === "reuniao";
   const [loading, setLoading] = useState(false);
@@ -48,7 +48,7 @@ export function EventoModal({
 
   // Validação própria (o formulário usa noValidate): a validação nativa de
   // data/hora varia por navegador e acusava "valor inválido" em datas corretas.
-  function validar() {
+  function validar({ data, horaInicio, horaFim }: { data: string; horaInicio: string; horaFim: string }) {
     const erros: Record<string, string> = {};
     if (!titulo.trim()) erros.titulo = "Informe o título.";
     if (!local.trim()) erros.local = "Informe o local.";
@@ -66,7 +66,17 @@ export function EventoModal({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const erros = validar();
+    // Lê também o que está no campo de fato: em alguns navegadores (Safari) o
+    // valor mostrado nem sempre chega ao estado antes do envio.
+    const form = new FormData(e.currentTarget as HTMLFormElement);
+    const campo = (nome: string, atual: string) => String(form.get(nome) ?? "") || atual;
+    const data = campo("data", dataEstado);
+    const horaInicio = campo("horaInicio", horaInicioEstado);
+    const horaFim = campo("horaFim", horaFimEstado);
+    setData(data);
+    setHoraInicio(horaInicio);
+    setHoraFim(horaFim);
+    const erros = validar({ data, horaInicio, horaFim });
     setErros(erros);
     if (Object.keys(erros).length > 0) return;
     const link = linkOnline.trim();
@@ -128,7 +138,19 @@ export function EventoModal({
           <span className="text-sm font-medium text-text">Tipo</span>
           <SegmentedControl
             value={tipo}
-            onChange={(valor) => setTipo(valor as "evento" | "reuniao")}
+            onChange={(valor) => {
+              setTipo(valor as "evento" | "reuniao");
+              // Reunião nova já vem com hoje e a próxima hora cheia: o que se vê é o valor real.
+              if (valor === "reuniao" && !editando) {
+                const proxima = new Date();
+                proxima.setMinutes(0, 0, 0);
+                proxima.setHours(proxima.getHours() + 1);
+                const hh = (h: number) => `${String(h % 24).padStart(2, "0")}:00`;
+                if (!dataEstado) setData(dataIsoLocal());
+                if (!horaInicioEstado) setHoraInicio(hh(proxima.getHours()));
+                if (!horaFimEstado) setHoraFim(hh(proxima.getHours() + 1));
+              }
+            }}
             options={[
               { value: "evento", label: "Evento esportivo", icon: CalendarCheck },
               { value: "reuniao", label: "Reunião", icon: UsersRound },
@@ -189,7 +211,8 @@ export function EventoModal({
             <TextField
               label="Data"
               type="date"
-              value={data}
+              name="data"
+              value={dataEstado}
               min={editando ? undefined : dataIsoLocal()}
               onChange={(e) => setData(e.target.value)}
               error={erros.data}
@@ -213,7 +236,8 @@ export function EventoModal({
             <TextField
               label="Início"
               type="time"
-              value={horaInicio}
+              name="horaInicio"
+              value={horaInicioEstado}
               onChange={(e) => setHoraInicio(e.target.value)}
               error={erros.horaInicio}
               required
@@ -221,7 +245,8 @@ export function EventoModal({
             <TextField
               label="Fim"
               type="time"
-              value={horaFim}
+              name="horaFim"
+              value={horaFimEstado}
               onChange={(e) => setHoraFim(e.target.value)}
               error={erros.horaFim}
               required
@@ -231,7 +256,8 @@ export function EventoModal({
           <TextField
             label="Data"
             type="date"
-            value={data}
+            name="data"
+              value={dataEstado}
             min={editando ? undefined : dataIsoLocal()}
             onChange={(e) => setData(e.target.value)}
             error={erros.data}
