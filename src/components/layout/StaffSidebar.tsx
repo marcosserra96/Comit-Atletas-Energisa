@@ -12,6 +12,7 @@ import {
   CalendarCheck,
   Newspaper,
   Megaphone,
+  ClipboardList,
   Wallet,
   Settings,
   UserCog,
@@ -37,6 +38,7 @@ const baseItems: { href: string; label: string; icon: typeof LayoutDashboard; pe
   { href: "/gestao/eventos", label: "Eventos", icon: CalendarCheck, permissao: "eventos" },
   { href: "/gestao/noticias", label: "Notícias", icon: Newspaper, permissao: "noticias" },
   { href: "/gestao/informativo", label: "Informativo", icon: Megaphone, permissao: "informativo" },
+  { href: "/gestao/pesquisas", label: "Pesquisas", icon: ClipboardList, permissao: "pesquisas" },
   { href: "/gestao/financeiro", label: "Financeiro", icon: Wallet, permissao: "financeiro" },
 ];
 

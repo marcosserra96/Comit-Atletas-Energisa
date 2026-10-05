@@ -10,6 +10,7 @@ import { AtletaTopbar } from "@/components/layout/AtletaTopbar";
 import { MobileBottomNav } from "@/components/ui/MobileBottomNav";
 import { AthleteViewProvider, useAthleteView } from "@/lib/session/AthleteViewProvider";
 import { useRankingAvailability } from "@/lib/session/useRankingAvailability";
+import { AvisoPesquisa, PesquisasAtletaProvider } from "@/components/pesquisas/PesquisasAtleta";
 
 const bottomNavItems = [
   { href: "/dashboard", label: "Início", icon: LayoutDashboard },
@@ -28,6 +29,7 @@ function AtletaShellInner({ children }: { children: React.ReactNode }) {
     .map((item) => ({ ...item, href: withPreview(item.href) }));
 
   return (
+    <PesquisasAtletaProvider>
     <div className="flex min-h-dvh">
       <AtletaSidebar
         mobileOpen={mobileOpen}
@@ -55,7 +57,9 @@ function AtletaShellInner({ children }: { children: React.ReactNode }) {
         <main className="min-w-0 flex-1 bg-bg p-4 pb-32 sm:p-6 lg:pb-6">{children}</main>
         <MobileBottomNav items={mobileItems} />
       </div>
+      <AvisoPesquisa />
     </div>
+    </PesquisasAtletaProvider>
   );
 }
 
