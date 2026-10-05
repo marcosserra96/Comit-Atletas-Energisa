@@ -10,13 +10,19 @@ import { AtletaTopbar } from "@/components/layout/AtletaTopbar";
 import { MobileBottomNav } from "@/components/ui/MobileBottomNav";
 import { AthleteViewProvider, useAthleteView } from "@/lib/session/AthleteViewProvider";
 import { useRankingAvailability } from "@/lib/session/useRankingAvailability";
-import { AvisoPesquisa, PesquisasAtletaProvider } from "@/components/pesquisas/PesquisasAtleta";
+import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
+import { AvisoPesquisa, PesquisasAtletaProvider, usePesquisasDoAtleta } from "@/components/pesquisas/PesquisasAtleta";
 import { AvisoReuniao, ReuniaoAgoraProvider, useReuniaoAgora } from "@/components/reunioes/AvisoReuniao";
 
-/** Um aviso por vez: a reunião em andamento vem antes da pesquisa. */
+/** Um aviso por vez: reunião em andamento, depois pesquisa, depois o convite para instalar. */
 function AvisosDoAtleta() {
   const { reuniao } = useReuniaoAgora();
-  return reuniao ? <AvisoReuniao key={reuniao.id} reuniao={reuniao} /> : <AvisoPesquisa />;
+  const { pendentes } = usePesquisasDoAtleta();
+  const { isPreview } = useAthleteView();
+  if (reuniao) return <AvisoReuniao key={reuniao.id} reuniao={reuniao} />;
+  if (pendentes.length > 0) return <AvisoPesquisa />;
+  // Convite para instalar só quando não há outro aviso na tela.
+  return isPreview ? null : <PwaInstallPrompt />;
 }
 
 const bottomNavItems = [

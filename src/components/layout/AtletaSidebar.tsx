@@ -15,8 +15,9 @@ import {
   Trophy,
   ChevronsLeft,
   ChevronsRight,
-  X } from "lucide-react";
+  X, Smartphone } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { useInstalacao } from "@/lib/pwa/instalacao";
 import { RodapeDaGaveta } from "@/components/layout/RodapeDaGaveta";
 import { useGavetaMobile } from "@/components/layout/useGavetaMobile";
 import { useAthleteView } from "@/lib/session/AthleteViewProvider";
@@ -50,6 +51,7 @@ export function AtletaSidebar({
   const painelRef = useRef<HTMLElement>(null);
   const gestos = useGavetaMobile(mobileOpen, onCloseMobile, painelRef);
   const tambemComite = !isPreview && souTambemAtleta(usuario, sessionAtleta);
+  const instalacao = useInstalacao();
 
   return (
     <>
@@ -121,6 +123,21 @@ export function AtletaSidebar({
               </Link>
             );
           })}
+
+          {instalacao.pronto && !instalacao.instalado && !isPreview ? (
+            <Link
+              href="/instalar"
+              onClick={onCloseMobile}
+              title={collapsed ? "Instalar o app" : undefined}
+              className={cn(
+                "mt-2 flex min-h-11 items-center gap-3 rounded-[var(--radius)] border border-dashed border-white/20 px-3 py-2.5 text-sm font-medium text-white/80 transition-colors hover:border-white/40 hover:bg-white/5 hover:text-white lg:min-h-0",
+                collapsed && "lg:justify-center lg:px-0",
+              )}
+            >
+              <Smartphone className="size-[18px] shrink-0" />
+              <span className={cn(collapsed && "lg:hidden")}>Instalar o app</span>
+            </Link>
+          ) : null}
 
           {tambemComite && (
             <Link
