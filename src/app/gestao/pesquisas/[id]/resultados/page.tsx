@@ -63,6 +63,23 @@ function Barras({ itens, rotulo }: { itens: ResultadoOpcao[]; rotulo?: (o: Resul
   );
 }
 
+/** Faixas usuais do NPS. */
+function zonaNps(nps: number) {
+  if (nps >= 75) return { rotulo: "Excelente", tom: "success" as const };
+  if (nps >= 50) return { rotulo: "Muito bom", tom: "success" as const };
+  if (nps >= 0) return { rotulo: "Razoável", tom: "warning" as const };
+  return { rotulo: "Crítico", tom: "danger" as const };
+}
+
+function Numero({ valor, rotulo }: { valor: number | null; rotulo: string }) {
+  return (
+    <div className="rounded-[var(--radius)] bg-bg-inset px-3 py-2.5">
+      <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">{rotulo}</p>
+      <p className="text-2xl font-black tabular-nums text-text">{valor === null ? "—" : valor.toLocaleString("pt-BR")}</p>
+    </div>
+  );
+}
+
 function CartaoResultado({ r, indice }: { r: ResultadoPergunta; indice: number }) {
   return (
     <Card className="flex flex-col gap-4">
@@ -85,6 +102,77 @@ function CartaoResultado({ r, indice }: { r: ResultadoPergunta; indice: number }
             <span className="text-sm text-text-light">média</span>
           </div>
           <Barras itens={r.distribuicao} rotulo={(o) => `Nota ${o.opcao}`} />
+        </div>
+      ) : r.tipo === "nps" ? (
+        <div className="flex flex-col gap-5">
+          {r.nps ? (
+            <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">NPS</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-4xl font-black tabular-nums text-text">{r.nps.nps}</span>
+                  <Badge tone={zonaNps(r.nps.nps).tom}>{zonaNps(r.nps.nps).rotulo}</Badge>
+                </div>
+              </div>
+              <p className="text-sm text-text-light">
+                Média {r.media?.toLocaleString("pt-BR")} · Promotores (9–10) <strong className="text-text">{r.nps.promotores}%</strong>{" "}
+                · Neutros (7–8) <strong className="text-text">{r.nps.neutros}%</strong> · Detratores (0–6){" "}
+                <strong className="text-text">{r.nps.detratores}%</strong>
+              </p>
+            </div>
+          ) : null}
+          <div className="grid grid-cols-11 items-end gap-1" role="img" aria-label="Distribuição das notas de 0 a 10">
+            {r.distribuicao.map((o) => (
+              <div key={o.opcao} className="flex flex-col items-center gap-1" title={`Nota ${o.opcao}: ${o.total}`}>
+                <span className="text-[11px] tabular-nums text-text-light">{o.total || ""}</span>
+                <div className="flex h-20 w-full items-end rounded-[4px] bg-bg-inset">
+                  <div
+                    className="w-full rounded-[4px] bg-primary transition-[height] duration-500"
+                    style={{ height: `${o.percentual}%`, minHeight: o.total > 0 ? 4 : 0 }}
+                  />
+                </div>
+                <span className="text-xs font-semibold tabular-nums text-text">{o.opcao}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : r.tipo === "ordem" ? (
+        <ol className="flex flex-col gap-2">
+          {r.opcoes.map((o, i) => (
+            <li key={o.opcao} className="flex items-center gap-3 rounded-[var(--radius)] border border-border px-3 py-2.5">
+              <span
+                className={
+                  i === 0
+                    ? "flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-on-primary"
+                    : "flex size-8 shrink-0 items-center justify-center rounded-full bg-bg-inset text-sm font-bold text-text-light"
+                }
+              >
+                {i + 1}º
+              </span>
+              <span className="min-w-0 flex-1 font-semibold text-text">{o.opcao}</span>
+              <span className="shrink-0 text-right text-xs text-text-light">
+                posição média <strong className="tabular-nums text-text">{o.posicaoMedia.toLocaleString("pt-BR")}</strong>
+                <br />
+                1º lugar para {plural(o.primeiroLugar, "atleta")}
+              </span>
+            </li>
+          ))}
+        </ol>
+      ) : r.tipo === "numero" ? (
+        <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-3 gap-2">
+            <Numero rotulo="Média" valor={r.media} />
+            <Numero rotulo="Menor" valor={r.minimo} />
+            <Numero rotulo="Maior" valor={r.maximo} />
+          </div>
+          <ul className="flex max-h-64 flex-col divide-y divide-border overflow-y-auto rounded-[var(--radius)] border border-border">
+            {r.valores.map((v, i) => (
+              <li key={i} className="flex justify-between gap-3 px-3 py-2 text-sm">
+                <span className="text-text">{v.atletaNome}</span>
+                <span className="font-semibold tabular-nums text-text">{v.valor.toLocaleString("pt-BR")}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       ) : (
         <ul className="flex max-h-80 flex-col divide-y divide-border overflow-y-auto rounded-[var(--radius)] border border-border">

@@ -43,19 +43,33 @@ export function EventoModal({
   const [linkOnline, setLinkOnline] = useState(evento?.linkOnline ?? "");
   const reuniao = tipo === "reuniao";
   const [loading, setLoading] = useState(false);
+  const [erros, setErros] = useState<Record<string, string>>({});
   const confirmados = evento?.inscritos?.length ?? 0;
+
+  // Validação própria (o formulário usa noValidate): a validação nativa de
+  // data/hora varia por navegador e acusava "valor inválido" em datas corretas.
+  function validar() {
+    const erros: Record<string, string> = {};
+    if (!titulo.trim()) erros.titulo = "Informe o título.";
+    if (!local.trim()) erros.local = "Informe o local.";
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) erros.data = "Escolha a data.";
+    else if (!editando && data < dataIsoLocal()) erros.data = "A data já passou.";
+    if (reuniao) {
+      if (!/^\d{2}:\d{2}$/.test(horaInicio)) erros.horaInicio = "Informe o início.";
+      if (!/^\d{2}:\d{2}$/.test(horaFim)) erros.horaFim = "Informe o fim.";
+      else if (!erros.horaInicio && horaFim <= horaInicio) erros.horaFim = "Precisa ser depois do início.";
+      const link = linkOnline.trim();
+      if (link && !/^https?:\/\/\S+$/i.test(link)) erros.link = "Cole o link completo, começando com https://";
+    }
+    return erros;
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (reuniao && horaInicio && horaFim && horaFim <= horaInicio) {
-      show("info", "O horário de fim precisa ser depois do início.");
-      return;
-    }
+    const erros = validar();
+    setErros(erros);
+    if (Object.keys(erros).length > 0) return;
     const link = linkOnline.trim();
-    if (reuniao && link && !/^https?:\/\//i.test(link)) {
-      show("info", "Cole o link completo da reunião, começando com https://");
-      return;
-    }
     setLoading(true);
     const dados = {
       titulo: titulo.trim(),
@@ -109,7 +123,7 @@ export function EventoModal({
       title={editando ? (reuniao ? "Editar reunião" : "Editar evento") : reuniao ? "Nova reunião" : "Novo evento"}
       mobileSheet
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <span className="text-sm font-medium text-text">Tipo</span>
           <SegmentedControl
@@ -131,6 +145,7 @@ export function EventoModal({
           placeholder={reuniao ? "Ex: Reunião mensal do programa" : "Ex: Circuito das Estações — Etapa 2"}
           value={titulo}
           onChange={(e) => setTitulo(e.target.value)}
+          error={erros.titulo}
           required
           autoFocus={!editando}
         />
@@ -140,6 +155,7 @@ export function EventoModal({
           placeholder={reuniao ? "Sala, auditório ou \"Online\"" : "Local do evento"}
           value={local}
           onChange={(e) => setLocal(e.target.value)}
+          error={erros.local}
           required
         />
         {reuniao ? (
@@ -151,6 +167,7 @@ export function EventoModal({
             placeholder="Opcional · https://teams.microsoft.com/…"
             value={linkOnline}
             onChange={(e) => setLinkOnline(e.target.value)}
+            error={erros.link}
           />
         ) : null}
         <div className="grid grid-cols-2 gap-3">
@@ -175,6 +192,7 @@ export function EventoModal({
               value={data}
               min={editando ? undefined : dataIsoLocal()}
               onChange={(e) => setData(e.target.value)}
+              error={erros.data}
               required
             />
           ) : (
@@ -197,6 +215,7 @@ export function EventoModal({
               type="time"
               value={horaInicio}
               onChange={(e) => setHoraInicio(e.target.value)}
+              error={erros.horaInicio}
               required
             />
             <TextField
@@ -204,6 +223,7 @@ export function EventoModal({
               type="time"
               value={horaFim}
               onChange={(e) => setHoraFim(e.target.value)}
+              error={erros.horaFim}
               required
             />
           </div>
@@ -214,6 +234,7 @@ export function EventoModal({
             value={data}
             min={editando ? undefined : dataIsoLocal()}
             onChange={(e) => setData(e.target.value)}
+            error={erros.data}
             required
           />
         )}

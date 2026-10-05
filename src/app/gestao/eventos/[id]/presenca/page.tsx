@@ -23,7 +23,7 @@ import { useToast } from "@/components/ui/Toast";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { TextField } from "@/components/ui/TextField";
+import { DataHoraField } from "@/components/ui/DataHoraField";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { NotAuthorized } from "@/components/ui/NotAuthorized";
 import { ConfirmActionModal } from "@/components/ui/ConfirmActionModal";
@@ -33,7 +33,6 @@ import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
 import { cn } from "@/lib/cn";
 import { formatShortDate, plural } from "@/lib/format";
 import { horarioDoEvento } from "@/lib/eventos";
-import { campoLocalParaIso, isoParaCampoLocal } from "@/lib/pesquisas";
 import {
   JANELA_CODIGO_MS,
   codigoDinamico,
@@ -162,6 +161,7 @@ export default function PresencaReuniaoPage() {
   const janela = evento ? janelaDoCheckin({ ...evento, checkin: configAtual }) : null;
   const situacao = evento ? situacaoCheckin({ ...evento, checkin: configAtual }, new Date(agora)) : "desligado";
   const alterado = config !== null;
+  const janelaInvalida = janela !== null && janela.fecha <= janela.abre;
 
   const { codigo, restanteMs } = useCodigoAtual(segredo, configAtual.dinamico);
   const origem = typeof window === "undefined" ? "" : window.location.origin;
@@ -181,6 +181,7 @@ export default function PresencaReuniaoPage() {
   }
 
   async function salvarConfig() {
+    if (janelaInvalida) return;
     setSalvando(true);
     try {
       await updateDoc(doc(db, "agenda_eventos", id), {
@@ -336,17 +337,16 @@ export default function PresencaReuniaoPage() {
                 </span>
               </span>
             </label>
-            <TextField
+            <DataHoraField
               label="Abre em"
-              type="datetime-local"
-              value={janela ? isoParaCampoLocal(janela.abre.toISOString()) : ""}
-              onChange={(e) => setConfig({ ...configAtual, abreEm: campoLocalParaIso(e.target.value) || undefined })}
+              value={janela ? janela.abre.toISOString() : ""}
+              onChange={(iso) => setConfig({ ...configAtual, abreEm: iso })}
             />
-            <TextField
+            <DataHoraField
               label="Fecha em"
-              type="datetime-local"
-              value={janela ? isoParaCampoLocal(janela.fecha.toISOString()) : ""}
-              onChange={(e) => setConfig({ ...configAtual, fechaEm: campoLocalParaIso(e.target.value) || undefined })}
+              value={janela ? janela.fecha.toISOString() : ""}
+              onChange={(iso) => setConfig({ ...configAtual, fechaEm: iso })}
+              error={janelaInvalida ? "Precisa ser depois da abertura." : undefined}
             />
             <label className="flex cursor-pointer items-start gap-3 text-sm">
               <input
@@ -368,7 +368,7 @@ export default function PresencaReuniaoPage() {
                   Descartar
                 </Button>
               ) : null}
-              <Button onClick={salvarConfig} loading={salvando} disabled={!alterado}>
+              <Button onClick={salvarConfig} loading={salvando} disabled={!alterado || janelaInvalida}>
                 Salvar
               </Button>
             </div>

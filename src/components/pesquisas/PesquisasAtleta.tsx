@@ -7,6 +7,7 @@ import { ClipboardList, Clock } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useAthleteView } from "@/lib/session/AthleteViewProvider";
 import { Modal } from "@/components/ui/Modal";
+import { useRelogio } from "@/components/reunioes/AvisoReuniao";
 import { Button } from "@/components/ui/Button";
 import { plural } from "@/lib/format";
 import {
@@ -45,11 +46,9 @@ export function PesquisasAtletaProvider({ children }: { children: ReactNode }) {
   const [respondidas, setRespondidas] = useState<Set<string>>(new Set());
   const [agora, setAgora] = useState(() => Date.now());
 
-  // Abertura e fechamento acontecem com o app aberto: reavalia a cada minuto.
-  useEffect(() => {
-    const t = setInterval(() => setAgora(Date.now()), 60_000);
-    return () => clearInterval(t);
-  }, []);
+  // Abertura e fechamento acontecem com o app aberto: o relógio reavalia a
+  // cada 15 s e ao voltar para o app; publicar/alterar chega pelo listener.
+  useRelogio(setAgora);
 
   useEffect(
     () =>

@@ -11,6 +11,7 @@ import { useBuscaDaUrl } from "@/lib/useBuscaDaUrl";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmarPresenca } from "@/components/reunioes/ConfirmarPresenca";
+import { useReuniaoAgora } from "@/components/reunioes/AvisoReuniao";
 import { formatShortDate } from "@/lib/format";
 import { horarioDoEvento } from "@/lib/eventos";
 import type { EventoDoc } from "@/lib/types";
@@ -20,6 +21,7 @@ export default function PresencaPage() {
   const { id } = useParams<{ id: string }>();
   const busca = useBuscaDaUrl();
   const { isPreview, withPreview } = useAthleteView();
+  const { marcarConfirmada } = useReuniaoAgora();
   const [evento, setEvento] = useState<EventoDoc | null | undefined>(undefined);
 
   useEffect(() => {
@@ -58,7 +60,7 @@ export default function PresencaPage() {
         {isPreview ? (
           <p className="text-sm text-text-muted">Visualização do comitê: a confirmação fica desativada.</p>
         ) : (
-          <ConfirmarPresenca eventoId={evento.id} codigoInicial={codigo} />
+          <ConfirmarPresenca eventoId={evento.id} codigoInicial={codigo} onConcluido={() => marcarConfirmada(evento.id)} />
         )}
       </Card>
       <Link href={withPreview("/dashboard")} className="text-center text-sm font-semibold text-text-light hover:text-text">

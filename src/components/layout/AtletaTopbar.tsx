@@ -9,6 +9,7 @@ import { souTambemAtleta } from "@/lib/session/dualRole";
 import { roleLabel } from "@/lib/labels";
 import { useTituloDaPaginaForaDaTela } from "@/components/layout/useTituloDaPaginaForaDaTela";
 import { cn } from "@/lib/cn";
+import { SinoDeAvisos } from "@/components/avisos/CentralDeAvisos";
 
 const titleByPath: Record<string, string> = {
   "/dashboard": "Início",
@@ -19,6 +20,7 @@ const titleByPath: Record<string, string> = {
   "/documentos": "Documentos",
   "/noticias": "Notícias",
   "/ranking": "Ranking",
+  "/pesquisas": "Pesquisas",
 };
 
 export function AtletaTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
@@ -51,7 +53,8 @@ export function AtletaTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
         </p>
       </div>
 
-      <div className="flex items-center gap-2 lg:gap-4">
+      <div className="flex items-center gap-1 lg:gap-3">
+        <SinoDeAvisos />
         {(tambemComite || isPreview) && (
           <Link
             href={isPreview ? "/gestao/atletas?tab=ver" : "/gestao"}

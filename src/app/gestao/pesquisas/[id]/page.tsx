@@ -13,14 +13,21 @@ import {
   setDoc,
 } from "firebase/firestore";
 import {
+  AlignLeft,
   ArrowDown,
   ArrowLeft,
   ArrowUp,
+  CalendarDays,
   CheckSquare,
   CircleDot,
   Copy,
+  Gauge,
+  Hash,
+  ListOrdered,
   Plus,
+  SquareChevronDown,
   Star,
+  ThumbsUp,
   Trash2,
   Type,
   X,
@@ -31,6 +38,7 @@ import { useToast } from "@/components/ui/Toast";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
+import { DataHoraField } from "@/components/ui/DataHoraField";
 import { Select } from "@/components/ui/Select";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { InlineAlert } from "@/components/ui/InlineAlert";
@@ -40,9 +48,8 @@ import { plural } from "@/lib/format";
 import { temPermissao } from "@/lib/permissoes";
 import { useBuscaDaUrl } from "@/lib/useBuscaDaUrl";
 import {
+  TIPO_PERGUNTA_DICA,
   TIPO_PERGUNTA_LABEL,
-  campoLocalParaIso,
-  isoParaCampoLocal,
   limparPerguntas,
   novaPergunta,
   problemasDaPesquisa,
@@ -58,10 +65,19 @@ type Rascunho = Pick<PesquisaDoc, "titulo" | "descricao" | "perguntas" | "public
 const ICONE_TIPO: Record<TipoPergunta, typeof Type> = {
   unica: CircleDot,
   multipla: CheckSquare,
+  lista: SquareChevronDown,
+  sim_nao: ThumbsUp,
   escala: Star,
+  nps: Gauge,
+  ordenar: ListOrdered,
+  numero: Hash,
+  data: CalendarDays,
   texto_curto: Type,
-  texto_longo: Type,
+  texto_longo: AlignLeft,
 };
+
+const previa =
+  "rounded-[var(--radius)] border border-dashed border-border px-3 py-2.5 text-sm text-text-muted";
 
 function rascunhoInicial(): Rascunho {
   const abre = new Date();
@@ -103,6 +119,7 @@ function EditorPergunta({
 }) {
   const opcoes = pergunta.opcoes ?? [];
   const IconeOpcao = pergunta.tipo === "multipla" ? CheckSquare : CircleDot;
+  const ordenar = pergunta.tipo === "ordenar";
   const botaoIcone =
     "flex size-9 items-center justify-center rounded-[var(--radius)] text-text-muted transition-colors hover:bg-bg-subtle hover:text-text disabled:opacity-30 disabled:pointer-events-none";
 
@@ -169,10 +186,18 @@ function EditorPergunta({
 
       {temOpcoes(pergunta.tipo) ? (
         <div className="flex flex-col gap-2">
-          <span className="text-sm font-medium text-text">Opções</span>
+          <span className="text-sm font-medium text-text">
+            {ordenar ? "Opções (o atleta põe em ordem de preferência)" : "Opções"}
+          </span>
           {opcoes.map((opcao, i) => (
             <div key={i} className="flex items-center gap-2">
-              <IconeOpcao className="size-4 shrink-0 text-text-muted" aria-hidden="true" />
+              {ordenar || pergunta.tipo === "lista" ? (
+                <span className="w-4 shrink-0 text-center text-xs font-bold text-text-muted" aria-hidden="true">
+                  {i + 1}
+                </span>
+              ) : (
+                <IconeOpcao className="size-4 shrink-0 text-text-muted" aria-hidden="true" />
+              )}
               <input
                 value={opcao}
                 onChange={(e) => {
@@ -213,14 +238,32 @@ function EditorPergunta({
           ))}
           <span className="ml-1">1 = muito ruim · 5 = excelente</span>
         </div>
+      ) : pergunta.tipo === "nps" ? (
+        <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-11 gap-1 text-xs font-semibold text-text-light">
+            {Array.from({ length: 11 }, (_, n) => (
+              <span key={n} className="flex h-8 items-center justify-center rounded-[var(--radius)] border border-border">
+                {n}
+              </span>
+            ))}
+          </div>
+          <span className="text-xs text-text-muted">0 = não recomendaria · 10 = recomendaria com certeza</span>
+        </div>
+      ) : pergunta.tipo === "sim_nao" ? (
+        <div className="flex gap-2">
+          {["Sim", "Não"].map((o) => (
+            <span key={o} className="flex h-9 w-20 items-center justify-center rounded-full border border-border text-sm font-semibold text-text-light">
+              {o}
+            </span>
+          ))}
+        </div>
       ) : (
-        <div
-          className={cn(
-            "rounded-[var(--radius)] border border-dashed border-border px-3 text-sm text-text-muted",
-            pergunta.tipo === "texto_longo" ? "py-6" : "py-2.5",
-          )}
-        >
-          O atleta escreve a resposta aqui{pergunta.tipo === "texto_longo" ? " (texto longo)" : ""}.
+        <div className={cn(previa, pergunta.tipo === "texto_longo" && "py-6")}>
+          {pergunta.tipo === "numero"
+            ? "O atleta digita um número."
+            : pergunta.tipo === "data"
+              ? "O atleta escolhe uma data no calendário."
+              : `O atleta escreve a resposta aqui${pergunta.tipo === "texto_longo" ? " (texto longo)" : ""}.`}
         </div>
       )}
 
@@ -382,17 +425,16 @@ export default function EditarPesquisaPage() {
           />
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          <TextField
-            label="Abre em"
-            type="datetime-local"
-            value={isoParaCampoLocal(rascunho.abreEm)}
-            onChange={(e) => atualizar({ abreEm: campoLocalParaIso(e.target.value) })}
-          />
-          <TextField
+          <DataHoraField label="Abre em" value={rascunho.abreEm} onChange={(iso) => atualizar({ abreEm: iso })} />
+          <DataHoraField
             label="Fecha em"
-            type="datetime-local"
-            value={isoParaCampoLocal(rascunho.fechaEm)}
-            onChange={(e) => atualizar({ fechaEm: campoLocalParaIso(e.target.value) })}
+            value={rascunho.fechaEm}
+            onChange={(iso) => atualizar({ fechaEm: iso })}
+            error={
+              rascunho.abreEm && rascunho.fechaEm && rascunho.fechaEm <= rascunho.abreEm
+                ? "Precisa ser depois da abertura."
+                : undefined
+            }
           />
         </div>
         <p className="-mt-1 text-xs text-text-muted">
@@ -426,14 +468,24 @@ export default function EditarPesquisaPage() {
 
       <Card className="flex flex-col gap-3">
         <span className="text-sm font-semibold text-text">Adicionar pergunta</span>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {(Object.keys(TIPO_PERGUNTA_LABEL) as TipoPergunta[]).map((t) => {
             const Icone = ICONE_TIPO[t];
             return (
-              <Button key={t} variant="secondary" size="sm" onClick={() => atualizar({ perguntas: [...perguntas, novaPergunta(t)] })}>
-                <Icone className="size-4" />
-                {TIPO_PERGUNTA_LABEL[t]}
-              </Button>
+              <button
+                key={t}
+                type="button"
+                onClick={() => atualizar({ perguntas: [...perguntas, novaPergunta(t)] })}
+                className="flex items-start gap-3 rounded-[var(--radius)] border border-border bg-bg-card p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary-subtle/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-[var(--radius)] bg-primary-subtle text-primary">
+                  <Icone className="size-[18px]" aria-hidden="true" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-text">{TIPO_PERGUNTA_LABEL[t]}</span>
+                  <span className="block text-xs leading-snug text-text-light">{TIPO_PERGUNTA_DICA[t]}</span>
+                </span>
+              </button>
             );
           })}
         </div>
