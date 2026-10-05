@@ -50,6 +50,8 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
             type={resolvedType}
             className={cn(
               "h-11 w-full bg-transparent text-base text-text placeholder:text-text-muted outline-none sm:text-sm",
+              // Data/hora vazias: o Safari mostra uma data/hora "de exemplo" com cara de preenchida.
+              (type === "date" || type === "time") && props.value === "" && "text-text-muted [&::-webkit-datetime-edit]:text-text-muted [&::-webkit-datetime-edit]:opacity-60",
               className,
             )}
             {...props}
