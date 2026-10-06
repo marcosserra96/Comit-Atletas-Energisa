@@ -7,10 +7,9 @@ import { db } from "@/lib/firebase";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
 import { Modal } from "@/components/ui/Modal";
-import { Select } from "@/components/ui/Select";
+import { SeletorDeCadastro } from "@/components/atletas/SeletorDeCadastro";
 import { Button } from "@/components/ui/Button";
 import { logAudit } from "@/lib/audit";
-import { equipeLabel } from "@/lib/labels";
 import type { AtletaDoc } from "@/lib/types";
 
 export function CorrigirVinculoModal({
@@ -90,17 +89,12 @@ export function CorrigirVinculoModal({
               Nenhum cadastro de atleta sem login disponível para reatribuir agora.
             </p>
           ) : (
-            <Select
-              placeholder="Selecione o cadastro correto"
-              value={novoAtletaId}
-              onChange={(e) => setNovoAtletaId(e.target.value)}
-            >
-              {atletasSemVinculo.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.nome} — {equipeLabel[a.equipe]}
-                </option>
-              ))}
-            </Select>
+            <SeletorDeCadastro
+              atletas={atletasSemVinculo}
+              valor={novoAtletaId}
+              onChange={setNovoAtletaId}
+              referencia={{ nome: pessoa.nome, email: pessoa.email }}
+            />
           )}
 
           <div className="flex justify-end gap-2">

@@ -17,8 +17,10 @@ import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { addAuditToBatch } from "@/lib/audit";
 import { formatRelativeTime } from "@/lib/format";
-import { equipeLabel, roleLabel } from "@/lib/labels";
+import { roleLabel } from "@/lib/labels";
 import { RejectRequestModal } from "./RejectRequestModal";
+import { SeletorDeCadastro } from "@/components/atletas/SeletorDeCadastro";
+import { sugerirPorNome } from "@/lib/semelhancaNome";
 import type { AtletaDoc, Role, SolicitacaoAcessoDoc } from "@/lib/types";
 
 type Caminho = "vincular" | "criar";
@@ -42,7 +44,14 @@ export function RequestCard({
   const [caminho, setCaminho] = useState<Caminho>(
     atletasSemVinculo.length > 0 ? "vincular" : "criar",
   );
-  const [atletaSelecionado, setAtletaSelecionado] = useState("");
+  // Nome praticamente igual e sem empate: já vem marcado (o comitê confirma ao vincular).
+  const [atletaSelecionado, setAtletaSelecionado] = useState(() => {
+    const [primeira, segunda] = sugerirPorNome(solicitacao, atletasSemVinculo, (a) => a.nome, 2);
+    return primeira && primeira.pontuacao >= 0.8 && (!segunda || primeira.pontuacao - segunda.pontuacao >= 0.15)
+      ? primeira.item.id
+      : "";
+  });
+  const selecionado = atletasSemVinculo.find((a) => a.id === atletaSelecionado);
   const [roleEscolhida, setRoleEscolhida] = useState<Role>("atleta");
   const [busy, setBusy] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
@@ -228,17 +237,12 @@ export function RequestCard({
           </p>
         ) : (
           <div className="flex flex-col gap-2">
-            <Select
-              placeholder="Selecione o cadastro do atleta"
-              value={atletaSelecionado}
-              onChange={(e) => setAtletaSelecionado(e.target.value)}
-            >
-              {atletasSemVinculo.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.nome} — {equipeLabel[a.equipe]}
-                </option>
-              ))}
-            </Select>
+            <SeletorDeCadastro
+              atletas={atletasSemVinculo}
+              valor={atletaSelecionado}
+              onChange={setAtletaSelecionado}
+              referencia={{ nome: solicitacao.nome, email: solicitacao.email }}
+            />
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-text-light">Perfil de acesso</label>
               <Select
@@ -276,8 +280,13 @@ export function RequestCard({
           size="sm"
           onClick={caminho === "vincular" ? handleVincular : handleCriarNovo}
           loading={busy}
+          disabled={caminho === "vincular" && !selecionado}
         >
-          {caminho === "vincular" ? "Vincular" : "Criar perfil"}
+          {caminho === "vincular"
+            ? selecionado
+              ? `Vincular a ${selecionado.nome.split(" ").slice(0, 2).join(" ")}`
+              : "Escolha o cadastro"
+            : "Criar perfil"}
         </Button>
       </div>
 
