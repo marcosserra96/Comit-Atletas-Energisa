@@ -221,6 +221,8 @@ export interface EventoDoc {
   horaFim?: string;
   /** Reunião online: link da chamada (Teams, Meet…). */
   linkOnline?: string;
+  /** Reunião só online (sem local físico). `local` fica "Online". */
+  online?: boolean;
   /** Reunião: confirmação de presença pelo app (QR code ou código). */
   checkin?: CheckinReuniao;
   criadoEm: unknown;

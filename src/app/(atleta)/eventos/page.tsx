@@ -1,24 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { ehReuniao, rotuloRsvp, horarioDoEvento } from "@/lib/eventos";
+import { ehReuniao, eventoOnline, horarioDoEvento } from "@/lib/eventos";
+import { RespostaEvento, useRespostasEventos } from "@/components/eventos/RespostaEvento";
 import { situacaoCheckin } from "@/lib/reunioes";
 import { useEffect, useMemo, useState } from "react";
-import {
-  arrayRemove,
-  arrayUnion,
-  collection,
-  doc,
-  onSnapshot,
-  orderBy,
-  query,
-  updateDoc,
-} from "firebase/firestore";
+import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import { AlertCircle, CalendarCheck, CalendarPlus, Check, MapPin, Navigation, RefreshCw, Users, Video, QrCode } from "lucide-react";
 import type { ReactNode } from "react";
 import { db } from "@/lib/firebase";
 import { useAthleteView } from "@/lib/session/AthleteViewProvider";
-import { useToast } from "@/components/ui/Toast";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -90,19 +81,13 @@ function baixarEventoCalendario(evento: EventoDoc) {
 
 function EventoCard({
   evento,
-  confirmado,
-  alterando,
-  bloqueado,
-  somenteVisualizacao,
-  onAlternar,
+  respostas,
 }: {
   evento: EventoDoc;
-  confirmado: boolean;
-  alterando: boolean;
-  bloqueado: boolean;
-  somenteVisualizacao: boolean;
-  onAlternar: () => void;
+  respostas: ReturnType<typeof useRespostasEventos>;
 }) {
+  const confirmado = respostas.situacao(evento) === "confirmado";
+  const somenteVisualizacao = respostas.somenteVisualizacao;
   const data = partesData(evento.data);
   const inscritos = evento.inscritos?.length ?? 0;
   const linkSecundario =
@@ -157,7 +142,7 @@ function EventoCard({
               Entrar na reunião
             </a>
           ) : null}
-          {!/^online$/i.test(evento.local.trim()) ? (
+          {!eventoOnline(evento) ? (
             <a
               href={"https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(evento.local)}
               target="_blank"
@@ -173,16 +158,7 @@ function EventoCard({
             Salvar na agenda
           </button>
         </div>
-        <Button
-          size="sm"
-          variant={confirmado ? "ghost" : "primary"}
-          className="w-full shrink-0 sm:w-auto"
-          loading={alterando}
-          disabled={somenteVisualizacao || bloqueado}
-          onClick={onAlternar}
-        >
-          {somenteVisualizacao ? "Somente visualização" : rotuloRsvp(evento, confirmado)}
-        </Button>
+        <RespostaEvento evento={evento} respostas={respostas} className="shrink-0" />
         {ehReuniao(evento) && !somenteVisualizacao && situacaoCheckin(evento) === "aberto" ? (
           <Link
             href={`/presenca/${evento.id}`}
@@ -207,12 +183,11 @@ function GrupoEventos({ titulo, children }: { titulo: string; children: ReactNod
 }
 
 export default function EventosAtletaPage() {
-  const { atleta, isPreview } = useAthleteView();
+  const { atleta } = useAthleteView();
   const minhaModalidade = modalidadeFromEquipe(atleta.equipe);
-  const { show } = useToast();
   const [eventos, setEventos] = useState<EventoDoc[] | null>(null);
   const [erroCarregamento, setErroCarregamento] = useState(false);
-  const [alterandoId, setAlterandoId] = useState<string | null>(null);
+  const respostas = useRespostasEventos();
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -236,22 +211,6 @@ export default function EventosAtletaPage() {
       passados: eventos?.filter((evento) => evento.data < hoje).reverse() ?? [],
     };
   }, [eventos]);
-
-  async function alternarPresenca(evento: EventoDoc) {
-    if (isPreview) return;
-    const confirmado = evento.inscritos?.includes(atleta.id) ?? false;
-    setAlterandoId(evento.id);
-    try {
-      await updateDoc(doc(db, "agenda_eventos", evento.id), {
-        inscritos: confirmado ? arrayRemove(atleta.id) : arrayUnion(atleta.id),
-      });
-      show("success", confirmado ? "Presença cancelada." : "Presença confirmada!");
-    } catch {
-      show("error", "Não foi possível atualizar sua presença agora.");
-    } finally {
-      setAlterandoId(null);
-    }
-  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -305,15 +264,7 @@ export default function EventosAtletaPage() {
             ) : (
               (() => {
                 const renderCard = (evento: EventoDoc) => (
-                  <EventoCard
-                    key={evento.id}
-                    evento={evento}
-                    confirmado={evento.inscritos?.includes(atleta.id) ?? false}
-                    alterando={alterandoId === evento.id}
-                    bloqueado={alterandoId !== null && alterandoId !== evento.id}
-                    somenteVisualizacao={isPreview}
-                    onAlternar={() => alternarPresenca(evento)}
-                  />
+                  <EventoCard key={evento.id} evento={evento} respostas={respostas} />
                 );
                 // Separa o que é da modalidade do atleta do resto, para um evento de
                 // outra modalidade não parecer um convite direto.

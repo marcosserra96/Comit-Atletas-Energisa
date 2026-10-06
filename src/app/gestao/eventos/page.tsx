@@ -100,7 +100,7 @@ function EventoCard({
           {confirmados === 0 ? "Ninguém confirmou ainda" : plural(confirmados, "confirmado")}
         </span>
         <span className="flex items-center gap-0.5 text-primary">
-          Ver lista
+          Ver respostas
           <ChevronRight className="size-4" />
         </span>
       </button>

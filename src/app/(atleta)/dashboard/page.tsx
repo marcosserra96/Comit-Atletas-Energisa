@@ -2,8 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  arrayRemove,
-  arrayUnion,
   collection,
   doc,
   getDocs,
@@ -11,7 +9,6 @@ import {
   onSnapshot,
   orderBy,
   query,
-  updateDoc,
   where,
 } from "firebase/firestore";
 import {
@@ -35,8 +32,6 @@ import { db } from "@/lib/firebase";
 import { useAthleteView } from "@/lib/session/AthleteViewProvider";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useAthleteDirectoryCollection } from "@/lib/session/useAthleteDirectory";
-import { useToast } from "@/components/ui/Toast";
-import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/cn";
 import { isWaitlisted, modalidadeFromEquipe } from "@/lib/labels";
@@ -62,7 +57,10 @@ import type {
   RankingVisibilityConfigDoc,
 } from "@/lib/types";
 import { modalidadeLabel } from "@/lib/labels";
-import { rotuloRsvp } from "@/lib/eventos";
+import { eventoOnline } from "@/lib/eventos";
+import { RespostaEvento, useRespostasEventos } from "@/components/eventos/RespostaEvento";
+import { CardTrimestre } from "@/components/inicio/CardTrimestre";
+import { useTrimestreDoAtleta } from "@/lib/trimestre";
 import { PendenciasNoInicio } from "@/components/avisos/CentralDeAvisos";
 import { ConviteNotificacoes } from "@/components/push/Notificacoes";
 
@@ -86,7 +84,6 @@ function partesDataEvento(valor: string) {
 export default function DashboardPage() {
   const { atleta, isPreview, withPreview } = useAthleteView();
   const { usuario } = useActiveSession();
-  const { show } = useToast();
   const athleteDirectory = useAthleteDirectoryCollection();
   const isStaff = usuario.role === "administrador" || usuario.role === "comite";
   const modalidade = modalidadeFromEquipe(atleta.equipe);
@@ -98,7 +95,6 @@ export default function DashboardPage() {
   const [meuHistoricoMensal, setMeuHistoricoMensal] = useState<HistoricoMensalDoc[] | null>(null);
   const [proximoEvento, setProximoEvento] = useState<EventoDoc[] | null>(null);
   const [noticias, setNoticias] = useState<NoticiaDoc[] | null>(null);
-  const [inscrevendo, setInscrevendo] = useState(false);
   const [eventoAbertoId, setEventoAbertoId] = useState<string | null>(null);
   const [rankingVisibility, setRankingVisibility] = useState<
     RankingVisibilityConfigDoc | null | undefined
@@ -286,21 +282,17 @@ export default function DashboardPage() {
   const eventoAberto = eventosDoAtleta.find((item) => item.id === eventoAbertoId);
   const eventoAbertoConfirmado = !!eventoAberto?.inscritos?.includes(atleta.id);
 
-  async function handleRsvp(eventoAlvo = evento) {
-    if (!eventoAlvo || isPreview) return;
-    const confirmado = !!eventoAlvo.inscritos?.includes(atleta.id);
-    setInscrevendo(true);
-    try {
-      await updateDoc(doc(db, "agenda_eventos", eventoAlvo.id), {
-        inscritos: confirmado ? arrayRemove(atleta.id) : arrayUnion(atleta.id),
-      });
-      show("success", confirmado ? "Presença cancelada." : "Presença confirmada!");
-    } catch {
-      show("error", "Não foi possível atualizar agora. Tente novamente.");
-    } finally {
-      setInscrevendo(false);
-    }
-  }
+  const respostas = useRespostasEventos();
+  const naoVaiAoProximo = evento ? respostas.situacao(evento) === "nao-vai" : false;
+
+  const trimestre = useTrimestreDoAtleta({
+    atleta,
+    modalidade: waitlisted ? null : modalidade,
+    rankingLiberado: !rankingIndisponivel && rankingVisibility !== undefined,
+    meusLancamentos,
+    historicoMensal: meuHistoricoMensal,
+    regrasTreino,
+  });
 
   const fontesComErro = [
     erroHistorico ? "histórico" : null,
@@ -422,6 +414,14 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-start lg:gap-6">
           {/* Coluna principal: como estou e o que vem pela frente. */}
           <div className="flex min-w-0 flex-col gap-5 lg:gap-6">
+            {trimestre !== null && modalidade && !waitlisted ? (
+              <CardTrimestre
+                trimestre={trimestre}
+                nomeModalidade={nomeModalidade}
+                hrefRanking={withPreview("/ranking")}
+                rankingFechado={rankingDesativado || rankingOcultoAtual}
+              />
+            ) : null}
             <section className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-[var(--shadow-card)] sm:p-5">
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -480,7 +480,7 @@ export default function DashboardPage() {
                 </div>
               ) : null}
 
-              {linhaRanking ? (
+              {linhaRanking && !trimestre ? (
                 linhaRanking.link ? (
                   <Link
                     href={withPreview("/ranking")}
@@ -546,19 +546,15 @@ export default function DashboardPage() {
                         <Check className="size-3.5" aria-hidden="true" />
                         Confirmado
                       </span>
+                    ) : naoVaiAoProximo ? (
+                      <span className="shrink-0 rounded-full bg-bg-card px-2 py-1 text-xs font-bold text-text-light">
+                        Não vou
+                      </span>
                     ) : (
                       <ChevronRight className="size-5 shrink-0 text-text-muted" aria-hidden="true" />
                     )}
                   </button>
-                  <Button
-                    variant={jaConfirmado ? "secondary" : "primary"}
-                    className="mt-3 w-full"
-                    onClick={() => handleRsvp()}
-                    loading={inscrevendo}
-                    disabled={isPreview}
-                  >
-                    {isPreview ? "Somente visualização" : rotuloRsvp(evento, jaConfirmado)}
-                  </Button>
+                  <RespostaEvento evento={evento} respostas={respostas} compacto className="mt-3 w-full" />
 
                   {eventosPosteriores.length > 0 ? (
                     <div className="mt-4 border-t border-border-subtle pt-3">
@@ -786,7 +782,8 @@ export default function DashboardPage() {
               </div>
             ) : null}
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className={cn("grid gap-2", eventoOnline(eventoAberto) ? "grid-cols-1" : "grid-cols-2")}>
+              {eventoOnline(eventoAberto) ? null : (
               <a
                 href={"https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(eventoAberto.local)}
                 target="_blank"
@@ -796,6 +793,7 @@ export default function DashboardPage() {
                 <Navigation className="size-4 text-primary" aria-hidden="true" />
                 Abrir no Maps
               </a>
+              )}
               <Link
                 href={withPreview("/eventos")}
                 onClick={() => setEventoAbertoId(null)}
@@ -805,15 +803,7 @@ export default function DashboardPage() {
               </Link>
             </div>
 
-            <Button
-              variant={eventoAbertoConfirmado ? "secondary" : "primary"}
-              className="min-h-11 w-full justify-center"
-              onClick={() => handleRsvp(eventoAberto)}
-              loading={inscrevendo}
-              disabled={isPreview}
-            >
-              {isPreview ? "Somente visualização" : rotuloRsvp(eventoAberto, eventoAbertoConfirmado)}
-            </Button>
+            <RespostaEvento evento={eventoAberto} respostas={respostas} compacto className="w-full" />
           </div>
         ) : null}
       </Modal>
