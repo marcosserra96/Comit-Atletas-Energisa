@@ -7,7 +7,8 @@ import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { calcularPosicoesRanking } from "@/lib/rankingPosition";
 import { calcularResultadosRanking, normalizarRankingPeriods } from "@/lib/rankingPeriods";
 import { tempoDoPeriodo, type TempoDoPeriodo } from "@/lib/tempoPeriodo";
-import { normalizarCalendario, type CalendarioPremiacaoDoc } from "@/lib/calendarioPremiacao";
+import { nomeDoMes, normalizarCalendario, type CalendarioPremiacaoDoc } from "@/lib/calendarioPremiacao";
+import { formatShortDate } from "@/lib/format";
 import type { RegrasDeTreino } from "@/lib/activityConsolidation";
 import type {
   AtletaDoc,
@@ -29,8 +30,8 @@ export interface TrimestreDoAtleta {
   /** Colocação no ranking publicado; null quando o ranking não está aberto ou sem pontos. */
   posicao: number | null;
   totalNoRanking: number;
-  /** Data da premiação, quando o calendário a informa. */
-  premiacao: string | null;
+  /** Quando é a premiação ("08 de out." ou "janeiro de 2027"), se o calendário informa. */
+  premiacaoTexto: string | null;
 }
 
 /**
@@ -111,7 +112,11 @@ export function useTrimestreDoAtleta(params: {
       inicio: trimestre.inicio,
       fim: trimestre.fim,
       tempo: tempoDoPeriodo(trimestre.inicio, trimestre.fim),
-      premiacao: doCalendario?.premiacao || null,
+      premiacaoTexto: doCalendario?.premiacao
+        ? formatShortDate(doCalendario.premiacao)
+        : doCalendario?.premiacaoMes
+          ? nomeDoMes(doCalendario.premiacaoMes)
+          : null,
     };
 
     const lista = chave && publicados?.chave === chave ? publicados.lista : null;

@@ -14,8 +14,10 @@ export interface TrimestreCalendario {
   nome: string;
   inicio: string;
   fim: string;
-  /** Dia da premiação (opcional). */
+  /** Dia da premiação (opcional). Quando existe, vale mais que o mês. */
   premiacao: string;
+  /** Só o mês da premiação ("YYYY-MM"), enquanto o dia não está definido. */
+  premiacaoMes?: string;
 }
 
 export interface CalendarioPremiacaoDoc {
@@ -74,6 +76,7 @@ export function normalizarCalendario(valor?: Partial<CalendarioPremiacaoDoc> | n
             inicio: typeof t.inicio === "string" ? t.inicio : "",
             fim: typeof t.fim === "string" ? t.fim : "",
             premiacao: typeof t.premiacao === "string" ? t.premiacao : "",
+            premiacaoMes: typeof t.premiacaoMes === "string" && /^\d{4}-\d{2}$/.test(t.premiacaoMes) ? t.premiacaoMes : "",
           }))
       : [],
     atualizadoEm: valor?.atualizadoEm,
@@ -94,8 +97,32 @@ export function gerarTrimestresDoAno(ano: number): TrimestreCalendario[] {
       inicio: `${ano}-${mm(mesIni)}-01`,
       fim: `${ano}-${mm(mesFim)}-${fimDoMes(mesFim)}`,
       premiacao: "",
+      premiacaoMes: "",
     };
   });
+}
+
+const MESES_EXTENSO = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+
+/** "janeiro de 2027" */
+export function nomeDoMes(mes: string) {
+  const [a, m] = mes.split("-").map(Number);
+  return `${MESES_EXTENSO[m - 1]} de ${a}`;
+}
+
+export function ultimoDiaDoMes(mes: string) {
+  const [a, m] = mes.split("-").map(Number);
+  return `${mes}-${String(new Date(Date.UTC(a, m, 0)).getUTCDate()).padStart(2, "0")}`;
+}
+
+/**
+ * A premiação como período: o dia exato, ou o mês inteiro quando só o mês é
+ * conhecido (o ranking fica oculto o mês todo, por segurança).
+ */
+export function premiacaoDoTrimestre(t: Pick<TrimestreCalendario, "premiacao" | "premiacaoMes">) {
+  if (t.premiacao) return { exata: true as const, inicio: t.premiacao, fim: t.premiacao };
+  if (t.premiacaoMes) return { exata: false as const, inicio: `${t.premiacaoMes}-01`, fim: ultimoDiaDoMes(t.premiacaoMes) };
+  return null;
 }
 
 export function ordenarTrimestres(lista: readonly TrimestreCalendario[]) {
@@ -111,6 +138,8 @@ export function validarCalendario(cal: CalendarioPremiacaoDoc): { porTrimestre: 
     else if (t.fim < t.inicio) porTrimestre[t.id] = "O fim precisa ser depois do início.";
     else if (t.premiacao && !dataValida(t.premiacao)) porTrimestre[t.id] = "Data da premiação inválida.";
     else if (t.premiacao && t.premiacao < t.inicio) porTrimestre[t.id] = "A premiação precisa ser depois do início do trimestre.";
+    else if (!t.premiacao && t.premiacaoMes && t.premiacaoMes < t.inicio.slice(0, 7))
+      porTrimestre[t.id] = "O mês da premiação precisa ser depois do início do trimestre.";
   }
   const ordenados = ordenarTrimestres(cal.trimestres);
   for (let i = 1; i < ordenados.length; i++) {
@@ -127,8 +156,9 @@ export function validarCalendario(cal: CalendarioPremiacaoDoc): { porTrimestre: 
 
 /** Quando o ranking fica oculto por causa de uma premiação (inclusive nos dois dias). */
 export function janelaDaPremiacao(t: TrimestreCalendario, diasOcultos: number) {
-  if (!t.premiacao || diasOcultos <= 0) return null;
-  return { inicio: somarDias(t.premiacao, -diasOcultos), fim: t.premiacao };
+  const premiacao = premiacaoDoTrimestre(t);
+  if (!premiacao || diasOcultos <= 0) return null;
+  return { inicio: somarDias(premiacao.inicio, -diasOcultos), fim: premiacao.fim, exata: premiacao.exata };
 }
 
 /**
@@ -138,7 +168,8 @@ export function janelaDaPremiacao(t: TrimestreCalendario, diasOcultos: number) {
  */
 export function trimestreVigente(cal: CalendarioPremiacaoDoc, hoje: string): TrimestreCalendario | null {
   for (const t of ordenarTrimestres(cal.trimestres)) {
-    const encerra = t.premiacao && t.premiacao > t.fim ? t.premiacao : t.fim;
+    const premiacao = premiacaoDoTrimestre(t);
+    const encerra = premiacao && premiacao.fim > t.fim ? premiacao.fim : t.fim;
     if (t.inicio <= hoje && hoje <= encerra) return t;
   }
   return null;
@@ -148,7 +179,7 @@ export function trimestreVigente(cal: CalendarioPremiacaoDoc, hoje: string): Tri
 export function proximaOcultacao(cal: CalendarioPremiacaoDoc, hoje: string) {
   const janelas = ordenarTrimestres(cal.trimestres)
     .map((t) => ({ trimestre: t, janela: janelaDaPremiacao(t, cal.diasOcultos) }))
-    .filter((x): x is { trimestre: TrimestreCalendario; janela: { inicio: string; fim: string } } => x.janela !== null)
+    .filter((x): x is { trimestre: TrimestreCalendario; janela: { inicio: string; fim: string; exata: boolean } } => x.janela !== null)
     .filter((x) => x.janela.fim >= hoje)
     .sort((a, b) => a.janela.inicio.localeCompare(b.janela.inicio));
   return janelas[0] ?? null;

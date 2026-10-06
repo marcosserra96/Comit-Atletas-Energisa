@@ -48,7 +48,7 @@ test("trimestre segue valendo depois do fim até a premiação; depois o próxim
 
 test("ocultação: N dias antes até o dia da premiação, inclusive", () => {
   const cal = calendario({ "2026-t4": "2027-01-15" }, 7);
-  assert.deepEqual(janelaDaPremiacao(cal.trimestres.find((t) => t.id === "2026-t4")!, 7), { inicio: "2027-01-08", fim: "2027-01-15" });
+  assert.deepEqual(janelaDaPremiacao(cal.trimestres.find((t) => t.id === "2026-t4")!, 7), { inicio: "2027-01-08", fim: "2027-01-15", exata: true });
   assert.equal(planoDoCalendario(cal, "2027-01-07").oculto, false);
   assert.equal(planoDoCalendario(cal, "2027-01-08").oculto, true);
   assert.equal(planoDoCalendario(cal, "2027-01-15").oculto, true);
@@ -93,4 +93,38 @@ test("normalização limita os dias e aceita documento vazio", () => {
   assert.equal(normalizarCalendario({ diasOcultos: 999 }).diasOcultos, 60);
   assert.equal(normalizarCalendario({ diasOcultos: -3 }).diasOcultos, 0);
   assert.equal(normalizarCalendario(undefined).ativo, false);
+});
+
+test("só o mês da premiação: oculta de N dias antes do dia 1 até o fim do mês", () => {
+  const cal = normalizarCalendario({
+    ativo: true,
+    diasOcultos: 7,
+    trimestres: [
+      { id: "t4", nome: "4º", inicio: "2026-10-01", fim: "2026-12-31", premiacao: "", premiacaoMes: "2027-01" },
+      { id: "t1", nome: "1º", inicio: "2027-01-01", fim: "2027-03-31", premiacao: "", premiacaoMes: "" },
+    ],
+  });
+  assert.deepEqual(janelaDaPremiacao(cal.trimestres[0], 7), { inicio: "2026-12-25", fim: "2027-01-31", exata: false });
+  assert.equal(planoDoCalendario(cal, "2026-12-24").oculto, false);
+  assert.equal(planoDoCalendario(cal, "2026-12-25").oculto, true);
+  assert.equal(planoDoCalendario(cal, "2027-01-31").oculto, true);
+  assert.equal(planoDoCalendario(cal, "2027-02-01").oculto, false);
+  // O 4º segue valendo o mês da premiação inteiro; depois, o 1º assume.
+  assert.equal(trimestreVigente(cal, "2027-01-20")?.id, "t4");
+  assert.equal(trimestreVigente(cal, "2027-02-01")?.id, "t1");
+});
+
+test("o dia exato vale mais que o mês", () => {
+  const t = { id: "x", nome: "x", inicio: "2026-10-01", fim: "2026-12-31", premiacao: "2027-01-12", premiacaoMes: "2027-01" };
+  assert.deepEqual(janelaDaPremiacao(t, 3), { inicio: "2027-01-09", fim: "2027-01-12", exata: true });
+});
+
+test("mês da premiação antes do trimestre é recusado; mês inválido é descartado", () => {
+  const cal = normalizarCalendario({
+    ativo: true,
+    trimestres: [{ id: "a", nome: "A", inicio: "2026-10-01", fim: "2026-12-31", premiacao: "", premiacaoMes: "2026-09" }],
+  });
+  assert.match(validarCalendario(cal).porTrimestre.a, /mês da premiação/);
+  const lixo = normalizarCalendario({ trimestres: [{ id: "a", nome: "A", inicio: "2026-10-01", fim: "2026-12-31", premiacao: "", premiacaoMes: "jan" }] });
+  assert.equal(lixo.trimestres[0].premiacaoMes, "");
 });
