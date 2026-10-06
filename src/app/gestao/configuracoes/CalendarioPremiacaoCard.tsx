@@ -12,12 +12,14 @@ import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { TextField } from "@/components/ui/TextField";
+import { Select } from "@/components/ui/Select";
 import {
   CALENDARIO_PADRAO,
   DIAS_OCULTOS_MAXIMO,
   gerarTrimestresDoAno,
   hojeBrasil,
   janelaDaPremiacao,
+  nomeDoMes,
   normalizarCalendario,
   ordenarTrimestres,
   planoDoCalendario,
@@ -44,6 +46,87 @@ function situacao(t: TrimestreCalendario, vigenteId: string | null, hoje: string
     };
   }
   return { texto: "Encerrado", classe: "bg-bg-inset text-text-muted", dica: null };
+}
+
+/** Meses possíveis para a premiação: do início do trimestre até 6 meses depois do fim. */
+function mesesPossiveis(t: TrimestreCalendario) {
+  const base = t.inicio || hojeBrasil();
+  const [a, m] = base.slice(0, 7).split("-").map(Number);
+  const [af, mf] = (t.fim || base).slice(0, 7).split("-").map(Number);
+  const total = Math.max(1, (af - a) * 12 + (mf - m) + 7);
+  return Array.from({ length: total }, (_, i) => {
+    const d = new Date(Date.UTC(a, m - 1 + i, 1));
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+  });
+}
+
+/** Premiação: dia exato, ou só o mês enquanto o dia não está definido. */
+function CampoPremiacao({
+  trimestre: t,
+  desabilitado,
+  onChange,
+}: {
+  trimestre: TrimestreCalendario;
+  desabilitado: boolean;
+  onChange: (campos: Partial<TrimestreCalendario>) => void;
+}) {
+  const idMes = useId();
+  const [soMes, setSoMes] = useState(() => !t.premiacao && Boolean(t.premiacaoMes));
+  const alternar = (
+    <button
+      type="button"
+      disabled={desabilitado}
+      onClick={() => {
+        if (soMes) {
+          onChange({ premiacaoMes: "" });
+        } else {
+          // Guarda o mês da data já escolhida, se houver.
+          onChange({ premiacao: "", premiacaoMes: t.premiacao ? t.premiacao.slice(0, 7) : t.premiacaoMes });
+        }
+        setSoMes(!soMes);
+      }}
+      className="text-xs font-semibold text-primary hover:underline disabled:pointer-events-none disabled:opacity-60"
+    >
+      {soMes ? "Sei o dia" : "Só sei o mês"}
+    </button>
+  );
+
+  if (!soMes) {
+    return (
+      <TextField
+        label="Premiação"
+        action={alternar}
+        type="date"
+        value={t.premiacao}
+        min={t.inicio || undefined}
+        disabled={desabilitado}
+        onChange={(e) => onChange({ premiacao: e.target.value, premiacaoMes: "" })}
+      />
+    );
+  }
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between">
+        <label htmlFor={idMes} className="text-sm font-medium text-text">
+          Mês da premiação
+        </label>
+        {alternar}
+      </div>
+      <Select
+        id={idMes}
+        value={t.premiacaoMes ?? ""}
+        disabled={desabilitado}
+        onChange={(e) => onChange({ premiacaoMes: e.target.value, premiacao: "" })}
+      >
+        <option value="">Escolha o mês</option>
+        {mesesPossiveis(t).map((m) => (
+          <option key={m} value={m}>
+            {nomeDoMes(m).replace(/^./, (c) => c.toUpperCase())}
+          </option>
+        ))}
+      </Select>
+    </div>
+  );
 }
 
 /**
@@ -320,14 +403,7 @@ export function CalendarioPremiacaoCard({
                       </div>
                       <TextField label="Início" type="date" value={t.inicio} disabled={!cal.ativo} onChange={(e) => atualizar(t.id, { inicio: e.target.value })} />
                       <TextField label="Fim" type="date" value={t.fim} min={t.inicio || undefined} disabled={!cal.ativo} onChange={(e) => atualizar(t.id, { fim: e.target.value })} />
-                      <TextField
-                        label="Premiação"
-                        type="date"
-                        value={t.premiacao}
-                        min={t.inicio || undefined}
-                        disabled={!cal.ativo}
-                        onChange={(e) => atualizar(t.id, { premiacao: e.target.value })}
-                      />
+                      <CampoPremiacao trimestre={t} desabilitado={!cal.ativo} onChange={(campos) => atualizar(t.id, campos)} />
                       <div className="flex items-end justify-end">
                         <button
                           type="button"
@@ -348,10 +424,15 @@ export function CalendarioPremiacaoCard({
                         <span className="text-text-light">
                           Ranking oculto de <strong className="text-text">{formatShortDate(janela.inicio)}</strong> a{" "}
                           <strong className="text-text">{formatShortDate(janela.fim)}</strong>
+                          {janela.exata ? null : (
+                            <span className="text-text-muted"> · o mês todo, até você informar o dia</span>
+                          )}
                         </span>
                       ) : (
                         <span className="text-text-muted">
-                          {t.premiacao ? "Sem ocultação (0 dias)" : "Sem data de premiação: o ranking não será ocultado"}
+                          {t.premiacao || t.premiacaoMes
+                            ? "Sem ocultação (0 dias)"
+                            : "Sem data de premiação: o ranking não será ocultado"}
                         </span>
                       )}
                       {s.dica && !erro ? <span className="w-full text-text-muted">{s.dica}</span> : null}

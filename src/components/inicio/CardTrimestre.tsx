@@ -103,10 +103,10 @@ export function CardTrimestre({
             transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
           />
         </div>
-        {trimestre.premiacao ? (
+        {trimestre.premiacaoTexto ? (
           <p className="mt-2 flex items-center gap-1.5 text-xs text-text-light">
             <Trophy className="size-3.5 shrink-0 text-ranking-gold-text" aria-hidden="true" />
-            Premiação em <strong className="font-semibold text-text">{formatShortDate(trimestre.premiacao)}</strong>
+            Premiação em <strong className="font-semibold text-text">{trimestre.premiacaoTexto}</strong>
           </p>
         ) : null}
       </div>
