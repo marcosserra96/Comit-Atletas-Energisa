@@ -1,3 +1,4 @@
+import { ateTerceiroLugar } from "@/lib/rankingPosition";
 import { dataIsoLocal } from "@/lib/date";
 import { ehMembroDoElenco } from "@/lib/labels";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
@@ -179,12 +180,12 @@ export function calcularEstatisticasDashboard(params: {
   const bike = porModalidade("bicicleta");
   const corrida = porModalidade("corrida");
 
+  // Do 1º ao 3º lugar (com empate, podem ser mais de 3 nomes).
   const podio = (mod: Modalidade) =>
-    ativos
-      .filter((a) => a.equipe === mod && pontosDe(a) > 0)
-      .sort(porPontos)
-      .slice(0, 3)
-      .map(comPontos);
+    ateTerceiroLugar(
+      ativos.filter((a) => a.equipe === mod && pontosDe(a) > 0).sort(porPontos),
+      pontosDe,
+    ).map(comPontos);
 
   const custoParticipacao = participacoesTotal > 0 ? investimentoTotal / participacoesTotal : 0;
   const custoKm = kmTotal > 0 ? investimentoTotal / kmTotal : 0;

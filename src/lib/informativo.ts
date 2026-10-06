@@ -1,7 +1,7 @@
 import { aderenciaPorAtleta, limitesDasCompetencias, mediaAderencia, type DiasTreinoConfigDoc } from "@/lib/aderencia";
 import { calcularResumoRankingPeriodo } from "@/lib/rankingMensal";
 import type { RegrasDeTreino } from "@/lib/activityConsolidation";
-import { calcularPosicoesRanking } from "@/lib/rankingPosition";
+import { calcularPosicoesRanking, montarPodio } from "@/lib/rankingPosition";
 import type { AtletaDoc, HistoricoMensalDoc, HistoricoPontoDoc, Modalidade } from "@/lib/types";
 
 export type FormatoInformativo = "paisagem" | "vertical";
@@ -160,20 +160,10 @@ export function montarInformativo(params: {
  * até 2 nomes por degrau. Só entra quem pontuou.
  */
 export function separarPodio(ranking: LinhaRanking[]) {
-  const podio: DegrauPodio[] = [];
-  const noPodio = new Set<string>();
-  for (const linha of ranking) {
-    if (linha.posicao > 3 || linha.pontos <= 0) break;
-    let degrau = podio.find((d) => d.posicao === linha.posicao);
-    if (!degrau) {
-      degrau = { posicao: linha.posicao, atletas: [] };
-      podio.push(degrau);
-    }
-    if (degrau.atletas.length < NOMES_POR_DEGRAU) {
-      degrau.atletas.push(linha);
-      noPodio.add(linha.id);
-    }
-  }
+  const podio: DegrauPodio[] = montarPodio(ranking, (l) => l.posicao, (l) => l.pontos, NOMES_POR_DEGRAU).map(
+    ({ posicao, atletas }) => ({ posicao, atletas }),
+  );
+  const noPodio = new Set(podio.flatMap((d) => d.atletas.map((a) => a.id)));
   return { podio, restantes: ranking.filter((l) => !noPodio.has(l.id)) };
 }
 

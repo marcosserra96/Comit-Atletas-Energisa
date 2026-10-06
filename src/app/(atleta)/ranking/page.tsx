@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { formatDistancia, formatKm, formatPontos, formatRelativeTime, formatShortDate, plural } from "@/lib/format";
 import { competenciaAtualBrasil, normalizarRankingPeriods, somarMeses } from "@/lib/rankingPeriods";
-import { calcularPosicoesRanking } from "@/lib/rankingPosition";
+import { calcularPosicoesRanking, montarPodio, type DegrauDoPodio } from "@/lib/rankingPosition";
 import {
   modalidadeDoAtleta,
   normalizarRankingVisibility,
@@ -49,82 +49,86 @@ interface RankedAtleta extends RankingEntry {
   rank: number;
 }
 
-function Place({ atleta }: { atleta?: RankedAtleta }) {
-  const position = atleta?.rank ?? 3;
-  const height = position === 1 ? "100%" : position === 2 ? "75%" : "60%";
-  const maxWidth = position === 1 ? "140px" : "120px";
-  const color =
-    position === 1
-      ? "var(--color-ranking-gold)"
-      : position === 2
-        ? "var(--color-ranking-silver)"
-        : "var(--color-ranking-bronze)";
-  const background =
-    position === 1
-      ? "var(--color-ranking-gold-bg)"
-      : position === 2
-        ? "var(--color-ranking-silver-bg)"
-        : "var(--color-ranking-bronze-bg)";
+// `texto`: tom escuro da medalha, legível sobre o fundo (o tom puro é só para bordas).
+const COR_POSICAO: Record<number, { cor: string; fundo: string; texto: string; barra: string }> = {
+  1: { cor: "var(--color-ranking-gold)", fundo: "var(--color-ranking-gold-bg)", texto: "var(--color-ranking-gold-text)", barra: "h-24 sm:h-36" },
+  2: { cor: "var(--color-ranking-silver)", fundo: "var(--color-ranking-silver-bg)", texto: "var(--color-ranking-silver-text)", barra: "h-16 sm:h-24" },
+  3: { cor: "var(--color-ranking-bronze)", fundo: "var(--color-ranking-bronze-bg)", texto: "var(--color-ranking-bronze-text)", barra: "h-11 sm:h-16" },
+};
+
+/** "Lucas de Paula Resende" → "Lucas Resende" (o pódio é estreito; a tabela mostra o nome todo). */
+function nomeDoPodio(nome: string) {
+  const partes = nome.trim().split(/\s+/);
+  return partes.length > 2 ? `${partes[0]} ${partes[partes.length - 1]}` : nome.trim();
+}
+
+/** Um degrau: a posição, quem divide ela e os pontos (iguais para todos no empate). */
+function Degrau({ degrau }: { degrau: DegrauDoPodio<RankedAtleta> }) {
+  const { posicao, atletas, total } = degrau;
+  const { cor, fundo, texto, barra } = COR_POSICAO[posicao] ?? COR_POSICAO[3];
+  const empate = total > 1;
+  const [primeiro] = atletas;
+  const fora = total - atletas.length;
 
   return (
-    <div
-      className="relative flex w-1/3 flex-col items-center justify-end"
-      style={{ height, maxWidth }}
-    >
-      {atleta ? (
-        <>
-          <div className="mb-2 flex w-full flex-col items-center px-1 text-center">
-            <RankingPosition
-              position={position}
-              size={position === 1 ? "lg" : "md"}
-              className={position === 1 ? "mb-2 scale-110 shadow-md sm:scale-125" : "mb-2"}
-            />
-            <span className="w-full truncate text-xs font-bold text-text sm:text-sm">
-              {atleta.nome}
-            </span>
-            <span className="text-xs font-extrabold sm:text-sm" style={{ color }}>
-              {formatPontos(atleta.pontuacaoTotal)} pts
-            </span>
-            {atleta.treinos !== undefined ? (
-              <span className="mt-0.5 text-xs text-text-muted">
-                {plural(atleta.treinos, "treino")} · {formatKm(atleta.km ?? 0)}
-              </span>
-            ) : null}
-          </div>
-          <div
-            className="relative h-full w-full overflow-hidden rounded-t-[var(--radius-lg)] border-2 shadow-sm"
-            style={{ backgroundColor: background, borderColor: color }}
+    <div className="relative flex w-1/3 flex-col items-center justify-end" style={{ maxWidth: posicao === 1 ? "170px" : "150px" }}>
+      <div className="mb-2 flex w-full flex-col items-center px-1 text-center">
+        <RankingPosition
+          position={posicao}
+          size={posicao === 1 ? "lg" : "md"}
+          className={posicao === 1 ? "mb-2 scale-110 shadow-md sm:scale-125" : "mb-2"}
+        />
+        {empate ? (
+          <span
+            className="mb-1 rounded-full px-2 py-0.5 text-xs font-bold"
+            style={{ color: texto, backgroundColor: fundo, boxShadow: `inset 0 0 0 1px ${cor}` }}
           >
-            <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent" />
-          </div>
-        </>
-      ) : (
-        <div className="h-full w-full rounded-t-[var(--radius-lg)] border-2 border-dashed border-border bg-bg-inset opacity-50" />
-      )}
+            Empate
+          </span>
+        ) : null}
+        {atletas.map((a) => (
+          <span key={a.id} className="w-full truncate text-xs font-bold leading-snug text-text sm:text-sm" title={a.nome}>
+            {nomeDoPodio(a.nome)}
+          </span>
+        ))}
+        {fora > 0 ? <span className="text-xs text-text-light">e mais {fora}</span> : null}
+        <span className="text-xs font-extrabold sm:text-sm" style={{ color: texto }}>
+          {formatPontos(primeiro.pontuacaoTotal)} pts{empate ? " cada" : ""}
+        </span>
+        {!empate && primeiro.treinos !== undefined ? (
+          <span className="mt-0.5 text-xs text-text-muted">
+            {plural(primeiro.treinos, "treino")} · {formatKm(primeiro.km ?? 0)}
+          </span>
+        ) : null}
+      </div>
+      <div
+        className={cn("relative w-full shrink-0 overflow-hidden rounded-t-[var(--radius-lg)] border-2 shadow-sm", barra)}
+        style={{ backgroundColor: fundo, borderColor: cor }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent" />
+      </div>
     </div>
   );
 }
 
+/**
+ * Pódio pelas posições (1º, 2º e 3º lugares), não pelos 3 primeiros nomes:
+ * empatados dividem o degrau, e o 3º lugar aparece mesmo com empate no 2º.
+ * Mesma regra do informativo.
+ */
 function Podium({ atletas }: { atletas: RankedAtleta[] }) {
-  // Com um atleta só, o pódio não compara nada (e sobrariam dois lugares vazios);
-  // a tabela abaixo já mostra a posição.
-  if (atletas.length < 2) return null;
-  const exibidos = atletas.slice(0, 3);
-  const semEmpateNoPodio =
-    exibidos[0]?.rank === 1 &&
-    exibidos[1]?.rank === 2 &&
-    (!exibidos[2] || exibidos[2].rank === 3);
-  const ordem: Array<RankedAtleta | undefined> = semEmpateNoPodio
-    ? [exibidos[1], exibidos[0], exibidos[2]]
-    : [...exibidos];
-  while (ordem.length < 3) ordem.push(undefined);
-
-
-
+  const degraus = montarPodio(atletas, (a) => a.rank, (a) => a.pontuacaoTotal);
+  const pessoas = degraus.reduce((soma, d) => soma + d.total, 0);
+  // Com uma pessoa só, o pódio não compara nada; a tabela já mostra a posição.
+  if (pessoas < 2) return null;
+  const ordem = [2, 1, 3]
+    .map((posicao) => degraus.find((d) => d.posicao === posicao))
+    .filter((d): d is DegrauDoPodio<RankedAtleta> => d !== undefined);
+  // Altura pelo conteúdo: as barras têm altura fixa por posição, o texto fica por cima.
   return (
-    <div className="mb-6 mt-6 flex h-40 items-end justify-center gap-2 px-2 sm:mb-10 sm:mt-10 sm:h-64 sm:gap-4">
-      {ordem.map((atleta, index) => (
-        <Place key={atleta?.id ?? `podio-vazio-${index}`} atleta={atleta} />
+    <div className="mb-6 mt-6 flex items-end justify-center gap-2 px-2 sm:mb-10 sm:mt-10 sm:gap-4">
+      {ordem.map((degrau) => (
+        <Degrau key={degrau.posicao} degrau={degrau} />
       ))}
     </div>
   );
@@ -406,7 +410,7 @@ export default function RankingPage() {
   }, [atletasComRank, search]);
 
   // Quem não pontuou não sobe ao pódio (no começo do mês, quase todos estão zerados).
-  const top3 = atletasComRank?.filter((atleta) => atleta.pontuacaoTotal > 0).slice(0, 3) ?? [];
+  const comPontos = atletasComRank?.filter((atleta) => atleta.pontuacaoTotal > 0) ?? [];
   const ninguemPontuouNoMes =
     periodoEfetivo === "mes" && (atletasComRank?.every((atleta) => atleta.pontuacaoTotal <= 0) ?? false);
   const myRankAtleta = atletasComRank?.find((atleta) => atleta.id === myAtleta.id);
@@ -628,7 +632,7 @@ export default function RankingPage() {
             </p>
           ) : null}
 
-          {!search.trim() ? <Podium atletas={top3} /> : null}
+          {!search.trim() ? <Podium atletas={comPontos} /> : null}
 
           <Card className="flex flex-col overflow-hidden p-0">
             <div className="border-b border-border bg-bg/50 p-4 sm:p-5">
