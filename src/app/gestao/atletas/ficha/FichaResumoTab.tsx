@@ -1,5 +1,6 @@
 "use client";
 
+import { AcessoPortalCard } from "@/components/senha/AcessoPortalCard";
 import { useEffect, useState } from "react";
 import { collection, doc, getDocs, query, serverTimestamp, where, writeBatch } from "firebase/firestore";
 import { Eye, EyeOff, UserRound } from "lucide-react";
@@ -135,7 +136,7 @@ export function FichaResumoTab({ atleta }: { atleta: AtletaDoc }) {
 
       <div
         className={`grid grid-cols-1 gap-4 ${
-          isAdmin ? "lg:grid-cols-2 xl:grid-cols-3" : "lg:grid-cols-2"
+          "lg:grid-cols-2"
         }`}
       >
         <div className="rounded-[var(--radius-lg)] border border-border bg-bg p-4">
@@ -189,6 +190,8 @@ export function FichaResumoTab({ atleta }: { atleta: AtletaDoc }) {
             Salvar status
           </Button>
         </div>
+
+        <AcessoPortalCard atleta={atleta} />
 
         {isAdmin && (
           <div className="rounded-[var(--radius-lg)] border border-border bg-bg p-4">

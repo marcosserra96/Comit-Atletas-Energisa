@@ -65,6 +65,11 @@ export async function authenticatedPermissionRequest(
   ) {
     throw new ApiAuthError("Você não tem permissão para esta ação.", 403);
   }
+  // O nome de quem age fica no cadastro de atleta (usuarios só aponta para ele).
+  if (!usuario.nome && (usuario as { atletaId?: string }).atletaId) {
+    const atleta = await context.db.collection("atletas").doc(String((usuario as { atletaId?: string }).atletaId)).get();
+    usuario.nome = String(atleta.data()?.nome || "") || undefined;
+  }
   return { ...context, usuario };
 }
 
