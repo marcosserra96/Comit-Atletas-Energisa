@@ -1,5 +1,6 @@
 import "server-only";
 
+import * as Sentry from "@sentry/nextjs";
 import type { DecodedIdToken } from "firebase-admin/auth";
 import type { Firestore } from "firebase-admin/firestore";
 
@@ -83,6 +84,7 @@ export function apiErrorResponse(error: unknown, fallback: string) {
 
   if (cotaEsgotada(error)) {
     console.error("Cota do Firestore esgotada:", error);
+    Sentry.captureMessage("Cota do Firestore esgotada", "warning");
     return Response.json(
       {
         error: "O portal atingiu o limite diário de uso do banco de dados. O acesso volta sozinho em algumas horas.",
@@ -93,6 +95,7 @@ export function apiErrorResponse(error: unknown, fallback: string) {
   }
 
   console.error(fallback, error);
+  Sentry.captureException(error, { tags: { origem: "api" }, extra: { mensagem: fallback } });
   return Response.json({ error: fallback }, { status: 500 });
 }
 

@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
+import { setUser as definirUsuarioMonitor } from "@sentry/nextjs";
 import { doc, onSnapshot, runTransaction, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { AppSplash } from "@/components/ui/AppSplash";
@@ -145,6 +146,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
     const unsubAuth = onAuthStateChanged(auth, (user) => {
       clearNested();
+      // Monitor de erros: só o id anônimo do login, nunca nome ou e-mail.
+      definirUsuarioMonitor(user ? { id: user.uid } : null);
 
       if (!user) {
         termosConferidos.current = null;
