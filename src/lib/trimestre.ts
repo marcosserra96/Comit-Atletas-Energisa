@@ -7,6 +7,7 @@ import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { calcularPosicoesRanking } from "@/lib/rankingPosition";
 import { calcularResultadosRanking, normalizarRankingPeriods } from "@/lib/rankingPeriods";
 import { tempoDoPeriodo, type TempoDoPeriodo } from "@/lib/tempoPeriodo";
+import { normalizarCalendario, type CalendarioPremiacaoDoc } from "@/lib/calendarioPremiacao";
 import type { RegrasDeTreino } from "@/lib/activityConsolidation";
 import type {
   AtletaDoc,
@@ -28,6 +29,8 @@ export interface TrimestreDoAtleta {
   /** Colocação no ranking publicado; null quando o ranking não está aberto ou sem pontos. */
   posicao: number | null;
   totalNoRanking: number;
+  /** Data da premiação, quando o calendário a informa. */
+  premiacao: string | null;
 }
 
 /**
@@ -48,6 +51,7 @@ export function useTrimestreDoAtleta(params: {
 }): TrimestreDoAtleta | null | undefined {
   const { atleta, modalidade, rankingLiberado, meusLancamentos, historicoMensal, regrasTreino } = params;
   const [periodos, setPeriodos] = useState<RankingPeriodsConfigDoc | null | undefined>(undefined);
+  const [calendario, setCalendario] = useState<CalendarioPremiacaoDoc | null>(null);
   const [publicados, setPublicados] = useState<{ chave: string; lista: RankingResultadoDoc[] | null } | null>(null);
 
   useEffect(
@@ -56,6 +60,16 @@ export function useTrimestreDoAtleta(params: {
         doc(db, "configuracoes", "ranking_periodos"),
         (snap) => setPeriodos(snap.exists() ? normalizarRankingPeriods(snap.data() as Partial<RankingPeriodsConfigDoc>) : null),
         () => setPeriodos(null),
+      ),
+    [],
+  );
+
+  useEffect(
+    () =>
+      onSnapshot(
+        doc(db, "configuracoes", "calendario_premiacao"),
+        (snap) => setCalendario(snap.exists() ? normalizarCalendario(snap.data() as Partial<CalendarioPremiacaoDoc>) : null),
+        () => setCalendario(null),
       ),
     [],
   );
@@ -89,7 +103,16 @@ export function useTrimestreDoAtleta(params: {
   return useMemo(() => {
     if (periodos === undefined) return undefined;
     if (!trimestre || !modalidade) return null;
-    const base = { nome: trimestre.nome, inicio: trimestre.inicio, fim: trimestre.fim, tempo: tempoDoPeriodo(trimestre.inicio, trimestre.fim) };
+    const doCalendario = calendario?.ativo
+      ? calendario.trimestres.find((t) => t.inicio === trimestre.inicio && t.fim === trimestre.fim)
+      : undefined;
+    const base = {
+      nome: trimestre.nome,
+      inicio: trimestre.inicio,
+      fim: trimestre.fim,
+      tempo: tempoDoPeriodo(trimestre.inicio, trimestre.fim),
+      premiacao: doCalendario?.premiacao || null,
+    };
 
     const lista = chave && publicados?.chave === chave ? publicados.lista : null;
     if (chave && publicados?.chave !== chave) return undefined; // ainda buscando o ranking
@@ -128,5 +151,5 @@ export function useTrimestreDoAtleta(params: {
       posicao: null,
       totalNoRanking: 0,
     };
-  }, [periodos, trimestre, modalidade, chave, publicados, atleta, meusLancamentos, historicoMensal, regrasTreino]);
+  }, [periodos, calendario, trimestre, modalidade, chave, publicados, atleta, meusLancamentos, historicoMensal, regrasTreino]);
 }

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { TextField } from "@/components/ui/TextField";
 import { RankingPeriodsCard } from "./RankingPeriodsCard";
+import { CalendarioPremiacaoCard } from "./CalendarioPremiacaoCard";
 import {
   RANKING_VISIBILITY_DEFAULT,
   normalizarRankingVisibility,
@@ -125,6 +126,9 @@ export function RankingVisibilityTab() {
   const [config, setConfig] = useState<RankingVisibilityConfigDoc>(RANKING_VISIBILITY_DEFAULT);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  /** Com o calendário ligado, trimestre e ocultações são automáticos. */
+  const [calendarioAtivo, setCalendarioAtivo] = useState(false);
+  const [versaoCalendario, setVersaoCalendario] = useState(0);
 
   useEffect(() => {
     getDoc(doc(db, "configuracoes", "ranking_visibilidade"))
@@ -144,6 +148,33 @@ export function RankingVisibilityTab() {
   }
 
   async function handleSalvar() {
+    if (calendarioAtivo) {
+      // Só o liga/desliga geral: as datas de ocultação são do calendário.
+      setSaving(true);
+      try {
+        const batch = writeBatch(db);
+        batch.set(
+          doc(db, "configuracoes", "ranking_visibilidade"),
+          { exibirParaAtletas: config.exibirParaAtletas, atualizadoEm: Timestamp.now(), atualizadoPor: uid },
+          { merge: true },
+        );
+        addAuditToBatch(batch, {
+          acao: "visibilidade_ranking_atualizada",
+          entidade: "configuracoes",
+          entidadeId: "ranking_visibilidade",
+          dados: { exibirParaAtletas: config.exibirParaAtletas },
+          criadoPor: uid,
+          criadoPorNome: atleta.nome,
+        });
+        await batch.commit();
+        show("success", config.exibirParaAtletas ? "Ranking visível para os atletas." : "Ranking oculto para os atletas.");
+      } catch {
+        show("error", "Não foi possível salvar agora. Tente novamente.");
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
     if (!periodoValido(config.corrida) || !periodoValido(config.bicicleta)) {
       show("info", "Preencha datas válidas para todas as modalidades ativadas.");
       return;
@@ -246,6 +277,10 @@ export function RankingVisibilityTab() {
         </div>
       </Card>
 
+      <CalendarioPremiacaoCard onAtivoSalvo={setCalendarioAtivo} onAplicado={() => setVersaoCalendario((v) => v + 1)} />
+
+      {calendarioAtivo ? null : (
+      <>
       <div className="flex items-start gap-3 rounded-[var(--radius-lg)] border border-primary/20 bg-primary-subtle p-4">
         <CalendarClock className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
         <div>
@@ -268,13 +303,15 @@ export function RankingVisibilityTab() {
           onChange={(value) => update("bicicleta", value)}
         />
       </div>
+      </>
+      )}
 
-      <RankingPeriodsCard />
+      <RankingPeriodsCard key={versaoCalendario} controladoPeloCalendario={calendarioAtivo} />
 
       <div className="flex justify-end">
         <Button onClick={handleSalvar} loading={saving}>
           <Save className="size-4" aria-hidden="true" />
-          Salvar visibilidade
+          {calendarioAtivo ? "Salvar exibição do ranking" : "Salvar visibilidade"}
         </Button>
       </div>
     </div>
