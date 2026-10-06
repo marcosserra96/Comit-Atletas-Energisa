@@ -29,6 +29,6 @@ export function tempoDoPeriodo(inicio: string, fim: string, agora = new Date()):
 /** "Faltam 12 dias" / "Último dia" / "Começa em 3 dias" / "Encerrado". */
 export function textoTempoDoPeriodo(t: TempoDoPeriodo) {
   if (t.fase === "antes") return t.dias === 1 ? "Começa amanhã" : `Começa em ${t.dias} dias`;
-  if (t.fase === "depois") return "Encerrado · resultado em conferência";
+  if (t.fase === "depois") return "Encerrado";
   return t.dias === 1 ? "Último dia" : `Faltam ${t.dias} dias`;
 }

@@ -14,7 +14,12 @@ permissions: {}
 jobs:
   processar:
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 4
     steps:
       - name: Processar avisos
         run: curl -fsS --max-time 60 "https://atletas-energisa-portal.vercel.app/api/push/processar"
+      # Calendário de premiação: troca o trimestre do ranking e liga/desliga a
+      # ocultação nas datas salvas. Sem mudança, só confere (rápido e barato).
+      - name: Aplicar calendário de premiação
+        if: always()
+        run: curl -fsS --max-time 90 "https://atletas-energisa-portal.vercel.app/api/ranking/calendario"

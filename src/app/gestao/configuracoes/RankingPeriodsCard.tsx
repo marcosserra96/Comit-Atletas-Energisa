@@ -29,7 +29,7 @@ function formatarAtualizacao(value: unknown) {
   }).format(data);
 }
 
-export function RankingPeriodsCard() {
+export function RankingPeriodsCard({ controladoPeloCalendario = false }: { controladoPeloCalendario?: boolean }) {
   const { show } = useToast();
   const [config, setConfig] = useState<RankingPeriodsConfigDoc>(RANKING_PERIODS_DEFAULT);
   const [loading, setLoading] = useState(true);
@@ -108,8 +108,9 @@ export function RankingPeriodsCard() {
         <div>
           <h3 className="text-sm font-bold text-text">Períodos e resultados publicados</h3>
           <p className="mt-1 text-xs text-text-light">
-            O período Geral considera todo o histórico. O trimestre usa exatamente as datas abaixo,
-            sem seguir os trimestres do calendário.
+            {controladoPeloCalendario
+              ? "O período Geral considera todo o histórico. O trimestre segue o calendário de premiação."
+              : "O período Geral considera todo o histórico. O trimestre usa exatamente as datas abaixo."}
           </p>
         </div>
       </div>
@@ -121,6 +122,18 @@ export function RankingPeriodsCard() {
         </p>
       </div>
 
+      {controladoPeloCalendario ? (
+        <div className="mt-3 rounded-[var(--radius)] border border-border bg-bg p-3">
+          <strong className="text-sm text-text">Trimestre</strong>
+          <p className="mt-0.5 text-xs text-text-light">
+            {config.trimestre.ativo
+              ? `${config.trimestre.nome} · ${config.trimestre.inicio.split("-").reverse().join("/")} a ${config.trimestre.fim.split("-").reverse().join("/")}. `
+              : "Nenhum trimestre valendo hoje. "}
+            Definido pelo calendário de premiação.
+          </p>
+        </div>
+      ) : (
+      <>
       <label className="mt-4 flex cursor-pointer items-start gap-2 text-sm text-text">
         <input
           type="checkbox"
@@ -167,6 +180,9 @@ export function RankingPeriodsCard() {
           }
         />
       </div>
+
+      </>
+      )}
 
       <div className="mt-4 flex items-start gap-2 rounded-[var(--radius)] bg-success-subtle p-3 text-xs text-text-light">
         <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />

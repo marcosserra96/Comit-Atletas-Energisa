@@ -75,7 +75,7 @@ export default function ConfigurarPortalPage() {
           { value: "usuarios", label: "Usuários e permissões" },
           { value: "identidade", label: "Identidade visual" },
           { value: "informativo", label: "Informativo e alertas" },
-          { value: "ranking", label: "Visibilidade do ranking" },
+          { value: "ranking", label: "Ranking e premiação" },
           { value: "termos", label: "Documentos e aceites" },
           { value: "perfis_ocultos", label: "Perfis ocultos" },
           { value: "consistencia", label: "Consistência" },
