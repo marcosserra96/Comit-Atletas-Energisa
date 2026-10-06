@@ -18,7 +18,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "Digite um e-mail válido." }, { status: 400 });
     }
     const { getFirebaseAdmin } = await import("@/lib/firebaseAdmin");
-    const { FieldValue, Timestamp } = await import("firebase-admin/firestore");
+    const { FieldValue } = await import("firebase-admin/firestore");
     const { auth, db } = getFirebaseAdmin();
 
     const usuarioAuth = await auth.getUserByEmail(email).catch(() => null);
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     const ref = db.collection("pedidos_senha").doc(usuarioAuth.uid);
     await db.runTransaction(async (tx) => {
       const atual = (await tx.get(ref)).data();
-      const ultimo = (atual?.criadoEm as InstanceType<typeof Timestamp> | undefined)?.toMillis?.() ?? 0;
+      const ultimo = (atual?.criadoEm as { toMillis?: () => number } | undefined)?.toMillis?.() ?? 0;
       if (atual?.status === "pendente" && Date.now() - ultimo < INTERVALO_MS) return;
       tx.set(ref, {
         uid: usuarioAuth.uid,
