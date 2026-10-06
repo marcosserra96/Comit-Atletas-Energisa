@@ -13,13 +13,16 @@ import { useRankingAvailability } from "@/lib/session/useRankingAvailability";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import { AvisoPesquisa, PesquisasAtletaProvider, usePesquisasDoAtleta } from "@/components/pesquisas/PesquisasAtleta";
 import { AvisoReuniao, ReuniaoAgoraProvider, useReuniaoAgora } from "@/components/reunioes/AvisoReuniao";
+import { faseDaReuniao } from "@/lib/reunioes";
 
 /** Um aviso por vez: reunião em andamento, depois pesquisa, depois o convite para instalar. */
 function AvisosDoAtleta() {
-  const { reuniao } = useReuniaoAgora();
+  const { reuniao, agora } = useReuniaoAgora();
   const { pendentes } = usePesquisasDoAtleta();
   const { isPreview } = useAthleteView();
-  if (reuniao) return <AvisoReuniao key={reuniao.id} reuniao={reuniao} />;
+  // A confirmação abre 15 min antes (quem chega cedo já escaneia o QR), mas o
+  // aviso em tela cheia só aparece a partir do horário de início.
+  if (reuniao && faseDaReuniao(reuniao, new Date(agora)) !== "antes") return <AvisoReuniao key={reuniao.id} reuniao={reuniao} />;
   if (pendentes.length > 0) return <AvisoPesquisa />;
   // Convite para instalar só quando não há outro aviso na tela.
   return isPreview ? null : <PwaInstallPrompt />;

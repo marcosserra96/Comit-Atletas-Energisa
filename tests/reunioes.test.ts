@@ -49,3 +49,14 @@ test("código dinâmico: 6 dígitos, vale a janela atual e a anterior, não a de
   // O código fixo não vale no modo dinâmico.
   assert.equal(await codigoValido({ codigo: "AAAAAA", dinamico: true, segredo, agora }), false);
 });
+
+test("fase da reunião pelo horário de Brasília", async () => {
+  const { faseDaReuniao, textoDaFase } = await import("../src/lib/reunioes");
+  const r = { data: "2026-10-06", horaInicio: "19:00", horaFim: "20:00" };
+  // 18:50 em Brasília = 21:50 UTC: a confirmação já abriu, mas a reunião não começou.
+  assert.equal(faseDaReuniao(r, new Date("2026-10-06T21:50:00Z")), "antes");
+  assert.equal(textoDaFase(r, new Date("2026-10-06T21:50:00Z")), "Começa às 19:00 · presença já liberada");
+  assert.equal(faseDaReuniao(r, new Date("2026-10-06T22:00:00Z")), "agora");
+  assert.equal(faseDaReuniao(r, new Date("2026-10-06T23:10:00Z")), "depois");
+  assert.equal(textoDaFase(r, new Date("2026-10-06T23:10:00Z")), "Terminou às 20:00 · ainda dá para registrar");
+});

@@ -95,8 +95,15 @@ export function EventoModal({
     };
     try {
       if (evento) {
+        // Reunião remarcada: uma janela de confirmação personalizada ficaria no
+        // horário antigo. Volta ao padrão (15 min antes até 30 min depois).
+        const remarcada =
+          reuniao &&
+          (evento.data !== dados.data || evento.horaInicio !== dados.horaInicio || evento.horaFim !== dados.horaFim) &&
+          (evento.checkin?.abreEm || evento.checkin?.fechaEm);
         await updateDoc(doc(db, "agenda_eventos", evento.id), {
           ...dados,
+          ...(remarcada ? { checkin: { ativo: evento.checkin?.ativo ?? true, dinamico: evento.checkin?.dinamico ?? false } } : {}),
           atualizadoEm: serverTimestamp(),
         });
         if (reuniao) dispararAvisosAgora();
