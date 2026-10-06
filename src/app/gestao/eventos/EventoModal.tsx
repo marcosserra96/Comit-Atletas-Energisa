@@ -3,7 +3,7 @@
 import { dispararAvisosAgora } from "@/lib/push/comite";
 import { FormEvent, useId, useState } from "react";
 import { collection, doc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
-import { CalendarCheck, Link2, MapPin, UsersRound } from "lucide-react";
+import { CalendarCheck, Link2, MapPin, UsersRound, Video } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { dataIsoLocal } from "@/lib/date";
 import { useActiveSession } from "@/lib/session/SessionProvider";
@@ -14,6 +14,8 @@ import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { gerarCodigoFixo, gerarSegredo } from "@/lib/reunioes";
+import { eventoOnline } from "@/lib/eventos";
+import { cn } from "@/lib/cn";
 import type { EventoDoc } from "@/lib/types";
 
 /**
@@ -34,7 +36,8 @@ export function EventoModal({
   const editando = !!evento;
   const idModalidade = useId();
   const [titulo, setTitulo] = useState(evento?.titulo ?? "");
-  const [local, setLocal] = useState(evento?.local ?? "");
+  const [online, setOnline] = useState(evento ? eventoOnline(evento) : false);
+  const [local, setLocal] = useState(evento && !eventoOnline(evento) ? evento.local : "");
   const [modalidade, setModalidade] = useState<EventoDoc["modalidade"]>(evento?.modalidade ?? "ambas");
   const [dataEstado, setData] = useState(evento?.data ?? "");
   const [km, setKm] = useState(evento?.km != null ? String(evento.km) : "");
@@ -43,6 +46,7 @@ export function EventoModal({
   const [horaFimEstado, setHoraFim] = useState(evento?.horaFim ?? "");
   const [linkOnline, setLinkOnline] = useState(evento?.linkOnline ?? "");
   const reuniao = tipo === "reuniao";
+  const soOnline = reuniao && online;
   const [loading, setLoading] = useState(false);
   const [erros, setErros] = useState<Record<string, string>>({});
   const confirmados = evento?.inscritos?.length ?? 0;
@@ -52,7 +56,7 @@ export function EventoModal({
   function validar({ data, horaInicio, horaFim }: { data: string; horaInicio: string; horaFim: string }) {
     const erros: Record<string, string> = {};
     if (!titulo.trim()) erros.titulo = "Informe o título.";
-    if (!local.trim()) erros.local = "Informe o local.";
+    if (!soOnline && !local.trim()) erros.local = "Informe o local.";
     if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) erros.data = "Escolha a data.";
     else if (!editando && data < dataIsoLocal()) erros.data = "A data já passou.";
     if (reuniao) {
@@ -60,7 +64,8 @@ export function EventoModal({
       if (!/^\d{2}:\d{2}$/.test(horaFim)) erros.horaFim = "Informe o fim.";
       else if (!erros.horaInicio && horaFim <= horaInicio) erros.horaFim = "Precisa ser depois do início.";
       const link = linkOnline.trim();
-      if (link && !/^https?:\/\/\S+$/i.test(link)) erros.link = "Cole o link completo, começando com https://";
+      if (soOnline && !link) erros.link = "Cole o link da chamada para os atletas entrarem.";
+      else if (link && !/^https?:\/\/\S+$/i.test(link)) erros.link = "Cole o link completo, começando com https://";
     }
     return erros;
   }
@@ -84,7 +89,8 @@ export function EventoModal({
     setLoading(true);
     const dados = {
       titulo: titulo.trim(),
-      local: local.trim(),
+      local: soOnline ? "Online" : local.trim(),
+      online: soOnline,
       modalidade,
       data,
       tipo,
@@ -181,25 +187,52 @@ export function EventoModal({
           required
           autoFocus={!editando}
         />
-        <TextField
-          label="Local"
-          icon={<MapPin className="size-[18px]" />}
-          placeholder={reuniao ? "Sala, auditório ou \"Online\"" : "Local do evento"}
-          value={local}
-          onChange={(e) => setLocal(e.target.value)}
-          error={erros.local}
-          required
-        />
+        {reuniao ? (
+          <label
+            className={cn(
+              "flex min-h-14 cursor-pointer items-center gap-3 rounded-[var(--radius)] border px-3 py-2.5 transition-colors",
+              online ? "border-primary/40 bg-primary-subtle" : "border-border hover:bg-bg-inset",
+            )}
+          >
+            <input
+              type="checkbox"
+              checked={online}
+              onChange={(e) => setOnline(e.target.checked)}
+              className="size-5 shrink-0 rounded border-border accent-primary"
+            />
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-1.5 text-sm font-semibold text-text">
+                <Video className="size-4 text-primary" aria-hidden="true" />
+                Reunião online
+              </span>
+              <span className="block text-xs text-text-light">
+                {online ? "Sem local físico: os atletas entram pelo link." : "Marque se não houver local físico."}
+              </span>
+            </span>
+          </label>
+        ) : null}
+        {soOnline ? null : (
+          <TextField
+            label="Local"
+            icon={<MapPin className="size-[18px]" />}
+            placeholder={reuniao ? "Sala, auditório ou endereço" : "Local do evento"}
+            value={local}
+            onChange={(e) => setLocal(e.target.value)}
+            error={erros.local}
+            required
+          />
+        )}
         {reuniao ? (
           <TextField
-            label="Link da reunião online"
+            label={soOnline ? "Link da reunião" : "Link para quem for participar online"}
             icon={<Link2 className="size-[18px]" />}
             type="url"
             inputMode="url"
-            placeholder="Opcional · https://teams.microsoft.com/…"
+            placeholder={soOnline ? "https://teams.microsoft.com/…" : "Opcional · https://teams.microsoft.com/…"}
             value={linkOnline}
             onChange={(e) => setLinkOnline(e.target.value)}
             error={erros.link}
+            required={soOnline}
           />
         ) : null}
         <div className="grid grid-cols-2 gap-3">
@@ -222,7 +255,7 @@ export function EventoModal({
               label="Data"
               type="date"
               name="data"
-              value={dataEstado}
+            value={dataEstado}
               min={editando ? undefined : dataIsoLocal()}
               onChange={(e) => setData(e.target.value)}
               error={erros.data}
@@ -267,7 +300,7 @@ export function EventoModal({
             label="Data"
             type="date"
             name="data"
-              value={dataEstado}
+            value={dataEstado}
             min={editando ? undefined : dataIsoLocal()}
             onChange={(e) => setData(e.target.value)}
             error={erros.data}
