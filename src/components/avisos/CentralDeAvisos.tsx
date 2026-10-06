@@ -10,7 +10,7 @@ import { useReuniaoAgora } from "@/components/reunioes/AvisoReuniao";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 import { formatarDataHora } from "@/lib/pesquisas";
-import { horarioDoEvento } from "@/lib/eventos";
+import { textoDaFase } from "@/lib/reunioes";
 
 export interface AvisoDoAtleta {
   chave: string;
@@ -32,7 +32,7 @@ export function useAvisosDoAtleta(): AvisoDoAtleta[] {
       chave: `reuniao-${reuniao.id}`,
       tipo: "reuniao",
       titulo: reuniao.titulo,
-      detalhe: `Acontecendo agora · ${horarioDoEvento(reuniao)}`,
+      detalhe: textoDaFase(reuniao),
       acao: "Registrar presença",
       href: withPreview(`/presenca/${reuniao.id}`),
     });

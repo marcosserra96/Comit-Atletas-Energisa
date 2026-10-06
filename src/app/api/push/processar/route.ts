@@ -34,7 +34,7 @@ async function processar(request: Request, autenticado: boolean) {
   const { getFirebaseAdmin } = await import("@/lib/firebaseAdmin");
   const { enviarPush, registrarEnvio, reservarAviso } = await import("@/lib/server/push");
   const { pesquisaPrecisaAvisoDeAbertura, pesquisaPrecisaLembrete } = await import("@/lib/push/regras");
-  const { situacaoCheckin, idPresencaReuniao } = await import("@/lib/reunioes");
+  const { situacaoCheckin, idPresencaReuniao, faseDaReuniao } = await import("@/lib/reunioes");
   const { formatarDataHora } = await import("@/lib/pesquisas");
   const { horarioDoEvento } = await import("@/lib/eventos");
 
@@ -102,8 +102,8 @@ async function processar(request: Request, autenticado: boolean) {
     );
     const publico = e.modalidade === "ambas" ? "todos" : e.modalidade;
     const mensagem = {
-      titulo: "Reunião começando",
-      corpo: `${e.titulo} · ${horarioDoEvento(e)}. Toque para registrar sua presença.`,
+      titulo: faseDaReuniao(e, new Date(agora)) === "antes" ? `Reunião às ${e.horaInicio}` : "Reunião começando",
+      corpo: `${e.titulo} · ${horarioDoEvento(e)}. A confirmação de presença já está aberta.`,
       link: `/presenca/${e.id}`,
       tag: `reuniao-${e.id}`,
     };

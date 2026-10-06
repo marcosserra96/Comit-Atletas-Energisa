@@ -10,7 +10,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { ConfirmarPresenca } from "@/components/reunioes/ConfirmarPresenca";
 import { horarioDoEvento } from "@/lib/eventos";
-import { idPresencaReuniao, situacaoCheckin } from "@/lib/reunioes";
+import { faseDaReuniao, idPresencaReuniao, situacaoCheckin } from "@/lib/reunioes";
 import type { EventoDoc } from "@/lib/types";
 
 const CHAVE_DISPENSADA = "reuniao-aviso-dispensado-";
@@ -91,7 +91,9 @@ function useReuniaoAgoraInterna() {
 
   const marcarConfirmada = useCallback((id: string) => setConfirmadas((atual) => new Set(atual).add(id)), []);
   const reuniao = abertas.find((e) => conferidas.has(e.id) && !confirmadas.has(e.id)) ?? null;
-  return { reuniao, marcarConfirmada };
+  // `agora` vai junto: quem usa o contexto re-renderiza no relógio (ex.: o aviso
+  // aparece sozinho quando chega o horário de início).
+  return { reuniao, marcarConfirmada, agora };
 }
 
 /** Atualiza "agora" a cada 15 s e sempre que o app volta a ficar visível. */
@@ -115,9 +117,10 @@ export function useRelogio(setAgora: (t: number) => void, intervaloMs = 15_000) 
 interface ReuniaoAgora {
   reuniao: EventoDoc | null;
   marcarConfirmada: (id: string) => void;
+  agora: number;
 }
 
-const Contexto = createContext<ReuniaoAgora>({ reuniao: null, marcarConfirmada: () => undefined });
+const Contexto = createContext<ReuniaoAgora>({ reuniao: null, marcarConfirmada: () => undefined, agora: 0 });
 
 export function ReuniaoAgoraProvider({ children }: { children: ReactNode }) {
   const valor = useReuniaoAgoraInterna();
@@ -154,7 +157,7 @@ export function AvisoReuniao({ reuniao }: { reuniao: EventoDoc }) {
     <Modal
       open
       onClose={fechar}
-      title="Reunião acontecendo agora"
+      title={faseDaReuniao(reuniao) === "depois" ? "Registre sua presença na reunião" : "Reunião acontecendo agora"}
       footer={
         <Button variant="ghost" onClick={fechar} className="w-full sm:w-auto">
           {concluida ? "Fechar" : "Agora não"}

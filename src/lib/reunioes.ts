@@ -55,6 +55,29 @@ export function situacaoCheckin(
   return "aberto";
 }
 
+export type FaseReuniao = "antes" | "agora" | "depois";
+
+/** Antes do início, durante (início–fim) ou depois, pelo horário da agenda. */
+export function faseDaReuniao(evento: Pick<EventoDoc, "data" | "horaInicio" | "horaFim">, agora = new Date()): FaseReuniao {
+  const inicio = dataHora(evento.data, evento.horaInicio || "00:00");
+  const fim = dataHora(evento.data, evento.horaFim || evento.horaInicio || "23:59");
+  if (agora < inicio) return "antes";
+  if (agora >= fim) return "depois";
+  return "agora";
+}
+
+/**
+ * Texto curto do momento, sem repetir horário:
+ * "Começa às 19:00 · presença já liberada", "Acontecendo agora · até 20:00",
+ * "Terminou às 20:00 · ainda dá para registrar".
+ */
+export function textoDaFase(evento: Pick<EventoDoc, "data" | "horaInicio" | "horaFim">, agora = new Date()) {
+  const fase = faseDaReuniao(evento, agora);
+  if (fase === "antes") return `${evento.horaInicio ? `Começa às ${evento.horaInicio}` : "Começa em breve"} · presença já liberada`;
+  if (fase === "agora") return `Acontecendo agora${evento.horaFim ? ` · até ${evento.horaFim}` : ""}`;
+  return `${evento.horaFim ? `Terminou às ${evento.horaFim}` : "Terminou há pouco"} · ainda dá para registrar`;
+}
+
 const ALFABETO = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sem 0/O e 1/I
 
 function aleatorio(tamanho: number, alfabeto: string) {
