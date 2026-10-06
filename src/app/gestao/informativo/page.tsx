@@ -223,10 +223,13 @@ export default function InformativoPage() {
     setExportando("compartilhar");
     try {
       const arquivos = await gerarArquivos();
-      await navigator.share({
-        files: arquivos,
-        title: `Ranking ${modalidade === "corrida" ? "Corrida" : "Bike"} · ${rotuloPeriodo(periodo)}`,
-      });
+      // O WhatsApp põe o texto só na 1ª foto do grupo: com várias imagens, vão sem
+      // texto (a própria arte já diz modalidade e período). Com uma só, o texto vira a legenda.
+      await navigator.share(
+        arquivos.length > 1
+          ? { files: arquivos }
+          : { files: arquivos, title: `Ranking ${modalidade === "corrida" ? "Corrida" : "Bike"} · ${rotuloPeriodo(periodo)}` },
+      );
     } catch (e) {
       if ((e as DOMException)?.name !== "AbortError") show("error", "Não foi possível compartilhar agora.");
     } finally {
