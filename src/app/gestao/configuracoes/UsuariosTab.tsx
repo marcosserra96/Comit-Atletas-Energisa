@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { collection, doc, onSnapshot, query, updateDoc, where, writeBatch } from "firebase/firestore";
-import { CloudDownload, KeyRound, Link2, ShieldCheck, TestTube2 } from "lucide-react";
+import { CloudDownload, KeyRound, Link2, Search, ShieldCheck, TestTube2, UserRound } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
@@ -11,6 +11,8 @@ import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { TextField } from "@/components/ui/TextField";
 import { logAudit } from "@/lib/audit";
 import { roleLabel } from "@/lib/labels";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
@@ -29,6 +31,25 @@ interface ResultadoSincronizacao {
   desativadas: number;
 }
 
+type Grupo = "comite" | "atletas";
+type FiltroModalidade = "todas" | "corrida" | "bicicleta" | "sem";
+
+function normalizar(texto: string) {
+  return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+function participacaoLabel(equipe: Equipe) {
+  return equipe === "bicicleta"
+    ? "Atleta · Bike"
+    : equipe === "corrida"
+      ? "Atleta · Corrida"
+      : equipe === "fila_bicicleta"
+        ? "Fila · Bike"
+        : equipe === "fila_corrida"
+          ? "Fila · Corrida"
+          : "Não compete";
+}
+
 export function UsuariosTab() {
   const { uid: adminUid, atleta: adminAtleta } = useActiveSession();
   const { show } = useToast();
@@ -41,6 +62,9 @@ export function UsuariosTab() {
   const [sincronizando, setSincronizando] = useState(false);
   const [resultadoSincronizacao, setResultadoSincronizacao] =
     useState<ResultadoSincronizacao | null>(null);
+  const [grupo, setGrupo] = useState<Grupo>("comite");
+  const [busca, setBusca] = useState("");
+  const [modalidade, setModalidade] = useState<FiltroModalidade>("todas");
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "atletas"), (snap) => {
@@ -94,6 +118,30 @@ export function UsuariosTab() {
       });
     }
   }
+
+  const { equipeGestao, atletasComAcesso } = useMemo(() => {
+    const ordenados = [...(staff ?? [])].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+    return {
+      // Administradores primeiro, depois o comitê.
+      equipeGestao: ordenados
+        .filter((p) => p.role === "administrador" || p.role === "comite")
+        .sort((a, b) => Number(b.role === "administrador") - Number(a.role === "administrador")),
+      atletasComAcesso: ordenados.filter((p) => p.role !== "administrador" && p.role !== "comite"),
+    };
+  }, [staff]);
+
+  const termo = normalizar(busca.trim());
+  const combina = (p: AtletaDoc) =>
+    !termo || normalizar(p.nome).includes(termo) || normalizar(p.email ?? "").includes(termo);
+  const comiteFiltrado = equipeGestao.filter(combina);
+  const atletasFiltrados = atletasComAcesso.filter(
+    (p) =>
+      combina(p) &&
+      (modalidade === "todas" ||
+        (modalidade === "sem" ? !p.equipe.includes("corrida") && !p.equipe.includes("bicicleta") : p.equipe.includes(modalidade))),
+  );
+  // Buscando por alguém do outro grupo: avisa onde a pessoa está.
+  const noOutroGrupo = termo ? (grupo === "comite" ? atletasComAcesso : equipeGestao).filter(combina).length : 0;
 
   const totalAdministradores = useMemo(
     () => staff?.filter((s) => s.role === "administrador").length ?? 0,
@@ -198,6 +246,48 @@ export function UsuariosTab() {
     }
   }
 
+  // Funções de render (não componentes): o Select não é recriado a cada atualização da lista.
+  function seletorPerfil(pessoa: AtletaDoc, compacto = false) {
+    return (
+      <div className="flex min-w-0 flex-col gap-1.5">
+        {compacto ? null : <span className="text-xs font-semibold text-text-light">Perfil de acesso</span>}
+        <Select
+          aria-label={`Perfil de acesso de ${pessoa.nome}`}
+          value={pessoa.role ?? ""}
+          disabled={pessoa.id === adminAtleta.id || salvandoIds.has(pessoa.id)}
+          onChange={(e) => handleChangeRole(pessoa, e.target.value as Role)}
+        >
+          <option value="atleta">Atleta</option>
+          <option value="comite">Comitê</option>
+          <option value="administrador">Administrador</option>
+        </Select>
+      </div>
+    );
+  }
+
+  function seletorParticipacao(pessoa: AtletaDoc, compacto = false) {
+    return (
+      <div className="flex min-w-0 flex-col gap-1.5">
+        {compacto ? null : <span className="text-xs font-semibold text-text-light">Participação no programa</span>}
+        <Select
+          aria-label={`Participação de ${pessoa.nome}`}
+          value={pessoa.equipe === "bicicleta" || pessoa.equipe === "corrida" ? pessoa.equipe : "nao_compete"}
+          disabled={salvandoIds.has(pessoa.id)}
+          onChange={(e) => {
+            const valor = e.target.value;
+            const novaEquipe: Equipe =
+              valor === "nao_compete" ? (pessoa.role === "atleta" ? "nenhuma" : "comite") : (valor as Equipe);
+            handleChangeEquipe(pessoa, novaEquipe);
+          }}
+        >
+          <option value="nao_compete">{pessoa.equipe.startsWith("fila_") ? participacaoLabel(pessoa.equipe) : "Não compete"}</option>
+          <option value="bicicleta">Atleta · Bike</option>
+          <option value="corrida">Atleta · Corrida</option>
+        </Select>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <Card className="border-primary/20 bg-primary-subtle/30">
@@ -250,9 +340,55 @@ export function UsuariosTab() {
         )}
       </Card>
 
-      <p className="text-sm text-text-light">
-        {staff === null ? "Carregando…" : `${staff.length} usuários com acesso ao portal.`}
-      </p>
+      <Card className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <SegmentedControl
+            value={grupo}
+            onChange={(v) => setGrupo(v as Grupo)}
+            options={[
+              { value: "comite", label: `Comitê${staff ? ` (${equipeGestao.length})` : ""}`, icon: ShieldCheck },
+              { value: "atletas", label: `Atletas${staff ? ` (${atletasComAcesso.length})` : ""}`, icon: UserRound },
+            ]}
+          />
+          <div className="w-full lg:max-w-xs">
+            <TextField
+              aria-label="Buscar por nome ou e-mail"
+              icon={<Search className="size-[18px]" />}
+              placeholder="Buscar por nome ou e-mail"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              type="search"
+            />
+          </div>
+        </div>
+        {grupo === "atletas" ? (
+          <SegmentedControl
+            className="max-w-full overflow-x-auto"
+            value={modalidade}
+            onChange={(v) => setModalidade(v as FiltroModalidade)}
+            options={[
+              { value: "todas", label: "Todas" },
+              { value: "corrida", label: "Corrida" },
+              { value: "bicicleta", label: "Bike" },
+              { value: "sem", label: "Nenhuma" },
+            ]}
+          />
+        ) : null}
+        <p className="text-xs text-text-muted">
+          {grupo === "comite"
+            ? "Administradores primeiro. Em Acessos você define o que cada membro do comitê pode ver e fazer."
+            : "Atletas com login no portal, em ordem alfabética."}
+        </p>
+        {noOutroGrupo > 0 ? (
+          <button
+            type="button"
+            onClick={() => setGrupo(grupo === "comite" ? "atletas" : "comite")}
+            className="self-start text-sm font-semibold text-primary hover:underline"
+          >
+            {plural(noOutroGrupo, "resultado", "resultados")} em {grupo === "comite" ? "Atletas" : "Comitê"} →
+          </button>
+        ) : null}
+      </Card>
 
       {staff === null ? (
         <Card className="h-40 animate-pulse" />
@@ -264,99 +400,49 @@ export function UsuariosTab() {
             description="As pessoas aparecem aqui assim que o login é vinculado a um cadastro."
           />
         </Card>
-      ) : (
+      ) : (grupo === "comite" ? comiteFiltrado : atletasFiltrados).length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={Search}
+            title={termo ? "Ninguém encontrado" : grupo === "comite" ? "Ninguém no comitê ainda" : "Nenhum atleta com acesso"}
+            description={termo ? "Confira o nome ou o e-mail digitado." : "Quando alguém for vinculado com esse perfil, aparece aqui."}
+          />
+        </Card>
+      ) : grupo === "comite" ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {staff.map((pessoa) => (
+          {comiteFiltrado.map((pessoa) => (
             <Card key={pessoa.id} className="flex flex-col gap-3">
               <div className="flex items-center gap-3">
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
                   {pessoa.nome.trim().charAt(0).toUpperCase()}
                 </span>
-                <div>
-                  <p className="font-semibold text-text">{pessoa.nome}</p>
-                  <p className="text-xs text-text-light">{pessoa.email}</p>
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-text">{pessoa.nome}</p>
+                  <p className="truncate text-xs text-text-light">{pessoa.email}</p>
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {pessoa.id === adminAtleta.id && <Badge tone="primary">Você</Badge>}
-                <Badge tone="neutral">
+                <Badge tone={pessoa.role === "administrador" ? "accent" : "neutral"}>
                   {pessoa.role ? roleLabel[pessoa.role] : "Sem perfil"}
                 </Badge>
-                <Badge tone="neutral">
-                  {pessoa.equipe === "bicicleta"
-                    ? "Atleta · Bike"
-                    : pessoa.equipe === "corrida"
-                      ? "Atleta · Corrida"
-                      : pessoa.equipe === "fila_bicicleta"
-                        ? "Fila · Bike"
-                        : pessoa.equipe === "fila_corrida"
-                          ? "Fila · Corrida"
-                          : "Não compete"}
-                </Badge>
+                <Badge tone="neutral">{participacaoLabel(pessoa.equipe)}</Badge>
               </div>
-              <Select
-                value={pessoa.role ?? ""}
-                disabled={pessoa.id === adminAtleta.id || salvandoIds.has(pessoa.id)}
-                onChange={(e) => handleChangeRole(pessoa, e.target.value as Role)}
-              >
-                <option value="atleta">Atleta</option>
-                <option value="comite">Comitê</option>
-                <option value="administrador">Administrador</option>
-              </Select>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-text-light">Participação no programa</label>
-                <Select
-                  value={
-                    pessoa.equipe === "bicicleta" || pessoa.equipe === "corrida"
-                      ? pessoa.equipe
-                      : "nao_compete"
-                  }
-                  disabled={salvandoIds.has(pessoa.id)}
-                  onChange={(e) => {
-                    const valor = e.target.value;
-                    const novaEquipe: Equipe =
-                      valor === "nao_compete"
-                        ? pessoa.role === "atleta"
-                          ? "nenhuma"
-                          : "comite"
-                        : (valor as Equipe);
-                    handleChangeEquipe(pessoa, novaEquipe);
-                  }}
-                >
-                  <option value="nao_compete">Não compete</option>
-                  <option value="bicicleta">Atleta · Bike</option>
-                  <option value="corrida">Atleta · Corrida</option>
-                </Select>
-              </div>
+              {seletorPerfil(pessoa)}
+              {seletorParticipacao(pessoa)}
 
               <div className="-mx-1 flex flex-wrap justify-center gap-1 border-t border-border pt-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setCorrigindoVinculo(pessoa)}
-                  className="whitespace-nowrap"
-                >
+                <Button variant="ghost" size="sm" onClick={() => setCorrigindoVinculo(pessoa)} className="whitespace-nowrap">
                   <Link2 className="size-3.5" />
                   Corrigir vínculo
                 </Button>
                 {pessoa.role === "comite" && (
                   <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setGerenciandoAcessos(pessoa)}
-                      className="whitespace-nowrap"
-                    >
+                    <Button variant="ghost" size="sm" onClick={() => setGerenciandoAcessos(pessoa)} className="whitespace-nowrap">
                       <KeyRound className="size-3.5" />
                       Acessos
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setTestandoPermissoes(pessoa)}
-                      className="whitespace-nowrap"
-                    >
+                    <Button variant="ghost" size="sm" onClick={() => setTestandoPermissoes(pessoa)} className="whitespace-nowrap">
                       <TestTube2 className="size-3.5" />
                       Testar permissões
                     </Button>
@@ -366,6 +452,33 @@ export function UsuariosTab() {
             </Card>
           ))}
         </div>
+      ) : (
+        // Atletas costumam ser muitos: lista compacta, uma linha por pessoa.
+        <Card padding="none" className="overflow-hidden">
+          <ul className="divide-y divide-border">
+            {atletasFiltrados.map((pessoa) => (
+              <li key={pessoa.id} className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:gap-4">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+                    {pessoa.nome.trim().charAt(0).toUpperCase()}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-text">{pessoa.nome}</p>
+                    <p className="truncate text-xs text-text-light">{pessoa.email}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 md:w-[26rem] md:shrink-0">
+                  {seletorPerfil(pessoa, true)}
+                  {seletorParticipacao(pessoa, true)}
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setCorrigindoVinculo(pessoa)} className="self-start whitespace-nowrap md:self-auto">
+                  <Link2 className="size-3.5" />
+                  Corrigir vínculo
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </Card>
       )}
 
       <GerenciarAcessosModal
