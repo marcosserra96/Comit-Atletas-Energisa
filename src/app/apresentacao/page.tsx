@@ -15,7 +15,7 @@ import { atletaEstaEmAlerta, calcularResumoRankingMensal, ordenarRankingMensal, 
 import { formatDistancia, formatNumero, formatPontos, formatShortDate } from "@/lib/format";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { useRegrasDeTreino } from "@/lib/useRegrasDeTreino";
-import { calcularPosicoesRanking } from "@/lib/rankingPosition";
+import { ateTerceiroLugar, calcularPosicoesRanking } from "@/lib/rankingPosition";
 import type { AtletaDoc, BrandingDoc, EventoDoc, HistoricoPontoDoc, InformativoConfigDoc } from "@/lib/types";
 
 const MEDAL_COR = ["#facc15", "#cbd5e1", "#d97706"];
@@ -104,7 +104,8 @@ function SlideHero({
 }
 
 function Top3Card({ titulo, icon: Icon, lista }: { titulo: string; icon: typeof Bike; lista: ResumoAtletaMensal[] }) {
-  const exibidos = lista.slice(0, 3);
+  // Do 1º ao 3º lugar: com empate no 2º, o 3º lugar continua aparecendo.
+  const exibidos = ateTerceiroLugar(lista, (a) => a.pontosMes);
   const posicoes = calcularPosicoesRanking(exibidos.map((atleta) => atleta.pontosMes));
   return (
     <div
@@ -115,7 +116,7 @@ function Top3Card({ titulo, icon: Icon, lista }: { titulo: string; icon: typeof 
         <Icon className="size-8" style={{ color: "var(--color-primary)" }} />
         {titulo}
       </h3>
-      {lista.length === 0 ? (
+      {exibidos.length === 0 ? (
         <p className="text-lg text-white/50">Sem dados neste mês.</p>
       ) : (
         <div className="flex flex-col">
