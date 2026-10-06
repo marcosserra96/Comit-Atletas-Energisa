@@ -27,9 +27,29 @@ import {
   type OrigemPush,
   type PublicoPush,
 } from "@/lib/push/regras";
-import { alcancePush, carregarPainelPush, enviarPushManual, type PainelPush } from "@/lib/push/comite";
+import {
+  alcancePush,
+  carregarDestinatarios,
+  carregarPainelPush,
+  enviarPushManual,
+  type PainelPush,
+  type PessoaPush,
+} from "@/lib/push/comite";
+import { SeletorDePessoas } from "@/components/push/SeletorDePessoas";
 
-const PUBLICO_LABEL: Record<PublicoPush, string> = { todos: "Corrida e Bike", corrida: "Corrida", bicicleta: "Bike" };
+const PUBLICO_LABEL: Record<PublicoPush, string> = {
+  todos: "Corrida e Bike",
+  corrida: "Corrida",
+  bicicleta: "Bike",
+  selecionados: "Pessoas escolhidas",
+};
+
+/** "Ana, Bruno e mais 3" */
+function resumoNomes(nomes: string[], total = nomes.length) {
+  if (total === 0) return "";
+  const primeiros = nomes.slice(0, 3).join(", ");
+  return total > 3 ? `${primeiros} e mais ${total - 3}` : primeiros;
+}
 
 const ICONE_ORIGEM: Record<OrigemPush, typeof Send> = {
   manual: Megaphone,
@@ -92,6 +112,18 @@ export default function NotificacoesPage() {
   const [verificando, setVerificando] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [tentou, setTentou] = useState(false);
+  const [pessoas, setPessoas] = useState<PessoaPush[] | null>(null);
+  const [erroPessoas, setErroPessoas] = useState("");
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const escolhendo = publico === "selecionados";
+
+  // A lista só é buscada quando o comitê escolhe "Escolher pessoas".
+  useEffect(() => {
+    if (!escolhendo || pessoas !== null) return;
+    carregarDestinatarios()
+      .then(setPessoas)
+      .catch((e: unknown) => setErroPessoas(e instanceof Error ? e.message : "Não foi possível carregar a lista."));
+  }, [escolhendo, pessoas]);
 
   const recarregar = useCallback(() => {
     carregarPainelPush()
@@ -111,12 +143,19 @@ export default function NotificacoesPage() {
   const erros = validarMensagem({ titulo, corpo, link });
   const comAvisos = painel ? painel.alcance.corrida + painel.alcance.bicicleta : null;
 
+  const idsEscolhidos = [...selecionados];
+  const nomesEscolhidos = (pessoas ?? []).filter((p) => selecionados.has(p.id)).map((p) => p.nome);
+
   async function revisar() {
     setTentou(true);
     if (erros.length) return;
+    if (escolhendo && selecionados.size === 0) {
+      show("info", "Escolha ao menos uma pessoa para receber.");
+      return;
+    }
     setVerificando(true);
     try {
-      setConfirmando(await alcancePush(publico));
+      setConfirmando(await alcancePush(publico, escolhendo ? idsEscolhidos : undefined));
     } catch (e) {
       show("error", e instanceof Error ? e.message : "Não foi possível verificar o alcance.");
     } finally {
@@ -127,8 +166,20 @@ export default function NotificacoesPage() {
   async function enviar() {
     setEnviando(true);
     try {
-      const r = await enviarPushManual({ titulo: titulo.trim(), corpo: corpo.trim(), publico, link });
-      show("success", r.atletas > 0 ? `Aviso enviado para ${plural(r.atletas, "atleta")}.` : "Nenhum atleta com notificações ativas neste público.");
+      const r = await enviarPushManual({
+        titulo: titulo.trim(),
+        corpo: corpo.trim(),
+        publico,
+        link,
+        atletaIds: escolhendo ? idsEscolhidos : undefined,
+      });
+      show(
+        "success",
+        r.atletas > 0
+          ? `Aviso enviado para ${plural(r.atletas, escolhendo ? "pessoa" : "atleta")}.`
+          : "Ninguém com notificações ativas para receber.",
+      );
+      if (escolhendo) setSelecionados(new Set());
       setConfirmando(null);
       setTitulo("");
       setCorpo("");
@@ -188,19 +239,33 @@ export default function NotificacoesPage() {
               {tentou && !corpo.trim() ? <span className="text-xs font-medium text-danger">Escreva a mensagem.</span> : null}
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-text">Para quem</span>
-                <SegmentedControl
-                  value={publico}
-                  onChange={(v) => setPublico(v as PublicoPush)}
-                  options={[
-                    { value: "todos", label: "Todos" },
-                    { value: "corrida", label: "Corrida" },
-                    { value: "bicicleta", label: "Bike" },
-                  ]}
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-text">Para quem</span>
+              <SegmentedControl
+                className="max-w-full overflow-x-auto"
+                value={publico}
+                onChange={(v) => setPublico(v as PublicoPush)}
+                options={[
+                  { value: "todos", label: "Todos" },
+                  { value: "corrida", label: "Corrida" },
+                  { value: "bicicleta", label: "Bike" },
+                  {
+                    value: "selecionados",
+                    label: selecionados.size > 0 ? `Escolher pessoas (${selecionados.size})` : "Escolher pessoas",
+                  },
+                ]}
+              />
+              {escolhendo ? (
+                <SeletorDePessoas
+                  pessoas={pessoas}
+                  erro={erroPessoas}
+                  selecionados={selecionados}
+                  onChange={setSelecionados}
                 />
-              </div>
+              ) : null}
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <span className="text-sm font-medium text-text">Ao tocar, abre</span>
                 <Select value={link} onChange={(e) => setLink(e.target.value)} aria-label="Tela aberta ao tocar">
@@ -248,7 +313,11 @@ export default function NotificacoesPage() {
                         </div>
                         <p className="mt-0.5 line-clamp-2 text-sm text-text-light">{e.corpo}</p>
                         <p className="mt-1 text-xs text-text-muted">
-                          {dataHora(e.criadoEm)} · {PUBLICO_LABEL[e.publico] ?? e.publico} · {plural(e.atletas, "atleta")}
+                          {dataHora(e.criadoEm)} ·{" "}
+                          {e.publico === "selecionados" && e.destinatarios?.length
+                            ? `Para ${resumoNomes(e.destinatarios)}`
+                            : PUBLICO_LABEL[e.publico] ?? e.publico}{" "}
+                          · {plural(e.atletas, e.publico === "selecionados" ? "pessoa" : "atleta")}
                           {e.autorNome ? ` · por ${e.autorNome}` : ""}
                           {e.falhas > 0 ? ` · ${plural(e.falhas, "falha")}` : ""}
                         </p>
@@ -319,7 +388,9 @@ export default function NotificacoesPage() {
             </Button>
             <Button onClick={() => void enviar()} loading={enviando} disabled={!confirmando?.atletas}>
               <Send className="size-4" />
-              {confirmando?.atletas ? `Enviar para ${plural(confirmando.atletas, "atleta")}` : "Ninguém para receber"}
+              {confirmando?.atletas
+                ? `Enviar para ${plural(confirmando.atletas, escolhendo ? "pessoa" : "atleta")}`
+                : "Ninguém para receber"}
             </Button>
           </div>
         }
@@ -327,7 +398,16 @@ export default function NotificacoesPage() {
         <div className="flex flex-col gap-4">
           <Previa titulo={titulo.trim()} corpo={corpo.trim()} />
           <p className="text-sm text-text-light">
-            Público: <strong className="text-text">{PUBLICO_LABEL[publico]}</strong> · ao tocar abre{" "}
+            {escolhendo ? (
+              <>
+                Para: <strong className="text-text">{resumoNomes(nomesEscolhidos)}</strong>
+              </>
+            ) : (
+              <>
+                Público: <strong className="text-text">{PUBLICO_LABEL[publico]}</strong>
+              </>
+            )}{" "}
+            · ao tocar abre{" "}
             <strong className="text-text">{DESTINOS_PUSH.find((d) => d.href === link)?.label}</strong>. Depois de enviado não
             dá para cancelar.
           </p>

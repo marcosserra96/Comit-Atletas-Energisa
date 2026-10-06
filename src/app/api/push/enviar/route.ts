@@ -15,7 +15,8 @@ export async function POST(request: Request) {
     const { enviarPush, registrarEnvio, aparelhosDoPublico } = await import("@/lib/server/push");
     const { validarMensagem, LIMITE_CORPO, LIMITE_TITULO } = await import("@/lib/push/regras");
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
-    const publicoValido = (v: unknown): PublicoPush => (v === "corrida" || v === "bicicleta" ? v : "todos");
+    const publicoValido = (v: unknown): PublicoPush =>
+      v === "corrida" || v === "bicicleta" || v === "selecionados" ? v : "todos";
 
     if (body.tipo === "noticia") {
       const { db, decodedToken, usuario } = await authenticatedPermissionRequest(request, "noticias");
@@ -48,8 +49,21 @@ export async function POST(request: Request) {
 
     const { db, decodedToken, usuario } = await authenticatedPermissionRequest(request, "notificacoes");
     const publico = publicoValido(body.publico);
+    let somente: Set<string> | undefined;
+    if (publico === "selecionados") {
+      const { LIMITE_SELECIONADOS } = await import("@/lib/push/regras");
+      const ids = Array.isArray(body.atletaIds)
+        ? [...new Set(body.atletaIds.filter((id): id is string => typeof id === "string" && id.length > 0 && id.length < 200))]
+        : [];
+      if (ids.length === 0) return Response.json({ error: "Escolha quem vai receber." }, { status: 400 });
+      if (ids.length > LIMITE_SELECIONADOS) {
+        return Response.json({ error: `Escolha até ${LIMITE_SELECIONADOS} pessoas.` }, { status: 400 });
+      }
+      somente = new Set(ids);
+    }
+    const destino = { publico, somente };
     if (body.simular === true) {
-      const { atletas, aparelhos } = await aparelhosDoPublico(db, { publico });
+      const { atletas, aparelhos } = await aparelhosDoPublico(db, destino);
       return Response.json({ atletas, aparelhos: aparelhos.length });
     }
     const mensagem = {
@@ -59,12 +73,18 @@ export async function POST(request: Request) {
     };
     const erros = validarMensagem(mensagem);
     if (erros.length) return Response.json({ error: erros[0] }, { status: 400 });
-    const resultado = await enviarPush(db, { publico }, mensagem);
+    const resultado = await enviarPush(db, destino, mensagem);
+    let destinatarios: string[] | undefined;
+    if (somente) {
+      const docs = await db.getAll(...[...somente].slice(0, 50).map((id) => db.collection("atletas").doc(id)));
+      destinatarios = docs.map((d) => String(d.data()?.nome || "")).filter(Boolean);
+    }
     await registrarEnvio(db, {
       origem: "manual",
       mensagem,
       publico,
       resultado,
+      destinatarios,
       autorUid: decodedToken.uid,
       autorNome: usuario.nome,
     });

@@ -15,7 +15,9 @@ import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { FichaAtletaModal } from "./ficha/FichaAtletaModal";
 import { MotivoMovimentacaoModal } from "./MotivoMovimentacaoModal";
 import type { AtletaDoc, Equipe } from "@/lib/types";
-import { formatPontos } from "@/lib/format";
+import { formatPontos, plural } from "@/lib/format";
+import { PainelNumeros } from "@/components/ui/PainelNumeros";
+import { ChevronRight } from "lucide-react";
 
 function useAtletasPorEquipe(equipe: Equipe, ordenarPorFila = false) {
   const [atletas, setAtletas] = useState<AtletaDoc[] | null>(null);
@@ -38,7 +40,16 @@ function useAtletasPorEquipe(equipe: Equipe, ordenarPorFila = false) {
   return atletas;
 }
 
-function ListaSimples({ atletas, vazio }: { atletas: AtletaDoc[] | null; vazio: string }) {
+/** Lista numerada (ordem alfabética); toque abre a ficha do atleta. */
+function ListaSimples({
+  atletas,
+  vazio,
+  onAbrir,
+}: {
+  atletas: AtletaDoc[] | null;
+  vazio: string;
+  onAbrir: (atleta: AtletaDoc) => void;
+}) {
   if (atletas === null) return <div className="h-32 animate-pulse rounded-[var(--radius)] bg-bg" />;
   if (atletas.length === 0) {
     return (
@@ -47,18 +58,43 @@ function ListaSimples({ atletas, vazio }: { atletas: AtletaDoc[] | null; vazio: 
       </div>
     );
   }
+  const ordenados = [...atletas].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
   return (
-    <table className="w-full text-sm">
-      <tbody>
-        {atletas.map((a) => (
-          <tr key={a.id} className="border-b border-border last:border-0">
-            <td className="px-4 py-3 font-medium text-text">{a.nome}</td>
-            <td className="px-4 py-3 text-right text-text-light">{formatPontos(a.pontuacaoTotal)} pts</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <ul className="flex flex-col">
+      {ordenados.map((a, i) => (
+        <li key={a.id} className="border-b border-border last:border-0">
+          <button
+            type="button"
+            onClick={() => onAbrir(a)}
+            className="group flex min-h-12 w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-bg-inset focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+          >
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-bg text-xs font-bold tabular-nums text-text-light">
+              {i + 1}
+            </span>
+            <span className={cn("min-w-0 flex-1 truncate text-sm font-medium", a.ativo ? "text-text" : "text-text-muted")}>
+              {a.nome}
+            </span>
+            {!a.ativo ? (
+              <span className="shrink-0 rounded-full bg-bg-inset px-2 py-0.5 text-xs font-semibold text-text-muted">Inativo</span>
+            ) : null}
+            <span className="shrink-0 text-sm tabular-nums text-text-light">{formatPontos(a.pontuacaoTotal)} pts</span>
+            <ChevronRight className="size-4 shrink-0 text-text-muted transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+          </button>
+        </li>
+      ))}
+    </ul>
   );
+}
+
+/** "12" ou "12 · 2 inativos" — quem está na equipe e quem está parado. */
+function contagem(lista: AtletaDoc[] | null) {
+  if (lista === null) return { valor: "…", detalhe: undefined as string | undefined, total: null as number | null };
+  const inativos = lista.filter((a) => !a.ativo).length;
+  return {
+    valor: String(lista.length - inativos),
+    detalhe: inativos > 0 ? `ativos · ${plural(inativos, "inativo")}` : "ativos",
+    total: lista.length,
+  };
 }
 
 /** Lista arrastável da fila de espera — a ordem é a prioridade de entrada no programa. */
@@ -155,6 +191,7 @@ export function EquipesTab() {
   const [tab, setTab] = useState<SubTab>("fila");
   const [verificandoComentarios, setVerificandoComentarios] = useState<AtletaDoc | null>(null);
   const [motivoAtleta, setMotivoAtleta] = useState<AtletaDoc | null>(null);
+  const [fichaAberta, setFichaAberta] = useState<AtletaDoc | null>(null);
   const filaBike = useAtletasPorEquipe("fila_bicicleta", true);
   const filaCorrida = useAtletasPorEquipe("fila_corrida", true);
   const bike = useAtletasPorEquipe("bicicleta");
@@ -183,17 +220,36 @@ export function EquipesTab() {
     }
   }
 
+  const nBike = contagem(bike);
+  const nCorrida = contagem(corrida);
+  const nComite = contagem(comite);
+  const nFila = filaBike && filaCorrida ? filaBike.length + filaCorrida.length : null;
+  const comNumero = (rotulo: string, n: number | null) => (n === null ? rotulo : `${rotulo} (${n})`);
+
   return (
     <div className="flex flex-col gap-4">
+      <PainelNumeros
+        itens={[
+          { rotulo: "Bike", valor: nBike.valor, detalhe: nBike.detalhe },
+          { rotulo: "Corrida", valor: nCorrida.valor, detalhe: nCorrida.detalhe },
+          {
+            rotulo: "Fila de espera",
+            valor: nFila === null ? "…" : String(nFila),
+            detalhe: filaBike && filaCorrida ? `${filaBike.length} bike · ${filaCorrida.length} corrida` : undefined,
+          },
+          { rotulo: "Comitê", valor: nComite.total === null ? "…" : String(nComite.total), detalhe: "membros" },
+        ]}
+      />
+
       <SegmentedControl
         className="max-w-full overflow-x-auto"
         value={tab}
         onChange={setTab}
         options={[
-          { value: "fila", label: "Filas de espera" },
-          { value: "bike", label: "Bike" },
-          { value: "corrida", label: "Corrida" },
-          { value: "comite", label: "Comitê" },
+          { value: "fila", label: comNumero("Filas de espera", nFila) },
+          { value: "bike", label: comNumero("Bike", nBike.total) },
+          { value: "corrida", label: comNumero("Corrida", nCorrida.total) },
+          { value: "comite", label: comNumero("Comitê", nComite.total) },
         ]}
       />
 
@@ -204,7 +260,9 @@ export function EquipesTab() {
             atleta ativo do programa.
           </p>
           <div>
-            <h4 className="mb-2 text-sm font-bold text-primary">Fila — Bike</h4>
+            <h4 className="mb-2 text-sm font-bold text-primary">
+              Fila — Bike{filaBike ? <span className="font-semibold text-text-muted"> · {plural(filaBike.length, "pessoa")}</span> : null}
+            </h4>
             <Card className="p-0">
               <FilaList
                 atletas={filaBike}
@@ -215,7 +273,9 @@ export function EquipesTab() {
             </Card>
           </div>
           <div>
-            <h4 className="mb-2 text-sm font-bold text-secondary">Fila — Corrida</h4>
+            <h4 className="mb-2 text-sm font-bold text-secondary">
+              Fila — Corrida{filaCorrida ? <span className="font-semibold text-text-muted"> · {plural(filaCorrida.length, "pessoa")}</span> : null}
+            </h4>
             <Card className="p-0">
               <FilaList
                 atletas={filaCorrida}
@@ -229,20 +289,21 @@ export function EquipesTab() {
       )}
       {tab === "bike" && (
         <Card className="p-0">
-          <ListaSimples atletas={bike} vazio="Nenhum atleta ativo na Bike ainda." />
+          <ListaSimples atletas={bike} vazio="Nenhum atleta ativo na Bike ainda." onAbrir={setFichaAberta} />
         </Card>
       )}
       {tab === "corrida" && (
         <Card className="p-0">
-          <ListaSimples atletas={corrida} vazio="Nenhum atleta ativo na Corrida ainda." />
+          <ListaSimples atletas={corrida} vazio="Nenhum atleta ativo na Corrida ainda." onAbrir={setFichaAberta} />
         </Card>
       )}
       {tab === "comite" && (
         <Card className="p-0">
-          <ListaSimples atletas={comite} vazio="Nenhum membro do comitê cadastrado." />
+          <ListaSimples atletas={comite} vazio="Nenhum membro do comitê cadastrado." onAbrir={setFichaAberta} />
         </Card>
       )}
 
+      <FichaAtletaModal atleta={fichaAberta} onClose={() => setFichaAberta(null)} />
       <FichaAtletaModal
         atleta={verificandoComentarios}
         initialTab="comentarios"

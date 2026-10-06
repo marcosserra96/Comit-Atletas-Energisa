@@ -264,7 +264,7 @@ export function VisaoEstrategica() {
           <Numero rotulo="Quilometragem" valor={formatKm(stats.kmTotal)} />
           <Numero rotulo="Custo realizado" valor={formatBRL(stats.investimentoTotal)} />
           <Numero rotulo="Custo por atleta" valor={formatBRL(stats.custoPorAtleta)} />
-          <Numero rotulo="Custo médio" valor={formatBRL(stats.custoParticipacao)} detalhe={`por participação${stats.custoKm > 0 ? ` · ${formatBRL(stats.custoKm)} por km` : ""}`} />
+          <Numero rotulo="Custo médio" valor={formatBRL(stats.custoParticipacao)} detalhe="por participação" />
         </dl>
       </section>
 
