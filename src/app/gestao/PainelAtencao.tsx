@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock4,
+  KeyRound,
   ListChecks,
   Moon,
   Sparkles,
@@ -22,13 +23,18 @@ import { formatPontos, formatShortDate, plural } from "@/lib/format";
 import { equipeLabel } from "@/lib/labels";
 import { ehReuniao, horarioDoEvento } from "@/lib/eventos";
 import { RequestCard } from "./atletas/RequestCard";
+import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/Toast";
+import { LinkDeSenha } from "@/components/senha/LinkDeSenha";
+import { dispensarPedidoSenha, gerarLinkSenha, type LinkSenha, type PedidoSenha } from "@/lib/senhaComite";
 import { FichaAtletaModal } from "./atletas/ficha/FichaAtletaModal";
 import type { AtletaDoc, EventoDoc, RegraPontuacaoDoc, SolicitacaoAcessoDoc } from "@/lib/types";
 
-type ChaveAtencao = "solicitacoes" | "fila" | "eventos" | "inativos" | "semParticipacao" | "criterios";
+type ChaveAtencao = "senhas" | "solicitacoes" | "fila" | "eventos" | "inativos" | "semParticipacao" | "criterios";
 
 export interface DadosAtencao {
   solicitacoes: SolicitacaoAcessoDoc[] | null;
+  pedidosSenha: PedidoSenha[];
   atletasSemVinculo: AtletaDoc[];
   fila: AtletaDoc[];
   eventosPendentes: EventoDoc[];
@@ -116,6 +122,85 @@ function LinkRodape({ href, children }: { href: string; children: ReactNode }) {
   );
 }
 
+function haQuanto(iso: string | null) {
+  if (!iso) return "";
+  const min = Math.max(1, Math.round((Date.now() - Date.parse(iso)) / 60_000));
+  if (min < 60) return `há ${min} min`;
+  const h = Math.round(min / 60);
+  return h < 24 ? `há ${h} h` : `há ${Math.round(h / 24)} dia${h >= 48 ? "s" : ""}`;
+}
+
+/** Pedidos de nova senha: gera o link ali mesmo e mostra como mandar. */
+function PedidosDeSenha({ pedidos }: { pedidos: PedidoSenha[] }) {
+  const { show } = useToast();
+  const [links, setLinks] = useState<Record<string, LinkSenha>>({});
+  const [ocupado, setOcupado] = useState<string | null>(null);
+  const [dispensados, setDispensados] = useState<Set<string>>(new Set());
+
+  async function gerar(p: PedidoSenha) {
+    setOcupado(p.uid);
+    try {
+      const dados = await gerarLinkSenha({ uid: p.uid });
+      setLinks((atual) => ({ ...atual, [p.uid]: dados }));
+    } catch (e) {
+      show("error", e instanceof Error ? e.message : "Não foi possível gerar o link.");
+    } finally {
+      setOcupado(null);
+    }
+  }
+
+  async function dispensar(p: PedidoSenha) {
+    setOcupado(p.uid);
+    try {
+      await dispensarPedidoSenha(p.uid);
+      setDispensados((atual) => new Set(atual).add(p.uid));
+    } catch (e) {
+      show("error", e instanceof Error ? e.message : "Não foi possível dispensar.");
+    } finally {
+      setOcupado(null);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-sm text-text-light">
+        Confira se é mesmo a pessoa (o pedido pode ser feito por qualquer um que saiba o e-mail) e mande o link direto para ela.
+      </p>
+      <Lista>
+        {pedidos
+          .filter((p) => !dispensados.has(p.uid))
+          .map((p) => (
+            <li key={p.uid} className="flex flex-col gap-3 px-1 py-3 sm:px-2">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-sm font-bold text-primary">
+                  {p.nome.trim().charAt(0).toUpperCase()}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-text">{p.nome}</span>
+                  <span className="block truncate text-xs text-text-light">
+                    {p.email} · pediu {haQuanto(p.criadoEm)}
+                  </span>
+                </span>
+                {links[p.uid] ? null : (
+                  <div className="flex shrink-0 gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => void dispensar(p)} disabled={ocupado === p.uid}>
+                      Dispensar
+                    </Button>
+                    <Button size="sm" onClick={() => void gerar(p)} loading={ocupado === p.uid}>
+                      <KeyRound className="size-4" />
+                      Gerar link
+                    </Button>
+                  </div>
+                )}
+              </div>
+              {links[p.uid] ? <LinkDeSenha dados={links[p.uid]} /> : null}
+            </li>
+          ))}
+      </Lista>
+    </div>
+  );
+}
+
 /* ---------- Painel ---------- */
 
 /**
@@ -127,17 +212,29 @@ export function PainelAtencao({
   carregando,
   dados,
   permissoes,
+  onFechar,
   className,
 }: {
   carregando: boolean;
   dados: DadosAtencao;
   permissoes: PermissoesAtencao;
+  /** Ao fechar uma lista: recarrega o que vem do servidor (pedidos de senha). */
+  onFechar?: () => void;
   className?: string;
 }) {
   const [aberto, setAberto] = useState<ChaveAtencao | null>(null);
   const [ficha, setFicha] = useState<AtletaDoc | null>(null);
 
   const itens: Item[] = [];
+  if (permissoes.atletas && dados.pedidosSenha.length > 0) {
+    itens.push({
+      chave: "senhas",
+      icon: KeyRound,
+      titulo: plural(dados.pedidosSenha.length, "pedido de nova senha", "pedidos de nova senha"),
+      dica: "Gerar o link e mandar pelo WhatsApp",
+      destaque: true,
+    });
+  }
   const nSolic = dados.solicitacoes?.length ?? 0;
   if (permissoes.admin && nSolic > 0) {
     itens.push({
@@ -195,6 +292,8 @@ export function PainelAtencao({
 
   function conteudo(chave: ChaveAtencao) {
     switch (chave) {
+      case "senhas":
+        return <PedidosDeSenha pedidos={dados.pedidosSenha} />;
       case "solicitacoes":
         return (
           <div className="flex flex-col gap-3">
@@ -355,7 +454,10 @@ export function PainelAtencao({
 
       <Modal
         open={itemAberto !== null}
-        onClose={() => setAberto(null)}
+        onClose={() => {
+          setAberto(null);
+          onFechar?.();
+        }}
         title={itemAberto?.titulo ?? ""}
         description={itemAberto?.dica}
         size="lg"

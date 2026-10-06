@@ -19,6 +19,7 @@ import { ExportarRelatorioDropdown } from "./ExportarRelatorioDropdown";
 import { PainelAtencao, type DadosAtencao } from "./PainelAtencao";
 import { ComparativoModalidades } from "./ComparativoModalidades";
 import { temPermissao } from "@/lib/permissoes";
+import { listarPedidosSenha, type PedidoSenha } from "@/lib/senhaComite";
 import type {
   AtletaDoc,
   DespesaDoc,
@@ -55,6 +56,25 @@ export function VisaoEstrategica() {
   const [regras, setRegras] = useState<RegraPontuacaoDoc[] | null>(null);
   const [pendentes, setPendentes] = useState<SolicitacaoAcessoDoc[] | null>(null);
   const [mesHover, setMesHover] = useState<number | null>(null);
+  const podeAtletas = temPermissao(usuario, "atletas");
+  const [pedidosSenha, setPedidosSenha] = useState<PedidoSenha[] | null>(null);
+  const [versaoPedidos, setVersaoPedidos] = useState(0);
+
+  // Pedidos de nova senha vêm do servidor: na abertura, a cada 2 min e ao fechar a lista.
+  useEffect(() => {
+    if (!podeAtletas) return;
+    let ativo = true;
+    const carregar = () =>
+      listarPedidosSenha()
+        .then((p) => ativo && setPedidosSenha(p))
+        .catch(() => ativo && setPedidosSenha([]));
+    void carregar();
+    const t = setInterval(carregar, 120_000);
+    return () => {
+      ativo = false;
+      clearInterval(t);
+    };
+  }, [podeAtletas, versaoPedidos]);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -188,6 +208,7 @@ export function VisaoEstrategica() {
 
   const dadosAtencao: DadosAtencao = {
     solicitacoes: pendentes,
+    pedidosSenha: pedidosSenha ?? [],
     atletasSemVinculo: (atletas ?? []).filter((a) => !a.authUid),
     fila: stats.filaLista,
     eventosPendentes: stats.eventosPendentesLista,
@@ -223,9 +244,10 @@ export function VisaoEstrategica() {
       <PainelAtencao
         carregando={carregando || pendentes === null}
         dados={dadosAtencao}
+        onFechar={() => setVersaoPedidos((v) => v + 1)}
         permissoes={{
           admin: isAdmin,
-          atletas: temPermissao(usuario, "atletas"),
+          atletas: podeAtletas,
           registrar: temPermissao(usuario, "registrar"),
         }}
       />
