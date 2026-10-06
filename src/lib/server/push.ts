@@ -17,6 +17,8 @@ export interface DestinoPush {
   publico: PublicoPush;
   /** Quem não deve receber (já respondeu, já confirmou presença...). */
   excluir?: Set<string>;
+  /** Só estas pessoas (envio individual): vale para qualquer cadastro escolhido. */
+  somente?: Set<string>;
 }
 
 export interface ResultadoPush {
@@ -44,6 +46,7 @@ export async function aparelhosDoPublico(db: Firestore, destino: DestinoPush) {
   for (const d of tokens.docs) {
     const { atletaId, token } = d.data() as { atletaId?: string; token?: string };
     if (!atletaId || !token || destino.excluir?.has(atletaId)) continue;
+    if (destino.somente && !destino.somente.has(atletaId)) continue;
     porAtleta.set(atletaId, [...(porAtleta.get(atletaId) ?? []), { id: d.id, token }]);
   }
   if (porAtleta.size === 0) return { atletas: 0, aparelhos: [] as { id: string; token: string }[] };
@@ -53,7 +56,9 @@ export async function aparelhosDoPublico(db: Firestore, destino: DestinoPush) {
   let total = 0;
   for (const a of atletas) {
     const dados = a.data() as { ativo?: boolean; equipe?: string } | undefined;
-    if (!dados?.ativo || !atletaNoPublico(dados.equipe, destino.publico)) continue;
+    if (!dados) continue;
+    // Escolhidos um a um valem mesmo fora das equipes (ex.: membros do comitê).
+    if (!destino.somente && (!dados.ativo || !atletaNoPublico(dados.equipe, destino.publico))) continue;
     total += 1;
     aparelhos.push(...(porAtleta.get(a.id) ?? []));
   }
@@ -119,6 +124,8 @@ export async function registrarEnvio(
     mensagem: MensagemPush;
     publico: PublicoPush;
     resultado: ResultadoPush;
+    /** Envio individual: nomes de quem foi escolhido (para o histórico). */
+    destinatarios?: string[];
     autorUid?: string;
     autorNome?: string;
   },
@@ -134,6 +141,7 @@ export async function registrarEnvio(
     aparelhos: dados.resultado.aparelhos,
     enviados: dados.resultado.enviados,
     falhas: dados.resultado.falhas,
+    destinatarios: dados.destinatarios?.slice(0, 50) ?? null,
     autorUid: dados.autorUid ?? null,
     autorNome: dados.autorNome ?? null,
     criadoEm: FieldValue.serverTimestamp(),

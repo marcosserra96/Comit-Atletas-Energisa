@@ -30,6 +30,7 @@ export async function GET(request: Request) {
           enviados: e.enviados ?? 0,
           falhas: e.falhas ?? 0,
           autorNome: e.autorNome ?? null,
+          destinatarios: Array.isArray(e.destinatarios) ? e.destinatarios : null,
           criadoEm: e.criadoEm?.toDate?.().toISOString() ?? null,
         };
       }),

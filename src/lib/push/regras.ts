@@ -2,7 +2,11 @@
  * Regras das notificações push que valem no servidor e no portal (sem Firebase).
  */
 
-export type PublicoPush = "todos" | "corrida" | "bicicleta";
+/** "selecionados": pessoas escolhidas uma a uma pelo comitê. */
+export type PublicoPush = "todos" | "corrida" | "bicicleta" | "selecionados";
+
+/** Limite de pessoas escolhidas num envio individual. */
+export const LIMITE_SELECIONADOS = 300;
 
 /** Para onde a notificação leva ao ser tocada (só rotas do próprio portal). */
 export const DESTINOS_PUSH = [

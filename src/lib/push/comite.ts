@@ -34,7 +34,20 @@ export interface EnvioPush {
   falhas: number;
   autorNome: string | null;
   criadoEm: string | null;
+  /** Envio individual: nomes de quem foi escolhido. */
+  destinatarios: string[] | null;
 }
+
+export interface PessoaPush {
+  id: string;
+  nome: string;
+  equipe: string;
+  /** Aparelhos com as notificações ativas (0 = não recebe). */
+  aparelhos: number;
+}
+
+export const carregarDestinatarios = () =>
+  api<{ pessoas: PessoaPush[] }>("/api/push/destinatarios").then((r) => r.pessoas);
 
 export interface PainelPush {
   alcance: { corrida: number; bicicleta: number; atletasAtivos: number };
@@ -43,13 +56,19 @@ export interface PainelPush {
 
 export const carregarPainelPush = () => api<PainelPush>("/api/push/historico");
 
-export const alcancePush = (publico: PublicoPush) =>
+export const alcancePush = (publico: PublicoPush, atletaIds?: string[]) =>
   api<{ atletas: number; aparelhos: number }>("/api/push/enviar", {
     method: "POST",
-    body: JSON.stringify({ tipo: "manual", publico, simular: true }),
+    body: JSON.stringify({ tipo: "manual", publico, atletaIds, simular: true }),
   });
 
-export const enviarPushManual = (dados: { titulo: string; corpo: string; publico: PublicoPush; link: string }) =>
+export const enviarPushManual = (dados: {
+  titulo: string;
+  corpo: string;
+  publico: PublicoPush;
+  link: string;
+  atletaIds?: string[];
+}) =>
   api<ResultadoEnvio>("/api/push/enviar", { method: "POST", body: JSON.stringify({ tipo: "manual", ...dados }) });
 
 export const enviarPushDeNoticia = (noticiaId: string) =>
