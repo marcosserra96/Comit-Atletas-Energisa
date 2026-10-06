@@ -159,35 +159,36 @@ export function TermosAceiteScreen({
             {email ? <> ({email})</> : null}, com a versão do documento e a data e hora do servidor.
           </div>
 
-          <label className="mt-3 flex min-h-12 cursor-pointer items-start gap-3 rounded-xl border border-border px-4 py-3 text-base font-semibold text-text transition-colors hover:border-primary/50 sm:text-sm">
+        </div>
+
+        {/* Aceite sempre à vista no rodapé fixo: ninguém precisa rolar para achar. */}
+        <footer className="flex shrink-0 flex-col gap-3 border-t border-border px-4 py-3 sm:px-7 sm:py-4">
+          <label
+            className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border px-4 py-2.5 text-base font-semibold text-text transition-colors sm:text-sm ${
+              marcouAtual ? "border-success/50 bg-success-subtle" : "border-primary/40 bg-primary-subtle hover:border-primary"
+            }`}
+          >
             <input
               type="checkbox"
               checked={marcouAtual}
               onChange={alternarConcordancia}
-              className="mt-0.5 size-5 shrink-0 accent-[var(--color-primary)]"
+              className="size-5 shrink-0 accent-[var(--color-primary)]"
             />
             <span>Li e concordo com este {tipoDocumentoLabel(documento.tipo).toLowerCase()}.</span>
           </label>
 
           {erro ? (
-            <p role="alert" className="mt-3 text-sm font-medium text-danger">
+            <p role="alert" className="text-sm font-medium text-danger">
               {erro}
             </p>
           ) : null}
-        </div>
 
-        <footer className="flex shrink-0 flex-col gap-2 border-t border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-7 sm:py-4">
-          {!marcouAtual ? (
-            // No celular a caixa de aceite pode ficar fora da tela; explica por que o botão está desabilitado.
-            <p className="text-center text-xs font-medium text-text-light sm:hidden">
-              Marque “Li e concordo” acima para continuar.
-            </p>
-          ) : null}
-          <Button type="button" variant="ghost" onClick={onLogout} disabled={salvando} className="order-last sm:order-none">
+          <div className="flex items-center justify-between gap-2">
+          <Button type="button" variant="ghost" onClick={onLogout} disabled={salvando}>
             <LogOut className="size-4" aria-hidden="true" />
             Sair
           </Button>
-          <div className="flex gap-2">
+          <div className="flex flex-1 justify-end gap-2">
             {indice > 0 ? (
               <Button
                 type="button"
@@ -222,6 +223,7 @@ export function TermosAceiteScreen({
                 Aceitar e continuar
               </Button>
             )}
+          </div>
           </div>
         </footer>
       </section>
