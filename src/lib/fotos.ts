@@ -100,7 +100,9 @@ export function useFotosAtletas(atletas: readonly { id: string; fotoVersao?: num
       for (let i = 0; i < faltam.length; i += 150) {
         const lote = faltam.slice(i, i + 150).map((f) => f.id);
         try {
-          const { fotos } = await api<{ fotos: Record<string, string> }>(`/api/fotos/atletas?ids=${lote.join(",")}`);
+          // A versão vai na URL: trocar a foto muda o endereço e o navegador não reaproveita a antiga do cache.
+          const versoes = lote.map((id) => versaoDe.get(id)).join(".");
+          const { fotos } = await api<{ fotos: Record<string, string> }>(`/api/fotos/atletas?ids=${lote.join(",")}&v=${versoes}`);
           for (const [id, url] of Object.entries(fotos)) cache.set(id, { versao: versaoDe.get(id) ?? Date.now(), url });
         } catch {
           // Sem foto, o avatar mostra as iniciais.
@@ -117,6 +119,12 @@ export function useFotosAtletas(atletas: readonly { id: string; fotoVersao?: num
     if (c && a.fotoVersao) out[a.id] = c.url;
   }
   return out;
+}
+
+/** Foto de uma pessoa só (barra do topo, menu, ficha). */
+export function useFotoAtleta(atleta: { id: string; fotoVersao?: number | null } | null | undefined) {
+  const fotos = useFotosAtletas(atleta ? [atleta] : []);
+  return atleta ? fotos[atleta.id] : undefined;
 }
 
 export { FOTO_LADO };

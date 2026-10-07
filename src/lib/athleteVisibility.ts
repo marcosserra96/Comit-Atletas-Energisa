@@ -14,7 +14,7 @@ export function filtrarPerfisAtletasVisiveis<T extends PerfilComVisibilidade>(at
 export function dadosAtletaPublico(
   atleta: Pick<
     AtletaDoc,
-    "id" | "nome" | "equipe" | "ativo" | "pontuacaoTotal" | "visivelNasListas"
+    "id" | "nome" | "equipe" | "ativo" | "pontuacaoTotal" | "visivelNasListas" | "fotoVersao"
   >,
 ): AtletaPublicoDoc {
   return {
@@ -24,5 +24,7 @@ export function dadosAtletaPublico(
     ativo: atleta.ativo,
     visivelNasListas: perfilAtletaVisivel(atleta),
     pontuacaoTotal: atleta.pontuacaoTotal,
+    // Só a versão da foto (para o ranking buscar a imagem); a foto em si fica em fotos_atletas.
+    ...(atleta.fotoVersao ? { fotoVersao: atleta.fotoVersao } : {}),
   };
 }

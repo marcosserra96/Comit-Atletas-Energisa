@@ -28,6 +28,8 @@ import { useToast } from "@/components/ui/Toast";
 import { LinkDeSenha } from "@/components/senha/LinkDeSenha";
 import { dispensarPedidoSenha, gerarLinkSenha, type LinkSenha, type PedidoSenha } from "@/lib/senhaComite";
 import { FichaAtletaModal } from "./atletas/ficha/FichaAtletaModal";
+import { AvatarAtleta } from "@/components/atletas/AvatarAtleta";
+import { useFotoAtleta } from "@/lib/fotos";
 import type { AtletaDoc, EventoDoc, RegraPontuacaoDoc, SolicitacaoAcessoDoc } from "@/lib/types";
 
 type ChaveAtencao = "senhas" | "solicitacoes" | "fila" | "eventos" | "inativos" | "semParticipacao" | "criterios";
@@ -77,6 +79,7 @@ function LinhaAtleta({
 }) {
   // Na fila a lista já vem separada por modalidade: o selo seria repetição.
   const modalidade = posicao === undefined ? modalidadeDaEquipe(atleta.equipe) : null;
+  const foto = useFotoAtleta(posicao === undefined ? atleta : null);
   const Raiz = onAbrir ? "button" : "div";
   return (
     <li>
@@ -89,9 +92,7 @@ function LinhaAtleta({
             {posicao}º
           </span>
         ) : (
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-sm font-bold text-primary">
-            {atleta.nome.trim().charAt(0).toUpperCase()}
-          </span>
+          <AvatarAtleta nome={atleta.nome} foto={foto} className="size-8 text-xs" tom="bg-primary-subtle text-primary" />
         )}
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold text-text">{atleta.nome}</span>

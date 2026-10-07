@@ -50,7 +50,7 @@ export interface AtletaDoc {
 export type AtletaPublicoDoc = Pick<
   AtletaDoc,
   "id" | "nome" | "equipe" | "ativo" | "pontuacaoTotal"
-> & Pick<AtletaDoc, "visivelNasListas">;
+> & Pick<AtletaDoc, "visivelNasListas" | "fotoVersao">;
 
 /** usuarios/{uid} — ponteiro auth -> atleta, escrito só por staff (nunca pelo próprio usuário). */
 export interface UsuarioDoc {

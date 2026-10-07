@@ -34,6 +34,8 @@ import type {
   RankingVisibilityConfigDoc,
 } from "@/lib/types";
 import { modalidadeLabel } from "@/lib/labels";
+import { AvatarAtleta } from "@/components/atletas/AvatarAtleta";
+import { useFotosAtletas } from "@/lib/fotos";
 
 const MESES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -63,7 +65,7 @@ function nomeDoPodio(nome: string) {
 }
 
 /** Um degrau: a posição, quem divide ela e os pontos (iguais para todos no empate). */
-function Degrau({ degrau }: { degrau: DegrauDoPodio<RankedAtleta> }) {
+function Degrau({ degrau, fotos }: { degrau: DegrauDoPodio<RankedAtleta>; fotos: Record<string, string> }) {
   const { posicao, atletas, total } = degrau;
   const { cor, fundo, texto, barra } = COR_POSICAO[posicao] ?? COR_POSICAO[3];
   const empate = total > 1;
@@ -73,11 +75,27 @@ function Degrau({ degrau }: { degrau: DegrauDoPodio<RankedAtleta> }) {
   return (
     <div className="relative flex w-1/3 flex-col items-center justify-end" style={{ maxWidth: posicao === 1 ? "170px" : "150px" }}>
       <div className="mb-2 flex w-full flex-col items-center px-1 text-center">
-        <RankingPosition
-          position={posicao}
-          size={posicao === 1 ? "lg" : "md"}
-          className={posicao === 1 ? "mb-2 scale-110 shadow-md sm:scale-125" : "mb-2"}
-        />
+        {/* Foto (ou iniciais) com o anel da medalha e a posição embaixo. Empate: rostos lado a lado. */}
+        <div className="relative mb-4">
+          <div className="flex justify-center -space-x-2.5">
+            {atletas.slice(0, 3).map((a) => (
+              <span key={a.id} className="rounded-full bg-bg-card p-0.5" style={{ boxShadow: `0 0 0 2px ${cor}` }}>
+                <AvatarAtleta
+                  nome={a.nome}
+                  foto={fotos[a.id]}
+                  className={
+                    empate
+                      ? "size-10 text-xs sm:size-12 sm:text-sm"
+                      : posicao === 1
+                        ? "size-16 text-lg sm:size-20 sm:text-xl"
+                        : "size-12 text-sm sm:size-16 sm:text-base"
+                  }
+                />
+              </span>
+            ))}
+          </div>
+          <RankingPosition position={posicao} size="sm" className="absolute -bottom-3 left-1/2 -translate-x-1/2" />
+        </div>
         {empate ? (
           <span
             className="mb-1 rounded-full px-2 py-0.5 text-xs font-bold"
@@ -116,7 +134,7 @@ function Degrau({ degrau }: { degrau: DegrauDoPodio<RankedAtleta> }) {
  * empatados dividem o degrau, e o 3º lugar aparece mesmo com empate no 2º.
  * Mesma regra do informativo.
  */
-function Podium({ atletas }: { atletas: RankedAtleta[] }) {
+function Podium({ atletas, fotos }: { atletas: RankedAtleta[]; fotos: Record<string, string> }) {
   const degraus = montarPodio(atletas, (a) => a.rank, (a) => a.pontuacaoTotal);
   const pessoas = degraus.reduce((soma, d) => soma + d.total, 0);
   // Com uma pessoa só, o pódio não compara nada; a tabela já mostra a posição.
@@ -128,7 +146,7 @@ function Podium({ atletas }: { atletas: RankedAtleta[] }) {
   return (
     <div className="mb-6 mt-6 flex items-end justify-center gap-2 px-2 sm:mb-10 sm:mt-10 sm:gap-4">
       {ordem.map((degrau) => (
-        <Degrau key={degrau.posicao} degrau={degrau} />
+        <Degrau key={degrau.posicao} degrau={degrau} fotos={fotos} />
       ))}
     </div>
   );
@@ -408,6 +426,7 @@ export default function RankingPage() {
         )
       : atletasComRank;
   }, [atletasComRank, search]);
+  const fotos = useFotosAtletas(atletasComRank ?? []);
 
   // Quem não pontuou não sobe ao pódio (no começo do mês, quase todos estão zerados).
   const comPontos = atletasComRank?.filter((atleta) => atleta.pontuacaoTotal > 0) ?? [];
@@ -632,7 +651,7 @@ export default function RankingPage() {
             </p>
           ) : null}
 
-          {!search.trim() ? <Podium atletas={comPontos} /> : null}
+          {!search.trim() ? <Podium atletas={comPontos} fotos={fotos} /> : null}
 
           <Card className="flex flex-col overflow-hidden p-0">
             <div className="border-b border-border bg-bg/50 p-4 sm:p-5">
@@ -687,6 +706,7 @@ export default function RankingPage() {
                           size={isTop3 ? "md" : "sm"}
                           className={cn("shrink-0", !isTop3 && "bg-bg text-text-muted")}
                         />
+                        <AvatarAtleta nome={atleta.nome} foto={fotos[atleta.id]} className="size-9 text-xs sm:size-10 sm:text-sm" />
                         <div className="min-w-0 flex-1">
                           <span
                             className={cn(

@@ -9,6 +9,8 @@ import { applyTheme, getStoredTheme, type Theme } from "@/lib/theme";
 import { roleLabel } from "@/lib/labels";
 import { useTituloDaPaginaForaDaTela } from "@/components/layout/useTituloDaPaginaForaDaTela";
 import { cn } from "@/lib/cn";
+import { AvatarAtleta } from "@/components/atletas/AvatarAtleta";
+import { useFotoAtleta } from "@/lib/fotos";
 import { souTambemAtleta } from "@/lib/session/dualRole";
 
 const titleByPath: Record<string, string> = {
@@ -33,7 +35,7 @@ export function StaffTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }
   const { atleta, usuario, logout } = useActiveSession();
   const title = titleByPath[pathname] ?? "";
   const mostrarTitulo = useTituloDaPaginaForaDaTela(pathname);
-  const initial = atleta.nome.trim().charAt(0).toUpperCase();
+  const foto = useFotoAtleta(atleta);
   const [theme, setTheme] = useState<Theme>(() => getStoredTheme());
   const [busca, setBusca] = useState("");
   const tambemAtleta = souTambemAtleta(usuario, atleta);
@@ -109,9 +111,7 @@ export function StaffTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }
           aria-label="Minha conta"
           className="flex min-h-11 items-center gap-2.5 rounded-full p-1.5 transition-colors hover:bg-white/10 sm:min-h-0 sm:border sm:border-white/10 sm:bg-white/[0.07] sm:py-1 sm:pl-1 sm:pr-3"
         >
-          <span className="flex size-[30px] shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-on-primary">
-            {initial}
-          </span>
+          <AvatarAtleta nome={atleta.nome} foto={foto} className="size-[30px] text-[11px]" tom="bg-primary text-on-primary" />
           <div className="hidden leading-tight sm:block">
             <p className="text-[13px] font-semibold text-white">{atleta.nome.split(" ")[0]}</p>
             <p className="text-xs font-bold uppercase tracking-wide text-white/45">
