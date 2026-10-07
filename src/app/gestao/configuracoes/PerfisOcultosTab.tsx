@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { AtletaDoc } from "@/lib/types";
+import { AvatarPessoa } from "@/components/atletas/AvatarAtleta";
 
 export function PerfisOcultosTab() {
   const { show } = useToast();
@@ -131,9 +132,7 @@ export function PerfisOcultosTab() {
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {filtrados.map((perfil) => (
             <Card key={perfil.id} className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-warning/10 text-sm font-extrabold text-ranking-gold-text">
-                {perfil.nome.trim().charAt(0).toUpperCase()}
-              </span>
+              <AvatarPessoa pessoa={perfil} nome={perfil.nome} className="size-11 text-sm font-extrabold" tom="bg-warning/10 text-ranking-gold-text" />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-bold text-text">{perfil.nome}</p>
                 <p className="truncate text-sm text-text-light">{perfil.email || "Sem e-mail vinculado"}</p>

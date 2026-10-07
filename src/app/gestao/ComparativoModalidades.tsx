@@ -7,6 +7,7 @@ import { formatDistancia, formatPontos, plural } from "@/lib/format";
 import { calcularPosicoesRanking } from "@/lib/rankingPosition";
 import type { ModalidadeStats } from "@/lib/dashboardStats";
 import type { AtletaDoc } from "@/lib/types";
+import { AvatarPessoa } from "@/components/atletas/AvatarAtleta";
 
 type Mod = "corrida" | "bicicleta";
 
@@ -76,6 +77,7 @@ function Podio({ atletas }: { atletas: AtletaDoc[] }) {
           <span className={cn("flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold", MEDALHA[Math.min(posicoes[i], 3) - 1])}>
             {posicoes[i]}
           </span>
+          <AvatarPessoa pessoa={a} nome={a.nome} className="size-7 text-[10px]" />
           <span className="min-w-0 flex-1 truncate font-medium text-text">{a.nome}</span>
           <span className="shrink-0 text-xs font-semibold tabular-nums text-text-light">{formatPontos(a.pontuacaoTotal)} pts</span>
         </li>

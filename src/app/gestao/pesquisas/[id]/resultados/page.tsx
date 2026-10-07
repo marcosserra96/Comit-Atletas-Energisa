@@ -33,6 +33,7 @@ import {
   type RespostaPesquisaDoc,
 } from "@/lib/pesquisas";
 import type { AtletaDoc } from "@/lib/types";
+import { AvatarPessoa } from "@/components/atletas/AvatarAtleta";
 
 function dataDaResposta(valor: unknown) {
   const d = (valor as { toDate?: () => Date } | undefined)?.toDate?.();
@@ -337,6 +338,7 @@ export default function ResultadosPesquisaPage() {
             : faltam.map((a) => ({ id: a.id, nome: a.nome, equipe: a.equipe, extra: "" }))
           ).map((p) => (
             <li key={p.id} className="flex items-center gap-3 py-2.5 text-sm">
+              <AvatarPessoa pessoa={{ id: p.id, porId: true }} nome={p.nome} className="size-8 text-xs" />
               <span className="min-w-0 flex-1 truncate text-text">{p.nome}</span>
               {p.extra ? <span className="shrink-0 text-xs text-text-muted">{p.extra}</span> : null}
               {p.equipe === "corrida" || p.equipe === "bicicleta" ? <SportBadge modalidade={p.equipe} size="sm" /> : null}

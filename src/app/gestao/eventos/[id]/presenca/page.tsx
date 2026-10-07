@@ -46,6 +46,7 @@ import {
   type SegredoCheckinDoc,
 } from "@/lib/reunioes";
 import type { CheckinReuniao, EventoDoc, HistoricoPontoDoc } from "@/lib/types";
+import { AvatarPessoa } from "@/components/atletas/AvatarAtleta";
 
 const SITUACAO_TEXTO = {
   desligado: "Confirmação pelo app desligada",
@@ -379,6 +380,7 @@ export default function PresencaReuniaoPage() {
                     ) : (
                       <Check className="size-4 shrink-0 text-text-muted" aria-label="Manual" />
                     )}
+                    <AvatarPessoa pessoa={{ id: p.atletaId, porId: true }} nome={p.atletaNome} className="size-7 text-[10px]" />
                     <span className="min-w-0 flex-1 truncate text-text">{p.atletaNome}</span>
                     {podeRegistrar ? (
                       <button

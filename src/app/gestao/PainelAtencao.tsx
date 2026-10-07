@@ -31,6 +31,7 @@ import { FichaAtletaModal } from "./atletas/ficha/FichaAtletaModal";
 import { AvatarAtleta } from "@/components/atletas/AvatarAtleta";
 import { useFotoAtleta } from "@/lib/fotos";
 import type { AtletaDoc, EventoDoc, RegraPontuacaoDoc, SolicitacaoAcessoDoc } from "@/lib/types";
+import { AvatarPessoa } from "@/components/atletas/AvatarAtleta";
 
 type ChaveAtencao = "senhas" | "solicitacoes" | "fila" | "eventos" | "inativos" | "semParticipacao" | "criterios";
 
@@ -173,9 +174,12 @@ function PedidosDeSenha({ pedidos }: { pedidos: PedidoSenha[] }) {
           .map((p) => (
             <li key={p.uid} className="flex flex-col gap-3 px-1 py-3 sm:px-2">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-sm font-bold text-primary">
-                  {p.nome.trim().charAt(0).toUpperCase()}
-                </span>
+                <AvatarPessoa
+                  pessoa={{ id: p.atletaId ?? `sem-atleta:${p.uid}`, porId: !!p.atletaId }}
+                  nome={p.nome}
+                  className="size-8 text-xs"
+                  tom="bg-primary-subtle text-primary"
+                />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold text-text">{p.nome}</span>
                   <span className="block truncate text-xs text-text-light">

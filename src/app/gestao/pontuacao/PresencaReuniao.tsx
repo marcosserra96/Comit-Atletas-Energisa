@@ -30,6 +30,7 @@ import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
 import { ehReuniao, horarioDoEvento } from "@/lib/eventos";
 import { idPresencaReuniao, loteDaReuniao } from "@/lib/reunioes";
 import type { AtletaDoc, EventoDoc, HistoricoPontoDoc, Modalidade, RegraPontuacaoDoc } from "@/lib/types";
+import { AvatarPessoa } from "@/components/atletas/AvatarAtleta";
 
 type FiltroEquipe = "todas" | Modalidade;
 
@@ -379,6 +380,7 @@ export function PresencaReuniao() {
                       onChange={() => alternar(a.id)}
                       className="size-5 shrink-0 rounded border-border accent-primary disabled:opacity-60"
                     />
+                    <AvatarPessoa pessoa={a} nome={a.nome} className="size-8 text-xs" />
                     <span className="min-w-0 flex-1 truncate font-medium text-text">{a.nome}</span>
                     {registrado ? (
                       <span className="flex shrink-0 items-center gap-1 text-xs font-semibold text-success">

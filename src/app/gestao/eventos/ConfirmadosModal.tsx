@@ -13,6 +13,7 @@ import { modalidadeFromEquipe, modalidadeLabel } from "@/lib/labels";
 import { auth } from "@/lib/firebase";
 import { motivoAusenciaEventoLabel, type AusenciaEvento } from "@/lib/ausenciasEvento";
 import type { AtletaDoc, EventoDoc } from "@/lib/types";
+import { AvatarPessoa } from "@/components/atletas/AvatarAtleta";
 
 type Aba = "confirmados" | "nao-vao" | "pendentes";
 
@@ -218,6 +219,7 @@ export function ConfirmadosModal({
                 >
                   <span className="flex min-w-0 items-center gap-3">
                     <span className="w-5 shrink-0 text-right text-xs tabular-nums text-text-muted">{i + 1}</span>
+                    <AvatarPessoa pessoa={{ id: p.id, porId: true }} nome={p.nome} className="size-8 text-xs" />
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-medium text-text">{p.nome}</span>
                       {p.motivo ? (

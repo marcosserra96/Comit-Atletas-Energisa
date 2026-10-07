@@ -37,6 +37,7 @@ import type {
   JustificativaAusenciaDoc,
   StatusJustificativaAusencia,
 } from "@/lib/types";
+import { AvatarPessoa } from "@/components/atletas/AvatarAtleta";
 
 type FiltroStatus = "todas" | StatusJustificativaAusencia;
 
@@ -326,11 +327,14 @@ export function JustificativasTab({
           {filtrados.map((item) => (
             <Card key={item.id} className="flex flex-col gap-4">
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h3 className="truncate font-bold text-text">{item.atletaNome}</h3>
-                  <p className="mt-0.5 text-xs text-text-muted">
-                    {equipeLabel[item.equipe] || item.equipe} · enviada em {formatDateTime(item.criadoEm)}
-                  </p>
+                <div className="flex min-w-0 items-center gap-3">
+                  <AvatarPessoa pessoa={{ id: item.atletaId, porId: true }} nome={item.atletaNome} className="size-10 text-sm" />
+                  <div className="min-w-0">
+                    <h3 className="truncate font-bold text-text">{item.atletaNome}</h3>
+                    <p className="mt-0.5 text-xs text-text-muted">
+                      {equipeLabel[item.equipe] || item.equipe} · enviada em {formatDateTime(item.criadoEm)}
+                    </p>
+                  </div>
                 </div>
                 <Badge tone={tomStatus(item.status)} className="shrink-0">
                   <IconeStatus status={item.status} />
