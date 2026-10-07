@@ -347,9 +347,9 @@ export type SlideDef =
   | { chave: string; tipo: "novos"; atletas: NovoAtletaSlide[]; pagina: number; paginas: number }
   | { chave: string; tipo: "conteudo"; titulo: string; texto: string; imagemId: string | null }
   | { chave: string; tipo: "regras"; regras: LinhaRegra[]; periodos: PeriodoApuracao[] }
-  | { chave: string; tipo: "totais"; titulo: string; corrida: ResultadoEquipe["totais"]; bicicleta: ResultadoEquipe["totais"] }
-  | { chave: string; tipo: "podio"; modalidade: Modalidade; podio: ResultadoEquipe["podio"] }
-  | { chave: string; tipo: "classificacao"; modalidade: Modalidade; colunas: LinhaResultado[][]; pagina: number; paginas: number; temNovos: boolean }
+  | { chave: string; tipo: "totais"; titulo: string; periodo: string; corrida: ResultadoEquipe["totais"]; bicicleta: ResultadoEquipe["totais"] }
+  | { chave: string; tipo: "podio"; modalidade: Modalidade; periodo: string; podio: ResultadoEquipe["podio"] }
+  | { chave: string; tipo: "classificacao"; modalidade: Modalidade; periodo: string; colunas: LinhaResultado[][]; pagina: number; paginas: number; temNovos: boolean }
   | { chave: string; tipo: "agenda"; ano: string; colunas: ColunaAgenda[] }
   | { chave: string; tipo: "app" }
   | { chave: string; tipo: "obrigado" };
@@ -373,6 +373,8 @@ export function montarRoteiro(params: {
   const { periodo } = reuniao;
   const ano = periodo.fim.slice(0, 4);
   const intervalo = intervaloDeMeses(periodo.inicio, periodo.fim);
+  /** "2º Trimestre · Junho a Agosto 2026": contexto no canto dos slides de números. */
+  const rotuloPeriodo = `${periodo.nome} · ${intervalo.replace(/[()]/g, "")} ${ano}`;
   const livres = new Map(reuniao.livres.map((l) => [l.id, l]));
   const slides: SlideDef[] = [];
 
@@ -416,19 +418,20 @@ export function montarRoteiro(params: {
         break;
       case "resultados":
         slides.push({ chave: `${k}-div`, tipo: "divisoria", sobretitulo: "Resultados", titulo: periodo.nome, subtitulo: intervalo, fundo: "resultados" });
-        slides.push({ chave: k, tipo: "totais", titulo: "Resultados totais", corrida: params.corrida.totais, bicicleta: params.bicicleta.totais });
+        slides.push({ chave: k, tipo: "totais", titulo: "Resultados totais", periodo: rotuloPeriodo, corrida: params.corrida.totais, bicicleta: params.bicicleta.totais });
         break;
       case "premiacao": {
         slides.push({ chave: `${k}-div`, tipo: "divisoria", sobretitulo: "Premiação", titulo: periodo.nome, subtitulo: intervalo, fundo: "premiacao" });
         for (const equipe of [params.corrida, params.bicicleta]) {
           if (equipe.ranking.length === 0) continue;
-          if (equipe.podio.length > 0) slides.push({ chave: `${k}-${equipe.modalidade}-podio`, tipo: "podio", modalidade: equipe.modalidade, podio: equipe.podio });
+          if (equipe.podio.length > 0) slides.push({ chave: `${k}-${equipe.modalidade}-podio`, tipo: "podio", modalidade: equipe.modalidade, periodo: rotuloPeriodo, podio: equipe.podio });
           const paginasTabela = paginarClassificacao(equipe.ranking);
           paginasTabela.forEach((colunas, p) =>
             slides.push({
               chave: `${k}-${equipe.modalidade}-tab-${p}`,
               tipo: "classificacao",
               modalidade: equipe.modalidade,
+              periodo: rotuloPeriodo,
               colunas,
               pagina: p + 1,
               paginas: paginasTabela.length,
