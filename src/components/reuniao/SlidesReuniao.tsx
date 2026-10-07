@@ -370,9 +370,9 @@ function Totais({ corrida, bicicleta, titulo, periodo }: Extract<SlideDef, { tip
     km: corrida.km + bicicleta.km,
   };
   const linhaDivisoria = "2px solid #e8eef6";
-  const equipe = (nome: string, t: typeof corrida, cor: string) => (
+  const equipe = (nome: string, t: typeof corrida) => (
     <div style={{ ...cartao, border: "none", flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 20, padding: "24px 34px", background: `linear-gradient(180deg, ${COR.navy}, ${COR.navyEscuro})`, borderTop: `8px solid ${cor}`, color: "#fff" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 20, padding: "26px 40px", background: `linear-gradient(180deg, ${COR.navy}, ${COR.navyEscuro})`, color: "#fff" }}>
         <span style={{ fontSize: 44, fontWeight: 900 }}>Time {nome}</span>
         <span style={{ marginLeft: "auto", fontSize: 30, fontWeight: 700, opacity: 0.9 }}>
           <b style={{ fontSize: 40, fontWeight: 900 }}>{t.atletas}</b> {t.atletas === 1 ? "atleta" : "atletas"}
@@ -397,24 +397,26 @@ function Totais({ corrida, bicicleta, titulo, periodo }: Extract<SlideDef, { tip
   const resumo = [
     { valor: formatPontos(geral.atletas), rotulo: "atletas" },
     { valor: formatPontos(geral.treinos), rotulo: "treinos" },
-    { valor: formatPontos(geral.pontos), rotulo: "pontos" },
-    { valor: kmInteiro(geral.km), rotulo: "km percorridos" },
+    { valor: formatPontos(geral.pontos), rotulo: "pontos", destaque: true },
+    { valor: kmInteiro(geral.km), rotulo: "km" },
   ];
   return (
     <Base fundo="conteudo">
       <TituloConteudo extra={periodo}>{titulo}</TituloConteudo>
       <div style={{ position: "absolute", left: 72, right: 72, top: 168, bottom: 130, display: "flex", flexDirection: "column", gap: 32 }}>
-        <div style={{ display: "flex", borderRadius: 24, background: `linear-gradient(90deg, #ff8a2b, ${COR.laranja} 60%, ${COR.laranjaEscuro})`, boxShadow: "0 16px 36px rgba(243,112,33,.32)", color: "#fff" }}>
+        {/* Total do período: faixa neutra; o laranja fica reservado para pontos em todo o slide. */}
+        <div style={{ display: "flex", alignItems: "stretch", borderRadius: 24, background: "#fff", border: "2px solid #dbe6f3", boxShadow: "0 14px 32px rgba(7,29,64,.12)" }}>
+          <div style={{ display: "flex", alignItems: "center", padding: "0 36px", borderRadius: "22px 0 0 22px", background: COR.azulClaro, fontSize: 24, fontWeight: 900, letterSpacing: "0.1em", textTransform: "uppercase", color: COR.azul }}>No período</div>
           {resumo.map((r, i) => (
-            <div key={r.rotulo} style={{ flex: 1, padding: "22px 0", display: "flex", alignItems: "baseline", justifyContent: "center", gap: 14, borderLeft: i > 0 ? "2px solid rgba(255,255,255,.35)" : "none" }}>
-              <span style={{ fontSize: 70, fontWeight: 900, lineHeight: 1 }}>{r.valor}</span>
-              <span style={{ fontSize: 28, fontWeight: 800, opacity: 0.95 }}>{r.rotulo}</span>
+            <div key={r.rotulo} style={{ flex: 1, padding: "20px 0", display: "flex", alignItems: "baseline", justifyContent: "center", gap: 12, borderLeft: i > 0 ? "2px solid #e8eef6" : "none", color: r.destaque ? COR.laranja : COR.navy }}>
+              <span style={{ fontSize: 66, fontWeight: 900, lineHeight: 1 }}>{r.valor}</span>
+              <span style={{ fontSize: 26, fontWeight: 800, color: COR.cinza }}>{r.rotulo}</span>
             </div>
           ))}
         </div>
         <div style={{ flex: 1, display: "flex", gap: 36 }}>
-          {equipe("Corrida", corrida, COR.laranja)}
-          {equipe("Bike", bicicleta, "#4aa3ff")}
+          {equipe("Corrida", corrida)}
+          {equipe("Bike", bicicleta)}
         </div>
       </div>
       <LogoCanto />
@@ -423,12 +425,14 @@ function Totais({ corrida, bicicleta, titulo, periodo }: Extract<SlideDef, { tip
 }
 
 const MEDALHA: Record<number, string> = { 1: COR.ouro, 2: COR.prata, 3: COR.bronze };
+/** Versões mais claras das medalhas para texto sobre o azul-marinho (contraste no telão). */
+const MEDALHA_TEXTO: Record<number, string> = { 1: "#f5bd2e", 2: "#d4dde8", 3: "#ef9a5e" };
 
 function Podio({ modalidade, podio, fotos, periodo }: Extract<SlideDef, { tipo: "podio" }> & { fotos: Record<string, string> }) {
   const ordem = [2, 1, 3].map((p) => podio.find((d) => d.posicao === p)).filter((d): d is NonNullable<typeof d> => !!d);
-  // Degraus com alturas bem diferentes: o 1º lugar se destaca de longe.
-  const altura: Record<number, number> = { 1: 400, 2: 330, 3: 290 };
   const nome = modalidade === "corrida" ? "Corrida" : "Bike";
+  // Degraus baixos e cheios: o conteúdo ocupa o degrau, e a altura ainda mostra quem ganhou.
+  const altura: Record<number, number> = { 1: 300, 2: 255, 3: 225 };
   return (
     <Base fundo="claro">
       <div style={{ position: "absolute", left: 72, top: 50 }}>
@@ -436,20 +440,22 @@ function Podio({ modalidade, podio, fotos, periodo }: Extract<SlideDef, { tipo: 
         <div style={{ fontSize: 120, fontWeight: 900, lineHeight: 1, ...marinho }}>{nome}</div>
         <div style={{ marginTop: 18, display: "inline-block", padding: "10px 22px", borderRadius: 999, background: "rgba(255,255,255,.9)", border: "2px solid #d6e3f3", fontSize: 24, fontWeight: 700, color: COR.navy }}>{periodo}</div>
       </div>
-      <div style={{ position: "absolute", left: 80, right: 80, bottom: 0, top: 120, display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 30 }}>
+      <div style={{ position: "absolute", left: 80, right: 80, bottom: 0, top: 120, display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 28 }}>
         {ordem.map((d) => {
           const cor = MEDALHA[d.posicao] ?? COR.bronze;
           const dupla = d.atletas.length > 1;
-          const foto = dupla ? (d.posicao === 1 ? 220 : 196) : d.posicao === 1 ? 280 : 228;
-          const fonteNome = dupla ? 26 : 32;
-          const fonteValor = dupla ? 34 : 42;
+          const primeiro = d.posicao === 1;
+          const foto = dupla ? (primeiro ? 250 : 220) : primeiro ? 340 : 270;
+          const largura = dupla ? (primeiro ? 640 : 580) : primeiro ? 540 : 440;
+          const fontePontos = dupla ? 52 : primeiro ? 76 : 62;
+          const fonteNome = dupla ? 28 : primeiro ? 38 : 32;
           return (
-            <div key={d.posicao} style={{ position: "relative", width: dupla ? 600 : d.posicao === 1 ? 500 : 420, display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <div style={{ display: "flex", gap: 36, marginBottom: 34 }}>
+            <div key={d.posicao} style={{ position: "relative", flex: `0 1 ${largura}px`, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <div style={{ display: "flex", gap: dupla ? 40 : 0, marginBottom: 40 }}>
                 {d.atletas.map((a) => (
                   <div key={a.id} style={{ position: "relative" }}>
                     <Avatar nome={a.nome} foto={fotos[a.id]} tamanho={foto} anel={cor} />
-                    <span style={{ position: "absolute", left: "50%", bottom: -26, transform: "translateX(-50%)", width: 68, height: 68, borderRadius: "50%", background: `radial-gradient(circle at 35% 30%, #ffffff99, ${cor} 62%)`, border: "4px solid #fff", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, fontWeight: 900, textShadow: "0 2px 3px rgba(0,0,0,.3)", boxShadow: "0 6px 14px rgba(0,0,0,.25)" }}>
+                    <span style={{ position: "absolute", left: "50%", bottom: -30, transform: "translateX(-50%)", width: 76, height: 76, borderRadius: "50%", background: `radial-gradient(circle at 35% 30%, #ffffff99, ${cor} 62%)`, border: "5px solid #fff", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 42, fontWeight: 900, textShadow: "0 2px 3px rgba(0,0,0,.3)", boxShadow: "0 6px 14px rgba(0,0,0,.25)" }}>
                       {d.posicao}
                     </span>
                   </div>
@@ -460,41 +466,33 @@ function Podio({ modalidade, podio, fotos, periodo }: Extract<SlideDef, { tipo: 
                   position: "relative",
                   overflow: "hidden",
                   width: "100%",
-                  height: altura[d.posicao] ?? 290,
-                  borderRadius: "24px 24px 0 0",
+                  height: altura[d.posicao] ?? 240,
+                  borderRadius: "26px 26px 0 0",
                   background: `linear-gradient(180deg, ${COR.navy}, ${COR.navyEscuro})`,
-                  borderTop: `10px solid ${cor}`,
+                  borderTop: `12px solid ${cor}`,
                   boxShadow: "0 -10px 30px rgba(7,29,64,.25)",
-                  padding: "24px 22px",
+                  padding: "26px 24px 0",
                   display: "flex",
-                  gap: 20,
+                  gap: 24,
                   color: "#fff",
                 }}
               >
-                {/* Número grande e apagado no degrau, como num pódio de verdade. */}
-                <span style={{ position: "absolute", left: 0, right: 0, bottom: -40, textAlign: "center", fontSize: 260, fontWeight: 900, lineHeight: 1, color: "rgba(255,255,255,.06)" }}>{d.posicao}</span>
-                {d.atletas.map((a) => (
-                  <div key={a.id} style={{ position: "relative", flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "stretch", gap: 18 }}>
-                    <div style={{ background: "#fff", color: COR.navy, borderRadius: 12, padding: "8px 12px", textAlign: "center", fontSize: fonteNome, fontWeight: 900, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {nomeCurto(a.nome, dupla ? 16 : 22)}
+                {d.atletas.map((a, i) => (
+                  <div key={a.id} style={{ flex: 1, minWidth: 0, textAlign: "center", borderLeft: i > 0 ? "2px solid rgba(255,255,255,.14)" : "none", paddingLeft: i > 0 ? 24 : 0 }}>
+                    <div style={{ fontSize: fonteNome, fontWeight: 900, lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{nomeCurto(a.nome, dupla ? 16 : 22)}</div>
+                    {/* Pontos decidem a posição: são o número grande. Treinos e km vêm de apoio. */}
+                    <div style={{ marginTop: 14, display: "flex", alignItems: "baseline", justifyContent: "center", gap: 10, color: MEDALHA_TEXTO[d.posicao] ?? cor }}>
+                      <span style={{ fontSize: fontePontos, fontWeight: 900, lineHeight: 1 }}>{formatPontos(a.pontos)}</span>
+                      <span style={{ fontSize: dupla ? 22 : 26, fontWeight: 800 }}>pontos</span>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)" }}>
-                      {[
-                        { v: formatPontos(a.pontos), r: "pontos" },
-                        { v: String(a.treinos), r: "treinos" },
-                        { v: kmInteiro(a.km), r: "km" },
-                      ].map((x, i) => (
-                        <div key={x.r} style={{ textAlign: "center", borderLeft: i > 0 ? "2px solid rgba(255,255,255,.15)" : "none" }}>
-                          <div style={{ fontSize: fonteValor, fontWeight: 900, lineHeight: 1, color: "#fff" }}>{x.v}</div>
-                          <div style={{ marginTop: 8, fontSize: dupla ? 16 : 19, fontWeight: 700, letterSpacing: dupla ? "0.04em" : "0.1em", textTransform: "uppercase", color: i === 0 ? cor : "rgba(255,255,255,.65)" }}>{x.r}</div>
-                        </div>
-                      ))}
+                    <div style={{ marginTop: 14, fontSize: dupla ? 23 : 27, fontWeight: 700, color: "rgba(255,255,255,.8)", whiteSpace: "nowrap" }}>
+                      {a.treinos} {a.treinos === 1 ? "treino" : "treinos"} · {kmInteiro(a.km)} km
                     </div>
                   </div>
                 ))}
               </div>
               {d.total > d.atletas.length ? (
-                <div style={{ position: "absolute", bottom: 18, left: 0, right: 0, textAlign: "center", fontSize: 22, fontWeight: 700, color: "#ffffffcc" }}>e mais {d.total - d.atletas.length} empatados</div>
+                <div style={{ position: "absolute", bottom: 20, left: 0, right: 0, textAlign: "center", fontSize: 22, fontWeight: 700, color: "#ffffffcc" }}>e mais {d.total - d.atletas.length} empatados</div>
               ) : null}
             </div>
           );
