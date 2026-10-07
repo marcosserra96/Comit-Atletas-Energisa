@@ -1,6 +1,7 @@
 "use client";
 
 import { AcessoPortalCard } from "@/components/senha/AcessoPortalCard";
+import { EditorFotoAtleta } from "@/components/atletas/AvatarAtleta";
 import { useEffect, useState } from "react";
 import { collection, doc, getDocs, query, serverTimestamp, where, writeBatch } from "firebase/firestore";
 import { Eye, EyeOff, UserRound } from "lucide-react";
@@ -111,6 +112,7 @@ export function FichaResumoTab({ atleta }: { atleta: AtletaDoc }) {
 
   return (
     <div className="flex flex-col gap-5">
+      <EditorFotoAtleta atleta={atleta} />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="rounded-[var(--radius)] border border-border bg-bg p-4">
           <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-text-muted">

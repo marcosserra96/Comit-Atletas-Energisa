@@ -192,12 +192,12 @@ export function ExportarRelatorioDropdown({
             role="menuitem"
             onClick={() => {
               setOpen(false);
-              window.open("/apresentacao", "_blank");
+              window.location.assign("/gestao/reuniao");
             }}
             className="flex w-full items-center gap-2.5 rounded-[calc(var(--radius)-2px)] px-2.5 py-2.5 text-left text-sm font-medium text-text hover:bg-bg"
           >
             <Presentation className="size-4 text-primary" />
-            Apresentação
+            Reunião de resultados
           </button>
         </div>
       )}

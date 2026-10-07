@@ -1,5 +1,6 @@
 "use client";
 
+import { dataIsoLocal } from "@/lib/date";
 import { Fragment, FormEvent, useState } from "react";
 import { doc, serverTimestamp, writeBatch } from "firebase/firestore";
 import { AlertOctagon, Trash2 } from "lucide-react";
@@ -37,6 +38,8 @@ export function FichaCadastroTab({ atleta, onSaved }: { atleta: AtletaDoc; onSav
       const entrouNaFilaAgora = equipe.startsWith("fila_") && !atleta.equipe.startsWith("fila_");
       const saiuDaFilaAgora = !equipe.startsWith("fila_") && atleta.equipe.startsWith("fila_");
       const ativoAtualizado = entrouNaFilaAgora ? false : saiuDaFilaAgora ? true : atleta.ativo;
+      // Entrou agora numa equipe (vindo da fila, de outra equipe ou do comitê): vira "novo atleta".
+      const entrouNaEquipeAgora = (equipe === "corrida" || equipe === "bicicleta") && equipe !== atleta.equipe;
       const batch = writeBatch(db);
       batch.update(doc(db, "atletas", atleta.id), {
         nome,
@@ -54,6 +57,7 @@ export function FichaCadastroTab({ atleta, onSaved }: { atleta: AtletaDoc; onSav
         // Só ganha uma nova posição (vai pro fim) se está entrando na fila agora;
         // se já estava nessa mesma fila, mantém a ordem definida por drag-and-drop.
         ...(entrouNaFilaAgora ? { ordemFila: Date.now() } : {}),
+        ...(entrouNaEquipeAgora ? { entrouNaEquipeEm: dataIsoLocal() } : {}),
         atualizadoEm: serverTimestamp(),
       });
       batch.set(

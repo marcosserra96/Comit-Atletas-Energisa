@@ -21,7 +21,7 @@ export const PERMISSAO_LABEL: Record<PermissaoChave, string> = {
   historicoMensal: "Histórico mensal (lançar e editar totais do mês)",
   eventos: "Eventos",
   noticias: "Notícias",
-  informativo: "Informativo (gerar e baixar as artes de divulgação)",
+  informativo: "Informativo e reunião de resultados (artes de divulgação e apresentação)",
   pesquisas: "Pesquisas (criar questionários e ver as respostas)",
   notificacoes: "Notificações (enviar avisos no celular dos atletas)",
   financeiro: "Financeiro (acesso e edição)",

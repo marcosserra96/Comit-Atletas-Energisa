@@ -41,6 +41,10 @@ export interface AtletaDoc {
   criadoPor?: string;
   /** Posição relativa na fila de espera (menor = mais perto de entrar). Só relevante quando equipe é fila_*. */
   ordemFila?: number;
+  /** Quando há foto (fotos_atletas/{id}, só pelo servidor): muda a cada troca. */
+  fotoVersao?: number;
+  /** Dia (YYYY-MM-DD) em que entrou na equipe de Corrida ou Bike: alimenta "Novos atletas". */
+  entrouNaEquipeEm?: string;
 }
 
 export type AtletaPublicoDoc = Pick<

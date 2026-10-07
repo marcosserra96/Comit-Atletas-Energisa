@@ -1,5 +1,6 @@
 "use client";
 
+import { dataIsoLocal } from "@/lib/date";
 import { FormEvent, useState } from "react";
 import { collection, doc, serverTimestamp, writeBatch } from "firebase/firestore";
 import { User, Mail, UserPlus } from "lucide-react";
@@ -48,6 +49,8 @@ export function CadastrarTab() {
         ativo: !equipe.startsWith("fila_"),
         visivelNasListas: true,
         ordemFila: equipe.startsWith("fila_") ? Date.now() : null,
+        // Entrou direto numa equipe: conta como novo atleta a partir de hoje.
+        ...(equipe === "corrida" || equipe === "bicicleta" ? { entrouNaEquipeEm: dataIsoLocal() } : {}),
         pontuacaoTotal: 0,
         authUid: null,
         criadoEm: serverTimestamp(),
