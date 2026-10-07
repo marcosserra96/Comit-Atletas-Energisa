@@ -31,6 +31,7 @@ import { AparenciaCard } from "@/components/account/AparenciaCard";
 import { SenhaCard } from "@/components/account/SenhaCard";
 import { equipeLabel, isWaitlisted, modalidadeFromEquipe } from "@/lib/labels";
 import { modalidadeLabel } from "@/lib/labels";
+import { FotoDoPerfil } from "@/components/atletas/AvatarAtleta";
 
 export default function PerfilPage() {
   const { atleta, isPreview, withPreview } = useAthleteView();
@@ -76,9 +77,7 @@ export default function PerfilPage() {
 
       {/* HERO SECTION */}
       <Card className="flex flex-row items-center gap-4 bg-gradient-to-br from-bg to-bg-inset p-4 sm:items-start sm:gap-6 sm:p-8 border-border">
-        <span className="flex size-16 shrink-0 items-center justify-center rounded-full bg-primary/10 text-2xl font-black text-primary shadow-sm sm:size-24 sm:text-4xl">
-          {atleta.nome.trim().charAt(0).toUpperCase()}
-        </span>
+        <FotoDoPerfil atleta={atleta} somenteLeitura={isPreview} />
         <div className="flex min-w-0 w-full flex-col items-start gap-2 sm:gap-3">
           <div className="min-w-0 text-left">
             <h2 className="truncate text-lg font-extrabold text-text sm:text-2xl">{atleta.nome}</h2>
