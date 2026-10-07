@@ -8,6 +8,7 @@ import { buscaCombina } from "@/lib/semelhancaNome";
 import { LIMITE_SELECIONADOS } from "@/lib/push/regras";
 import type { PessoaPush } from "@/lib/push/comite";
 import type { Equipe } from "@/lib/types";
+import { AvatarPessoa } from "@/components/atletas/AvatarAtleta";
 
 type Filtro = "todos" | "corrida" | "bicicleta" | "comite";
 
@@ -75,9 +76,10 @@ export function SeletorDePessoas({
               key={p.id}
               type="button"
               onClick={() => alternar(p.id)}
-              className="inline-flex min-h-8 items-center gap-1 rounded-full bg-primary-subtle py-1 pl-3 pr-2 text-xs font-semibold text-text transition-colors hover:bg-primary/15"
+              className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-primary-subtle py-1 pl-1 pr-2 text-xs font-semibold text-text transition-colors hover:bg-primary/15"
               aria-label={`Tirar ${p.nome}`}
             >
+              <AvatarPessoa pessoa={{ id: p.id, porId: true }} nome={p.nome} className="size-6 text-[9px]" />
               {p.nome}
               <X className="size-3.5 text-text-muted" aria-hidden="true" />
             </button>
@@ -172,6 +174,7 @@ export function SeletorDePessoas({
                   >
                     {marcado ? <Check className="size-3.5" /> : null}
                   </span>
+                  <AvatarPessoa pessoa={{ id: p.id, porId: true }} nome={p.nome} className={cn("size-8 text-xs", !recebe && "opacity-50")} />
                   <span className={cn("min-w-0 flex-1 truncate font-medium", recebe ? "text-text" : "text-text-muted")}>
                     {p.nome}
                   </span>

@@ -18,6 +18,7 @@ import type { AtletaDoc, Equipe } from "@/lib/types";
 import { formatPontos, plural } from "@/lib/format";
 import { PainelNumeros } from "@/components/ui/PainelNumeros";
 import { ChevronRight } from "lucide-react";
+import { AvatarPessoa } from "@/components/atletas/AvatarAtleta";
 
 function useAtletasPorEquipe(equipe: Equipe, ordenarPorFila = false) {
   const [atletas, setAtletas] = useState<AtletaDoc[] | null>(null);
@@ -68,9 +69,8 @@ function ListaSimples({
             onClick={() => onAbrir(a)}
             className="group flex min-h-12 w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-bg-inset focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
           >
-            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-bg text-xs font-bold tabular-nums text-text-light">
-              {i + 1}
-            </span>
+            <span className="w-6 shrink-0 text-right text-xs font-bold tabular-nums text-text-light">{i + 1}</span>
+            <AvatarPessoa pessoa={a} nome={a.nome} className={cn("size-8 text-xs", !a.ativo && "opacity-60")} />
             <span className={cn("min-w-0 flex-1 truncate text-sm font-medium", a.ativo ? "text-text" : "text-text-muted")}>
               {a.nome}
             </span>
@@ -160,9 +160,8 @@ function FilaList({
           )}
         >
           <GripVertical className="size-4 shrink-0 text-text-muted" />
-          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-bg text-xs font-bold text-text-light">
-            {i + 1}
-          </span>
+          <span className="w-6 shrink-0 text-right text-xs font-bold tabular-nums text-text-light">{i + 1}</span>
+          <AvatarPessoa pessoa={a} nome={a.nome} className="size-8 text-xs" />
           <span className="min-w-0 flex-1 truncate text-sm font-medium text-text">{a.nome}</span>
           <button
             type="button"

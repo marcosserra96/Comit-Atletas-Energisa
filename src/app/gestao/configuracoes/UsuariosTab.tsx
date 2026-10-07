@@ -21,6 +21,7 @@ import { TestarPermissoesModal } from "./TestarPermissoesModal";
 import { CorrigirVinculoModal } from "./CorrigirVinculoModal";
 import type { AtletaDoc, Equipe, Role } from "@/lib/types";
 import { plural } from "@/lib/format";
+import { AvatarPessoa } from "@/components/atletas/AvatarAtleta";
 
 interface ResultadoSincronizacao {
   total: number;
@@ -413,9 +414,7 @@ export function UsuariosTab() {
           {comiteFiltrado.map((pessoa) => (
             <Card key={pessoa.id} className="flex flex-col gap-3">
               <div className="flex items-center gap-3">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
-                  {pessoa.nome.trim().charAt(0).toUpperCase()}
-                </span>
+                <AvatarPessoa pessoa={pessoa} nome={pessoa.nome} className="size-10 text-sm" tom="bg-primary/10 text-primary" />
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-text">{pessoa.nome}</p>
                   <p className="truncate text-xs text-text-light">{pessoa.email}</p>
@@ -459,9 +458,7 @@ export function UsuariosTab() {
             {atletasFiltrados.map((pessoa) => (
               <li key={pessoa.id} className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:gap-4">
                 <div className="flex min-w-0 flex-1 items-center gap-3">
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
-                    {pessoa.nome.trim().charAt(0).toUpperCase()}
-                  </span>
+                  <AvatarPessoa pessoa={pessoa} nome={pessoa.nome} className="size-9 text-xs" tom="bg-primary/10 text-primary" />
                   <div className="min-w-0">
                     <p className="truncate font-semibold text-text">{pessoa.nome}</p>
                     <p className="truncate text-xs text-text-light">{pessoa.email}</p>

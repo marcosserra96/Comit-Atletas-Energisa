@@ -53,30 +53,51 @@ async function api<T>(caminho: string, init: RequestInit = {}): Promise<T> {
   return corpo;
 }
 
-// Cache da sessão: id → { versão, foto }. A versão vem do cadastro (fotoVersao).
-const cache = new Map<string, { versao: number; url: string }>();
+// Cache da sessão: id → { versão, foto ou null (sem foto) }. A versão vem do cadastro (fotoVersao).
+const cache = new Map<string, { versao: number; url: string | null }>();
 const ouvintes = new Set<() => void>();
 const avisar = () => ouvintes.forEach((f) => f());
 
-export async function salvarFotoAtleta(atletaId: string, dataUrl: string | null) {
-  await api("/api/fotos/atletas", { method: "POST", body: JSON.stringify({ atletaId, dataUrl }) });
-  if (dataUrl) cache.set(atletaId, { versao: Date.now(), url: dataUrl });
-  else cache.delete(atletaId);
+// Pedidos de várias telas/linhas no mesmo instante viram uma chamada só.
+const fila = new Map<string, number>();
+const emVoo = new Set<string>();
+let agendado: ReturnType<typeof setTimeout> | null = null;
+
+function pedir(id: string, versao: number) {
+  if (emVoo.has(id)) return; // já está sendo buscada; a resposta avisa todas as telas
+  fila.set(id, Math.max(versao, fila.get(id) ?? 0));
+  if (agendado) return;
+  agendado = setTimeout(() => void buscarFila(), 25);
+}
+
+async function buscarFila() {
+  agendado = null;
+  const itens = [...fila.entries()];
+  fila.clear();
+  itens.forEach(([id]) => emVoo.add(id));
+  for (let i = 0; i < itens.length; i += 150) {
+    const lote = itens.slice(i, i + 150);
+    // A versão vai na URL: trocar a foto muda o endereço e o navegador não reaproveita a antiga do cache.
+    const versoes = lote.map(([, v]) => v).join(".");
+    try {
+      const { fotos } = await api<{ fotos: Record<string, string> }>(`/api/fotos/atletas?ids=${lote.map(([id]) => id).join(",")}&v=${versoes}`);
+      for (const [id, versao] of lote) cache.set(id, { versao, url: fotos[id] ?? null });
+    } catch {
+      // Sem foto, o avatar mostra as iniciais (tenta de novo na próxima vez que a tela pedir).
+    }
+    lote.forEach(([id]) => emVoo.delete(id));
+  }
   avisar();
 }
 
-/**
- * Fotos de uma lista de atletas. Só busca quem tem `fotoVersao` e ainda não
- * está no cache com essa versão. Devolve id → data URL.
- */
-export function useFotosAtletas(atletas: readonly { id: string; fotoVersao?: number | null }[]) {
-  const [, forcar] = useState(0);
-  const chave = atletas
-    .filter((a) => a.fotoVersao)
-    .map((a) => `${a.id}:${a.fotoVersao}`)
-    .sort()
-    .join(",");
+export async function salvarFotoAtleta(atletaId: string, dataUrl: string | null) {
+  await api("/api/fotos/atletas", { method: "POST", body: JSON.stringify({ atletaId, dataUrl }) });
+  cache.set(atletaId, { versao: Date.now(), url: dataUrl });
+  avisar();
+}
 
+function useAvisos() {
+  const [, forcar] = useState(0);
   useEffect(() => {
     const f = () => forcar((n) => n + 1);
     ouvintes.add(f);
@@ -84,47 +105,48 @@ export function useFotosAtletas(atletas: readonly { id: string; fotoVersao?: num
       ouvintes.delete(f);
     };
   }, []);
+}
 
+/**
+ * Pessoa para buscar foto:
+ * - com `fotoVersao` (cadastro completo): busca quando a versão é nova; sem o campo, não tem foto;
+ * - `porId: true` (lista que só conhece o id, ex.: confirmados de evento): busca uma vez pelo id.
+ */
+export type PessoaComFoto = { id: string; fotoVersao?: number | null; porId?: boolean };
+
+const precisa = (p: PessoaComFoto) => {
+  if (p.porId) return !cache.has(p.id);
+  return !!p.fotoVersao && (cache.get(p.id)?.versao ?? 0) < p.fotoVersao;
+};
+
+/** Fotos de uma lista de pessoas: id → data URL (só de quem tem foto). */
+export function useFotosAtletas(pessoas: readonly PessoaComFoto[]) {
+  useAvisos();
+  const chave = pessoas
+    .filter((p) => p.porId || p.fotoVersao)
+    .map((p) => `${p.id}:${p.porId ? "id" : p.fotoVersao}`)
+    .sort()
+    .join(",");
   useEffect(() => {
     if (!chave) return;
-    const faltam = chave
-      .split(",")
-      .map((p) => {
-        const [id, v] = p.split(":");
-        return { id, versao: Number(v) };
-      })
-      .filter(({ id, versao }) => (cache.get(id)?.versao ?? 0) < versao);
-    if (faltam.length === 0) return;
-    const versaoDe = new Map(faltam.map((f) => [f.id, f.versao]));
-    (async () => {
-      for (let i = 0; i < faltam.length; i += 150) {
-        const lote = faltam.slice(i, i + 150).map((f) => f.id);
-        try {
-          // A versão vai na URL: trocar a foto muda o endereço e o navegador não reaproveita a antiga do cache.
-          const versoes = lote.map((id) => versaoDe.get(id)).join(".");
-          const { fotos } = await api<{ fotos: Record<string, string> }>(`/api/fotos/atletas?ids=${lote.join(",")}&v=${versoes}`);
-          for (const [id, url] of Object.entries(fotos)) cache.set(id, { versao: versaoDe.get(id) ?? Date.now(), url });
-        } catch {
-          // Sem foto, o avatar mostra as iniciais.
-        }
-      }
-      avisar();
-    })();
+    for (const p of pessoas) if (precisa(p)) pedir(p.id, p.porId ? 0 : (p.fotoVersao ?? 0));
+    // `pessoas` muda de identidade a cada render; a chave resume o que importa.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chave]);
 
   // Calculado a cada render (barato): o cache muda fora do React e `avisar` re-renderiza.
   const out: Record<string, string> = {};
-  for (const a of atletas) {
-    const c = cache.get(a.id);
-    if (c && a.fotoVersao) out[a.id] = c.url;
+  for (const p of pessoas) {
+    const c = cache.get(p.id);
+    if (c?.url && (p.porId || p.fotoVersao)) out[p.id] = c.url;
   }
   return out;
 }
 
-/** Foto de uma pessoa só (barra do topo, menu, ficha). */
-export function useFotoAtleta(atleta: { id: string; fotoVersao?: number | null } | null | undefined) {
-  const fotos = useFotosAtletas(atleta ? [atleta] : []);
-  return atleta ? fotos[atleta.id] : undefined;
+/** Foto de uma pessoa só (barra do topo, menu, ficha, linha de lista). */
+export function useFotoAtleta(pessoa: PessoaComFoto | null | undefined) {
+  const fotos = useFotosAtletas(pessoa ? [pessoa] : []);
+  return pessoa ? fotos[pessoa.id] : undefined;
 }
 
 export { FOTO_LADO };

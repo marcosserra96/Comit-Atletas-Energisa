@@ -9,6 +9,8 @@ import "@fontsource/barlow/600.css";
 import "@fontsource/barlow/700.css";
 import { forwardRef, type CSSProperties, type ReactNode } from "react";
 import { formatDistancia, formatPontos, plural } from "@/lib/format";
+import { iniciais } from "@/lib/fotoRegras";
+import { useFotosAtletas } from "@/lib/fotos";
 import {
   CAPACIDADE,
   DIMENSOES,
@@ -318,6 +320,7 @@ function Podio({
   cor: string;
   escala: number;
 }) {
+  const fotos = useFotosAtletas(degraus.flatMap((d) => d.atletas.map((a) => ({ id: a.id, porId: true }))));
   if (degraus.length === 0) return null;
   const ordem = degraus.length === 1 ? [degraus[0]] : degraus.length === 2 ? [degraus[1], degraus[0]] : [degraus[1], degraus[0], degraus[2]];
   const altura: Record<number, number> = { 1: 190, 2: 136, 3: 100 };
@@ -328,8 +331,61 @@ function Podio({
         const primeiro = degrau.posicao === 1;
         const empate = degrau.atletas.length > 1;
         const nomeTam = (empate ? 26 : primeiro ? 38 : 32) * escala;
+        const lado = (primeiro ? 84 : 70) * escala;
+        const comFoto = degrau.atletas.some((a) => fotos[a.id]);
         return (
           <div key={degrau.posicao} style={{ width: 240 * escala, display: "flex", flexDirection: "column", alignItems: "center" }}>
+            {comFoto ? (
+              // Com foto: rostos no anel da medalha (lado a lado no empate) e a posição num selo embaixo.
+              <div style={{ position: "relative", display: "flex", justifyContent: "center", marginBottom: 10 * escala }}>
+                {degrau.atletas.slice(0, 3).map((a, i) => (
+                  <div
+                    key={a.id}
+                    style={{
+                      width: empate ? lado * 0.86 : lado,
+                      height: empate ? lado * 0.86 : lado,
+                      marginLeft: i > 0 ? -12 * escala : 0,
+                      borderRadius: "50%",
+                      border: `${4 * escala}px solid ${medalha}`,
+                      overflow: "hidden",
+                      background: COR.fundo,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontFamily: DISPLAY,
+                      fontWeight: 800,
+                      fontSize: (empate ? 24 : 30) * escala,
+                      color: medalha,
+                    }}
+                  >
+                    {fotos[a.id] ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={fotos[a.id]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      iniciais(a.nome)
+                    )}
+                  </div>
+                ))}
+                <span
+                  style={{
+                    position: "absolute",
+                    left: "50%",
+                    bottom: -12 * escala,
+                    transform: "translateX(-50%)",
+                    padding: `${2 * escala}px ${10 * escala}px`,
+                    borderRadius: 999,
+                    background: medalha,
+                    color: COR.fundo,
+                    fontFamily: DISPLAY,
+                    fontWeight: 800,
+                    fontSize: 18 * escala,
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {degrau.posicao}º
+                </span>
+              </div>
+            ) : (
             <div
               style={{
                 width: (primeiro ? 84 : 70) * escala,
@@ -348,6 +404,7 @@ function Podio({
             >
               {degrau.posicao}º
             </div>
+            )}
             {empate ? (
               <div
                 style={{

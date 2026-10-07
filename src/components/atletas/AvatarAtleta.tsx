@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { Camera, Trash2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { iniciais, FOTO_LADO } from "@/lib/fotoRegras";
-import { reduzirImagem, salvarFotoAtleta, useFotosAtletas } from "@/lib/fotos";
+import { reduzirImagem, salvarFotoAtleta, useFotoAtleta, useFotosAtletas, type PessoaComFoto } from "@/lib/fotos";
 import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -56,6 +56,25 @@ export function AvatarAtleta({
       )}
     </span>
   );
+}
+
+/**
+ * Avatar que busca a própria foto (pelo cache compartilhado, em lote com o
+ * resto da tela). Para listas: troque a bolinha da inicial por este.
+ */
+export function AvatarPessoa({
+  pessoa,
+  nome,
+  className,
+  tom,
+}: {
+  pessoa: PessoaComFoto;
+  nome: string;
+  className?: string;
+  tom?: string;
+}) {
+  const foto = useFotoAtleta(pessoa);
+  return <AvatarAtleta nome={nome} foto={foto} className={className} tom={tom} />;
 }
 
 /** Trocar ou tirar a foto (ficha do comitê e Perfil do atleta). */
