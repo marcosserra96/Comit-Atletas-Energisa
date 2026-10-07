@@ -10,6 +10,8 @@ import { roleLabel } from "@/lib/labels";
 import { useTituloDaPaginaForaDaTela } from "@/components/layout/useTituloDaPaginaForaDaTela";
 import { cn } from "@/lib/cn";
 import { SinoDeAvisos } from "@/components/avisos/CentralDeAvisos";
+import { AvatarAtleta } from "@/components/atletas/AvatarAtleta";
+import { useFotoAtleta } from "@/lib/fotos";
 
 const titleByPath: Record<string, string> = {
   "/dashboard": "Início",
@@ -29,7 +31,7 @@ export function AtletaTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
   const { atleta, isPreview, withPreview } = useAthleteView();
   const title = titleByPath[pathname] ?? "";
   const mostrarTitulo = useTituloDaPaginaForaDaTela(pathname);
-  const initial = atleta.nome.trim().charAt(0).toUpperCase();
+  const foto = useFotoAtleta(atleta);
   const tambemComite = !isPreview && souTambemAtleta(usuario, sessionAtleta);
 
   return (
@@ -70,9 +72,7 @@ export function AtletaTopbar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
           aria-label={`Perfil de ${atleta.nome}`}
           className="-mr-1.5 flex min-h-11 items-center gap-2.5 rounded-full p-1.5 transition-colors hover:bg-bg lg:mr-0"
         >
-          <span className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
-            {initial}
-          </span>
+          <AvatarAtleta nome={atleta.nome} foto={foto} className="size-8 text-xs" tom="bg-primary/10 text-primary" />
           <div className="hidden leading-tight sm:block">
             <span className="block text-sm font-medium text-text">{atleta.nome.split(" ")[0]}</span>
             {(tambemComite || isPreview) && (

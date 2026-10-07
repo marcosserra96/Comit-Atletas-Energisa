@@ -30,6 +30,8 @@ import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { FichaAtletaModal } from "./ficha/FichaAtletaModal";
 import { PainelNumeros } from "@/components/ui/PainelNumeros";
 import type { AtletaDoc, Equipe } from "@/lib/types";
+import { AvatarAtleta } from "@/components/atletas/AvatarAtleta";
+import { useFotosAtletas } from "@/lib/fotos";
 
 type FiltroModalidade = "todas" | "corrida" | "bicicleta";
 type Visualizacao = "cards" | "lista";
@@ -116,6 +118,7 @@ export function VerAtletasTab() {
       return matchModalidade && matchBusca && matchSituacao;
     });
   }, [atletas, busca, filtroModalidade, filtroSituacao]);
+  const fotos = useFotosAtletas(filtrados);
 
   const kmTotal = filtrados.reduce((sum, a) => sum + (resumos[a.id]?.km ?? 0), 0);
   const kmBike = filtrados
@@ -251,9 +254,7 @@ export function VerAtletasTab() {
                   onClick={() => setFichaAberta(a)}
                   className="group flex min-w-0 cursor-pointer items-center gap-3 rounded-[var(--radius)] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
-                    {a.nome.trim().charAt(0).toUpperCase()}
-                  </span>
+                  <AvatarAtleta nome={a.nome} foto={fotos[a.id]} className="size-10 text-sm" tom="bg-primary/10 text-primary" />
                   <span className="min-w-0">
                     <span className="block truncate font-semibold text-text group-hover:text-primary">{a.nome}</span>
                     <span className="block text-xs text-text-light">{equipeLabel[a.equipe]}</span>
@@ -319,8 +320,13 @@ export function VerAtletasTab() {
                 return (
                   <tr key={a.id} className="border-b border-border last:border-0 hover:bg-primary/[0.03]">
                     <td className="px-3.5 py-2.5">
-                      <p className="font-semibold text-text">{a.nome}</p>
-                      <p className="text-xs text-text-light">{a.email ?? "—"}</p>
+                      <div className="flex items-center gap-3">
+                        <AvatarAtleta nome={a.nome} foto={fotos[a.id]} className="size-8 text-xs" tom="bg-primary/10 text-primary" />
+                        <div className="min-w-0">
+                          <p className="font-semibold text-text">{a.nome}</p>
+                          <p className="text-xs text-text-light">{a.email ?? "—"}</p>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-3.5 py-2.5 text-text-light">{equipeLabel[a.equipe]}</td>
                     <td className="px-3.5 py-2.5 text-text-light">{formatPontos(a.pontuacaoTotal)}</td>

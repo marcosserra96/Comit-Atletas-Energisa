@@ -30,17 +30,20 @@ export function AvatarAtleta({
   nome,
   foto,
   className,
+  tom,
 }: {
   nome: string;
   foto?: string | null;
   /** Tamanho e tipografia (ex.: "size-10 text-sm"). */
   className?: string;
+  /** Cores das iniciais quando não há foto. Padrão: um tom fixo por nome. */
+  tom?: string;
 }) {
   return (
     <span
       className={cn(
         "inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-bold",
-        !foto && tomDoNome(nome),
+        !foto && (tom ?? tomDoNome(nome)),
         className ?? "size-10 text-sm",
       )}
       aria-hidden="true"
@@ -124,7 +127,7 @@ export function EditorFotoAtleta({
               Remover foto
             </button>
           ) : (
-            <p className="text-xs text-text-muted">Rosto bem visível. Aparece no pódio da reunião.</p>
+            <p className="text-xs text-text-muted">Rosto bem visível. Aparece no portal e no pódio da reunião.</p>
           )}
         </div>
       ) : null}
@@ -161,7 +164,7 @@ export function FotoDoPerfil({
         <div className="flex flex-col gap-4">
           <EditorFotoAtleta atleta={atleta} />
           <p className="text-sm text-text-light">
-            Use uma foto com o rosto bem visível. Ela aparece para o comitê e no pódio da reunião de resultados.
+            Use uma foto com o rosto bem visível. Ela aparece no seu perfil, no ranking da sua equipe, para o comitê e no pódio da reunião de resultados.
           </p>
         </div>
       </Modal>

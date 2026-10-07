@@ -3,6 +3,7 @@
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { AparenciaCard } from "@/components/account/AparenciaCard";
 import { SenhaCard } from "@/components/account/SenhaCard";
+import { FotoCard } from "@/components/account/FotoCard";
 
 export default function MinhaContaPage() {
   const { atleta } = useActiveSession();
@@ -17,6 +18,7 @@ export default function MinhaContaPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <FotoCard />
         <AparenciaCard />
         <SenhaCard />
       </div>

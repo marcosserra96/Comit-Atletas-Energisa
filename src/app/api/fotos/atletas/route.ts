@@ -53,11 +53,15 @@ export async function POST(request: Request) {
 
     const atletaRef = db.collection("atletas").doc(atletaId);
     if (!(await atletaRef.get()).exists) throw new ApiAuthError("Atleta não encontrado.", 404);
+    // Cópia pública (ranking da equipe): leva a versão da foto para os colegas também verem.
+    const publicoRef = db.collection("atletas_publicos").doc(atletaId);
+    const temPublico = (await publicoRef.get()).exists;
 
     const batch = db.batch();
     if (corpo.dataUrl === null) {
       batch.delete(db.collection(COLECAO).doc(atletaId));
       batch.update(atletaRef, { fotoVersao: FieldValue.delete() });
+      if (temPublico) batch.update(publicoRef, { fotoVersao: FieldValue.delete() });
     } else {
       if (!fotoValida(corpo.dataUrl)) {
         throw new ApiAuthError(`Foto inválida ou grande demais (até ${Math.round(FOTO_TAMANHO_MAXIMO / 1000)} KB).`, 400);
@@ -65,6 +69,7 @@ export async function POST(request: Request) {
       const versao = Date.now();
       batch.set(db.collection(COLECAO).doc(atletaId), { dataUrl: corpo.dataUrl, atualizadoEm: FieldValue.serverTimestamp(), atualizadoPor: decodedToken.uid });
       batch.update(atletaRef, { fotoVersao: versao });
+      if (temPublico) batch.update(publicoRef, { fotoVersao: versao });
     }
     await batch.commit();
     return Response.json({ ok: true });

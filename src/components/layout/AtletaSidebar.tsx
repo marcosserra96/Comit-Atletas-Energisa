@@ -23,6 +23,7 @@ import { useGavetaMobile } from "@/components/layout/useGavetaMobile";
 import { useAthleteView } from "@/lib/session/AthleteViewProvider";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { souTambemAtleta } from "@/lib/session/dualRole";
+import { useFotoAtleta } from "@/lib/fotos";
 
 const navItems = [
   { href: "/dashboard", label: "Início", icon: LayoutDashboard },
@@ -48,6 +49,7 @@ export function AtletaSidebar({
   const [collapsed, setCollapsed] = useState(false);
   const { usuario, atleta: sessionAtleta, logout } = useActiveSession();
   const { withPreview, isPreview, atleta: atletaVisto } = useAthleteView();
+  const fotoRodape = useFotoAtleta(isPreview ? sessionAtleta : atletaVisto);
   const painelRef = useRef<HTMLElement>(null);
   const gestos = useGavetaMobile(mobileOpen, onCloseMobile, painelRef);
   const tambemComite = !isPreview && souTambemAtleta(usuario, sessionAtleta);
@@ -158,6 +160,7 @@ export function AtletaSidebar({
 
         <RodapeDaGaveta
           nome={isPreview ? sessionAtleta.nome : atletaVisto.nome}
+          foto={fotoRodape}
           papel={
             isPreview
               ? `Visualizando como ${atletaVisto.nome.split(" ")[0]}`

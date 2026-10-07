@@ -12,6 +12,8 @@ import { FichaCadastroTab } from "./FichaCadastroTab";
 import { FichaComentariosTab } from "./FichaComentariosTab";
 import { FichaAuditoriaTab } from "./FichaAuditoriaTab";
 import type { AtletaDoc } from "@/lib/types";
+import { AvatarAtleta } from "@/components/atletas/AvatarAtleta";
+import { useFotoAtleta } from "@/lib/fotos";
 
 type FichaTab = "resumo" | "lancamentos" | "cadastro" | "comentarios" | "auditoria";
 
@@ -33,6 +35,7 @@ export function FichaAtletaModal({
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<FichaTab>(initialTab);
+  const foto = useFotoAtleta(atleta);
   const dialogRef = useRef<HTMLDivElement>(null);
   useLockBodyScroll(atleta !== null);
   useDialogFocus(atleta !== null, dialogRef, onClose);
@@ -61,9 +64,12 @@ export function FichaAtletaModal({
             className="flex h-[85vh] max-h-[720px] w-full max-w-4xl flex-col overflow-hidden rounded-[var(--radius-xl)] border border-border bg-bg-card shadow-lg"
           >
             <div className="flex shrink-0 items-center gap-3 border-b border-border px-4 py-4 sm:px-6">
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[#007ba3] text-sm font-extrabold text-white shadow-sm">
-                {atleta.nome.trim().charAt(0).toUpperCase()}
-              </span>
+              <AvatarAtleta
+                nome={atleta.nome}
+                foto={foto}
+                className="size-11 text-sm font-extrabold shadow-sm"
+                tom="bg-gradient-to-br from-primary to-[#007ba3] text-white"
+              />
               <div className="min-w-0 flex-1">
                 <h2 id="ficha-title" className="truncate text-base font-bold text-text">
                   {atleta.nome}

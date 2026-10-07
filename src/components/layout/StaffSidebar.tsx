@@ -31,6 +31,7 @@ import { temPermissao, type PermissaoChave } from "@/lib/permissoes";
 import type { Role } from "@/lib/types";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { souTambemAtleta } from "@/lib/session/dualRole";
+import { useFotoAtleta } from "@/lib/fotos";
 
 const baseItems: { href: string; label: string; icon: typeof LayoutDashboard; permissao?: PermissaoChave }[] = [
   { href: "/gestao", label: "Início", icon: LayoutDashboard, permissao: "inicio" },
@@ -65,6 +66,7 @@ export function StaffSidebar({
 }) {
   const pathname = usePathname();
   const { usuario, atleta, logout } = useActiveSession();
+  const foto = useFotoAtleta(atleta);
   const painelRef = useRef<HTMLElement>(null);
   const gestos = useGavetaMobile(mobileOpen, onCloseMobile, painelRef);
   const [collapsed, setCollapsed] = useState(false);
@@ -172,7 +174,7 @@ export function StaffSidebar({
           )}
         </nav>
 
-        <RodapeDaGaveta nome={atleta.nome} papel={role === "administrador" ? "Administrador" : "Comitê"} onSair={logout} comTema />
+        <RodapeDaGaveta nome={atleta.nome} foto={foto} papel={role === "administrador" ? "Administrador" : "Comitê"} onSair={logout} comTema />
 
         <button
           onClick={() => setCollapsed((c) => !c)}
