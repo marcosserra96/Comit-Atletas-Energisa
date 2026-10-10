@@ -1,4 +1,4 @@
-import type { Equipe, Role } from "@/lib/types";
+import type { Equipe, Role, TipoLancamento } from "@/lib/types";
 
 export const equipeLabel: Record<Equipe, string> = {
   corrida: "Corrida",
@@ -46,3 +46,12 @@ export function modalidadeFromEquipe(equipe: Equipe) {
   if (equipe === "bicicleta" || equipe === "fila_bicicleta") return "bicicleta" as const;
   return null;
 }
+
+/** Tipo do lançamento de pontos (Lançar pontos, Extrato, ficha do atleta). */
+export const tipoLancamentoLabel: Record<TipoLancamento, string> = {
+  treino: "Treino",
+  evento: "Evento",
+  avulso: "Avulso",
+  importacao: "Importação",
+  reuniao: "Reunião",
+};
