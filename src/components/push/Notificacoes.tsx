@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Bell, BellOff, BellRing, CheckCircle2, Smartphone } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { usePush, type EstadoPush } from "@/lib/push/cliente";
+import { auth } from "@/lib/firebase";
+import { Switch } from "@/components/ui/Switch";
+import { PREFERENCIAS_PADRAO, TIPO_AVISO_INFO, TIPOS_ATLETA, type PreferenciasAviso, type TipoAviso } from "@/lib/push/automaticos";
 import { useInstalacao } from "@/lib/pwa/instalacao";
 
 const CHAVE_CONVITE = "push-convite-dispensado-em";
@@ -20,7 +23,75 @@ function conviteDispensado() {
   }
 }
 
-const O_QUE_CHEGA = "Reunião começando, pesquisa nova e recados do comitê, mesmo com o app fechado.";
+const O_QUE_CHEGA = "Pontos lançados, quem passou você no ranking, reunião começando, pesquisa nova e recados do comitê, mesmo com o app fechado.";
+export const O_QUE_CHEGA_COMITE = "Pedidos de acesso, justificativas e pedidos de nova senha que precisam de você, mesmo com o portal fechado.";
+
+async function apiPreferencias(init?: RequestInit) {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Sua sessão expirou. Entre novamente.");
+  const r = await fetch("/api/push/preferencias", {
+    ...init,
+    headers: { Authorization: `Bearer ${await user.getIdToken()}`, "Content-Type": "application/json" },
+  });
+  const corpo = (await r.json().catch(() => ({}))) as { preferencias?: PreferenciasAviso; error?: string };
+  if (!r.ok || !corpo.preferencias) throw new Error(corpo.error || "Não foi possível salvar agora.");
+  return corpo.preferencias;
+}
+
+/** O que a pessoa escolheu receber; troca otimista (volta se der erro). */
+function usePreferenciasAviso(ligado: boolean) {
+  const [prefs, setPrefs] = useState<PreferenciasAviso | null>(null);
+  const [erro, setErro] = useState("");
+  useEffect(() => {
+    if (!ligado) return;
+    let ativo = true;
+    apiPreferencias()
+      .then((p) => ativo && setPrefs(p))
+      .catch(() => ativo && setPrefs(PREFERENCIAS_PADRAO));
+    return () => {
+      ativo = false;
+    };
+  }, [ligado]);
+  const alternar = useCallback(async (tipo: TipoAviso, valor: boolean) => {
+    setErro("");
+    setPrefs((p) => (p ? { ...p, [tipo]: valor } : p));
+    try {
+      setPrefs(await apiPreferencias({ method: "POST", body: JSON.stringify({ tipo, ativo: valor }) }));
+    } catch (e) {
+      setPrefs((p) => (p ? { ...p, [tipo]: !valor } : p));
+      setErro(e instanceof Error ? e.message : "Não foi possível salvar agora.");
+    }
+  }, []);
+  return { prefs, alternar, erro };
+}
+
+/** Lista de chaves "o que avisar", dentro do cartão de notificações. */
+function EscolhaDeAvisos({ tipos, rodape }: { tipos: TipoAviso[]; rodape?: string }) {
+  const { prefs, alternar, erro } = usePreferenciasAviso(true);
+  return (
+    <div className="flex flex-col border-t border-border-subtle pt-3">
+      <p className="text-xs font-bold uppercase tracking-wide text-text-muted">O que avisar</p>
+      <ul className="mt-1 flex flex-col divide-y divide-border-subtle">
+        {tipos.map((tipo) => (
+          <li key={tipo} className="flex items-center gap-3 py-1.5">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-text">{TIPO_AVISO_INFO[tipo].titulo}</p>
+              <p className="text-xs text-text-light">{TIPO_AVISO_INFO[tipo].texto}</p>
+            </div>
+            <Switch
+              ativo={prefs?.[tipo] ?? true}
+              disabled={!prefs}
+              onChange={(v) => void alternar(tipo, v)}
+              rotulo={TIPO_AVISO_INFO[tipo].titulo}
+            />
+          </li>
+        ))}
+      </ul>
+      {erro ? <p className="mt-1 text-sm font-medium text-danger">{erro}</p> : null}
+      {rodape ? <p className="mt-2 text-xs text-text-muted">{rodape}</p> : null}
+    </div>
+  );
+}
 
 /** Como liberar de novo depois de bloquear (depende do aparelho). */
 function ComoDesbloquear() {
@@ -110,17 +181,31 @@ export function ConviteNotificacoes({ className }: { className?: string }) {
   );
 }
 
-const TEXTO_ESTADO: Record<EstadoPush, string> = {
-  carregando: "Verificando…",
-  indisponivel: "Este navegador não recebe notificações. Abra o portal no Chrome (Android) ou instale o app (iPhone).",
-  precisa_instalar: "No iPhone, os avisos chegam com o app instalado na Tela de Início.",
-  desligado: O_QUE_CHEGA,
-  negado: "",
-  ativo: "Ativadas neste aparelho. " + O_QUE_CHEGA,
-};
+function textoDoEstado(estado: EstadoPush, oQueChega: string) {
+  const textos: Record<EstadoPush, string> = {
+    carregando: "Verificando…",
+    indisponivel: "Este navegador não recebe notificações. Abra o portal no Chrome (Android) ou instale o app (iPhone).",
+    precisa_instalar: "No iPhone, os avisos chegam com o app instalado na Tela de Início.",
+    desligado: oQueChega,
+    negado: "",
+    ativo: "Ativadas neste aparelho.",
+  };
+  return textos[estado];
+}
 
-/** Cartão do Perfil: ligar, desligar e o que fazer quando está bloqueado. */
-export function PreferenciaNotificacoes() {
+/**
+ * Cartão de notificações: ligar, desligar, o que fazer quando está bloqueado e,
+ * com tudo ligado, quais avisos receber. Perfil do atleta e Minha conta (comitê).
+ */
+export function PreferenciaNotificacoes({
+  tipos = TIPOS_ATLETA,
+  oQueChega = O_QUE_CHEGA,
+  rodape = "Reunião, pesquisa e recados do comitê chegam sempre.",
+}: {
+  tipos?: TipoAviso[];
+  oQueChega?: string;
+  rodape?: string;
+} = {}) {
   const { estado, ativar, desativar, ocupado, erro } = usePush();
   const ativo = estado === "ativo";
   const Icone = ativo ? BellRing : estado === "negado" ? BellOff : Bell;
@@ -138,10 +223,11 @@ export function PreferenciaNotificacoes() {
         </span>
         <div className="min-w-0 flex-1">
           <p className="font-bold text-text">Notificações no celular</p>
-          {estado === "negado" ? <ComoDesbloquear /> : <p className="mt-0.5 text-sm text-text-light">{TEXTO_ESTADO[estado]}</p>}
+          {estado === "negado" ? <ComoDesbloquear /> : <p className="mt-0.5 text-sm text-text-light">{textoDoEstado(estado, oQueChega)}</p>}
           {erro ? <p className="mt-1 text-sm font-medium text-danger">{erro}</p> : null}
         </div>
       </div>
+      {ativo && tipos.length > 0 ? <EscolhaDeAvisos tipos={tipos} rodape={rodape} /> : null}
       {estado === "desligado" ? (
         <Button onClick={() => void ativar()} loading={ocupado}>
           <Bell className="size-4" />

@@ -10,25 +10,9 @@ import { novoSlideLivre, TITULO_SECAO, type ReuniaoResultadosDoc, type SecaoReun
 import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
+import { Switch } from "@/components/ui/Switch";
 
 type Roteiro = Pick<ReuniaoResultadosDoc, "secoes" | "livres">;
-
-function Chave({ ativo, onClick, rotulo }: { ativo: boolean; onClick: () => void; rotulo: string }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={ativo}
-      aria-label={rotulo}
-      onClick={onClick}
-      className="flex min-h-11 min-w-12 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-    >
-      <span className={cn("relative h-6 w-10 rounded-full transition-colors", ativo ? "bg-primary" : "bg-border")}>
-        <span className={cn("absolute left-0.5 top-0.5 size-5 rounded-full bg-white shadow transition-transform", ativo ? "translate-x-4" : "translate-x-0")} />
-      </span>
-    </button>
-  );
-}
 
 function EditorLivre({
   livre,
@@ -219,7 +203,7 @@ export function EditorRoteiro({
                     <Trash2 className="size-4" />
                   </button>
                 ) : null}
-                <Chave ativo={s.ativo} onClick={() => atualizarSecao(s.id, { ativo: !s.ativo })} rotulo={`Mostrar ${titulo}`} />
+                <Switch ativo={s.ativo} onChange={(ativo) => atualizarSecao(s.id, { ativo })} rotulo={`Mostrar ${titulo}`} />
               </div>
               {expandido && livre ? (
                 <EditorLivre livre={livre} imagem={livre.imagemId ? imagens[livre.imagemId] : undefined} onChange={atualizarLivre} />

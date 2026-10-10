@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { NotAuthorized } from "@/components/ui/NotAuthorized";
 import { SubTabs } from "@/components/ui/SubTabs";
@@ -15,10 +16,13 @@ import { carregarJustificativasGestao } from "@/lib/justificativasAusenciaClient
 import type { JustificativaAusenciaDoc } from "@/lib/types";
 
 type Tab = "lancar" | "historico" | "justificativas" | "extrato" | "consolidado";
+const TABS_PONTUACAO: Tab[] = ["lancar", "historico", "justificativas", "extrato", "consolidado"];
 
 export default function PontuacaoPage() {
   const { usuario } = useActiveSession();
-  const [tab, setTab] = useState<Tab>("lancar");
+  // Aviso de justificativa nova abre direto na aba (/gestao/pontuacao?tab=justificativas).
+  const tabParam = useSearchParams().get("tab");
+  const [tab, setTab] = useState<Tab>(() => (TABS_PONTUACAO.includes(tabParam as Tab) ? (tabParam as Tab) : "lancar"));
   const [justificativas, setJustificativas] = useState<JustificativaAusenciaDoc[] | null>(null);
   const [erroJustificativas, setErroJustificativas] = useState(false);
 

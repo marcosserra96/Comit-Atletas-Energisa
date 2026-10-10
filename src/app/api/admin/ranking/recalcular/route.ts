@@ -1,4 +1,7 @@
+import { after } from "next/server";
+
 export const runtime = "nodejs";
+export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 interface RecalcularBody {
@@ -25,6 +28,20 @@ function trimestreValido(value: unknown) {
     return null;
   }
   return trimestre;
+}
+
+async function avisarAgora(db: import("firebase-admin/firestore").Firestore) {
+  const { processarEmSegundoPlano } = await import("@/lib/server/avisosAutomaticos");
+  await processarEmSegundoPlano(db, { atletas: true });
+}
+
+async function reiniciarFotografia(db: import("firebase-admin/firestore").Firestore) {
+  try {
+    const { reiniciarFotografiaDoRanking } = await import("@/lib/server/avisosAutomaticos");
+    await reiniciarFotografiaDoRanking(db);
+  } catch (error) {
+    console.error("Falha ao guardar o ranking para os avisos:", error);
+  }
 }
 
 export async function POST(request: Request) {
@@ -66,6 +83,8 @@ export async function POST(request: Request) {
         autorNome,
         modo: "automatico",
       });
+      // Mudou o que conta como treino: posições mudam para todos, mas ninguém "passou" ninguém.
+      after(() => reiniciarFotografia(db));
       return Response.json({ ...resultado, atualizadoEm: new Date().toISOString() });
     }
     if (modo === "completo") {
@@ -79,6 +98,7 @@ export async function POST(request: Request) {
         autorNome,
         configOverride: trimestre,
       });
+      after(() => reiniciarFotografia(db));
       return Response.json({ ...resultado, atualizadoEm: new Date().toISOString() });
     }
 
@@ -98,6 +118,8 @@ export async function POST(request: Request) {
           ? body.origem.trim().slice(0, 60)
           : "alteracao_pontuacao",
     });
+    // Avisa logo (sem esperar o agendador): "você ganhou pontos" e "fulano passou você".
+    after(() => avisarAgora(db));
     return Response.json({ ...resultado, atualizadoEm: new Date().toISOString() });
   } catch (error) {
     if (error instanceof SyntaxError) {
