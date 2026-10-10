@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import {
   dataCivilValida,
   diasNoIntervalo,
@@ -16,6 +17,7 @@ import type {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const STATUS_VALIDOS = new Set<StatusJustificativaAusencia>([
   "pendente",
@@ -349,6 +351,11 @@ export async function POST(request: Request) {
     await batch.commit();
 
     const criado = await ref.get();
+    // Avisa quem analisa justificativas (sem esperar o agendador).
+    after(async () => {
+      const { processarEmSegundoPlano } = await import("@/lib/server/avisosAutomaticos");
+      await processarEmSegundoPlano(db, { comite: true });
+    });
     return Response.json({ item: itemApi(criado) }, { status: 201 });
   } catch (error) {
     return responderErro(error, "Não foi possível enviar a justificativa.");

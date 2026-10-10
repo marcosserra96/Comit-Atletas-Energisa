@@ -1,5 +1,8 @@
+import { after } from "next/server";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 /** Mesmo pedido de novo antes disso não gera outro (evita repetição e abuso). */
 const INTERVALO_MS = 2 * 60_000;
@@ -41,6 +44,10 @@ export async function POST(request: Request) {
         status: "pendente",
         criadoEm: FieldValue.serverTimestamp(),
       });
+    });
+    after(async () => {
+      const { processarEmSegundoPlano } = await import("@/lib/server/avisosAutomaticos");
+      await processarEmSegundoPlano(db, { comite: true });
     });
     return ok;
   } catch (error) {

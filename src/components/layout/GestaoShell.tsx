@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CalendarCheck, LayoutDashboard, Menu, Newspaper, Target, Users, Wallet } from "lucide-react";
 import { RequireRole } from "@/components/session/RequireRole";
 import { useActiveSession } from "@/lib/session/SessionProvider";
@@ -23,6 +23,11 @@ function GestaoShellInner({ children }: { children: React.ReactNode }) {
   const { usuario } = useActiveSession();
   const role = usuario.role as "comite" | "administrador";
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // O comitê também recebe avisos: mantém o aparelho inscrito (token renovado 1x/dia).
+  useEffect(() => {
+    void import("@/lib/push/cliente").then((m) => m.sincronizarPush());
+  }, []);
   const atalhos = ATALHOS.filter((item) =>
     temPermissao({ role, permissoes: usuario.permissoes }, item.permissao),
   ).slice(0, 4);

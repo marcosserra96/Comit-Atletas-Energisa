@@ -4,6 +4,7 @@ import type { PesquisaDoc } from "@/lib/pesquisas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 /** Execuções anônimas (agendador) no máximo a cada 45 s: a rota é pública. */
 const INTERVALO_MINIMO_MS = 45_000;
@@ -112,7 +113,16 @@ async function processar(request: Request, autenticado: boolean) {
     enviados.push(chave);
   }
 
-  return Response.json({ ok: true, enviados });
+  // Pessoais: pontos lançados, ultrapassagem no ranking e pedidos para o comitê.
+  let automaticos: unknown = null;
+  try {
+    const { processarAvisosAutomaticos } = await import("@/lib/server/avisosAutomaticos");
+    automaticos = await processarAvisosAutomaticos(db);
+  } catch (error) {
+    console.error("Falha nos avisos automáticos pessoais:", error);
+  }
+
+  return Response.json({ ok: true, enviados, automaticos });
 }
 
 export async function GET(request: Request) {

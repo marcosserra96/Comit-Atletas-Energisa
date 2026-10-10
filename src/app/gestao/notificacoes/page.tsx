@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useState } from "react";
 import Image from "next/image";
-import { BellRing, CalendarClock, ClipboardList, Megaphone, Newspaper, Send, UsersRound } from "lucide-react";
+import { BellRing, CalendarClock, ClipboardList, Megaphone, Newspaper, Send, ShieldCheck, Trophy, TrendingUp, UsersRound } from "lucide-react";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -57,6 +57,9 @@ const ICONE_ORIGEM: Record<OrigemPush, typeof Send> = {
   pesquisa_abertura: ClipboardList,
   pesquisa_lembrete: ClipboardList,
   reuniao: UsersRound,
+  pontos: Trophy,
+  ranking: TrendingUp,
+  comite: ShieldCheck,
 };
 
 function dataHora(iso: string | null) {
@@ -95,6 +98,9 @@ const AUTOMATICAS = [
   { icone: ClipboardList, titulo: "Pesquisa nova", texto: "Quando a pesquisa abre, para o público dela." },
   { icone: CalendarClock, titulo: "Último dia da pesquisa", texto: "24 h antes de fechar, só para quem não respondeu." },
   { icone: Newspaper, titulo: "Notícia", texto: "Quando quem publica marca “Avisar os atletas no celular”." },
+  { icone: Trophy, titulo: "Pontos lançados", texto: "Para cada atleta, com o total e o motivo, assim que os pontos são lançados." },
+  { icone: TrendingUp, titulo: "Ultrapassagem no ranking", texto: "Quando alguém passa o atleta no ranking do trimestre (no máximo 1 a cada 12 h; não sai com o ranking oculto)." },
+  { icone: ShieldCheck, titulo: "Pedidos para o comitê", texto: "Acesso novo (administradores), justificativa (quem lança pontos) e nova senha (quem cuida de atletas)." },
 ];
 
 export default function NotificacoesPage() {
