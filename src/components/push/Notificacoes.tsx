@@ -23,7 +23,7 @@ function conviteDispensado() {
   }
 }
 
-const O_QUE_CHEGA = "Pontos lançados, quem passou você no ranking, reunião começando, pesquisa nova e recados do comitê, mesmo com o app fechado.";
+const O_QUE_CHEGA = "Pontos lançados, medalhas novas, quem passou você no ranking, reunião começando, pesquisa nova e recados do comitê, mesmo com o app fechado.";
 export const O_QUE_CHEGA_COMITE = "Pedidos de acesso, justificativas e pedidos de nova senha que precisam de você, mesmo com o portal fechado.";
 
 async function apiPreferencias(init?: RequestInit) {

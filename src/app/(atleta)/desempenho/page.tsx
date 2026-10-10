@@ -40,6 +40,8 @@ import {
 import { useDiasTreino } from "@/lib/useDiasTreino";
 import { aderenciaDoAtleta, formatAderencia } from "@/lib/aderencia";
 import { useRegrasDeTreino } from "@/lib/useRegrasDeTreino";
+import { useConquistas } from "@/lib/useConquistas";
+import { SecaoConquistas } from "@/components/conquistas/SecaoConquistas";
 import { modalidadeFromEquipe } from "@/lib/labels";
 import { dataIsoLocal } from "@/lib/date";
 import type { HistoricoMensalDoc, HistoricoPontoDoc, TipoLancamento } from "@/lib/types";
@@ -270,7 +272,7 @@ function textoComparacao(analise: AnaliseDesempenho) {
 }
 
 export default function DesempenhoPage() {
-  const { atleta } = useAthleteView();
+  const { atleta, isPreview } = useAthleteView();
   const [lancamentos, setLancamentos] = useState<HistoricoPontoDoc[] | null>(null);
   const [resumosMensais, setResumosMensais] = useState<HistoricoMensalDoc[]>([]);
   const [limite, setLimite] = useState(POR_PAGINA);
@@ -312,6 +314,7 @@ export default function DesempenhoPage() {
   }, [atleta.id]);
 
   const regrasTreino = useRegrasDeTreino();
+  const conquistas = useConquistas({ atleta, lancamentos, regrasTreino, preview: isPreview });
   const analise = useMemo(
     () =>
       lancamentos && regrasTreino
@@ -466,6 +469,10 @@ export default function DesempenhoPage() {
               {analise.melhorMes ? <span>Mês mais ativo: {nomeDoMes(analise.melhorMes.rotulo)}</span> : null}
             </div>
           </Card>
+
+          {conquistas.modalidade && !conquistas.carregando ? (
+            <SecaoConquistas medalhas={conquistas.medalhas} sequencia={conquistas.sequencia} conquistadas={conquistas.conquistadas} />
+          ) : null}
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
             <Card className="lg:col-span-3">

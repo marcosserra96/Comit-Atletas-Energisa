@@ -109,7 +109,7 @@ function estiloNome(nome: string, larguraPx: number, fonte: number, familia: key
 /* ---------- Motivos de fundo ---------- */
 
 /** Raias de pista de atletismo, cortadas pela borda. */
-function Pista({ cor, estilo }: { cor: string; estilo: CSSProperties }) {
+export function Pista({ cor, estilo }: { cor: string; estilo: CSSProperties }) {
   const raias = Array.from({ length: 8 }, (_, i) => i);
   return (
     <svg viewBox="0 0 1400 900" style={{ position: "absolute", ...estilo }} aria-hidden="true">
@@ -137,7 +137,7 @@ function Pista({ cor, estilo }: { cor: string; estilo: CSSProperties }) {
 }
 
 /** Aro de roda com raios e cubo. */
-function Roda({ cor, estilo }: { cor: string; estilo: CSSProperties }) {
+export function Roda({ cor, estilo }: { cor: string; estilo: CSSProperties }) {
   const raios = Array.from({ length: 32 }, (_, i) => (i * Math.PI * 2) / 32);
   return (
     <svg viewBox="-500 -500 1000 1000" style={{ position: "absolute", ...estilo }} aria-hidden="true">
