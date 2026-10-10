@@ -63,6 +63,11 @@ import { CardTrimestre } from "@/components/inicio/CardTrimestre";
 import { useTrimestreDoAtleta } from "@/lib/trimestre";
 import { PendenciasNoInicio } from "@/components/avisos/CentralDeAvisos";
 import { ConviteNotificacoes } from "@/components/push/Notificacoes";
+import { CardConquistas } from "@/components/conquistas/CardConquistas";
+import { ComemoracaoConquista } from "@/components/conquistas/ComemoracaoConquista";
+import { CompartilharMes } from "@/components/conquistas/CompartilharMes";
+import { useConquistas } from "@/lib/useConquistas";
+import { useFotoAtleta } from "@/lib/fotos";
 
 function hojeIsoLocal() {
   const hoje = new Date();
@@ -294,6 +299,11 @@ export default function DashboardPage() {
     regrasTreino,
   });
 
+  const conquistas = useConquistas({ atleta, lancamentos: meusLancamentos, regrasTreino, preview: isPreview });
+  const foto = useFotoAtleta(atleta);
+  const [compartilhando, setCompartilhando] = useState(false);
+  const mostrarConquistas = Boolean(conquistas.modalidade && !waitlisted);
+
   const fontesComErro = [
     erroHistorico ? "histórico" : null,
     erroEventos ? "eventos" : null,
@@ -420,6 +430,19 @@ export default function DashboardPage() {
                 nomeModalidade={nomeModalidade}
                 hrefRanking={withPreview("/ranking")}
                 rankingFechado={rankingDesativado || rankingOcultoAtual}
+                modalidade={modalidade || null}
+              />
+            ) : null}
+            {mostrarConquistas ? (
+              <CardConquistas
+                carregando={conquistas.carregando}
+                sequencia={conquistas.sequencia}
+                proxima={conquistas.proxima}
+                recentes={conquistas.recentes}
+                conquistadas={conquistas.conquistadas}
+                total={conquistas.total}
+                hrefTodas={withPreview("/desempenho#conquistas")}
+                onCompartilhar={isPreview ? undefined : () => setCompartilhando(true)}
               />
             ) : null}
             <section className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-[var(--shadow-card)] sm:p-5">
@@ -807,6 +830,27 @@ export default function DashboardPage() {
           </div>
         ) : null}
       </Modal>
+
+      {mostrarConquistas && !isPreview ? (
+        <>
+          <ComemoracaoConquista novas={conquistas.novas} onFechar={conquistas.marcarComoVistas} onCompartilhar={() => setCompartilhando(true)} />
+          {conquistas.modalidade && meusLancamentos ? (
+            <CompartilharMes
+              aberto={compartilhando}
+              onFechar={() => setCompartilhando(false)}
+              atleta={atleta}
+              modalidade={conquistas.modalidade}
+              foto={foto}
+              lancamentos={meusLancamentos}
+              historicoMensal={meuHistoricoMensal ?? []}
+              regrasTreino={regrasTreino}
+              semanas={conquistas.sequencia?.atual ?? 0}
+              medalhas={conquistas.recentes}
+              posicaoTrimestre={rankingDesativado || rankingOcultoAtual ? null : (trimestre?.posicao ?? null)}
+            />
+          ) : null}
+        </>
+      ) : null}
     </>
   );
 }

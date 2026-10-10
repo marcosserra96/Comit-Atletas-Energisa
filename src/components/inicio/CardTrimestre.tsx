@@ -6,6 +6,8 @@ import { ChevronRight, Trophy } from "lucide-react";
 import { formatDistancia, formatPontos, formatShortDate, plural } from "@/lib/format";
 import { textoTempoDoPeriodo } from "@/lib/tempoPeriodo";
 import type { TrimestreDoAtleta } from "@/lib/trimestre";
+import { equivalenciaDaEquipe, textoDistancia } from "@/lib/conquistas";
+import type { Modalidade } from "@/lib/types";
 
 /**
  * Trimestre em destaque no Início: é o período que vale na premiação.
@@ -16,6 +18,7 @@ export function CardTrimestre({
   nomeModalidade,
   hrefRanking,
   rankingFechado,
+  modalidade,
 }: {
   /** `undefined` carregando. */
   trimestre: TrimestreDoAtleta | undefined;
@@ -23,6 +26,7 @@ export function CardTrimestre({
   hrefRanking: string;
   /** Ranking oculto para conferência ou desativado. */
   rankingFechado: boolean;
+  modalidade?: Modalidade | null;
 }) {
   if (trimestre === undefined) {
     return <div className="h-[212px] animate-pulse rounded-[var(--radius-lg)] border border-border bg-bg-card" aria-hidden="true" />;
@@ -80,6 +84,9 @@ export function CardTrimestre({
         {linhaPosicao}
         {trimestre.km > 0 ? <span className="text-text-muted"> · {formatDistancia(trimestre.km)} km</span> : null}
       </p>
+      {!rankingFechado && textoDistancia(trimestre.distancia) ? (
+        <p className="mt-1 px-1 text-sm font-bold text-text">{textoDistancia(trimestre.distancia)}</p>
+      ) : null}
 
       <div className="mt-3 px-1">
         <div className="flex items-baseline justify-between gap-3 text-xs">
@@ -103,6 +110,12 @@ export function CardTrimestre({
             transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
           />
         </div>
+        {!rankingFechado && modalidade && trimestre.kmEquipe > 0 ? (
+          <p className="mt-2 text-xs text-text-light">
+            Sua equipe já somou <strong className="font-semibold text-text">{formatDistancia(Math.round(trimestre.kmEquipe))} km</strong> no trimestre
+            {equivalenciaDaEquipe(trimestre.kmEquipe, modalidade) ? `, o mesmo que ${equivalenciaDaEquipe(trimestre.kmEquipe, modalidade)}` : ""}.
+          </p>
+        ) : null}
         {trimestre.premiacaoTexto ? (
           <p className="mt-2 flex items-center gap-1.5 text-xs text-text-light">
             <Trophy className="size-3.5 shrink-0 text-ranking-gold-text" aria-hidden="true" />

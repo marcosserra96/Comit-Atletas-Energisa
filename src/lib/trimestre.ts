@@ -10,6 +10,7 @@ import { tempoDoPeriodo, type TempoDoPeriodo } from "@/lib/tempoPeriodo";
 import { nomeDoMes, normalizarCalendario, type CalendarioPremiacaoDoc } from "@/lib/calendarioPremiacao";
 import { formatShortDate } from "@/lib/format";
 import type { RegrasDeTreino } from "@/lib/activityConsolidation";
+import { distanciaNoRanking, type Distancia } from "@/lib/conquistas";
 import type {
   AtletaDoc,
   HistoricoMensalDoc,
@@ -32,6 +33,10 @@ export interface TrimestreDoAtleta {
   totalNoRanking: number;
   /** Quando é a premiação ("08 de out." ou "janeiro de 2027"), se o calendário informa. */
   premiacaoTexto: string | null;
+  /** Quanto falta para subir (ou a vantagem de quem lidera); null sem ranking aberto. */
+  distancia: Distancia;
+  /** Km somados da equipe no trimestre (ranking publicado); 0 sem ranking aberto. */
+  kmEquipe: number;
 }
 
 /**
@@ -134,6 +139,11 @@ export function useTrimestreDoAtleta(params: {
         km: meu?.km ?? 0,
         posicao: meu && meu.pontuacaoTotal > 0 ? posicoes[i] : null,
         totalNoRanking: ordenada.length,
+        distancia: distanciaNoRanking(
+          ordenada.map((r) => ({ atletaId: r.atletaId || r.id, pontos: r.pontuacaoTotal })),
+          atleta.id,
+        ),
+        kmEquipe: ordenada.reduce((s, r) => s + (r.km ?? 0), 0),
       };
     }
 
@@ -155,6 +165,8 @@ export function useTrimestreDoAtleta(params: {
       km: meu?.km ?? 0,
       posicao: null,
       totalNoRanking: 0,
+      distancia: null,
+      kmEquipe: 0,
     };
   }, [periodos, calendario, trimestre, modalidade, chave, publicados, atleta, meusLancamentos, historicoMensal, regrasTreino]);
 }

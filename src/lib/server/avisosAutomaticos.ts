@@ -4,6 +4,7 @@ import type { Firestore } from "firebase-admin/firestore";
 import {
   detectarUltrapassagens,
   INTERVALO_AVISO_RANKING_MS,
+  mensagemDeConquista,
   mensagemDePedidos,
   mensagemDePontos,
   mensagemDeUltrapassagem,
@@ -16,6 +17,7 @@ import {
   type TipoAviso,
 } from "@/lib/push/automaticos";
 import type { OrigemPush } from "@/lib/push/regras";
+import type { HistoricoPontoDoc, RegraPontuacaoDoc } from "@/lib/types";
 import { idDoToken, registrarEnvio, type MensagemPush, type ResultadoPush } from "@/lib/server/push";
 
 /**
@@ -169,6 +171,82 @@ async function registrar(db: Firestore, origem: OrigemPush, mensagem: MensagemPu
   await registrarEnvio(db, { origem, mensagem, publico: "selecionados", resultado: r, destinatarios: await nomesDe(db, r.atletaIds) });
 }
 
+// ---------- conquistas ----------
+
+/** Quantos atletas no máximo têm as medalhas recalculadas por execução (importações grandes ficam para depois). */
+const LIMITE_CONQUISTAS = 80;
+
+interface DocConquistas {
+  medalhas?: Record<string, string>;
+}
+
+/**
+ * Recalcula as medalhas de quem acabou de receber pontos e avisa as novas.
+ * Lê só o histórico dessas pessoas. Na primeira vez de cada atleta, só guarda
+ * o que ele já tinha (sem avisar medalhas antigas).
+ */
+async function avisarConquistasDe(db: Firestore, atletaIds: string[]) {
+  if (atletaIds.length === 0) return 0;
+  const ids = atletaIds.slice(0, LIMITE_CONQUISTAS);
+  const [{ calcularMedalhas }, { regrasDeTreino }] = await Promise.all([import("@/lib/conquistas"), import("@/lib/activityConsolidation")]);
+  const regras = await db.collection("regras_pontuacao").get();
+  const regrasTreino = regrasDeTreino(regras.docs.map((d) => ({ ...(d.data() as RegraPontuacaoDoc), id: d.id })));
+  const atletas = await db.getAll(...ids.map((id) => db.collection("atletas").doc(id)));
+  const docs = await db.getAll(...ids.map((id) => db.collection("conquistas").doc(id)));
+  const envios: { atletaId: string; mensagem: MensagemPush }[] = [];
+  const hoje = diaBrasil();
+  for (const [i, id] of ids.entries()) {
+    const equipe = String(atletas[i].data()?.equipe ?? "");
+    const modalidade = equipe.includes("bicicleta") ? "bicicleta" : equipe.includes("corrida") ? "corrida" : null;
+    if (!modalidade) continue;
+    const historico = await db.collection("historico_pontos").where("atletaId", "==", id).get();
+    const atual = (docs[i].data() as DocConquistas | undefined)?.medalhas ?? {};
+    const { medalhas } = calcularMedalhas({
+      lancamentos: historico.docs.map((d) => ({ ...d.data(), id: d.id }) as HistoricoPontoDoc),
+      regrasTreino,
+      modalidade,
+      hoje,
+      doServidor: atual,
+    });
+    const ganhas = medalhas.filter((m) => m.conquistada && !m.doServidor);
+    const novas = ganhas.filter((m) => !atual[m.id]);
+    if (novas.length === 0 && docs[i].exists) continue;
+    const registro = { ...atual, ...Object.fromEntries(novas.map((m) => [m.id, m.em || hoje])) };
+    await db.collection("conquistas").doc(id).set({ medalhas: registro, atualizadoEm: Date.now() }, { merge: true });
+    if (docs[i].exists && novas.length) {
+      envios.push({ atletaId: id, mensagem: { ...mensagemDeConquista(novas.map((m) => m.titulo)), link: "/desempenho#conquistas", tag: `conquista-${id}` } });
+    }
+  }
+  if (envios.length) {
+    const r = await enviarIndividuais(db, envios, "conquistas");
+    await registrar(db, "conquistas", { titulo: "Conquistas", corpo: `${envios.length} atleta(s) ganharam medalha nova.`, link: "/desempenho" }, r);
+  }
+  return envios.length;
+}
+
+/** Pódio e liderança: medalhas que só existem no momento do ranking. */
+async function registrarMedalhasDeRanking(db: Firestore, linhas: LinhaRankingAviso[], posicoes: Record<string, number>) {
+  const candidatos = linhas.filter((l) => l.pontos > 0 && posicoes[l.atletaId] && posicoes[l.atletaId] <= 3);
+  if (candidatos.length === 0) return 0;
+  const { medalhasDaModalidade } = await import("@/lib/conquistas");
+  const titulo = Object.fromEntries(medalhasDaModalidade("corrida").map((m) => [m.id, m.titulo]));
+  const docs = await db.getAll(...candidatos.map((c) => db.collection("conquistas").doc(c.atletaId)));
+  const hoje = diaBrasil();
+  const envios: { atletaId: string; mensagem: MensagemPush }[] = [];
+  for (const [i, c] of candidatos.entries()) {
+    const atual = (docs[i].data() as DocConquistas | undefined)?.medalhas ?? {};
+    const novas = [...(posicoes[c.atletaId] === 1 ? ["lider"] : []), "podio"].filter((id) => !atual[id]);
+    if (novas.length === 0) continue;
+    await db.collection("conquistas").doc(c.atletaId).set({ medalhas: { ...atual, ...Object.fromEntries(novas.map((id) => [id, hoje])) }, atualizadoEm: Date.now() }, { merge: true });
+    envios.push({ atletaId: c.atletaId, mensagem: { ...mensagemDeConquista(novas.map((id) => titulo[id])), link: "/desempenho#conquistas", tag: `conquista-${c.atletaId}` } });
+  }
+  if (envios.length) {
+    const r = await enviarIndividuais(db, envios, "conquistas");
+    await registrar(db, "conquistas", { titulo: "Conquistas", corpo: `${envios.length} atleta(s) chegaram ao pódio ou à liderança.`, link: "/ranking" }, r);
+  }
+  return envios.length;
+}
+
 // ---------- pontos ----------
 
 async function avisarPontos(db: Firestore) {
@@ -184,6 +262,13 @@ async function avisarPontos(db: Firestore) {
   await j.confirmar();
   if (envios.length) {
     await registrar(db, "pontos", { titulo: "Pontos lançados", corpo: `${envios.length} atleta(s) avisados dos próprios pontos.`, link: "/desempenho" }, r);
+  }
+  // Quem recebeu pontos pode ter ganhado medalha (inclusive pela importação, que não gera aviso de pontos).
+  const comPontos = [...new Set(snap.docs.map((d) => String(d.data().atletaId ?? "")).filter(Boolean))];
+  try {
+    await avisarConquistasDe(db, comPontos);
+  } catch (error) {
+    console.error("Falha ao calcular conquistas:", error);
   }
   return envios.length;
 }
@@ -244,6 +329,7 @@ async function avisarUltrapassagens(db: Firestore, silencioso = false) {
         await registrar(db, "ranking", { titulo: "Ultrapassagem no ranking", corpo: `${envios.length} atleta(s) avisados de que foram passados.`, link: "/ranking" }, r);
         total += envios.length;
       }
+      await registrarMedalhasDeRanking(db, linhas, posicoes).catch((error) => console.error("Falha nas medalhas de ranking:", error));
     }
     await ref.set({ chave, posicoes, ultimos } satisfies FotoRanking);
   }
