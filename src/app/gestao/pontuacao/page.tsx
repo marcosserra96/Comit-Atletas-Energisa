@@ -74,11 +74,9 @@ export default function PontuacaoPage() {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-2xl font-extrabold text-text">
-          Lançar pontos
-        </h1>
+        <h1 className="text-2xl font-extrabold text-text">Pontuação</h1>
         <p className="text-sm text-text-light">
-          Registre pontuação por treino, evento, reunião ou lançamento avulso.
+          Lance pontos por treino, evento, reunião ou avulso, confira o extrato e corrija o que for preciso.
         </p>
       </div>
 

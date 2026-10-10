@@ -43,7 +43,7 @@ export const PERMISSAO_ORDEM: PermissaoChave[] = [
 
 /**
  * Permissões que só valem junto com outra (a tela fica dentro da área da outra).
- * O histórico mensal é uma aba de "Lançar pontos", então também exige "Registrar".
+ * O histórico mensal é uma aba de "Pontuação", então também exige "Registrar".
  */
 export const PERMISSAO_REQUER: Partial<Record<PermissaoChave, PermissaoChave>> = {
   historicoMensal: "registrar",

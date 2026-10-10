@@ -154,6 +154,8 @@ Antes de criar qualquer elemento de interface, procure aqui. Não duplique.
 | `Badge`, `SportBadge`, `RankingPosition`, `TrendIndicator` | Selos e indicadores. |
 | `PainelNumeros` | Faixa de números no topo de uma tela (um card, células separadas por linha fina). `emLinhasNoCelular` para valores longos, como reais. Não use cards coloridos empilhados. |
 | `EmptyState`, `Skeleton`, `InlineAlert`, `Toast` | Estados vazio, carregando, erro e confirmação. |
+| `MenuAcoes` | Botão "⋯" com as ações de um item (editar, estornar, excluir). Ações de perigo ficam em vermelho, separadas. Use em listas para não repetir botões em cada linha. |
+| `Switch` | Liga/desliga com área de toque de 44px (preferências, seções de um roteiro). |
 
 ---
 

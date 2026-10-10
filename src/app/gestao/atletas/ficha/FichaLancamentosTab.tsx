@@ -1,34 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import {
-  collection,
-  doc,
-  increment,
-  onSnapshot,
-  query,
-  serverTimestamp,
-  where,
-  writeBatch,
-} from "firebase/firestore";
-import { History, RotateCcw } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { collection, getDocs, onSnapshot, query, where } from "firebase/firestore";
+import { History } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { atletaPublicoRef } from "@/lib/publicAthletes";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
-import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { logAudit } from "@/lib/audit";
-import { formatDataTreino, formatKm, formatPontos } from "@/lib/format";
-import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
+import { formatPontos, plural } from "@/lib/format";
+import { editarLancamento, estornarLancamentos } from "@/lib/lancamentosOperacoes";
+import type { MudancasLancamento } from "@/lib/extrato";
 import { EstornarModal } from "../../pontuacao/EstornarModal";
-import type { AtletaDoc, HistoricoPontoDoc } from "@/lib/types";
+import { LinhaLancamento } from "../../pontuacao/extrato/LinhaLancamento";
+import { EditarLancamentoModal } from "../../pontuacao/extrato/EditarLancamentoModal";
+import type { AtletaDoc, HistoricoPontoDoc, RegraPontuacaoDoc } from "@/lib/types";
 
+/** Lançamentos do atleta na ficha: mesma linha, edição e estorno do Extrato. */
 export function FichaLancamentosTab({ atleta }: { atleta: AtletaDoc }) {
-  const { uid, atleta: autor } = useActiveSession();
+  const { uid, atleta: autorAtleta, usuario } = useActiveSession();
   const { show } = useToast();
+  const autor = useMemo(() => ({ uid, nome: autorAtleta.nome }), [uid, autorAtleta.nome]);
+  const podeRegistrar = usuario.role === "administrador" || (usuario.permissoes ?? []).includes("registrar");
   const [lancamentos, setLancamentos] = useState<HistoricoPontoDoc[] | null>(null);
-  const [alvo, setAlvo] = useState<HistoricoPontoDoc | null>(null);
+  const [regras, setRegras] = useState<RegraPontuacaoDoc[]>([]);
+  const [estornando, setEstornando] = useState<HistoricoPontoDoc[] | null>(null);
+  const [editando, setEditando] = useState<HistoricoPontoDoc | null>(null);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -40,50 +36,34 @@ export function FichaLancamentosTab({ atleta }: { atleta: AtletaDoc }) {
       },
       () => setLancamentos([]),
     );
+    void getDocs(collection(db, "regras_pontuacao"))
+      .then((snap) => setRegras(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as RegraPontuacaoDoc)))
+      .catch(() => undefined);
     return unsubscribe;
   }, [atleta.id]);
 
-  async function handleEstornar(motivo: string) {
-    if (!alvo) return;
+  function avisar(ranking: boolean, ok: string) {
+    show(ranking ? "success" : "info", ranking ? `${ok} Ranking atualizado.` : `${ok} O ranking automático não atualizou; use "Recalcular agora".`);
+  }
+
+  async function confirmarEstorno(motivo: string) {
+    if (!estornando) return;
     try {
-      const batch = writeBatch(db);
-      batch.update(doc(db, "historico_pontos", alvo.id), {
-        estornado: true,
-        estornadoEm: serverTimestamp(),
-        estornadoPor: uid,
-        motivoEstorno: motivo,
-      });
-      batch.update(doc(db, "atletas", alvo.atletaId), {
-        pontuacaoTotal: increment(-alvo.pontos),
-        atualizadoEm: serverTimestamp(),
-      });
-      batch.set(
-        atletaPublicoRef(alvo.atletaId),
-        { pontuacaoTotal: increment(-alvo.pontos) },
-        { merge: true },
-      );
-      await batch.commit();
-      await logAudit({
-        acao: "estornar_lancamento",
-        entidade: "historico_pontos",
-        entidadeId: alvo.id,
-        dados: { motivo, pontos: alvo.pontos, atletaId: alvo.atletaId },
-        criadoPor: uid,
-        criadoPorNome: autor.nome,
-      });
-      const rankingAtualizado = await atualizarRankingAutomaticamente(
-        [alvo.atletaId],
-        "estorno_ficha_atleta",
-      );
-      show(
-        rankingAtualizado ? "success" : "info",
-        rankingAtualizado
-          ? "Lançamento estornado. Ranking atualizado."
-          : "Lançamento estornado, mas o ranking automático não atualizou. Use \"Recalcular agora\".",
-      );
-      setAlvo(null);
+      avisar(await estornarLancamentos(estornando, motivo, autor, "estorno_ficha_atleta"), "Lançamento estornado.");
+      setEstornando(null);
     } catch {
       show("error", "Não foi possível estornar agora. Tente novamente.");
+    }
+  }
+
+  async function salvarEdicao(m: MudancasLancamento, motivo: string) {
+    if (!editando) return;
+    try {
+      const r = await editarLancamento(editando, m, autor, motivo);
+      setEditando(null);
+      if (r) avisar(r.ranking, "Lançamento corrigido.");
+    } catch (e) {
+      show("error", e instanceof Error ? e.message : "Não foi possível salvar a correção agora.");
     }
   }
 
@@ -101,49 +81,29 @@ export function FichaLancamentosTab({ atleta }: { atleta: AtletaDoc }) {
     );
   }
 
+  const validos = lancamentos.filter((l) => !l.estornado);
+  const total = validos.reduce((s, l) => s + l.pontos, 0);
+
   return (
     <>
-      <div className="flex flex-col gap-2">
+      <p className="mb-2 text-sm text-text-light">
+        {plural(lancamentos.length, "lançamento")} · <span className="font-semibold text-text">{formatPontos(total)} pts válidos</span>
+      </p>
+      <ul className="divide-y divide-border-subtle rounded-[var(--radius)] border border-border bg-bg px-3.5">
         {lancamentos.map((l) => (
-          <div
-            key={l.id}
-            className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius)] border border-border bg-bg px-3.5 py-2.5"
-          >
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-text">{l.regraDesc}</p>
-              <p className="text-xs text-text-muted">
-                {formatDataTreino(l.dataTreino, l.dataAproximada)}
-                {l.kmPercorrido ? ` · ${formatKm(l.kmPercorrido)}` : ""}
-              </p>
-              {l.observacao ? (
-                <p className="mt-1 max-w-xl whitespace-pre-wrap text-xs text-text-light">
-                  {l.observacao}
-                </p>
-              ) : null}
-            </div>
-            <div className="flex shrink-0 items-center gap-2.5">
-              <span className={`text-sm font-bold ${l.estornado ? "text-text-muted line-through" : "text-success"}`}>
-                +{formatPontos(l.pontos)}
-              </span>
-              <Badge tone={l.estornado ? "danger" : "success"}>{l.estornado ? "Estornado" : "Válido"}</Badge>
-              {l.justificativaAusenciaId ? (
-                <Badge tone="primary">Solicitada pelo atleta</Badge>
-              ) : null}
-              {!l.estornado && (
-                <button
-                  onClick={() => setAlvo(l)}
-                  className="inline-flex items-center gap-1 rounded-[var(--radius)] px-2 py-1 text-xs font-semibold text-danger hover:bg-danger/10"
-                >
-                  <RotateCcw className="size-3.5" />
-                  Estornar
-                </button>
-              )}
-            </div>
-          </div>
+          <li key={l.id}>
+            <LinhaLancamento
+              lancamento={l}
+              modo="ficha"
+              onEditar={podeRegistrar ? setEditando : undefined}
+              onEstornar={podeRegistrar ? (x) => setEstornando([x]) : undefined}
+            />
+          </li>
         ))}
-      </div>
+      </ul>
 
-      <EstornarModal lancamento={alvo} onClose={() => setAlvo(null)} onConfirm={handleEstornar} />
+      <EditarLancamentoModal lancamento={editando} regras={regras} onClose={() => setEditando(null)} onSalvar={salvarEdicao} />
+      <EstornarModal itens={estornando} onClose={() => setEstornando(null)} onConfirm={confirmarEstorno} />
     </>
   );
 }

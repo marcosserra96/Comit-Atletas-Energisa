@@ -37,7 +37,7 @@ const baseItems: { href: string; label: string; icon: typeof LayoutDashboard; pe
   { href: "/gestao", label: "Início", icon: LayoutDashboard, permissao: "inicio" },
   { href: "/gestao/atletas", label: "Atletas", icon: Users, permissao: "atletas" },
   { href: "/gestao/criterios", label: "Critérios", icon: ListChecks, permissao: "regras" },
-  { href: "/gestao/pontuacao", label: "Lançar pontos", icon: Target, permissao: "registrar" },
+  { href: "/gestao/pontuacao", label: "Pontuação", icon: Target, permissao: "registrar" },
   { href: "/gestao/eventos", label: "Eventos", icon: CalendarCheck, permissao: "eventos" },
   { href: "/gestao/noticias", label: "Notícias", icon: Newspaper, permissao: "noticias" },
   { href: "/gestao/informativo", label: "Informativo", icon: Megaphone, permissao: "informativo" },
