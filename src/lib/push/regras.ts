@@ -21,7 +21,7 @@ export const DESTINOS_PUSH = [
 export const LIMITE_TITULO = 60;
 export const LIMITE_CORPO = 180;
 
-export type OrigemPush = "manual" | "noticia" | "pesquisa_abertura" | "pesquisa_lembrete" | "reuniao" | "pontos" | "ranking" | "conquistas" | "comite";
+export type OrigemPush = "manual" | "noticia" | "pesquisa_abertura" | "pesquisa_lembrete" | "reuniao" | "pontos" | "ranking" | "conquistas" | "desafio" | "comite";
 
 export const ORIGEM_PUSH_LABEL: Record<OrigemPush, string> = {
   manual: "Enviada pelo comitê",
@@ -32,6 +32,7 @@ export const ORIGEM_PUSH_LABEL: Record<OrigemPush, string> = {
   pontos: "Pontos lançados",
   ranking: "Ultrapassagem no ranking",
   conquistas: "Conquista",
+  desafio: "Desafio novo",
   comite: "Aviso para o comitê",
 };
 

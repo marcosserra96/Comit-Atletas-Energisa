@@ -22,7 +22,7 @@ export const PREFERENCIAS_PADRAO: PreferenciasAviso = {
 export const TIPO_AVISO_INFO: Record<TipoAviso, { titulo: string; texto: string }> = {
   pontos: { titulo: "Pontos lançados", texto: "Quando o comitê lançar pontos para você." },
   ranking: { titulo: "Ultrapassagem no ranking", texto: "Quando alguém passar você no ranking do trimestre." },
-  conquistas: { titulo: "Conquistas", texto: "Quando você ganhar uma medalha nova." },
+  conquistas: { titulo: "Conquistas", texto: "Quando você ganhar uma medalha nova, inclusive de desafio." },
   comite_acesso: { titulo: "Pedido de acesso", texto: "Quando alguém pedir para entrar no portal." },
   comite_justificativa: { titulo: "Justificativa de ausência", texto: "Quando um atleta enviar uma justificativa para analisar." },
   comite_senha: { titulo: "Pedido de nova senha", texto: "Quando alguém não conseguir entrar e pedir ajuda." },

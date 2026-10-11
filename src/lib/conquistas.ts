@@ -9,7 +9,20 @@ import type { HistoricoPontoDoc, Modalidade } from "@/lib/types";
 // ---------- medalhas ----------
 
 export type NivelMedalha = 1 | 2 | 3 | 4 | 5;
-export type IconeMedalha = "treino" | "km" | "chama" | "recorde" | "prova" | "reuniao" | "podio" | "coroa";
+export type IconeMedalha =
+  | "treino"
+  | "km"
+  | "chama"
+  | "recorde"
+  | "prova"
+  | "reuniao"
+  | "podio"
+  | "coroa"
+  // usados nos desafios do comitê
+  | "bandeira"
+  | "coracao"
+  | "estrela"
+  | "montanha";
 
 export interface DefinicaoMedalha {
   id: string;
@@ -18,9 +31,11 @@ export interface DefinicaoMedalha {
   descricao: string;
   icone: IconeMedalha;
   nivel: NivelMedalha;
-  grupo: "treinos" | "distancia" | "constancia" | "especiais";
+  grupo: "treinos" | "distancia" | "constancia" | "especiais" | "desafios";
   /** Medalhas que só o servidor registra (dependem do ranking daquele momento). */
   doServidor?: boolean;
+  /** Unidade do progresso ("km", "treinos"); sem ela, sai do id. */
+  unidade?: { singular: string; plural: string };
 }
 
 const TREINOS = [1, 10, 25, 50, 100] as const;
@@ -147,7 +162,7 @@ export function calcularSequencia(lancamentos: readonly HistoricoPontoDoc[], reg
 // ---------- cálculo das medalhas ----------
 
 /** Dia em que um total acumulado passou da meta (atividades em ordem de data). */
-function diaQueAlcancou(itens: { data: string; valor: number }[], meta: number) {
+export function diaQueAlcancou(itens: { data: string; valor: number }[], meta: number) {
   let soma = 0;
   for (const i of [...itens].sort((a, b) => a.data.localeCompare(b.data))) {
     soma += i.valor;
@@ -210,9 +225,11 @@ export function calcularMedalhas(params: {
 }
 
 /** "18 de 25 treinos", "120 de 250 km". */
-export function textoProgresso(m: Pick<MedalhaDoAtleta, "id" | "progresso">) {
+export function textoProgresso(m: Pick<MedalhaDoAtleta, "id" | "progresso" | "unidade">) {
   const { atual, meta } = m.progresso;
-  const unidade = m.id.startsWith("treinos")
+  const unidade = m.unidade
+    ? meta === 1 ? m.unidade.singular : m.unidade.plural
+    : m.id.startsWith("treinos")
     ? meta === 1 ? "treino" : "treinos"
     : m.id.startsWith("km")
       ? "km"
@@ -226,8 +243,12 @@ export function textoProgresso(m: Pick<MedalhaDoAtleta, "id" | "progresso">) {
   return `${atual.toLocaleString("pt-BR")} de ${meta.toLocaleString("pt-BR")}${unidade ? ` ${unidade}` : ""}`;
 }
 
-/** A medalha bloqueada mais perto de sair (maior % de progresso), para o "próxima conquista". */
-export function proximaMedalha(medalhas: readonly MedalhaDoAtleta[]) {
+/**
+ * A medalha bloqueada mais perto de sair (maior % de progresso), para o "próxima conquista".
+ * Desafios ficam de fora: eles têm o próprio card, com prazo.
+ */
+export function proximaMedalha(todas: readonly MedalhaDoAtleta[]) {
+  const medalhas = todas.filter((m) => m.grupo !== "desafios");
   return (
     medalhas
       .filter((m) => !m.conquistada && !m.doServidor && m.progresso.atual > 0)

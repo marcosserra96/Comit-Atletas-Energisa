@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useState } from "react";
 import Image from "next/image";
-import { BellRing, CalendarClock, ClipboardList, Medal, Megaphone, Newspaper, Send, ShieldCheck, Trophy, TrendingUp, UsersRound } from "lucide-react";
+import { BellRing, CalendarClock, ClipboardList, Flag, Medal, Megaphone, Newspaper, Send, ShieldCheck, Trophy, TrendingUp, UsersRound } from "lucide-react";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -60,6 +60,7 @@ const ICONE_ORIGEM: Record<OrigemPush, typeof Send> = {
   pontos: Trophy,
   ranking: TrendingUp,
   conquistas: Medal,
+  desafio: Flag,
   comite: ShieldCheck,
 };
 
@@ -101,7 +102,8 @@ const AUTOMATICAS = [
   { icone: Newspaper, titulo: "Notícia", texto: "Quando quem publica marca “Avisar os atletas no celular”." },
   { icone: Trophy, titulo: "Pontos lançados", texto: "Para cada atleta, com o total e o motivo, assim que os pontos são lançados." },
   { icone: TrendingUp, titulo: "Ultrapassagem no ranking", texto: "Quando alguém passa o atleta no ranking do trimestre (no máximo 1 a cada 12 h; não sai com o ranking oculto)." },
-  { icone: Medal, titulo: "Conquistas", texto: "Quando o atleta ganha uma medalha (treinos, km, sequência, prova, pódio, liderança)." },
+  { icone: Medal, titulo: "Conquistas", texto: "Quando o atleta ganha uma medalha (treinos, km, sequência, prova, pódio, liderança, desafios)." },
+  { icone: Flag, titulo: "Desafio novo", texto: "Quando o comitê cria um desafio e marca “Avisar os atletas”, para a modalidade do desafio." },
   { icone: ShieldCheck, titulo: "Pedidos para o comitê", texto: "Acesso novo (administradores), justificativa (quem lança pontos) e nova senha (quem cuida de atletas)." },
 ];
 

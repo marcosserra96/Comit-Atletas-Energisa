@@ -25,6 +25,7 @@ const titleByPath: Record<string, string> = {
   "/gestao/conta": "Minha conta",
   "/gestao/informativo": "Informativo",
   "/gestao/reuniao": "Reunião de resultados",
+  "/gestao/desafios": "Desafios",
   "/gestao/pesquisas": "Pesquisas",
   "/gestao/notificacoes": "Notificações",
 };
