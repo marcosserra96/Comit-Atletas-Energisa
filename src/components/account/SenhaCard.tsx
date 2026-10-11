@@ -49,7 +49,7 @@ export function SenhaCard() {
         <TextField
           label="Senha atual"
           type="password"
-          placeholder="Obrigatório para alterar a senha"
+          placeholder="Sua senha de hoje"
           value={senhaAtual}
           onChange={(e) => setSenhaAtual(e.target.value)}
           required

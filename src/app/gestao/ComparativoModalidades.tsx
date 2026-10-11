@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { Bike, Footprints } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { formatDistancia, formatPontos, plural } from "@/lib/format";
+import { formatKmTotal, formatPontos, plural } from "@/lib/format";
 import { calcularPosicoesRanking } from "@/lib/rankingPosition";
 import type { ModalidadeStats } from "@/lib/dashboardStats";
 import type { AtletaDoc } from "@/lib/types";
@@ -61,7 +61,7 @@ function Percentual({ valor, mod, sub }: { valor: number | null; mod: Mod; sub?:
 function Grupo({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
     <div>
-      <p className="pt-4 text-xs font-bold uppercase tracking-wide text-text-muted">{titulo}</p>
+      <p className="pt-4 text-sm font-bold text-text">{titulo}</p>
       <div className="divide-y divide-border">{children}</div>
     </div>
   );
@@ -159,14 +159,14 @@ export function ComparativoModalidades({
         />
         <Linha
           rotulo="Quilometragem"
-          corrida={<Valor>{corrida.km > 0 ? formatDistancia(corrida.km) : "—"}</Valor>}
-          bicicleta={<Valor>{bicicleta.km > 0 ? formatDistancia(bicicleta.km) : "—"}</Valor>}
+          corrida={<Valor>{corrida.km > 0 ? formatKmTotal(corrida.km) : "—"}</Valor>}
+          bicicleta={<Valor>{bicicleta.km > 0 ? formatKmTotal(bicicleta.km) : "—"}</Valor>}
         />
       </Grupo>
 
       {/* Pódio nas mesmas colunas da tabela. */}
       <div className="mt-1 grid grid-cols-1 gap-4 border-t border-border pt-4 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)] sm:gap-6">
-        <p className="hidden text-xs font-bold uppercase tracking-wide text-text-muted sm:block">Pódio</p>
+        <p className="hidden text-sm font-bold text-text sm:block">Pódio</p>
         {(
           [
             ["Corrida", podioCorrida],
@@ -175,7 +175,7 @@ export function ComparativoModalidades({
         ).map(([nome, podio]) => (
           <div key={nome} className="min-w-0">
             {/* No celular cada pódio vem com o nome da modalidade; no computador a coluna já diz. */}
-            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-text-muted sm:hidden">Pódio · {nome}</p>
+            <p className="mb-2 text-sm font-bold text-text sm:hidden">Pódio da {nome}</p>
             <Podio atletas={podio} />
           </div>
         ))}

@@ -66,6 +66,16 @@ export default function PerfilPage() {
   }
 
   const modalidade = modalidadeFromEquipe(atleta.equipe);
+  // Só o que informa algo: a modalidade aparece quando difere da equipe (ex.: fila de espera)
+  // e "Membro desde" só quando se sabe.
+  const nomeEquipe = equipeLabel[atleta.equipe] || atleta.equipe;
+  const nomeModalidade = modalidade === "bicicleta" || modalidade === "corrida" ? modalidadeLabel[modalidade] : null;
+  const desde = atleta.anoEntrada || (atleta.entrouNaEquipeEm ? Number(atleta.entrouNaEquipeEm.slice(0, 4)) : null);
+  const vinculo = [
+    { rotulo: "Equipe", valor: nomeEquipe },
+    ...(nomeModalidade && nomeModalidade !== nomeEquipe ? [{ rotulo: "Modalidade", valor: nomeModalidade }] : []),
+    ...(desde ? [{ rotulo: "Membro desde", valor: String(desde) }] : []),
+  ];
 
   return (
     <div className="flex flex-col gap-4 sm:gap-6">
@@ -86,7 +96,7 @@ export default function PerfilPage() {
           
           <div className="mt-1 flex flex-wrap justify-start gap-2 sm:mt-2">
             <Badge tone={isWaitlisted(atleta.equipe) ? "warning" : atleta.ativo ? "success" : "neutral"} className="px-3 py-1">
-              {isWaitlisted(atleta.equipe) ? "Na fila de espera" : atleta.ativo ? "Atleta Ativo" : "Atleta Inativo"}
+              {isWaitlisted(atleta.equipe) ? "Na fila de espera" : atleta.ativo ? "Atleta ativo" : "Atleta inativo"}
             </Badge>
             <div className="flex items-center">
               <SportBadge modalidade={modalidade} />
@@ -170,20 +180,12 @@ export default function PerfilPage() {
             
             {/* Dados que só o comitê altera: mostrados como texto, não como campos desabilitados. */}
             <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-3">
-              <div>
-                <dt className="text-xs font-semibold text-text-light">Equipe</dt>
-                <dd className="mt-0.5 font-semibold text-text">{equipeLabel[atleta.equipe] || atleta.equipe}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-semibold text-text-light">Modalidade</dt>
-                <dd className="mt-0.5 font-semibold text-text">
-                  {modalidade === "bicicleta" || modalidade === "corrida" ? modalidadeLabel[modalidade] : "Não se aplica"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs font-semibold text-text-light">Membro desde</dt>
-                <dd className="mt-0.5 font-semibold text-text">{atleta.anoEntrada || "Não informado"}</dd>
-              </div>
+              {vinculo.map((item) => (
+                <div key={item.rotulo}>
+                  <dt className="text-xs font-semibold text-text-light">{item.rotulo}</dt>
+                  <dd className="mt-0.5 font-semibold text-text">{item.valor}</dd>
+                </div>
+              ))}
             </dl>
             <p className="mt-4 text-xs text-text-light">Para alterar esses dados, fale com o comitê.</p>
           </Card>

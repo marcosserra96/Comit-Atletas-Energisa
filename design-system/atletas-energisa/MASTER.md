@@ -76,7 +76,8 @@ texto.** Para hierarquia, use tamanho e peso, não cores mais apagadas.
   mostra o nome da página só depois que o `<h1>` sai da tela, para não repetir o título.
 - **Números:** use `tabular-nums` em métricas, tabelas e rankings.
 - **Tamanho mínimo:** 12px para texto que precisa ser lido. Evite `text-[10px]`/`text-[11px]`.
-- **Maiúsculas:** só a primeira letra da frase ("Dados pessoais", não "Dados Pessoais").
+- **Maiúsculas:** só a primeira letra da frase ("Dados pessoais", não "Dados Pessoais"). Cards têm
+  só o título (sem rótulo em caixa-alta acima); datas e meses em minúsculas ("22 de nov.", "mai").
 
 ---
 
@@ -176,7 +177,9 @@ Antes de criar qualquer elemento de interface, procure aqui. Não duplique.
 - **Nomes de telas:** o item do menu, o título no topo e o título da página usam o mesmo nome.
 - **Números:** `formatPontos`, `formatKm`/`formatDistancia`, `formatNumero` e `formatBRL`
   (`src/lib/format.ts`). **Pontos são sempre inteiros** ("25", "1.250"); **km tem até 2 casas**,
-  sem zeros sobrando ("10 km", "12,35 km"), o que também limpa somas como 5,2 + 3,1. Campos
+  sem zeros sobrando ("10 km", "12,35 km"), o que também limpa somas como 5,2 + 3,1. Totais acumulados
+  (painéis, equipe) usam `formatKmTotal`: sem casas a partir de 100 km ("21.294 km"). Datas curtas sem zero
+  à esquerda ("2 de out."). Campos
   de pontos aceitam só inteiros. Nunca mostre o número cru nem use `toFixed` (ponto decimal).
 - **Plural:** `plural(n, "treino")` → "1 treino" / "3 treinos". Nunca "treino(s)".
 - **Linguagem:** direta e sem jargão técnico. Mensagens de erro dizem o que aconteceu e o

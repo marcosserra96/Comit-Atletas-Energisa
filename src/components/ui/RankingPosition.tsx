@@ -43,7 +43,10 @@ export function RankingPosition({ position, size = 'md', className }: RankingPos
         <span className="sr-only">{position}º lugar</span>
       ) : null}
       
-      {isMedal && size === 'lg' ? (
+      {position <= 0 ? (
+        // Sem pontos ainda: não tem colocação (evita dezenas de "2º" empatados com zero).
+        <span aria-label="Sem posição">—</span>
+      ) : isMedal && size === 'lg' ? (
         <Trophy size={18} />
       ) : (
         <span>{position}º</span>

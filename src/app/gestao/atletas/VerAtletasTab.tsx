@@ -19,11 +19,12 @@ import { consolidarAtividades } from "@/lib/activityConsolidation";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { MenuAcoes } from "@/components/ui/MenuAcoes";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { equipeLabel, isWaitlisted, ehMembroDoElenco } from "@/lib/labels";
-import { formatKm, formatPontos, formatShortDate } from "@/lib/format";
+import { formatKmTotal, formatNumero, formatPontos, formatShortDate } from "@/lib/format";
 import { exportToExcel } from "@/lib/excel";
 import { cn } from "@/lib/cn";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
@@ -129,6 +130,10 @@ export function VerAtletasTab() {
     .reduce((sum, a) => sum + (resumos[a.id]?.km ?? 0), 0);
   const totalParticipacoes = filtrados.reduce((sum, a) => sum + (resumos[a.id]?.eventos ?? 0), 0);
 
+  function visualizarComoAtleta(id: string) {
+    window.open(`/dashboard?visualizarAtleta=${encodeURIComponent(id)}`, "_blank", "noopener");
+  }
+
   function handleExportar() {
     exportToExcel(
       "lista-atletas.xlsx",
@@ -149,9 +154,9 @@ export function VerAtletasTab() {
     <div className="flex flex-col gap-4">
       <PainelNumeros
         itens={[
-          { rotulo: "Km total", valor: formatKm(kmTotal), detalhe: "Soma dos atletas" },
-          { rotulo: "Bike", valor: formatKm(kmBike) },
-          { rotulo: "Corrida", valor: formatKm(kmCorrida) },
+          { rotulo: "Km total", valor: formatKmTotal(kmTotal), detalhe: "Soma dos atletas" },
+          { rotulo: "Bike", valor: formatKmTotal(kmBike) },
+          { rotulo: "Corrida", valor: formatKmTotal(kmCorrida) },
           { rotulo: "Na lista", valor: String(filtrados.length), detalhe: `${totalParticipacoes} participações` },
         ]}
       />
@@ -245,65 +250,64 @@ export function VerAtletasTab() {
           />
         </Card>
       ) : visualizacao === "cards" ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtrados.map((a) => (
-            <Card key={a.id} className="flex flex-col gap-3">
-              <div className="flex items-start justify-between gap-2">
-                <button
-                  type="button"
-                  onClick={() => setFichaAberta(a)}
-                  className="group flex min-w-0 cursor-pointer items-center gap-3 rounded-[var(--radius)] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        // Uma linha por atleta (no celular, uma lista só): tocar abre a ficha; o resto fica no "⋯".
+        <Card padding="none" className="overflow-hidden sm:border-0 sm:bg-transparent sm:shadow-none">
+          <ul className="divide-y divide-border-subtle sm:grid sm:grid-cols-2 sm:gap-3 sm:divide-y-0 lg:grid-cols-3">
+            {filtrados.map((a) => {
+              const resumo = resumos[a.id];
+              const situacao = isWaitlisted(a.equipe) ? "Na fila" : a.ativo ? null : "Inativo";
+              const detalhes = [
+                `${formatPontos(a.pontuacaoTotal)} pts`,
+                resumo?.km ? `${formatNumero(resumo.km, 0)} km` : null,
+              ].filter(Boolean);
+              return (
+                <li
+                  key={a.id}
+                  className="flex items-center gap-1 pr-2 sm:rounded-[var(--radius-lg)] sm:border sm:border-border sm:bg-bg-card sm:shadow-[var(--shadow-card)]"
                 >
-                  <AvatarAtleta nome={a.nome} foto={fotos[a.id]} className="size-10 text-sm" tom="bg-primary/10 text-primary" />
-                  <span className="min-w-0">
-                    <span className="block truncate font-semibold text-text group-hover:text-primary">{a.nome}</span>
-                    <span className="block text-xs text-text-light">{equipeLabel[a.equipe]}</span>
-                  </span>
-                </button>
-                <div className="flex shrink-0 items-center gap-1">
                   <button
                     type="button"
                     onClick={() => setFichaAberta(a)}
-                    aria-label={`Abrir ficha de ${a.nome}`}
-                    title="Abrir ficha"
-                    className="inline-flex size-11 cursor-pointer items-center justify-center rounded-[var(--radius)] text-text-light hover:bg-bg hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="group flex min-h-16 min-w-0 flex-1 items-center gap-3 rounded-[var(--radius-lg)] px-3.5 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                   >
-                    <IdCard className="size-5" aria-hidden="true" />
+                    <AvatarAtleta nome={a.nome} foto={fotos[a.id]} className={cn("size-10 text-sm", !a.ativo && "opacity-60")} tom="bg-primary/10 text-primary" />
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-2">
+                        <span className={cn("truncate font-semibold group-hover:text-primary", a.ativo ? "text-text" : "text-text-light")}>{a.nome}</span>
+                        {situacao ? (
+                          <Badge tone={situacao === "Na fila" ? "warning" : "neutral"} className="shrink-0 px-2 py-0.5">
+                            {situacao}
+                          </Badge>
+                        ) : null}
+                      </span>
+                      <span className="block truncate text-xs text-text-light">
+                        {equipeLabel[a.equipe]} · {detalhes.join(" · ")}
+                      </span>
+                      {!a.authUid ? (
+                        <span className="mt-0.5 flex items-center gap-1 text-xs text-text-muted">
+                          <LinkIcon className="size-3" aria-hidden="true" />
+                          Ainda sem login
+                        </span>
+                      ) : null}
+                    </span>
                   </button>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge tone={isWaitlisted(a.equipe) ? "warning" : a.ativo ? "success" : "neutral"}>
-                  {isWaitlisted(a.equipe) ? "Na fila" : a.ativo ? "Ativo" : "Inativo"}
-                </Badge>
-                <Badge tone="primary">{formatPontos(a.pontuacaoTotal)} pts</Badge>
-                {!a.authUid && (
-                  <Badge tone="neutral">
-                    <LinkIcon className="size-3" />
-                    Sem login
-                  </Badge>
-                )}
-              </div>
-              {isAdmin && (
-                <a
-                  href={`/dashboard?visualizarAtleta=${encodeURIComponent(a.id)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex h-9 items-center justify-center gap-2 rounded-[var(--radius)] border border-primary/25 bg-primary/5 px-3 text-xs font-bold text-primary transition-colors hover:bg-primary/10"
-                >
-                  <Eye className="size-4" />
-                  Visualizar como atleta
-                </a>
-              )}
-            </Card>
-          ))}
-        </div>
+                  <MenuAcoes
+                    rotulo={`Ações de ${a.nome}`}
+                    acoes={[
+                      { rotulo: "Abrir ficha", icone: IdCard, onSelect: () => setFichaAberta(a) },
+                      ...(isAdmin ? [{ rotulo: "Visualizar como atleta", icone: Eye, onSelect: () => visualizarComoAtleta(a.id) }] : []),
+                    ]}
+                  />
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
       ) : (
         <Card className="overflow-x-auto p-0">
           <table className="w-full min-w-[760px] text-sm">
             <thead>
-              <tr className="border-b border-border bg-[#f8fafc] text-left text-xs uppercase tracking-wide text-text-light">
+              <tr className="border-b border-border bg-bg-subtle text-left text-xs text-text-light">
                 <th className="px-3.5 py-2.5 font-bold">Atleta</th>
                 <th className="px-3.5 py-2.5 font-bold">Equipe</th>
                 <th className="px-3.5 py-2.5 font-bold">Pontos</th>
@@ -311,7 +315,7 @@ export function VerAtletasTab() {
                 <th className="px-3.5 py-2.5 font-bold">Eventos</th>
                 <th className="px-3.5 py-2.5 font-bold">Último</th>
                 <th className="px-3.5 py-2.5 font-bold">Status</th>
-                <th className="px-3.5 py-2.5 font-bold">Ações</th>
+                <th className="px-3.5 py-2.5"><span className="sr-only">Ações</span></th>
               </tr>
             </thead>
             <tbody>
@@ -330,7 +334,7 @@ export function VerAtletasTab() {
                     </td>
                     <td className="px-3.5 py-2.5 text-text-light">{equipeLabel[a.equipe]}</td>
                     <td className="px-3.5 py-2.5 text-text-light">{formatPontos(a.pontuacaoTotal)}</td>
-                    <td className="px-3.5 py-2.5 text-text-light">{formatKm(resumo?.km ?? 0)}</td>
+                    <td className="px-3.5 py-2.5 tabular-nums text-text-light">{formatKmTotal(resumo?.km ?? 0)}</td>
                     <td className="px-3.5 py-2.5 text-text-light">{resumo?.eventos ?? 0}</td>
                     <td className="px-3.5 py-2.5 text-text-light">
                       {resumo?.ultimo ? formatShortDate(resumo.ultimo) : "—"}
@@ -341,22 +345,17 @@ export function VerAtletasTab() {
                       </Badge>
                     </td>
                     <td className="px-3.5 py-2.5">
-                      <div className="flex items-center gap-2">
-                        {isAdmin && (
-                          <a
-                            href={`/dashboard?visualizarAtleta=${encodeURIComponent(a.id)}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex h-8 items-center gap-1.5 rounded-[var(--radius)] bg-primary px-3 text-xs font-semibold text-on-primary transition-colors hover:bg-primary-hover"
-                          >
-                            <Eye className="size-3.5" />
-                            Visualizar
-                          </a>
-                        )}
-                        <Button size="sm" variant="secondary" onClick={() => setFichaAberta(a)}>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => setFichaAberta(a)}>
                           <IdCard className="size-3.5" aria-hidden="true" />
                           Ficha
                         </Button>
+                        {isAdmin ? (
+                          <MenuAcoes
+                            rotulo={`Ações de ${a.nome}`}
+                            acoes={[{ rotulo: "Visualizar como atleta", icone: Eye, onSelect: () => visualizarComoAtleta(a.id) }]}
+                          />
+                        ) : null}
                       </div>
                     </td>
                   </tr>

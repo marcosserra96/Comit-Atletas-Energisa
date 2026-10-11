@@ -15,7 +15,7 @@ import {
   where,
   writeBatch,
 } from "firebase/firestore";
-import { Activity, AlertCircle, CalendarCheck, PlusCircle, Target, UsersRound } from "lucide-react";
+import { Activity, AlertCircle, CalendarCheck, Check, CheckCheck, PlusCircle, Target, UsersRound } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { atletaPublicoRef } from "@/lib/publicAthletes";
 import { useActiveSession } from "@/lib/session/SessionProvider";
@@ -28,6 +28,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { formatPontos, formatShortDate, plural } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
+import { regraContaComoTreino } from "@/lib/activityConsolidation";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import {
   justificativaAbrangeData,
@@ -164,6 +165,11 @@ export function LancarPontosTab({
     );
   }, [regras, modalidade, tipo]);
 
+  // A regra principal é a que todo mundo recebe (ex.: participação em treino): a primeira
+  // marcada como treino, senão a primeira da lista. As outras viram botões menores no celular.
+  const regraPrincipal = regrasCompativeis.find((r) => regraContaComoTreino(r)) ?? regrasCompativeis[0];
+  const outrasRegras = regrasCompativeis.filter((r) => r.id !== regraPrincipal?.id);
+
   const justificativaPorAtleta = useMemo(() => {
     const mapa = new Map<string, JustificativaAusenciaDoc>();
     if (!dataTreino || tipo === "avulso") return mapa;
@@ -240,24 +246,42 @@ export function LancarPontosTab({
         ? "Ex: Ajuste aprovado pelo comitê / Participação externa"
         : "Ex: Treino de sábado / Treino especial";
 
+  /** Marca uma regra respeitando as excludentes (marcar uma desmarca as que não podem vir juntas). */
+  function comRegra(atual: Set<string>, regraId: string) {
+    const regra = regrasCompativeis.find((r) => r.id === regraId);
+    const excludentes = new Set(regra?.regrasExcludentes ?? []);
+    for (const marcadaId of [...atual]) {
+      const marcada = regrasCompativeis.find((r) => r.id === marcadaId);
+      if (excludentes.has(marcadaId) || marcada?.regrasExcludentes?.includes(regraId)) atual.delete(marcadaId);
+    }
+    atual.add(regraId);
+    return atual;
+  }
+
   function toggleRegra(atletaId: string, regraId: string) {
     setMarcados((prev) => {
       const atual = new Set(prev[atletaId] ?? []);
-      if (atual.has(regraId)) {
-        atual.delete(regraId);
-      } else {
-        const regra = regrasCompativeis.find((r) => r.id === regraId);
-        const excludentes = new Set(regra?.regrasExcludentes ?? []);
-        for (const marcadaId of [...atual]) {
-          const marcada = regrasCompativeis.find((r) => r.id === marcadaId);
-          const marcadaExcludeEsta = marcada?.regrasExcludentes?.includes(regraId);
-          if (excludentes.has(marcadaId) || marcadaExcludeEsta) {
-            atual.delete(marcadaId);
-          }
-        }
-        atual.add(regraId);
-      }
+      if (atual.has(regraId)) atual.delete(regraId);
+      else comRegra(atual, regraId);
       return { ...prev, [atletaId]: atual };
+    });
+  }
+
+  /** Quem pode receber pontos agora (quem está com falta fica de fora). */
+  const atletasSemFalta = atletas?.filter((a) => !faltososEfetivos.has(a.id)) ?? [];
+  const todosComRegra = (regraId: string) => atletasSemFalta.length > 0 && atletasSemFalta.every((a) => marcados[a.id]?.has(regraId));
+
+  function toggleRegraTodos(regraId: string) {
+    const desmarcar = todosComRegra(regraId);
+    setMarcados((prev) => {
+      const next = { ...prev };
+      for (const a of atletasSemFalta) {
+        const atual = new Set(prev[a.id] ?? []);
+        if (desmarcar) atual.delete(regraId);
+        else if (!atual.has(regraId)) comRegra(atual, regraId);
+        next[a.id] = atual;
+      }
+      return next;
     });
   }
 
@@ -474,7 +498,12 @@ export function LancarPontosTab({
       <Card className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-semibold text-text-light">Tipo de lançamento</label>
-          <SegmentedControl value={tipo} onChange={handleTipoChange} options={tipoOptions} />
+          <SegmentedControl
+            value={tipo}
+            onChange={handleTipoChange}
+            options={tipoOptions}
+            className="grid w-full grid-cols-4 sm:flex sm:w-fit [&>button]:px-1.5 sm:[&>button]:px-3.5 max-sm:[&_svg]:hidden"
+          />
         </div>
         {tipo === "reuniao" ? (
           <p className="text-sm text-text-light">
@@ -602,111 +631,147 @@ export function LancarPontosTab({
         </Card>
       ) : (
         <>
-        {/* Celular: um card por atleta, com alvos grandes para o dedo. */}
+        {/* Celular: uma linha por atleta. Tocar na linha marca a regra principal (o caso de todo dia). */}
         <div className="flex flex-col gap-3 md:hidden">
-          <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-[var(--radius)] border border-accent/30 bg-accent-subtle px-3 text-sm font-semibold text-text">
-            <input
-              type="checkbox"
-              checked={atletas.length > 0 && atletas.every((a) => faltososEfetivos.has(a.id))}
-              onChange={toggleFaltaTodos}
-              className="size-5 shrink-0 rounded border-border accent-accent"
-            />
-            Falta justificada para todo o time
-          </label>
-          {atletas.map((a) => {
-            const isFalta = faltososEfetivos.has(a.id);
-            const justificativa = justificativaPorAtleta.get(a.id);
-            const justificativaAplicada =
-              justificativa && !faltasAutomaticasIgnoradas.has(a.id) ? justificativa : null;
-            const observacaoAutomatica = justificativaAplicada
-              ? resumoJustificativa(justificativaAplicada)
-              : "";
-            const temMarcacao = isFalta || (marcados[a.id]?.size ?? 0) > 0;
-            return (
-              <Card key={a.id} padding="sm" className={cn("flex flex-col gap-3", temMarcacao && "border-primary/40")}>
-                <div className="flex items-center justify-between gap-3">
-                  <p className="font-semibold text-text">{a.nome}</p>
-                  <span className="shrink-0 text-sm font-bold tabular-nums text-text">
-                    {isFalta ? "Falta" : `${formatPontos(pontosDoAtleta(a.id))} pts`}
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {regrasCompativeis.map((r) => {
-                    const marcado = marcados[a.id]?.has(r.id) ?? false;
-                    return (
-                      <label
-                        key={r.id}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              aria-pressed={todosComRegra(regraPrincipal.id)}
+              onClick={() => toggleRegraTodos(regraPrincipal.id)}
+              className={cn(
+                "flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius)] border px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                todosComRegra(regraPrincipal.id) ? "border-primary bg-primary-subtle text-primary" : "border-border bg-bg-card text-text",
+              )}
+            >
+              <CheckCheck className="size-4" aria-hidden="true" />
+              {todosComRegra(regraPrincipal.id) ? "Desmarcar todos" : "Marcar todos"}
+            </button>
+            <button
+              type="button"
+              aria-pressed={atletas.every((a) => faltososEfetivos.has(a.id))}
+              onClick={toggleFaltaTodos}
+              className={cn(
+                "flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius)] border px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                atletas.every((a) => faltososEfetivos.has(a.id)) ? "border-accent bg-accent-subtle text-accent" : "border-border bg-bg-card text-text",
+              )}
+            >
+              Falta para todos
+            </button>
+          </div>
+          <p className="px-1 text-xs text-text-light">
+            Toque no nome para marcar <strong className="font-semibold text-text">{regraPrincipal.descricao}</strong> ({formatPontos(regraPrincipal.pontos)} pts).
+          </p>
+          <Card padding="none" className="divide-y divide-border-subtle overflow-hidden">
+            {atletas.map((a) => {
+              const isFalta = faltososEfetivos.has(a.id);
+              const justificativa = justificativaPorAtleta.get(a.id);
+              const justificativaAplicada =
+                justificativa && !faltasAutomaticasIgnoradas.has(a.id) ? justificativa : null;
+              const observacaoAutomatica = justificativaAplicada ? resumoJustificativa(justificativaAplicada) : "";
+              const principal = marcados[a.id]?.has(regraPrincipal.id) ?? false;
+              const temMarcacao = isFalta || (marcados[a.id]?.size ?? 0) > 0;
+              const pontos = pontosDoAtleta(a.id);
+              return (
+                <div key={a.id} className={cn("transition-colors", principal && !isFalta && "bg-primary-subtle/60", isFalta && "bg-accent-subtle/60")}>
+                  <div className="flex items-center gap-1 pr-2">
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={principal}
+                      disabled={isFalta}
+                      onClick={() => toggleRegra(a.id, regraPrincipal.id)}
+                      className="flex min-h-14 min-w-0 flex-1 items-center gap-3 px-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary disabled:cursor-not-allowed"
+                    >
+                      <span
                         className={cn(
-                          "flex min-h-11 cursor-pointer items-center gap-2 rounded-[var(--radius)] border px-3 text-sm transition-colors",
-                          marcado ? "border-primary bg-primary-subtle text-text" : "border-border text-text-light",
-                          isFalta && "cursor-not-allowed opacity-50",
+                          "flex size-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                          principal ? "border-primary bg-primary text-on-primary" : "border-border-strong bg-bg-card",
+                          isFalta && "opacity-40",
                         )}
+                        aria-hidden="true"
                       >
-                        <input
-                          type="checkbox"
-                          disabled={isFalta}
-                          checked={marcado}
-                          onChange={() => toggleRegra(a.id, r.id)}
-                          className="size-5 shrink-0 rounded border-border accent-primary"
-                        />
-                        <span>
-                          {r.descricao} <span className="text-text-light">· {formatPontos(r.pontos)} pts</span>
+                        {principal ? <Check className="size-4" strokeWidth={3} /> : null}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className={cn("block truncate text-md font-semibold", isFalta ? "text-text-light" : "text-text")}>{a.nome}</span>
+                        {justificativa ? (
+                          <span className={cn("block text-xs font-semibold", justificativaAplicada ? "text-success" : "text-text-light")}>
+                            {justificativaAplicada ? `Justificativa aprovada: ${motivoAusenciaLabel[justificativa.motivo]}` : "Justificativa aprovada, não aplicada"}
+                          </span>
+                        ) : null}
+                      </span>
+                      {isFalta || pontos > 0 ? (
+                        <span className={cn("shrink-0 text-sm font-bold tabular-nums", isFalta ? "text-accent" : "text-text")}>
+                          {isFalta ? "Falta" : `${formatPontos(pontos)} pts`}
                         </span>
-                      </label>
-                    );
-                  })}
-                  <label
-                    className={cn(
-                      "flex min-h-11 cursor-pointer items-center gap-2 rounded-[var(--radius)] border px-3 text-sm transition-colors",
-                      isFalta ? "border-accent bg-accent-subtle text-text" : "border-border text-text-light",
-                    )}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isFalta}
-                      onChange={() => toggleFalta(a.id)}
-                      className="size-5 shrink-0 rounded border-border accent-accent"
-                    />
-                    Falta justificada
-                  </label>
-                </div>
-                {justificativa ? (
-                  <p className={cn("text-xs font-semibold", justificativaAplicada ? "text-success" : "text-text-light")}>
-                    {justificativaAplicada
-                      ? `Justificativa aprovada: ${motivoAusenciaLabel[justificativa.motivo]}`
-                      : "Justificativa aprovada, não aplicada"}
-                  </p>
-                ) : null}
-                {temMarcacao ? (
-                  <div className="grid grid-cols-[7rem_1fr] gap-2">
-                    {!isFalta ? (
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        min={0}
-                        step="0.01"
-                        aria-label={`KM de ${a.nome}`}
-                        value={kmPorAtleta[a.id] ?? ""}
-                        onChange={(e) => setKmPorAtleta((prev) => ({ ...prev, [a.id]: e.target.value }))}
-                        placeholder={kmLote ? `${kmLote} km` : "KM"}
-                        className="h-11 w-full rounded-[var(--radius)] border border-border bg-bg px-3 text-text outline-none placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/15"
-                      />
-                    ) : null}
-                    <input
-                      aria-label={`Observação para ${a.nome}`}
-                      value={observacoes[a.id] ?? observacaoAutomatica}
-                      onChange={(e) => setObservacoes((prev) => ({ ...prev, [a.id]: e.target.value }))}
-                      placeholder="Observação (opcional)"
+                      ) : null}
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={isFalta}
+                      aria-label={`Falta justificada para ${a.nome}`}
+                      onClick={() => toggleFalta(a.id)}
                       className={cn(
-                        "h-11 w-full rounded-[var(--radius)] border border-border bg-bg px-3 text-text outline-none placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/15",
-                        isFalta && "col-span-2",
+                        "flex min-h-11 shrink-0 items-center rounded-full border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                        isFalta ? "border-accent bg-accent text-on-accent" : "border-border text-text-light",
                       )}
-                    />
+                    >
+                      Falta
+                    </button>
                   </div>
-                ) : null}
-              </Card>
-            );
-          })}
+                  {outrasRegras.length > 0 && !isFalta ? (
+                    <div className="flex flex-wrap gap-2 px-3 pb-3 pl-12">
+                      {outrasRegras.map((r) => {
+                        const marcado = marcados[a.id]?.has(r.id) ?? false;
+                        return (
+                          <button
+                            key={r.id}
+                            type="button"
+                            role="checkbox"
+                            aria-checked={marcado}
+                            onClick={() => toggleRegra(a.id, r.id)}
+                            className={cn(
+                              "min-h-11 rounded-full border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                              marcado ? "border-primary bg-primary text-on-primary" : "border-border bg-bg-card text-text-light",
+                            )}
+                          >
+                            {r.descricao} · {formatPontos(r.pontos)} pts
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                  {temMarcacao ? (
+                    <div className="grid grid-cols-[6.5rem_1fr] gap-2 px-3 pb-3 pl-12">
+                      {!isFalta ? (
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          min={0}
+                          step="0.01"
+                          aria-label={`KM de ${a.nome}`}
+                          value={kmPorAtleta[a.id] ?? ""}
+                          onChange={(e) => setKmPorAtleta((prev) => ({ ...prev, [a.id]: e.target.value }))}
+                          placeholder={kmLote ? `${kmLote} km` : "KM"}
+                          className="h-11 w-full rounded-[var(--radius)] border border-border bg-bg-card px-3 text-text outline-none placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/15"
+                        />
+                      ) : null}
+                      <input
+                        aria-label={`Observação para ${a.nome}`}
+                        value={observacoes[a.id] ?? observacaoAutomatica}
+                        onChange={(e) => setObservacoes((prev) => ({ ...prev, [a.id]: e.target.value }))}
+                        placeholder="Observação (opcional)"
+                        className={cn(
+                          "h-11 w-full rounded-[var(--radius)] border border-border bg-bg-card px-3 text-text outline-none placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/15",
+                          isFalta && "col-span-2",
+                        )}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </Card>
         </div>
 
         <Card className="hidden overflow-x-auto p-0 md:block">
@@ -720,6 +785,16 @@ export function LancarPontosTab({
                     <span className="block font-normal normal-case text-text-muted">
                       {formatPontos(r.pontos)} pts
                     </span>
+                    <label className="mt-1 flex items-center justify-center gap-1.5 font-normal normal-case text-text-muted">
+                      <input
+                        type="checkbox"
+                        aria-label={`Marcar ${r.descricao} para todo o time`}
+                        checked={todosComRegra(r.id)}
+                        onChange={() => toggleRegraTodos(r.id)}
+                        className="size-3.5 rounded border-border accent-primary"
+                      />
+                      Todo time
+                    </label>
                   </th>
                 ))}
                 <th className="w-[110px] border-l border-border px-3 py-3 text-center font-semibold">

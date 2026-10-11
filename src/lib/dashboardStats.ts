@@ -12,7 +12,7 @@ import type {
   Modalidade,
   RegraPontuacaoDoc,
 } from "@/lib/types";
-import { formatKm, formatPontos, plural } from "@/lib/format";
+import { formatPontos, plural, formatKmTotal } from "@/lib/format";
 
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
@@ -235,8 +235,8 @@ export function calcularEstatisticasDashboard(params: {
 
   const analisesExecutivas = [
     `Engajamento recente em ${engajamento30d}%, considerando atletas com atividade nos últimos 30 dias.`,
-    `Foram registradas ${participacoesTotal} participações e ${formatKm(kmTotal)} acumulados no período analisado.`,
-    `Média de ${formatKm(mediaKmPorAtleta)} por atleta ativo e ${formatPontos(mediaPontosPorParticipacao)} pontos por participação.`,
+    `Foram registradas ${participacoesTotal} participações e ${formatKmTotal(kmTotal)} acumulados no período analisado.`,
+    `Média de ${formatKmTotal(mediaKmPorAtleta)} por atleta ativo e ${formatPontos(mediaPontosPorParticipacao)} pontos por participação.`,
     atletasSemAtividade > 0
       ? `${plural(atletasSemAtividade, "atleta ativo", "atletas ativos")} ainda ${atletasSemAtividade === 1 ? "não possui" : "não possuem"} participação registrada.`
       : `Todos os atletas ativos possuem ao menos uma participação registrada.`,

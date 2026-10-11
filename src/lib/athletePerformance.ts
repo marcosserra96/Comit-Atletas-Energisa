@@ -46,10 +46,7 @@ export interface AnaliseDesempenho {
   pontosPorRegra: PontosPorRegra[];
 }
 
-const formatoMes = new Intl.DateTimeFormat("pt-BR", {
-  month: "short",
-  year: "2-digit",
-});
+const formatoMes = new Intl.DateTimeFormat("pt-BR", { month: "short" });
 
 const formatoMesLongo = new Intl.DateTimeFormat("pt-BR", {
   month: "long",
@@ -106,7 +103,10 @@ function construirMeses(periodo: PeriodoDesempenho, hoje: Date) {
   const meses: SerieMensalDesempenho[] = [];
 
   for (let cursor = inicio; cursor <= fim; cursor = adicionarMeses(cursor, 1)) {
-    const rotuloBase = formatoMes.format(cursor).replace(".", "");
+    // "mai", "jun"… o ano só aparece quando muda (no primeiro mês e em janeiro): "nov 25", "dez", "jan 26".
+    const mesCurto = formatoMes.format(cursor).replace(".", "");
+    const rotuloBase =
+      meses.length === 0 || cursor.getMonth() === 0 ? `${mesCurto} ${String(cursor.getFullYear()).slice(2)}` : mesCurto;
     meses.push({
       chave: chaveMes(cursor),
       rotulo: formatoMesLongo.format(cursor),

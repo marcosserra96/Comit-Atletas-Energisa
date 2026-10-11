@@ -46,7 +46,7 @@ export function CardTrimestre({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-ranking-gold-text">
+          <p className="flex items-center gap-1.5 text-xs font-bold text-ranking-gold-text">
             <Trophy className="size-3.5" aria-hidden="true" />
             Vale para a premiação
           </p>

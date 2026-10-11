@@ -17,7 +17,7 @@ import { SportBadge } from "@/components/ui/SportBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
-import { formatKm, formatShortDate, plural } from "@/lib/format";
+import { formatKm, plural } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { modalidadeFromEquipe, modalidadeLabel } from "@/lib/labels";
 import type { EventoDoc } from "@/lib/types";
@@ -176,7 +176,7 @@ function EventoCard({
 function GrupoEventos({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-3">
-      <h3 className="text-sm font-bold uppercase tracking-wide text-text-light">{titulo}</h3>
+      <h3 className="text-sm font-bold text-text-light">{titulo}</h3>
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">{children}</div>
     </div>
   );
@@ -278,7 +278,7 @@ export default function EventosAtletaPage() {
                 return (
                   <div className="flex flex-col gap-6">
                     {meus.length > 0 ? (
-                      <GrupoEventos titulo={`Da sua modalidade · ${modalidadeLabel[minhaModalidade]}`}>
+                      <GrupoEventos titulo={`Da sua modalidade (${modalidadeLabel[minhaModalidade]})`}>
                         {meus.map(renderCard)}
                       </GrupoEventos>
                     ) : null}
@@ -294,27 +294,33 @@ export default function EventosAtletaPage() {
           {passados.length > 0 && (
             <section className="flex flex-col gap-4">
               <h2 className="text-lg font-bold text-text">Eventos passados</h2>
-              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                {passados.map((evento) => (
-                  <Card key={evento.id} className="flex items-center gap-4 bg-bg-inset/50">
-                    <div className="flex size-16 shrink-0 flex-col items-center justify-center rounded-[var(--radius)] bg-bg-inset text-text-muted">
-                      <span className="text-xs font-bold uppercase">{partesData(evento.data).mes}</span>
-                      <span className="text-xl font-black">{partesData(evento.data).dia}</span>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold text-text-light">{evento.titulo}</p>
-                      <p className="mt-1 flex items-center gap-1.5 text-xs text-text-muted">
-                        <MapPin className="size-3.5 shrink-0" />
-                        <span className="truncate">{evento.local}</span>
-                      </p>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        <Badge tone="neutral">{formatShortDate(evento.data)}</Badge>
-                        <Badge tone="neutral">{plural(evento.inscritos?.length ?? 0, "participante")}</Badge>
+              {/* Já aconteceram: lista compacta, sem os botões dos próximos. */}
+              <Card padding="none" className="divide-y divide-border-subtle overflow-hidden">
+                {passados.map((evento) => {
+                  const participantes = evento.inscritos?.length ?? 0;
+                  const fui = evento.inscritos?.includes(atleta.id) ?? false;
+                  return (
+                    <div key={evento.id} className="flex items-center gap-3.5 px-4 py-3">
+                      <div className="flex size-12 shrink-0 flex-col items-center justify-center rounded-[var(--radius)] bg-bg-inset text-text-light">
+                        <span className="text-[11px] font-bold uppercase leading-none">{partesData(evento.data).mes}</span>
+                        <span className="text-lg font-black leading-tight">{partesData(evento.data).dia}</span>
                       </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-semibold text-text">{evento.titulo}</p>
+                        <p className="mt-0.5 flex items-center gap-1.5 text-xs text-text-light">
+                          <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
+                          <span className="truncate">{evento.local}</span>
+                        </p>
+                      </div>
+                      {fui ? (
+                        <Badge tone="success" className="shrink-0">Você confirmou</Badge>
+                      ) : participantes > 0 ? (
+                        <span className="shrink-0 text-xs text-text-light">{plural(participantes, "confirmado")}</span>
+                      ) : null}
                     </div>
-                  </Card>
-                ))}
-              </div>
+                  );
+                })}
+              </Card>
             </section>
           )}
         </div>
