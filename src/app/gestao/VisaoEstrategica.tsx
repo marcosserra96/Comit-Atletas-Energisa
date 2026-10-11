@@ -232,10 +232,11 @@ export function VisaoEstrategica() {
         </div>
         {isAdmin && !carregando && (
           <ExportarRelatorioDropdown
-            stats={stats}
             eventos={eventos ?? []}
             lancamentos={lancamentosVisiveis}
             atletas={atletas ?? []}
+            resumosMensais={historicoMensal ?? []}
+            despesas={despesas}
           />
         )}
       </div>
