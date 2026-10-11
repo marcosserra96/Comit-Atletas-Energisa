@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { collection, doc, onSnapshot, orderBy, query, where } from "firebase/firestore";
 import { AlertCircle, CalendarDays, ChevronLeft, ChevronRight, EyeOff, RefreshCw, Search, Trophy } from "lucide-react";
 import { db } from "@/lib/firebase";
@@ -598,16 +598,14 @@ export default function RankingPage() {
           {myRankAtleta ? (
             <div className="mb-3 flex items-center gap-3 rounded-[var(--radius-lg)] border border-primary/20 bg-primary-subtle p-3 sm:p-4">
               <RankingPosition
-                position={myRankAtleta.rank}
+                position={myRankAtleta.pontuacaoTotal > 0 ? myRankAtleta.rank : 0}
                 size="md"
                 className="shrink-0 bg-bg-card text-primary shadow-sm"
               />
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold uppercase tracking-wide text-primary">
-                  Sua posição
-                </p>
+                <p className="text-xs font-semibold text-primary">Sua posição</p>
                 <p className="truncate text-sm font-bold text-text sm:text-base">
-                  {myRankAtleta.rank}º lugar no ranking
+                  {myRankAtleta.pontuacaoTotal > 0 ? `${myRankAtleta.rank}º lugar no ranking` : "Ainda sem pontos no período"}
                 </p>
               </div>
               {/* Treinos e km só existem no ranking publicado; sem ele, mostrar "0"
@@ -687,12 +685,20 @@ export default function RankingPage() {
                   </div>
                 </div>
                 <ul className="flex flex-col divide-y divide-border">
-                  {filteredAtletas?.map((atleta) => {
+                  {filteredAtletas?.map((atleta, i) => {
                     const isMe = atleta.id === myAtleta.id;
-                    const isTop3 = atleta.rank <= 3;
+                    const semPontos = atleta.pontuacaoTotal <= 0;
+                    const isTop3 = !semPontos && atleta.rank <= 3;
+                    // Quem ainda não pontuou fica num grupo à parte, sem colocação.
+                    const primeiroSemPontos = semPontos && (i === 0 || (filteredAtletas?.[i - 1]?.pontuacaoTotal ?? 0) > 0);
                     return (
+                      <Fragment key={atleta.id}>
+                      {primeiroSemPontos ? (
+                        <li className="bg-bg-subtle px-3 py-2 text-xs font-semibold text-text-light sm:px-5">
+                          Ainda sem pontos no período
+                        </li>
+                      ) : null}
                       <li
-                        key={atleta.id}
                         aria-current={isMe ? "true" : undefined}
                         className={cn(
                           "flex items-center gap-3 border-l-4 px-3 py-3 transition-colors hover:bg-bg-inset sm:gap-4 sm:px-5 sm:py-4",
@@ -702,7 +708,7 @@ export default function RankingPage() {
                         )}
                       >
                         <RankingPosition
-                          position={atleta.rank}
+                          position={semPontos ? 0 : atleta.rank}
                           size={isTop3 ? "md" : "sm"}
                           className={cn("shrink-0", !isTop3 && "bg-bg text-text-muted")}
                         />
@@ -740,6 +746,7 @@ export default function RankingPage() {
                           <span className="ml-0.5 text-xs font-medium text-text-muted">pts</span>
                         </strong>
                       </li>
+                      </Fragment>
                     );
                   })}
                 </ul>

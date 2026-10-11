@@ -8,7 +8,7 @@ import { Activity, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { db } from "@/lib/firebase";
 import { carregarTodosLancamentos } from "@/lib/lancamentosCache";
-import { formatBRL, formatKm, formatShortDate, plural } from "@/lib/format";
+import { formatBRL, formatKmTotal, formatShortDate, plural } from "@/lib/format";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { calcularEstatisticasDashboard } from "@/lib/dashboardStats";
 import { aderenciaPorAtleta, mediaAderencia } from "@/lib/aderencia";
@@ -261,7 +261,7 @@ export function VisaoEstrategica() {
         <dl className="grid grid-cols-2 gap-px bg-border sm:grid-cols-3 lg:grid-cols-6">
           <Numero rotulo="Engajamento" valor={`${stats.engajamento30d}%`} detalhe={`${stats.ativosRecentesCount} de ${plural(stats.ativosCount, "ativo")} em 30 dias`} barra={stats.engajamento30d} />
           <Numero rotulo="Participações" valor={String(stats.participacoesTotal)} />
-          <Numero rotulo="Quilometragem" valor={formatKm(stats.kmTotal)} />
+          <Numero rotulo="Quilometragem" valor={formatKmTotal(stats.kmTotal)} />
           <Numero rotulo="Custo realizado" valor={formatBRL(stats.investimentoTotal)} />
           <Numero rotulo="Custo por atleta" valor={formatBRL(stats.custoPorAtleta)} />
           <Numero rotulo="Custo médio" valor={formatBRL(stats.custoParticipacao)} detalhe="por participação" />
@@ -362,7 +362,7 @@ export function VisaoEstrategica() {
                 <span
                   key={s.label}
                   className={cn(
-                    "flex-1 text-center text-xs font-semibold uppercase",
+                    "flex-1 text-center text-xs font-semibold first-letter:uppercase",
                     i === mesAtualIdx ? "text-primary" : "text-text-light",
                   )}
                 >
@@ -391,7 +391,7 @@ export function VisaoEstrategica() {
             <ul className="mt-2 flex flex-col divide-y divide-border">
               {proximosEventos.map((e) => (
                 <li key={e.id} className="flex items-start gap-3 py-2.5">
-                  <span className="shrink-0 whitespace-nowrap text-xs font-bold uppercase tabular-nums text-primary">
+                  <span className="w-[4.75rem] shrink-0 whitespace-nowrap text-xs font-bold tabular-nums text-primary">
                     {formatShortDate(e.data)}
                   </span>
                   <span className="min-w-0 flex-1 text-sm font-medium text-text">{e.titulo}</span>

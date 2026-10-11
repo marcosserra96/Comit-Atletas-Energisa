@@ -13,7 +13,8 @@ export function formatLongDate(date: Date) {
 export function formatShortDate(value: string | Date) {
   const date = typeof value === "string" ? new Date(`${value}T00:00:00`) : value;
   if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(date);
+  // "2 de out." (sem o zero à esquerda, como se fala).
+  return new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "short" }).format(date);
 }
 
 /** Mostra a data normal com ano (evita ambiguidade em históricos com anos diferentes), ou "mês/ano (aproximado)" quando o dia exato não é conhecido (ex: migração de dados antigos). */
@@ -24,7 +25,7 @@ export function formatDataTreino(dataTreino: string, dataAproximada?: boolean) {
     const mesAno = new Intl.DateTimeFormat("pt-BR", { month: "short", year: "numeric" }).format(date);
     return `${mesAno} (aproximado)`;
   }
-  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric" }).format(date);
+  return new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "short", year: "numeric" }).format(date);
 }
 
 function toDate(value: unknown): Date | null {
@@ -99,6 +100,14 @@ export function formatDistancia(value: number) {
 /** Quilometragem: "10 km", "12,35 km". */
 export function formatKm(value: number) {
   return `${formatDistancia(value)} km`;
+}
+
+/**
+ * Quilometragem acumulada (totais de equipe, painéis): a partir de 100 km as
+ * casas decimais só atrapalham a leitura. "21.294 km", "85,4 km".
+ */
+export function formatKmTotal(value: number) {
+  return Math.abs(value) >= 100 ? `${formatNumero(value, 0)} km` : formatKm(value);
 }
 
 /**

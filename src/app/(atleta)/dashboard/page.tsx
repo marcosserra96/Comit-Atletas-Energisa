@@ -451,12 +451,7 @@ export default function DashboardPage() {
             ) : null}
             <section className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-[var(--shadow-card)] sm:p-5">
               <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wide text-text-muted">Seu mês</p>
-                  <h2 className="mt-0.5 text-lg font-extrabold text-text first-letter:uppercase">
-                    {mesAtual}
-                  </h2>
-                </div>
+                <h2 className="text-lg font-extrabold text-text">Seu mês de {mesAtual}</h2>
                 <Link
                   href={withPreview("/desempenho")}
                   className="flex min-h-11 items-center gap-1 rounded-full px-2 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -534,10 +529,7 @@ export default function DashboardPage() {
 
             <section className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-[var(--shadow-card)] sm:p-5">
               <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wide text-text-muted">Próximo evento</p>
-                  <h2 className="mt-0.5 text-lg font-extrabold text-text">Na sua agenda</h2>
-                </div>
+                <h2 className="text-lg font-extrabold text-text">Próximo evento</h2>
                 <Link
                   href={withPreview("/eventos")}
                   className="flex min-h-11 items-center gap-1 rounded-full px-2 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -585,7 +577,7 @@ export default function DashboardPage() {
 
                   {eventosPosteriores.length > 0 ? (
                     <div className="mt-4 border-t border-border-subtle pt-3">
-                      <p className="text-xs font-bold uppercase tracking-wide text-text-muted">Depois</p>
+                      <p className="text-sm font-semibold text-text-light">Depois</p>
                       <ul className="mt-1 flex flex-col">
                         {eventosPosteriores.slice(0, 2).map((item) => (
                           <li key={item.id}>
@@ -595,7 +587,7 @@ export default function DashboardPage() {
                               onClick={() => setEventoAbertoId(item.id)}
                               className="group flex min-h-12 w-full cursor-pointer items-center gap-3 rounded-[var(--radius)] px-1 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                             >
-                              <span className="w-14 shrink-0 text-xs font-bold uppercase tabular-nums text-primary">
+                              <span className="w-[4.5rem] shrink-0 whitespace-nowrap text-xs font-bold tabular-nums text-primary">
                                 {formatShortDate(item.data)}
                               </span>
                               <span className="min-w-0 flex-1 truncate text-sm font-semibold text-text group-hover:text-primary">
@@ -637,10 +629,7 @@ export default function DashboardPage() {
 
             <section className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-[var(--shadow-card)] sm:p-5">
               <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wide text-text-muted">Histórico</p>
-                  <h2 className="mt-0.5 text-lg font-extrabold text-text">Atividade recente</h2>
-                </div>
+                <h2 className="text-lg font-extrabold text-text">Atividade recente</h2>
                 <Link
                   href={withPreview("/desempenho")}
                   className="flex min-h-11 items-center gap-1 rounded-full px-2 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -699,10 +688,7 @@ export default function DashboardPage() {
 
             <section className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-[var(--shadow-card)] sm:p-5">
               <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wide text-text-muted">Novidades</p>
-                  <h2 className="mt-0.5 text-lg font-extrabold text-text">Últimas notícias</h2>
-                </div>
+                <h2 className="text-lg font-extrabold text-text">Últimas notícias</h2>
                 <Link
                   href={withPreview("/noticias")}
                   className="flex min-h-11 items-center gap-1 rounded-full px-2 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -762,7 +748,7 @@ export default function DashboardPage() {
               <div className="flex items-start gap-3">
                 <CalendarCheck className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Data</p>
+                  <p className="text-xs font-semibold text-text-muted">Data</p>
                   <p className="mt-0.5 text-sm font-semibold text-text">
                     {formatShortDate(eventoAberto.data)}
                   </p>
@@ -771,7 +757,7 @@ export default function DashboardPage() {
               <div className="flex items-start gap-3">
                 <MapPin className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Local</p>
+                  <p className="text-xs font-semibold text-text-muted">Local</p>
                   <p className="mt-0.5 break-words text-sm font-semibold text-text">
                     {eventoAberto.local}
                   </p>
@@ -780,7 +766,7 @@ export default function DashboardPage() {
               <div className="flex items-start gap-3">
                 <ModalidadeIcon className="mt-0.5 size-5 shrink-0 text-secondary" aria-hidden="true" />
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Modalidade</p>
+                  <p className="text-xs font-semibold text-text-muted">Modalidade</p>
                   <p className="mt-0.5 text-sm font-semibold text-text">
                     {eventoAberto.modalidade === "ambas"
                       ? "Corrida e bike"
@@ -794,7 +780,7 @@ export default function DashboardPage() {
               <div className="flex items-start gap-3">
                 <Users className="mt-0.5 size-5 shrink-0 text-accent" aria-hidden="true" />
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Participação</p>
+                  <p className="text-xs font-semibold text-text-muted">Participação</p>
                   <p className="mt-0.5 text-sm font-semibold text-text">
                     {plural(eventoAberto.inscritos?.length ?? 0, "confirmado")}
                   </p>
