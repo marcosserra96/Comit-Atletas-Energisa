@@ -270,36 +270,3 @@ export function calcularEstatisticasDashboard(params: {
     analisesExecutivas,
   };
 }
-
-export interface LoteResumo {
-  data: string;
-  descricao: string;
-  atletasCount: number;
-  pontos: number;
-  km: number;
-}
-
-/** Agrupa os lançamentos mais recentes por lote, para exibição em relatórios. */
-export function agruparUltimosLancamentos(lancamentos: HistoricoPontoDoc[], limite = 8): LoteResumo[] {
-  const porLote = new Map<string, LoteResumo & { atletasSet: Set<string> }>();
-  for (const l of lancamentos) {
-    if (l.estornado) continue;
-    const atual = porLote.get(l.loteId) ?? {
-      data: l.dataTreino,
-      descricao: l.descricaoLote || l.regraDesc,
-      atletasCount: 0,
-      pontos: 0,
-      km: 0,
-      atletasSet: new Set<string>(),
-    };
-    atual.atletasSet.add(l.atletaId);
-    atual.pontos += l.pontos;
-    atual.km += l.kmPercorrido ?? 0;
-    if (l.dataTreino > atual.data) atual.data = l.dataTreino;
-    porLote.set(l.loteId, atual);
-  }
-  return [...porLote.values()]
-    .map(({ atletasSet, ...resto }) => ({ ...resto, atletasCount: atletasSet.size }))
-    .sort((a, b) => b.data.localeCompare(a.data))
-    .slice(0, limite);
-}

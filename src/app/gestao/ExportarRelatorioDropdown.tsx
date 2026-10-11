@@ -14,31 +14,32 @@ import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
 import { getStoredBranding } from "@/lib/branding";
-import { formatBRL } from "@/lib/format";
-import { agruparUltimosLancamentos, type EstatisticasDashboard } from "@/lib/dashboardStats";
 import { calcularResumoRankingPeriodo, diasUteisNoMes } from "@/lib/rankingMensal";
 import { normalizarInformativoConfig } from "@/lib/informativoConfig";
-import { ReportExecutivoDocument } from "@/lib/pdf/ReportExecutivoDocument";
+import { RelatorioExecutivoModal } from "./RelatorioExecutivoModal";
 import { ReportTimeDocument } from "@/lib/pdf/ReportTimeDocument";
-import type { AtletaDoc, EventoDoc, HistoricoPontoDoc, InformativoConfigDoc } from "@/lib/types";
+import type { AtletaDoc, DespesaDoc, EventoDoc, HistoricoMensalDoc, HistoricoPontoDoc, InformativoConfigDoc } from "@/lib/types";
 
 export function ExportarRelatorioDropdown({
-  stats,
   eventos,
   lancamentos,
   atletas,
+  resumosMensais,
+  despesas,
 }: {
-  stats: EstatisticasDashboard;
   eventos: EventoDoc[];
   lancamentos: HistoricoPontoDoc[];
   atletas: AtletaDoc[];
+  resumosMensais: HistoricoMensalDoc[];
+  despesas: DespesaDoc[] | null;
 }) {
   const { show } = useToast();
   const { usuario } = useActiveSession();
   const podeInformativo = temPermissao(usuario, "informativo");
   const regrasTreino = useRegrasDeTreino();
   const [open, setOpen] = useState(false);
-  const [gerando, setGerando] = useState<"pdf" | "time" | null>(null);
+  const [gerando, setGerando] = useState<"time" | null>(null);
+  const [relatorioAberto, setRelatorioAberto] = useState(false);
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -50,39 +51,6 @@ export function ExportarRelatorioDropdown({
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
-
-  async function handleExportarPdf() {
-    setOpen(false);
-    setGerando("pdf");
-    try {
-      const branding = getStoredBranding();
-      const logo = `${window.location.origin}/logos/logo-comite-branca-trim.png`;
-      const ultimosLancamentos = agruparUltimosLancamentos(lancamentos);
-      const documento = (
-        <ReportExecutivoDocument
-          stats={stats}
-          eventos={eventos}
-          ultimosLancamentos={ultimosLancamentos}
-          branding={branding}
-          logo={logo}
-          formatBRL={formatBRL}
-        />
-      );
-      const blob = await pdf(documento).toBlob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      const dataHoje = dataIsoLocal();
-      a.download = `report-executivo-atletas-${dataHoje}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-      show("success", "Report executivo gerado com sucesso.");
-    } catch {
-      show("error", "Não foi possível gerar o report agora. Tente novamente.");
-    } finally {
-      setGerando(null);
-    }
-  }
 
   async function handleExportarTime() {
     setOpen(false);
@@ -156,16 +124,17 @@ export function ExportarRelatorioDropdown({
           role="menu"
           className="absolute right-0 top-[calc(100%+6px)] z-50 w-64 overflow-hidden rounded-[var(--radius)] border border-border bg-bg-card p-1.5 shadow-lg"
         >
-          <p className="px-2.5 pb-1 pt-1.5 text-xs font-bold uppercase tracking-wide text-text-muted">
-            Relatórios
-          </p>
+          <p className="px-2.5 pb-1 pt-1.5 text-xs font-semibold text-text-muted">Relatórios</p>
           <button
             role="menuitem"
-            onClick={handleExportarPdf}
+            onClick={() => {
+              setOpen(false);
+              setRelatorioAberto(true);
+            }}
             className="flex w-full items-center gap-2.5 rounded-[calc(var(--radius)-2px)] px-2.5 py-2.5 text-left text-sm font-medium text-text hover:bg-bg"
           >
             <FileText className="size-4 text-primary" />
-            Report executivo (PDF)
+            Relatório executivo (PDF)
           </button>
           {podeInformativo ? (
             <button
@@ -202,6 +171,15 @@ export function ExportarRelatorioDropdown({
         </div>
       )}
 
+      <RelatorioExecutivoModal
+        aberto={relatorioAberto}
+        onFechar={() => setRelatorioAberto(false)}
+        atletas={atletas}
+        lancamentos={lancamentos}
+        resumosMensais={resumosMensais}
+        eventos={eventos}
+        despesas={despesas}
+      />
     </div>
   );
 }
