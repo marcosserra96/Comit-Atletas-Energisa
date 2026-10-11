@@ -1,5 +1,6 @@
 "use client";
 
+import { linkDoMapa } from "@/lib/locais";
 import Link from "next/link";
 import { ehReuniao, eventoOnline, horarioDoEvento } from "@/lib/eventos";
 import { RespostaEvento, useRespostasEventos } from "@/components/eventos/RespostaEvento";
@@ -144,7 +145,7 @@ function EventoCard({
           ) : null}
           {!eventoOnline(evento) ? (
             <a
-              href={"https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(evento.local)}
+              href={linkDoMapa(evento)}
               target="_blank"
               rel="noreferrer"
               className={linkSecundario}

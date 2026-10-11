@@ -39,6 +39,8 @@ export function useDialogFocus(
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
+        // Um componente de dentro (lista de sugestões, menu) já tratou o Esc: fecha só ele.
+        if (event.defaultPrevented) return;
         event.preventDefault();
         onCloseRef.current();
         return;

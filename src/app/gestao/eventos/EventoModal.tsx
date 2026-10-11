@@ -1,9 +1,11 @@
 "use client";
 
+import { CampoLocal } from "@/components/eventos/CampoLocal";
+import type { Coordenadas } from "@/lib/locais";
 import { dispararAvisosAgora } from "@/lib/push/comite";
 import { FormEvent, useId, useState } from "react";
 import { collection, doc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
-import { CalendarCheck, Link2, MapPin, UsersRound, Video } from "lucide-react";
+import { CalendarCheck, Link2, UsersRound, Video } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { dataIsoLocal } from "@/lib/date";
 import { useActiveSession } from "@/lib/session/SessionProvider";
@@ -26,10 +28,13 @@ export function EventoModal({
   open,
   evento,
   onClose,
+  eventosAnteriores = [],
 }: {
   open: boolean;
   evento?: EventoDoc | null;
   onClose: () => void;
+  /** Eventos já cadastrados: os locais deles viram sugestão. */
+  eventosAnteriores?: readonly EventoDoc[];
 }) {
   const { uid } = useActiveSession();
   const { show } = useToast();
@@ -38,6 +43,7 @@ export function EventoModal({
   const [titulo, setTitulo] = useState(evento?.titulo ?? "");
   const [online, setOnline] = useState(evento ? eventoOnline(evento) : false);
   const [local, setLocal] = useState(evento && !eventoOnline(evento) ? evento.local : "");
+  const [coordenadas, setCoordenadas] = useState<Coordenadas | null>(evento && !eventoOnline(evento) ? (evento.coordenadas ?? null) : null);
   const [modalidade, setModalidade] = useState<EventoDoc["modalidade"]>(evento?.modalidade ?? "ambas");
   const [dataEstado, setData] = useState(evento?.data ?? "");
   const [km, setKm] = useState(evento?.km != null ? String(evento.km) : "");
@@ -90,6 +96,7 @@ export function EventoModal({
     const dados = {
       titulo: titulo.trim(),
       local: soOnline ? "Online" : local.trim(),
+      coordenadas: soOnline ? null : coordenadas,
       online: soOnline,
       modalidade,
       data,
@@ -212,14 +219,16 @@ export function EventoModal({
           </label>
         ) : null}
         {soOnline ? null : (
-          <TextField
-            label="Local"
-            icon={<MapPin className="size-[18px]" />}
-            placeholder={reuniao ? "Sala, auditório ou endereço" : "Local do evento"}
-            value={local}
-            onChange={(e) => setLocal(e.target.value)}
+          <CampoLocal
+            valor={local}
+            coordenadas={coordenadas}
+            onChange={(valor, coords) => {
+              setLocal(valor);
+              setCoordenadas(coords);
+            }}
+            eventosAnteriores={eventosAnteriores}
+            placeholder={reuniao ? "Sala, auditório ou endereço" : "Parque, cidade ou endereço"}
             error={erros.local}
-            required
           />
         )}
         {reuniao ? (
