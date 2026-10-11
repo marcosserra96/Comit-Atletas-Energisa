@@ -17,6 +17,7 @@ import {
   type TipoAviso,
 } from "@/lib/push/automaticos";
 import type { OrigemPush } from "@/lib/push/regras";
+import type { DesafioDoc } from "@/lib/desafios";
 import type { HistoricoPontoDoc, RegraPontuacaoDoc } from "@/lib/types";
 import { idDoToken, registrarEnvio, type MensagemPush, type ResultadoPush } from "@/lib/server/push";
 
@@ -188,8 +189,16 @@ interface DocConquistas {
 async function avisarConquistasDe(db: Firestore, atletaIds: string[]) {
   if (atletaIds.length === 0) return 0;
   const ids = atletaIds.slice(0, LIMITE_CONQUISTAS);
-  const [{ calcularMedalhas }, { regrasDeTreino }] = await Promise.all([import("@/lib/conquistas"), import("@/lib/activityConsolidation")]);
-  const regras = await db.collection("regras_pontuacao").get();
+  const [{ calcularMedalhas }, { regrasDeTreino }, { desafiosDoAtleta }] = await Promise.all([
+    import("@/lib/conquistas"),
+    import("@/lib/activityConsolidation"),
+    import("@/lib/desafios"),
+  ]);
+  const [regras, desafiosSnap] = await Promise.all([
+    db.collection("regras_pontuacao").get(),
+    db.collection("desafios").orderBy("inicio", "desc").limit(100).get(),
+  ]);
+  const desafios = desafiosSnap.docs.map((d) => ({ ...(d.data() as Omit<DesafioDoc, "id">), id: d.id }));
   const regrasTreino = regrasDeTreino(regras.docs.map((d) => ({ ...(d.data() as RegraPontuacaoDoc), id: d.id })));
   const atletas = await db.getAll(...ids.map((id) => db.collection("atletas").doc(id)));
   const docs = await db.getAll(...ids.map((id) => db.collection("conquistas").doc(id)));
@@ -201,14 +210,11 @@ async function avisarConquistasDe(db: Firestore, atletaIds: string[]) {
     if (!modalidade) continue;
     const historico = await db.collection("historico_pontos").where("atletaId", "==", id).get();
     const atual = (docs[i].data() as DocConquistas | undefined)?.medalhas ?? {};
-    const { medalhas } = calcularMedalhas({
-      lancamentos: historico.docs.map((d) => ({ ...d.data(), id: d.id }) as HistoricoPontoDoc),
-      regrasTreino,
-      modalidade,
-      hoje,
-      doServidor: atual,
-    });
-    const ganhas = medalhas.filter((m) => m.conquistada && !m.doServidor);
+    const lancamentos = historico.docs.map((d) => ({ ...d.data(), id: d.id }) as HistoricoPontoDoc);
+    const { medalhas } = calcularMedalhas({ lancamentos, regrasTreino, modalidade, hoje, doServidor: atual });
+    // Desafios do comitê contam como medalha também (um desafio criado depois vale para quem já cumpriu).
+    const deDesafios = desafiosDoAtleta({ desafios, modalidade, lancamentos, regrasTreino, hoje }).map((x) => x.medalha);
+    const ganhas = [...medalhas, ...deDesafios].filter((m) => m.conquistada && !m.doServidor);
     const novas = ganhas.filter((m) => !atual[m.id]);
     if (novas.length === 0 && docs[i].exists) continue;
     const registro = { ...atual, ...Object.fromEntries(novas.map((m) => [m.id, m.em || hoje])) };

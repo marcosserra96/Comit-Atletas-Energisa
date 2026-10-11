@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { Crown, Flame, Footprints, Medal as MedalIcon, Route, Trophy, UsersRound, Zap, type LucideIcon } from "lucide-react";
+import { Crown, Flag, Flame, Footprints, Heart, Medal as MedalIcon, Mountain, Route, Star, Trophy, UsersRound, Zap, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { IconeMedalha, NivelMedalha } from "@/lib/conquistas";
 
@@ -26,6 +26,10 @@ const ICONE: Record<IconeMedalha, LucideIcon> = {
   reuniao: UsersRound,
   podio: Trophy,
   coroa: Crown,
+  bandeira: Flag,
+  coracao: Heart,
+  estrela: Star,
+  montanha: Mountain,
 };
 
 /** Borda recortada (24 dentes), como uma medalha cunhada. */

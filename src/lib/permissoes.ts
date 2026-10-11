@@ -16,7 +16,7 @@ export type PermissaoChave =
 export const PERMISSAO_LABEL: Record<PermissaoChave, string> = {
   inicio: "Início (visão estratégica)",
   atletas: "Atletas (gestão de base)",
-  regras: "Critérios de pontuação",
+  regras: "Critérios de pontuação e desafios",
   registrar: "Registrar (pontos e justificativas)",
   historicoMensal: "Histórico mensal (lançar e editar totais do mês)",
   eventos: "Eventos",

@@ -15,6 +15,7 @@ const GRUPOS: { id: MedalhaDoAtleta["grupo"]; titulo: string }[] = [
   { id: "distancia", titulo: "Distância" },
   { id: "constancia", titulo: "Constância" },
   { id: "especiais", titulo: "Especiais" },
+  { id: "desafios", titulo: "Desafios do comitê" },
 ];
 
 /** Desempenho: todas as medalhas, conquistadas com a data e bloqueadas com o quanto falta. */

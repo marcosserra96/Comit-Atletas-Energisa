@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { auth } from "@/lib/firebase";
 import { dataIsoLocal } from "@/lib/date";
 import { calcularMedalhas, medalhasRecentes, proximaMedalha, type MedalhaDoAtleta } from "@/lib/conquistas";
+import { desafiosDoAtleta, type DesafioDoc } from "@/lib/desafios";
 import type { RegrasDeTreino } from "@/lib/activityConsolidation";
 import type { AtletaDoc, HistoricoPontoDoc, Modalidade } from "@/lib/types";
 
@@ -46,7 +47,7 @@ export function useConquistas(params: {
 }) {
   const { atleta, lancamentos, regrasTreino, preview = false } = params;
   const modalidade = modalidadeDe(String(atleta.equipe));
-  const [doServidor, setDoServidor] = useState<{ id: string; medalhas: Record<string, string> } | null>(null);
+  const [doServidor, setDoServidor] = useState<{ id: string; medalhas: Record<string, string>; desafios: DesafioDoc[] } | null>(null);
   const [vistasVersao, setVistasVersao] = useState(0);
 
   useEffect(() => {
@@ -54,12 +55,17 @@ export function useConquistas(params: {
     (async () => {
       const user = auth.currentUser;
       if (!user) return;
-      const r = await fetch(`/api/conquistas${preview ? `?atletaId=${encodeURIComponent(atleta.id)}` : ""}`, {
-        headers: { Authorization: `Bearer ${await user.getIdToken()}` },
-      });
-      const corpo = (await r.json().catch(() => ({}))) as { medalhas?: Record<string, string> };
-      if (ativo) setDoServidor({ id: atleta.id, medalhas: r.ok ? (corpo.medalhas ?? {}) : {} });
-    })().catch(() => ativo && setDoServidor({ id: atleta.id, medalhas: {} }));
+      const headers = { Authorization: `Bearer ${await user.getIdToken()}` };
+      const ler = async <T,>(url: string, vazio: T): Promise<T> => {
+        const r = await fetch(url, { headers }).catch(() => null);
+        return r?.ok ? ((await r.json().catch(() => vazio)) as T) : vazio;
+      };
+      const [conquistas, desafios] = await Promise.all([
+        ler<{ medalhas?: Record<string, string> }>(`/api/conquistas${preview ? `?atletaId=${encodeURIComponent(atleta.id)}` : ""}`, {}),
+        ler<{ desafios?: DesafioDoc[] }>("/api/desafios", {}),
+      ]);
+      if (ativo) setDoServidor({ id: atleta.id, medalhas: conquistas.medalhas ?? {}, desafios: desafios.desafios ?? [] });
+    })().catch(() => ativo && setDoServidor({ id: atleta.id, medalhas: {}, desafios: [] }));
     return () => {
       ativo = false;
     };
@@ -67,8 +73,13 @@ export function useConquistas(params: {
 
   const resultado = useMemo(() => {
     if (!modalidade || !lancamentos || !regrasTreino) return null;
-    const servidor = doServidor?.id === atleta.id ? doServidor.medalhas : {};
-    return calcularMedalhas({ lancamentos, regrasTreino, modalidade, hoje: dataIsoLocal(), doServidor: servidor });
+    const servidor = doServidor?.id === atleta.id ? doServidor : null;
+    const hoje = dataIsoLocal();
+    const base = calcularMedalhas({ lancamentos, regrasTreino, modalidade, hoje, doServidor: servidor?.medalhas ?? {} });
+    const desafios = desafiosDoAtleta({ desafios: servidor?.desafios ?? [], modalidade, lancamentos, regrasTreino, hoje });
+    // Na lista de medalhas entram os desafios em andamento e os já completados (os agendados ficam só no card).
+    const deDesafios = desafios.filter((d) => d.status !== "agendado").map((d) => d.medalha);
+    return { ...base, medalhas: [...base.medalhas, ...deDesafios], desafios };
   }, [modalidade, lancamentos, regrasTreino, doServidor, atleta.id]);
 
   const prontas = resultado !== null && doServidor?.id === atleta.id;
@@ -104,6 +115,7 @@ export function useConquistas(params: {
     proxima: resultado ? proximaMedalha(resultado.medalhas) : null,
     recentes: resultado ? medalhasRecentes(resultado.medalhas, 4) : [],
     total: resultado?.medalhas.length ?? 0,
+    desafios: resultado?.desafios ?? [],
     conquistadas: conquistadas.length,
     novas,
     marcarComoVistas,

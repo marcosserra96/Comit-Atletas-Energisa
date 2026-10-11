@@ -112,6 +112,16 @@ texto.** Para hierarquia, use tamanho e peso, não cores mais apagadas.
   resumo do período (`ResumoPeriodo`), igual para Corrida e Bike. A arte
   usa cores fixas e as fontes Barlow / Barlow Condensed, independentes do tema do portal.
 
+## Conquistas e desafios
+
+- **Medalhas** (`src/lib/conquistas.ts`, componente `Medalha`): calculadas a partir dos lançamentos;
+  pódio e líder são registrados pelo servidor. Cinco níveis de cor (bronze, prata, ouro, energia,
+  lendária), iguais nos dois temas. Bloqueada = contorno com o arco de progresso.
+- **Desafios do comitê** (`src/lib/desafios.ts`, `/gestao/desafios`, permissão "Critérios"):
+  meta com prazo (treinos, km, semanas com treino ou provas), por modalidade, que vira medalha
+  `desafio_{id}`. Ficam só no servidor (`/api/desafios`). No Início, o card mostra os ativos e
+  agendados; encerrados não completados não aparecem para o atleta.
+
 ---
 
 ## Celular

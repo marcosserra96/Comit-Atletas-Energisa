@@ -64,6 +64,7 @@ import { useTrimestreDoAtleta } from "@/lib/trimestre";
 import { PendenciasNoInicio } from "@/components/avisos/CentralDeAvisos";
 import { ConviteNotificacoes } from "@/components/push/Notificacoes";
 import { CardConquistas } from "@/components/conquistas/CardConquistas";
+import { CardDesafios } from "@/components/conquistas/CardDesafios";
 import { ComemoracaoConquista } from "@/components/conquistas/ComemoracaoConquista";
 import { CompartilharMes } from "@/components/conquistas/CompartilharMes";
 import { useConquistas } from "@/lib/useConquistas";
@@ -432,6 +433,9 @@ export default function DashboardPage() {
                 rankingFechado={rankingDesativado || rankingOcultoAtual}
                 modalidade={modalidade || null}
               />
+            ) : null}
+            {mostrarConquistas && conquistas.modalidade ? (
+              <CardDesafios itens={conquistas.desafios} modalidade={conquistas.modalidade} hoje={dataIsoLocal()} />
             ) : null}
             {mostrarConquistas ? (
               <CardConquistas
