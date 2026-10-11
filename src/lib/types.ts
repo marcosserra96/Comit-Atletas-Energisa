@@ -227,6 +227,8 @@ export interface EventoDoc {
   linkOnline?: string;
   /** Reunião só online (sem local físico). `local` fica "Online". */
   online?: boolean;
+  /** Posição no mapa quando o local foi escolhido nas sugestões (o "Ver mapa" abre no ponto exato). */
+  coordenadas?: { lat: number; lng: number } | null;
   /** Reunião: confirmação de presença pelo app (QR code ou código). */
   checkin?: CheckinReuniao;
   criadoEm: unknown;

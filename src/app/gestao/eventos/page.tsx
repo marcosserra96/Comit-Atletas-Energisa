@@ -268,6 +268,7 @@ export default function EventosPage() {
         key={`form-${formulario.versao}`}
         open={formulario.aberto}
         evento={formulario.evento}
+        eventosAnteriores={eventos ?? []}
         onClose={() => setFormulario((atual) => ({ ...atual, aberto: false }))}
       />
       <ConfirmadosModal

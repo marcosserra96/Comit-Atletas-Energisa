@@ -1,5 +1,6 @@
 "use client";
 
+import { linkDoMapa } from "@/lib/locais";
 import { useEffect, useMemo, useState } from "react";
 import {
   collection,
@@ -798,7 +799,7 @@ export default function DashboardPage() {
             <div className={cn("grid gap-2", eventoOnline(eventoAberto) ? "grid-cols-1" : "grid-cols-2")}>
               {eventoOnline(eventoAberto) ? null : (
               <a
-                href={"https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(eventoAberto.local)}
+                href={linkDoMapa(eventoAberto)}
                 target="_blank"
                 rel="noreferrer"
                 className="flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius)] border border-border px-3 text-sm font-semibold text-text-light transition-colors hover:bg-bg-inset focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
