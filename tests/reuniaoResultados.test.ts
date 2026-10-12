@@ -18,6 +18,8 @@ import {
   destaquesDoPeriodo,
   periodoAnterior,
   trechoEquivalente,
+  sortearEntre,
+  resumoParaAtletas,
 } from "../src/lib/reuniaoResultados";
 import type { AtletaDoc, EventoDoc, HistoricoPontoDoc, RegraPontuacaoDoc } from "../src/lib/types";
 
@@ -188,4 +190,52 @@ test("período em andamento compara com o mesmo trecho do anterior", () => {
   assert.deepEqual(t, { nome: "2º Trimestre até 12/07", inicio: "2026-06-01", fim: "2026-07-12" });
   const inteiro = { nome: "2º", inicio: "2026-06-01", fim: "2026-08-31" };
   assert.equal(trechoEquivalente(inteiro, "2026-09-01", "2026-12-15"), inteiro);
+});
+
+test("sorteio: sorteia um elegível e nunca sai da lista", () => {
+  assert.equal(sortearEntre([], () => 0.5), null);
+  assert.equal(sortearEntre(["a", "b", "c"], () => 0), "a");
+  assert.equal(sortearEntre(["a", "b", "c"], () => 0.999999), "c");
+  assert.equal(sortearEntre(["a", "b"], () => 1), "b");
+});
+
+test("sorteio entra desligado no roteiro e antes do encerramento", () => {
+  const r = reuniaoPadrao({ nome: "T", inicio: "2026-06-01", fim: "2026-08-31" }, null);
+  const tipos = r.secoes.map((x) => x.tipo);
+  assert.equal(tipos[tipos.indexOf("obrigado") - 1], "sorteio");
+  assert.equal(r.secoes.find((x) => x.tipo === "sorteio")?.ativo, false);
+  const velha = { secoes: r.secoes.filter((x) => x.tipo !== "sorteio") };
+  const nova = completarSecoes(velha).secoes;
+  assert.equal(nova[nova.findIndex((x) => x.tipo === "obrigado") - 1].tipo, "sorteio");
+});
+
+test("notas do apresentador passam pela validação com limite", () => {
+  const r = reuniaoPadrao({ nome: "T", inicio: "2026-06-01", fim: "2026-08-31" }, null);
+  const v = validarReuniao({ ...r, notas: { [r.secoes[0].id]: "Abrir com a meta", x: "a".repeat(3000), y: 5 as unknown as string } });
+  assert.ok("dados" in v);
+  if ("dados" in v) {
+    assert.equal(v.dados.notas?.[r.secoes[0].id], "Abrir com a meta");
+    assert.equal(v.dados.notas?.x?.length, 2000);
+    assert.equal(v.dados.notas?.y, undefined);
+  }
+});
+
+test("resumo para os atletas com números, pódio e destaques", () => {
+  const atletas = ["Ana", "Bia", "Caio"].map((n) => atleta(n, n, "corrida"));
+  const lancamentos = [lanc("Ana", "2026-06-10", 30, 10), lanc("Bia", "2026-06-11", 20, 8), lanc("Caio", "2026-06-12", 10, 4)];
+  const corrida = resultadosDaEquipe({ modalidade: "corrida", atletas, lancamentos, resumosMensais: [], inicio: "2026-06-01", fim: "2026-08-31" });
+  const bicicleta = resultadosDaEquipe({ modalidade: "bicicleta", atletas: [], lancamentos: [], resumosMensais: [], inicio: "2026-06-01", fim: "2026-08-31" });
+  const r = resumoParaAtletas({
+    periodo: { nome: "2º Trimestre" },
+    corrida,
+    bicicleta,
+    desafios: [{ titulo: "100 km", concluidos: 1, participantes: 3 }],
+    novos: 2,
+  });
+  assert.equal(r.titulo, "Resultados do 2º Trimestre");
+  assert.match(r.resumo, /3 treinos e 22 km/);
+  assert.match(r.corpo, /^Corrida\n3 atletas · 3 treinos · 22 km\n1º Ana \(30 pts\)/);
+  assert.doesNotMatch(r.corpo, /Bike/);
+  assert.match(r.corpo, /100 km: 1 de 3 participantes concluiu/);
+  assert.match(r.corpo, /aos 2 atletas novos/);
 });

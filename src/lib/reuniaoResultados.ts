@@ -8,6 +8,8 @@
 import { calcularResultadosRanking } from "@/lib/rankingPeriods";
 import { calcularPosicoesRanking, montarPodio, type DegrauDoPodio } from "@/lib/rankingPosition";
 import type { RegrasDeTreino } from "@/lib/activityConsolidation";
+import { formatKmTotal, formatPontos, plural } from "@/lib/format";
+import { modalidadeLabel } from "@/lib/labels";
 import type { AtletaDoc, EventoDoc, HistoricoMensalDoc, HistoricoPontoDoc, Modalidade, RegraPontuacaoDoc } from "@/lib/types";
 
 // ---------- configuração salva da reunião ----------
@@ -23,6 +25,7 @@ export type TipoSecao =
   | "premiacao"
   | "agenda"
   | "app"
+  | "sorteio"
   | "obrigado"
   | "livre";
 
@@ -55,6 +58,8 @@ export interface ReuniaoResultadosDoc {
   /** Ajustes manuais na lista de novos atletas. */
   novosIncluir: string[];
   novosExcluir: string[];
+  /** Anotações do apresentador por seção (aparecem só na tela do apresentador). */
+  notas?: Record<string, string>;
   atualizadoEm?: string | null;
   atualizadoPorNome?: string | null;
 }
@@ -70,6 +75,7 @@ export const TITULO_SECAO: Record<Exclude<TipoSecao, "livre">, { titulo: string;
   premiacao: { titulo: "Premiação", dica: "Pódio e classificação de cada equipe" },
   agenda: { titulo: "Agenda", dica: "Programação de eventos do ano" },
   app: { titulo: "Aplicativo", dica: "QR code para instalar o app" },
+  sorteio: { titulo: "Sorteio", dica: "Sorteio ao vivo entre quem registrou presença" },
   obrigado: { titulo: "Obrigado", dica: "Encerramento" },
 };
 
@@ -109,6 +115,7 @@ export function reuniaoPadrao(periodo: { nome: string; inicio: string; fim: stri
       s("agenda"),
       s("livre", avisos.id),
       s("app"),
+      { ...s("sorteio"), ativo: false },
       s("obrigado"),
     ],
     livres: [diretoria, combinados, avisos],
@@ -123,13 +130,15 @@ export function reuniaoPadrao(periodo: { nome: string; inicio: string; fim: stri
  */
 export function completarSecoes<T extends Pick<ReuniaoResultadosDoc, "secoes">>(reuniao: T): T {
   const secoes = [...reuniao.secoes];
-  const garantir = (tipo: TipoSecao, depoisDe: TipoSecao) => {
+  const garantir = (tipo: TipoSecao, vizinho: TipoSecao, lado: "depois" | "antes" = "depois", ativo = true) => {
     if (secoes.some((x) => x.tipo === tipo)) return;
-    const i = secoes.findIndex((x) => x.tipo === depoisDe);
-    secoes.splice(i >= 0 ? i + 1 : secoes.length, 0, { id: novoId("s"), tipo, ativo: true });
+    const i = secoes.findIndex((x) => x.tipo === vizinho);
+    secoes.splice(i < 0 ? secoes.length : lado === "depois" ? i + 1 : i, 0, { id: novoId("s"), tipo, ativo });
   };
   garantir("aniversariantes", "novos");
   garantir("destaques", "resultados");
+  // Sorteio entra desligado: só faz sentido quando há brinde.
+  garantir("sorteio", "obrigado", "antes", false);
   return secoes.length === reuniao.secoes.length ? reuniao : { ...reuniao, secoes };
 }
 
@@ -146,7 +155,7 @@ export function validarReuniao(entrada: unknown): { erro: string } | { dados: Om
   if (!data.test(periodo.inicio ?? "") || !data.test(periodo.fim ?? "") || periodo.fim < periodo.inicio) {
     return { erro: "Escolha o período dos resultados." };
   }
-  const tipos = new Set<TipoSecao>(["capa", "presenca", "novos", "aniversariantes", "regras", "resultados", "destaques", "premiacao", "agenda", "app", "obrigado", "livre"]);
+  const tipos = new Set<TipoSecao>(["capa", "presenca", "novos", "aniversariantes", "regras", "resultados", "destaques", "premiacao", "agenda", "app", "sorteio", "obrigado", "livre"]);
   const livres = (Array.isArray(e.livres) ? e.livres : []).slice(0, 30).map((l) => ({
     id: texto(l?.id, 40) || novoId("l"),
     layout: l?.layout === "divisoria" ? ("divisoria" as const) : ("conteudo" as const),
@@ -171,6 +180,12 @@ export function validarReuniao(entrada: unknown): { erro: string } | { dados: Om
       livres,
       novosIncluir: ids(e.novosIncluir),
       novosExcluir: ids(e.novosExcluir),
+      notas: Object.fromEntries(
+        Object.entries(e.notas && typeof e.notas === "object" ? e.notas : {})
+          .filter(([k, v]) => typeof v === "string" && v.trim() && k.length < 60)
+          .slice(0, 60)
+          .map(([k, v]) => [k, (v as string).slice(0, 2000)]),
+      ),
     },
   };
 }
@@ -385,6 +400,7 @@ export type SlideDef = (
   | { chave: string; tipo: "classificacao"; modalidade: Modalidade; periodo: string; colunas: LinhaResultado[][]; pagina: number; paginas: number; temNovos: boolean }
   | { chave: string; tipo: "agenda"; ano: string; colunas: ColunaAgenda[] }
   | { chave: string; tipo: "app" }
+  | { chave: string; tipo: "sorteio" }
   | { chave: string; tipo: "obrigado" }
 ) & {
   /** Seção do roteiro que gerou o slide (para ligar a lista aos slides). */
@@ -663,6 +679,9 @@ export function montarRoteiro(params: {
       case "app":
         slides.push({ chave: k, tipo: "app" });
         break;
+      case "sorteio":
+        slides.push({ chave: k, tipo: "sorteio" });
+        break;
       case "obrigado":
         slides.push({ chave: k, tipo: "obrigado" });
         break;
@@ -673,7 +692,6 @@ export function montarRoteiro(params: {
   return slides;
 }
 
-const NOME_MODALIDADE: Record<Modalidade, string> = { corrida: "Corrida", bicicleta: "Bike" };
 
 /** Nome da seção como aparece no roteiro. */
 export function nomeDaSecao(secao: Pick<SecaoReuniao, "tipo">, livre?: Pick<SlideLivre, "sobretitulo" | "titulo">) {
@@ -685,9 +703,9 @@ function rotuloDoSlide(slide: SlideDef, base: string) {
   const pag = (p: number, t: number) => (t > 1 ? ` (${p}/${t})` : "");
   switch (slide.tipo) {
     case "podio":
-      return `Pódio · ${NOME_MODALIDADE[slide.modalidade]}`;
+      return `Pódio · ${modalidadeLabel[slide.modalidade]}`;
     case "classificacao":
-      return `Classificação · ${NOME_MODALIDADE[slide.modalidade]}${pag(slide.pagina, slide.paginas)}`;
+      return `Classificação · ${modalidadeLabel[slide.modalidade]}${pag(slide.pagina, slide.paginas)}`;
     case "novos":
     case "aniversariantes":
       return `${base}${pag(slide.pagina, slide.paginas)}`;
@@ -769,6 +787,15 @@ export function verificarAntesDeApresentar(params: {
     });
   }
 
+  if (ativa("sorteio") && !reuniao.eventoId) {
+    out.push({
+      id: "sorteio",
+      nivel: "atencao",
+      texto: "O sorteio está sem reunião da agenda",
+      detalhe: "Só concorre quem registra presença pelo QR code da reunião. Escolha a reunião em \"Reunião da agenda\" ou desligue o sorteio.",
+    });
+  }
+
   const ligados = new Set(reuniao.secoes.filter((s) => s.tipo === "livre" && s.ativo).map((s) => s.id));
   const vazios = reuniao.livres.filter((l) => ligados.has(l.id) && l.layout === "conteudo" && !l.texto.trim() && !l.imagemId);
   if (vazios.length > 0) {
@@ -797,4 +824,73 @@ export function periodosDeApuracao(
       intervalo: intervaloDeMeses(t.inicio, t.fim).replace(/[()]/g, ""),
       situacao: hoje > t.fim ? "fechado" : hoje >= t.inicio ? "andamento" : "proximo",
     }));
+}
+
+// ---------- sorteio ----------
+
+/** Escolhe um entre os elegíveis com o número aleatório dado (em [0, 1)). */
+export function sortearEntre<T>(elegiveis: readonly T[], aleatorio: () => number): T | null {
+  if (elegiveis.length === 0) return null;
+  const i = Math.min(elegiveis.length - 1, Math.floor(aleatorio() * elegiveis.length));
+  return elegiveis[i];
+}
+
+// ---------- resumo para os atletas ----------
+
+const ORDINAL = ["1º", "2º", "3º"];
+
+/**
+ * Texto da notícia "Resultados do período" para mandar aos atletas depois da
+ * reunião: números das equipes, pódio, destaques e desafios. Só texto (a notícia
+ * não leva anexo); o PDF continua sendo baixado à parte.
+ */
+export function resumoParaAtletas(params: {
+  periodo: { nome: string };
+  corrida: ResultadoEquipe;
+  bicicleta: ResultadoEquipe;
+  destaques?: readonly Destaque[];
+  desafios?: readonly DesafioConcluido[];
+  novos?: number;
+  /** O período ainda não terminou: os números são parciais. */
+  parcial?: boolean;
+}): { titulo: string; resumo: string; corpo: string } {
+  const { periodo, corrida, bicicleta } = params;
+  const equipes = [corrida, bicicleta].filter((e) => e.totais.treinos > 0);
+  const treinos = corrida.totais.treinos + bicicleta.totais.treinos;
+  const km = corrida.totais.km + bicicleta.totais.km;
+  const titulo = `Resultados do ${periodo.nome}`;
+  const resumo =
+    treinos > 0
+      ? `Juntos, somamos ${plural(treinos, "treino")} e ${formatKmTotal(km)}${params.parcial ? " até agora" : ""}. Veja o pódio e os destaques do período.`
+      : `Os resultados do ${periodo.nome} já estão no ranking do portal.`;
+
+  const blocos: string[] = [];
+  for (const e of equipes) {
+    const linhas = [
+      modalidadeLabel[e.modalidade],
+      `${plural(e.totais.atletas, "atleta")} · ${plural(e.totais.treinos, "treino")} · ${formatKmTotal(e.totais.km)}`,
+    ];
+    for (const d of e.podio.slice(0, 3)) {
+      const nomes = d.atletas.map((a) => a.nome).join(", ");
+      const extra = d.total > d.atletas.length ? ` e mais ${d.total - d.atletas.length}` : "";
+      const pontos = d.atletas[0] ? ` (${formatPontos(d.atletas[0].pontos)} pts)` : "";
+      linhas.push(`${ORDINAL[d.posicao - 1] ?? `${d.posicao}º`} ${nomes}${extra}${pontos}`);
+    }
+    blocos.push(linhas.join("\n"));
+  }
+
+  const destaques = params.destaques ?? [];
+  if (destaques.length) {
+    blocos.push(["Destaques", ...destaques.map((d) => `${d.titulo}: ${d.atleta.nome}, ${d.valor} ${d.unidade}`)].join("\n"));
+  }
+  const desafios = (params.desafios ?? []).filter((d) => d.participantes > 0);
+  if (desafios.length) {
+    blocos.push(
+      ["Desafios", ...desafios.map((d) => `${d.titulo}: ${d.concluidos} de ${plural(d.participantes, "participante")} ${d.concluidos === 1 ? "concluiu" : "concluíram"}`)].join("\n"),
+    );
+  }
+  if (params.novos) blocos.push(`Boas-vindas ${params.novos === 1 ? "ao atleta novo" : `aos ${params.novos} atletas novos`} que chegaram no período.`);
+  blocos.push(params.parcial ? "O período ainda está em andamento: siga registrando seus treinos." : "Obrigado a todos que treinaram e registraram. Bora para o próximo!");
+
+  return { titulo, resumo, corpo: blocos.join("\n\n") };
 }
