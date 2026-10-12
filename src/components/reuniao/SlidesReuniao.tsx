@@ -187,7 +187,7 @@ function Divisoria({ sobretitulo, titulo, subtitulo, fundo }: { sobretitulo: str
   );
 }
 
-function Presenca({ evento, pontos, qr, semPermissao }: { evento: { titulo: string; horario: string } | null; pontos: number | null; qr: string | null; semPermissao: boolean }) {
+function Presenca({ evento, pontos, qr, semPermissao, presentes }: { evento: { titulo: string; horario: string } | null; pontos: number | null; qr: string | null; semPermissao: boolean; presentes?: number | null }) {
   return (
     <Base fundo="divisoria">
       <div style={{ position: "absolute", left: 700, right: 60, top: 70, textAlign: "center" }}>
@@ -210,6 +210,16 @@ function Presenca({ evento, pontos, qr, semPermissao }: { evento: { titulo: stri
       </div>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/reuniao/mao-celular.webp" alt="" style={{ position: "absolute", left: 1475, top: 470, width: 420 }} />
+      {/* Ao vivo: sobe a cada presença registrada (só na apresentação, não no PDF). */}
+      {typeof presentes === "number" ? (
+        <div style={{ position: "absolute", left: 300, top: 640, width: 520, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "14px 34px", borderRadius: 999, background: "rgba(255,255,255,.94)", boxShadow: "0 16px 40px rgba(7,29,64,.25)" }}>
+            <span className="pulso-ao-vivo" style={{ width: 22, height: 22, borderRadius: "50%", background: COR.verde }} />
+            <span key={presentes} className="numero-sobe" style={{ fontSize: 96, fontWeight: 900, color: COR.navy, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{presentes}</span>
+            <span style={{ fontSize: 36, fontWeight: 800, color: COR.cinza }}>{presentes === 1 ? "presente" : "presentes"}</span>
+          </div>
+        </div>
+      ) : null}
       {pontos ? (
         <div style={{ position: "absolute", left: 900, width: 540, top: 925, display: "flex", justifyContent: "center" }}>
           <span style={{ padding: "16px 48px", borderRadius: 999, background: `linear-gradient(180deg, #4cc46b, ${COR.verde})`, color: "#fff", fontSize: 46, fontWeight: 900, boxShadow: "0 12px 30px rgba(47,168,79,.45), inset 0 -4px 0 rgba(0,0,0,.15)" }}>
@@ -362,7 +372,22 @@ function Metrica({ valor, unidade, rotulo, destaque = false }: { valor: string; 
   );
 }
 
-function Totais({ corrida, bicicleta, titulo, periodo }: Extract<SlideDef, { tipo: "totais" }>) {
+/** "▲ 12% vs 1º Trimestre" sob o número (verde sobe, vermelho cai). */
+function Variacao({ atual, antes, nome }: { atual: number; antes: number; nome: string }) {
+  if (!(antes > 0)) return null;
+  const v = Math.round(((atual - antes) / antes) * 100);
+  const cor = v > 0 ? COR.verde : v < 0 ? "#d63b3b" : COR.cinza;
+  return (
+    <div style={{ marginTop: 6, fontSize: 22, fontWeight: 700, color: COR.cinza, whiteSpace: "nowrap" }}>
+      <span style={{ color: cor, fontWeight: 900 }}>
+        {v > 0 ? "▲" : v < 0 ? "▼" : "="} {v === 0 ? "igual" : `${Math.abs(v)}%`}
+      </span>{" "}
+      vs {nome}
+    </div>
+  );
+}
+
+function Totais({ corrida, bicicleta, titulo, periodo, anterior }: Extract<SlideDef, { tipo: "totais" }>) {
   const geral = {
     atletas: corrida.atletas + bicicleta.atletas,
     treinos: corrida.treinos + bicicleta.treinos,
@@ -395,10 +420,10 @@ function Totais({ corrida, bicicleta, titulo, periodo }: Extract<SlideDef, { tip
     </div>
   );
   const resumo = [
-    { valor: formatPontos(geral.atletas), rotulo: "atletas" },
-    { valor: formatPontos(geral.treinos), rotulo: "treinos" },
-    { valor: formatPontos(geral.pontos), rotulo: "pontos", destaque: true },
-    { valor: kmInteiro(geral.km), rotulo: "km" },
+    { valor: formatPontos(geral.atletas), rotulo: "atletas", atual: 0, antes: 0 },
+    { valor: formatPontos(geral.treinos), rotulo: "treinos", atual: geral.treinos, antes: anterior?.treinos ?? 0 },
+    { valor: formatPontos(geral.pontos), rotulo: "pontos", destaque: true, atual: geral.pontos, antes: anterior?.pontos ?? 0 },
+    { valor: kmInteiro(geral.km), rotulo: "km", atual: geral.km, antes: anterior?.km ?? 0 },
   ];
   return (
     <Base fundo="conteudo">
@@ -408,9 +433,12 @@ function Totais({ corrida, bicicleta, titulo, periodo }: Extract<SlideDef, { tip
         <div style={{ display: "flex", alignItems: "stretch", borderRadius: 24, background: "#fff", border: "2px solid #dbe6f3", boxShadow: "0 14px 32px rgba(7,29,64,.12)" }}>
           <div style={{ display: "flex", alignItems: "center", padding: "0 36px", borderRadius: "22px 0 0 22px", background: COR.azulClaro, fontSize: 24, fontWeight: 900, letterSpacing: "0.1em", textTransform: "uppercase", color: COR.azul }}>No período</div>
           {resumo.map((r, i) => (
-            <div key={r.rotulo} style={{ flex: 1, padding: "20px 0", display: "flex", alignItems: "baseline", justifyContent: "center", gap: 12, borderLeft: i > 0 ? "2px solid #e8eef6" : "none", color: r.destaque ? COR.laranja : COR.navy }}>
-              <span style={{ fontSize: 66, fontWeight: 900, lineHeight: 1 }}>{r.valor}</span>
-              <span style={{ fontSize: 26, fontWeight: 800, color: COR.cinza }}>{r.rotulo}</span>
+            <div key={r.rotulo} style={{ flex: 1, padding: "18px 0", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderLeft: i > 0 ? "2px solid #e8eef6" : "none" }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 12, color: r.destaque ? COR.laranja : COR.navy }}>
+                <span style={{ fontSize: 66, fontWeight: 900, lineHeight: 1 }}>{r.valor}</span>
+                <span style={{ fontSize: 26, fontWeight: 800, color: COR.cinza }}>{r.rotulo}</span>
+              </div>
+              {anterior ? <Variacao atual={r.atual} antes={r.antes} nome={anterior.nome} /> : null}
             </div>
           ))}
         </div>
@@ -635,6 +663,72 @@ function Obrigado() {
   );
 }
 
+function Destaques({ itens, desafios, periodo, fotos }: Extract<SlideDef, { tipo: "destaques" }> & { fotos: Record<string, string> }) {
+  const largura = itens.length <= 2 ? 560 : itens.length === 3 ? 500 : 400;
+  return (
+    <Base fundo="conteudo">
+      <TituloConteudo extra={periodo}>Destaques do período</TituloConteudo>
+      <div style={{ position: "absolute", left: 72, right: 72, top: 175, bottom: desafios.length ? 250 : 130, display: "flex", gap: 32, justifyContent: "center", alignItems: "center" }}>
+        {itens.map((d) => (
+          <div key={d.id} style={{ ...cartao, width: largura, height: desafios.length ? 600 : 680, border: "none", overflow: "hidden", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+            <div style={{ alignSelf: "stretch", padding: "18px 24px", background: `linear-gradient(180deg, ${COR.navy}, ${COR.navyEscuro})`, color: "#ffb37a", fontSize: 28, fontWeight: 900, letterSpacing: "0.04em", textTransform: "uppercase" }}>{d.titulo}</div>
+            <div style={{ marginTop: 34 }}>
+              <Avatar nome={d.atleta.nome} foto={fotos[d.atleta.id]} tamanho={190} anel={COR.laranja} />
+            </div>
+            <div style={{ marginTop: 26, padding: "0 24px", fontSize: 40, fontWeight: 900, color: COR.navy, lineHeight: 1.05 }}>{nomeCurto(d.atleta.nome, 20)}</div>
+            <div style={{ marginTop: 6, fontSize: 22, fontWeight: 800, letterSpacing: "0.12em", color: COR.cinza }}>{modalidadeLabel[d.atleta.modalidade].toUpperCase()}</div>
+            <div style={{ marginTop: "auto", paddingBottom: 30, display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 10, color: COR.laranja }}>
+                <span style={{ fontSize: 104, fontWeight: 900, lineHeight: 1 }}>{d.valor}</span>
+                <span style={{ fontSize: 30, fontWeight: 800, color: COR.navy }}>{d.unidade}</span>
+              </div>
+              <div style={{ marginTop: 8, fontSize: 26, fontWeight: 700, color: COR.cinza }}>{d.detalhe}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      {desafios.length ? (
+        <div style={{ position: "absolute", left: 72, right: 72, bottom: 120, height: 104, display: "flex", alignItems: "center", gap: 28, padding: "0 36px", borderRadius: 24, background: "#fff", border: "2px solid #dbe6f3", boxShadow: "0 14px 32px rgba(7,29,64,.12)" }}>
+          <span style={{ fontSize: 26, fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase", color: COR.azul, whiteSpace: "nowrap" }}>Desafios do comitê</span>
+          {desafios.slice(0, 3).map((d) => (
+            <span key={d.titulo} style={{ display: "flex", alignItems: "baseline", gap: 10, paddingLeft: 28, borderLeft: "2px solid #e8eef6", minWidth: 0 }}>
+              <span style={{ fontSize: 30, fontWeight: 800, color: COR.navy, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 380 }}>{d.titulo}</span>
+              <span style={{ fontSize: 44, fontWeight: 900, color: COR.laranja }}>{d.concluidos}</span>
+              <span style={{ fontSize: 24, fontWeight: 700, color: COR.cinza, whiteSpace: "nowrap" }}>de {d.participantes} concluíram</span>
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <LogoCanto />
+    </Base>
+  );
+}
+
+function Aniversariantes({ atletas, pagina, paginas, fotos }: Extract<SlideDef, { tipo: "aniversariantes" }> & { fotos: Record<string, string> }) {
+  const colunas = atletas.length <= 4 ? atletas.length : 5;
+  const tamanho = colunas <= 4 ? 220 : 180;
+  return (
+    <Base fundo="conteudo">
+      <TituloConteudo extra={juntarExtra(`${atletas.length} ${atletas.length === 1 ? "aniversariante" : "aniversariantes"}`, paginas > 1 ? `${pagina}/${paginas}` : undefined)}>
+        Aniversariantes
+      </TituloConteudo>
+      <div style={{ position: "absolute", left: 72, right: 72, top: 180, bottom: 140, display: "flex", flexWrap: "wrap", justifyContent: "center", alignContent: "center", columnGap: 56, rowGap: 44 }}>
+        {atletas.map((a) => (
+          <div key={a.id} style={{ width: tamanho + 60, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+            <div style={{ position: "relative" }}>
+              <Avatar nome={a.nome} foto={fotos[a.id]} tamanho={tamanho} anel="#fff" />
+              <span style={{ position: "absolute", right: -18, bottom: -6, padding: "8px 18px", borderRadius: 999, background: `linear-gradient(180deg, #ff9a3c, ${COR.laranja})`, color: "#fff", fontSize: 28, fontWeight: 900, boxShadow: "0 8px 20px rgba(243,112,33,.4)" }}>{a.dia}</span>
+            </div>
+            <div style={{ marginTop: 22, fontSize: 32, fontWeight: 900, color: COR.navy, lineHeight: 1.1 }}>{nomeCurto(a.nome, 18)}</div>
+            <div style={{ marginTop: 4, fontSize: 20, fontWeight: 800, letterSpacing: "0.12em", color: COR.cinza }}>{modalidadeLabel[a.modalidade].toUpperCase()}</div>
+          </div>
+        ))}
+      </div>
+      <LogoCanto />
+    </Base>
+  );
+}
+
 /** Um slide do roteiro, no tamanho nativo (1920×1080). */
 export function SlideReuniao({
   slide,
@@ -644,6 +738,7 @@ export function SlideReuniao({
   presencaSemPermissao = false,
   qrApp,
   urlApp,
+  presentes,
 }: {
   slide: SlideDef;
   fotos: Record<string, string>;
@@ -652,12 +747,14 @@ export function SlideReuniao({
   presencaSemPermissao?: boolean;
   qrApp: string | null;
   urlApp: string;
+  /** Presenças registradas até agora (apresentação ao vivo); sem isso, o contador não aparece. */
+  presentes?: number | null;
 }) {
   switch (slide.tipo) {
     case "capa":
       return <Capa ano={slide.ano} meses={slide.meses} />;
     case "presenca":
-      return <Presenca evento={slide.evento} pontos={slide.pontos} qr={qrPresenca} semPermissao={presencaSemPermissao} />;
+      return <Presenca evento={slide.evento} pontos={slide.pontos} qr={qrPresenca} semPermissao={presencaSemPermissao} presentes={presentes} />;
     case "divisoria":
       return <Divisoria sobretitulo={slide.sobretitulo} titulo={slide.titulo} subtitulo={slide.subtitulo} fundo={slide.fundo} />;
     case "novos":
@@ -678,5 +775,9 @@ export function SlideReuniao({
       return <App qr={qrApp} url={urlApp} />;
     case "obrigado":
       return <Obrigado />;
+    case "destaques":
+      return <Destaques {...slide} fotos={fotos} />;
+    case "aniversariantes":
+      return <Aniversariantes {...slide} fotos={fotos} />;
   }
 }

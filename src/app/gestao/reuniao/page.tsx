@@ -29,10 +29,19 @@ import { horarioDoEvento } from "@/lib/eventos";
 import { formatShortDate, plural } from "@/lib/format";
 import { modalidadeLabel } from "@/lib/labels";
 import { hojeBrasil, normalizarCalendario, ordenarTrimestres, trimestreVigente, type CalendarioPremiacaoDoc } from "@/lib/calendarioPremiacao";
-import { apagarReuniao, listarReunioes, salvarReuniao, useImagensReuniao, useQrPresenca } from "@/lib/reuniaoCliente";
+import { apagarReuniao, listarReunioes, salvarReuniao, useImagensReuniao, usePresentesNaReuniao, useQrPresenca } from "@/lib/reuniaoCliente";
+import { listarDesafios } from "@/lib/desafiosCliente";
+import { agruparPorAtleta, participacaoNoDesafio, type DesafioDoc } from "@/lib/desafios";
+import { calcularSequencia } from "@/lib/conquistas";
 import {
   agendaDoAno,
+  aniversariantesDoPeriodo,
+  completarSecoes,
+  destaquesDoPeriodo,
+  membroAtivoDaEquipe,
   montarRoteiro,
+  periodoAnterior,
+  trechoEquivalente,
   novosAtletas,
   periodosDeApuracao,
   regrasParaSlide,
@@ -234,6 +243,7 @@ export default function ReuniaoResultadosPage() {
   const hoje = hojeBrasil();
 
   const [salvas, setSalvas] = useState<ReuniaoResultadosDoc[] | null>(null);
+  const [desafios, setDesafios] = useState<DesafioDoc[]>([]);
   const [rascunhoEditado, setRascunho] = useState<Rascunho | null>(null);
   const [alterado, setAlterado] = useState(false);
   const [erroSalvar, setErroSalvar] = useState<string | null>(null);
@@ -248,7 +258,8 @@ export default function ReuniaoResultadosPage() {
 
   useEffect(() => {
     if (!pode) return;
-    listarReunioes().then(setSalvas, () => setSalvas([]));
+    listarReunioes().then((l) => setSalvas(l.map(completarSecoes)), () => setSalvas([]));
+    listarDesafios().then(setDesafios, () => setDesafios([]));
   }, [pode]);
 
   const criarNova = useCallback(() => {
@@ -286,6 +297,30 @@ export default function ReuniaoResultadosPage() {
     const comum = { atletas, lancamentos: dados.lancamentos!, resumosMensais: dados.mensais!, inicio: periodo.inicio, fim: periodo.fim, regrasTreino: dados.regrasTreino!, novos: idsNovos };
     const corrida = resultadosDaEquipe({ modalidade: "corrida", ...comum });
     const bicicleta = resultadosDaEquipe({ modalidade: "bicicleta", ...comum });
+    // Período anterior (trimestre de antes ou a mesma duração), para a variação e "quem mais evoluiu".
+    const antInteiro = periodoAnterior(periodo, dados.calendario!.trimestres);
+    // Período ainda correndo: compara com o mesmo trecho do anterior (senão a queda é falsa).
+    const ant = hoje < periodo.fim ? trechoEquivalente(antInteiro, periodo.inicio, hoje) : antInteiro;
+    const comumAnt = { ...comum, inicio: ant.inicio, fim: ant.fim, novos: undefined };
+    const anterior = { nome: ant.nome, corrida: resultadosDaEquipe({ modalidade: "corrida", ...comumAnt }), bicicleta: resultadosDaEquipe({ modalidade: "bicicleta", ...comumAnt }) };
+    const temAnterior = anterior.corrida.totais.treinos + anterior.bicicleta.totais.treinos > 0;
+    // Semanas seguidas treinando até o fim do período.
+    const ate = periodo.fim < hoje ? periodo.fim : hoje;
+    const porAtleta = agruparPorAtleta(dados.lancamentos!.filter((l) => !l.estornado && l.dataTreino <= ate));
+    const sequencias = new Map<string, number>();
+    for (const a of atletas) {
+      if (!membroAtivoDaEquipe(a, "corrida") && !membroAtivoDaEquipe(a, "bicicleta")) continue;
+      sequencias.set(a.id, calcularSequencia(porAtleta.get(a.id) ?? [], dados.regrasTreino!, ate).atual);
+    }
+    const itensDestaque = destaquesDoPeriodo({ atletas, atual: { corrida, bicicleta }, anterior: temAnterior ? anterior : null, sequencias });
+    const desafiosDoPeriodo = desafios
+      .filter((d) => d.inicio <= periodo.fim && d.fim >= periodo.inicio && d.inicio <= hoje)
+      .map((d) => {
+        const p = participacaoNoDesafio({ desafio: d, atletas, porAtleta, regrasTreino: dados.regrasTreino!, hoje: ate });
+        return { titulo: d.titulo, concluidos: p.concluidos, participantes: p.participantes.length };
+      })
+      .filter((d) => d.participantes > 0);
+    const aniversariantes = aniversariantesDoPeriodo(atletas, periodo.inicio, periodo.fim);
     const pontosReuniao = Math.max(0, ...dados.regras!.filter((r) => r.tiposLancamento?.includes("reuniao")).map((r) => r.pontos)) || null;
     const slides = montarRoteiro({
       reuniao: rascunho,
@@ -298,23 +333,41 @@ export default function ReuniaoResultadosPage() {
       evento: evento ? { id: evento.id, titulo: evento.titulo, horario: `${formatShortDate(evento.data)} · ${horarioDoEvento(evento)}` } : null,
       pontosReuniao,
       hoje,
+      anterior: temAnterior ? { nome: ant.nome, corrida: anterior.corrida.totais, bicicleta: anterior.bicicleta.totais } : null,
+      destaques: { itens: itensDestaque, desafios: desafiosDoPeriodo },
+      aniversariantes,
     });
-    const comFoto = [...novos, ...[corrida, bicicleta].flatMap((e) => e.podio.flatMap((d) => d.atletas))];
+    const comFoto = [
+      ...novos,
+      ...[corrida, bicicleta].flatMap((e) => e.podio.flatMap((d) => d.atletas)),
+      ...itensDestaque.map((d) => d.atleta),
+      ...aniversariantes,
+    ];
     return { slides, novos, corrida, bicicleta, comFoto };
-  }, [dados, rascunho, evento, hoje]);
+  }, [dados, rascunho, evento, hoje, desafios]);
 
   const fotos = useFotosAtletas(calculo?.comFoto ?? []);
   const imagens = useImagensReuniao((rascunho?.livres ?? []).map((l) => l.imagemId).filter((x): x is string => !!x));
   const { qr: qrPresenca, semPermissao } = useQrPresenca(evento);
+  const presentes = usePresentesNaReuniao(evento?.id ?? null);
   const urlApp = typeof window !== "undefined" ? `${window.location.host}/instalar` : "/instalar";
   const qrApp = useQrDataUrl(typeof window !== "undefined" ? `${window.location.origin}/instalar` : "", 800) || null;
 
   const renderSlide = useCallback(
-    (i: number) =>
+    (i: number, paraPdf = false) =>
       calculo?.slides[i] ? (
-        <SlideReuniao slide={calculo.slides[i]} fotos={fotos} imagens={imagens} qrPresenca={qrPresenca} presencaSemPermissao={semPermissao} qrApp={qrApp} urlApp={urlApp} />
+        <SlideReuniao
+          slide={calculo.slides[i]}
+          fotos={fotos}
+          imagens={imagens}
+          qrPresenca={qrPresenca}
+          presencaSemPermissao={semPermissao}
+          qrApp={qrApp}
+          urlApp={urlApp}
+          presentes={paraPdf ? null : (presentes?.length ?? null)}
+        />
       ) : null,
-    [calculo, fotos, imagens, qrPresenca, semPermissao, qrApp, urlApp],
+    [calculo, fotos, imagens, qrPresenca, semPermissao, qrApp, urlApp, presentes],
   );
 
   const rascunhoAtual = useRef(rascunho);
@@ -333,7 +386,7 @@ export default function ReuniaoResultadosPage() {
         setRascunho((r) => (r ? { ...r, id } : { ...atual, id }));
         if (versao.current === v) setAlterado(false);
         setErroSalvar(null);
-        setSalvas(await listarReunioes());
+        setSalvas((await listarReunioes()).map(completarSecoes));
         if (!silencioso) show("success", "Reunião salva.");
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Não foi possível salvar.";
@@ -372,13 +425,19 @@ export default function ReuniaoResultadosPage() {
 
   const verificacoes = useMemo(() => {
     if (!calculo || !rascunho || !dados.eventos || !dados.lancamentos) return null;
-    const ativa = (tipo: string) => rascunho.secoes.some((x) => x.tipo === tipo && x.ativo);
-    const noPodio = ativa("premiacao") ? [calculo.corrida, calculo.bicicleta].flatMap((e) => e.podio.flatMap((d) => d.atletas)) : [];
-    const novosComFoto = ativa("novos") ? calculo.novos : [];
+    // Quem aparece com foto nos slides que vão ao telão (pódio, novos, destaques, aniversariantes).
+    type Pessoa = { id: string; nome: string; fotoVersao?: number };
+    const naTela = calculo.slides.flatMap((sl): Pessoa[] =>
+      sl.tipo === "podio"
+        ? sl.podio.flatMap((d) => d.atletas)
+        : sl.tipo === "novos" || sl.tipo === "aniversariantes"
+          ? sl.atletas
+          : sl.tipo === "destaques"
+            ? sl.itens.map((d) => d.atleta)
+            : [],
+    );
     const vistos = new Set<string>();
-    const semFoto = [...noPodio.map((a) => ({ id: a.id, nome: a.nome, fotoVersao: a.fotoVersao })), ...novosComFoto]
-      .filter((a) => !a.fotoVersao && !vistos.has(a.id) && vistos.add(a.id))
-      .map((a) => ({ id: a.id, nome: a.nome }));
+    const semFoto = naTela.filter((a) => !a.fotoVersao && !vistos.has(a.id) && vistos.add(a.id)).map((a) => ({ id: a.id, nome: a.nome }));
     return verificarAntesDeApresentar({ reuniao: rascunho, eventos: dados.eventos, lancamentos: dados.lancamentos, semFoto, hoje });
   }, [calculo, rascunho, dados.eventos, dados.lancamentos, hoje]);
 
@@ -625,7 +684,7 @@ export default function ReuniaoResultadosPage() {
         <div aria-hidden="true" style={{ position: "fixed", left: -20000, top: 0, pointerEvents: "none" }}>
           {calculo.slides.map((s, i) => (
             <div key={s.chave} ref={(n) => { nosPdf.current[i] = n; }}>
-              {renderSlide(i)}
+              {renderSlide(i, true)}
             </div>
           ))}
         </div>

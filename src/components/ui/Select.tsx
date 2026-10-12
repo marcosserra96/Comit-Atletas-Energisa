@@ -82,6 +82,8 @@ interface SelectProps {
   searchable?: boolean;
   /** Vai para o botão, para associar um `<label htmlFor>`. */
   id?: string;
+  /** Nome para leitor de tela quando não há `<label>` visível ligado ao campo. */
+  "aria-label"?: string;
 }
 
 export function Select({
@@ -93,6 +95,7 @@ export function Select({
   className,
   searchable,
   id,
+  "aria-label": rotulo,
 }: SelectProps) {
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
@@ -180,6 +183,7 @@ export function Select({
       <button
         id={id}
         type="button"
+        aria-label={rotulo}
         disabled={disabled}
         onClick={() => (open ? setOpen(false) : openList())}
         onKeyDown={handleKeyDown}
