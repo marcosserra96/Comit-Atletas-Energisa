@@ -126,10 +126,13 @@ export function EditorRoteiro({
   roteiro,
   imagens,
   onChange,
+  onIrPara,
 }: {
   roteiro: Roteiro;
   imagens: Record<string, string>;
   onChange: (r: Roteiro) => void;
+  /** Tocar numa seção mostra os slides dela na prévia. */
+  onIrPara?: (secaoId: string) => void;
 }) {
   const [aberto, setAberto] = useState<string | null>(null);
   const livres = new Map(roteiro.livres.map((l) => [l.id, l]));
@@ -187,10 +190,13 @@ export function EditorRoteiro({
                 </div>
                 <button
                   type="button"
-                  disabled={!livre}
-                  onClick={() => setAberto(expandido ? null : s.id)}
-                  className={cn("flex min-h-14 min-w-0 flex-1 items-center gap-2 px-2 text-left", livre && "cursor-pointer")}
+                  onClick={() => {
+                    if (livre) setAberto(expandido ? null : s.id);
+                    if (s.ativo) onIrPara?.(s.id);
+                  }}
+                  className="flex min-h-14 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] px-2 text-left hover:bg-bg-inset/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   aria-expanded={livre ? expandido : undefined}
+                  title={s.ativo ? "Mostrar na prévia" : undefined}
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold text-text">{titulo}</span>
