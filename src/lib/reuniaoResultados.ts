@@ -340,7 +340,7 @@ export interface NovoAtletaSlide {
 
 export type FundoDivisoria = "divisoria" | "resultados" | "premiacao" | "agenda";
 
-export type SlideDef =
+export type SlideDef = (
   | { chave: string; tipo: "capa"; ano: string; meses: string }
   | { chave: string; tipo: "presenca"; evento: { id: string; titulo: string; horario: string } | null; pontos: number | null }
   | { chave: string; tipo: "divisoria"; sobretitulo: string; titulo: string; subtitulo: string; fundo: FundoDivisoria }
@@ -352,7 +352,13 @@ export type SlideDef =
   | { chave: string; tipo: "classificacao"; modalidade: Modalidade; periodo: string; colunas: LinhaResultado[][]; pagina: number; paginas: number; temNovos: boolean }
   | { chave: string; tipo: "agenda"; ano: string; colunas: ColunaAgenda[] }
   | { chave: string; tipo: "app" }
-  | { chave: string; tipo: "obrigado" };
+  | { chave: string; tipo: "obrigado" }
+) & {
+  /** Seção do roteiro que gerou o slide (para ligar a lista aos slides). */
+  secaoId?: string;
+  /** Nome curto do slide na lista de miniaturas ("Premiação · Corrida"). */
+  rotulo?: string;
+};
 
 export const NOVOS_POR_SLIDE = 10;
 
@@ -381,6 +387,7 @@ export function montarRoteiro(params: {
   for (const secao of reuniao.secoes) {
     if (!secao.ativo) continue;
     const k = secao.id;
+    const inicio = slides.length;
     switch (secao.tipo) {
       case "capa":
         slides.push({ chave: k, tipo: "capa", ano, meses: mesesDoPeriodo(periodo.inicio, periodo.fim) });
@@ -452,8 +459,118 @@ export function montarRoteiro(params: {
         slides.push({ chave: k, tipo: "obrigado" });
         break;
     }
+    const base = nomeDaSecao(secao, livres.get(secao.id));
+    for (let j = inicio; j < slides.length; j++) slides[j] = { ...slides[j], secaoId: k, rotulo: rotuloDoSlide(slides[j], base) };
   }
   return slides;
+}
+
+const NOME_MODALIDADE: Record<Modalidade, string> = { corrida: "Corrida", bicicleta: "Bike" };
+
+/** Nome da seção como aparece no roteiro. */
+export function nomeDaSecao(secao: Pick<SecaoReuniao, "tipo">, livre?: Pick<SlideLivre, "sobretitulo" | "titulo">) {
+  if (secao.tipo === "livre") return [livre?.sobretitulo, livre?.titulo].filter(Boolean).join(" ") || "Slide livre";
+  return TITULO_SECAO[secao.tipo].titulo;
+}
+
+function rotuloDoSlide(slide: SlideDef, base: string) {
+  const pag = (p: number, t: number) => (t > 1 ? ` (${p}/${t})` : "");
+  switch (slide.tipo) {
+    case "podio":
+      return `Pódio · ${NOME_MODALIDADE[slide.modalidade]}`;
+    case "classificacao":
+      return `Classificação · ${NOME_MODALIDADE[slide.modalidade]}${pag(slide.pagina, slide.paginas)}`;
+    case "novos":
+      return `${base}${pag(slide.pagina, slide.paginas)}`;
+    case "divisoria":
+      // Divisória que abre uma seção automática (Resultados, Premiação…).
+      return slide.chave.endsWith("-div") ? `${base} · abertura` : base;
+    default:
+      return base;
+  }
+}
+
+// ---------- antes de apresentar ----------
+
+export interface Verificacao {
+  id: string;
+  nivel: "atencao" | "info";
+  texto: string;
+  detalhe?: string;
+  acao?: { rotulo: string; href: string };
+}
+
+/**
+ * O que pode sair errado no telão: números incompletos, fotos faltando,
+ * QR sem reunião, slide escrito vazio. Lista vazia = pronto para apresentar.
+ */
+export function verificarAntesDeApresentar(params: {
+  reuniao: Pick<ReuniaoResultadosDoc, "periodo" | "secoes" | "livres" | "eventoId">;
+  eventos: readonly Pick<EventoDoc, "id" | "titulo" | "data" | "tipo">[];
+  lancamentos: readonly Pick<HistoricoPontoDoc, "eventoId" | "estornado">[];
+  /** Quem aparece com foto nos slides (pódio e novos). */
+  semFoto: readonly { id: string; nome: string }[];
+  hoje: string;
+}): Verificacao[] {
+  const { reuniao, hoje } = params;
+  const { periodo } = reuniao;
+  const ativa = (tipo: TipoSecao) => reuniao.secoes.some((s) => s.tipo === tipo && s.ativo);
+  const out: Verificacao[] = [];
+
+  const lancados = new Set(params.lancamentos.filter((l) => !l.estornado && l.eventoId).map((l) => l.eventoId));
+  const semPontos = params.eventos
+    .filter((e) => e.tipo !== "reuniao" && e.data >= periodo.inicio && e.data <= periodo.fim && e.data < hoje && !lancados.has(e.id))
+    .sort((a, b) => a.data.localeCompare(b.data));
+  if (semPontos.length > 0 && (ativa("resultados") || ativa("premiacao"))) {
+    out.push({
+      id: "eventos",
+      nivel: "atencao",
+      texto: semPontos.length === 1 ? "1 evento do período está sem pontos lançados" : `${semPontos.length} eventos do período estão sem pontos lançados`,
+      detalhe: `O ranking e o pódio ainda não contam: ${semPontos.map((e) => e.titulo).join(", ")}.`,
+      acao: { rotulo: "Lançar pontos", href: `/gestao/pontuacao?evento=${encodeURIComponent(semPontos[0].id)}` },
+    });
+  }
+
+  if (hoje <= periodo.fim && (ativa("resultados") || ativa("premiacao"))) {
+    const [a, m, d] = periodo.fim.split("-");
+    out.push({
+      id: "periodo",
+      nivel: "info",
+      texto: "O período ainda não terminou",
+      detalhe: `Os números vão mudar até ${Number(d)}/${m}/${a}. Para apresentar o resultado fechado, escolha um período encerrado.`,
+    });
+  }
+
+  if (params.semFoto.length > 0) {
+    out.push({
+      id: "fotos",
+      nivel: "atencao",
+      texto: params.semFoto.length === 1 ? "1 atleta aparece sem foto" : `${params.semFoto.length} atletas aparecem sem foto`,
+      detalhe: `No pódio ou nos novos atletas, só com as iniciais: ${params.semFoto.map((a) => a.nome).join(", ")}.`,
+      acao: { rotulo: `Abrir a ficha de ${params.semFoto[0].nome.split(" ")[0]}`, href: `/gestao/atletas?ficha=${encodeURIComponent(params.semFoto[0].id)}` },
+    });
+  }
+
+  if (ativa("presenca") && !reuniao.eventoId) {
+    out.push({
+      id: "presenca",
+      nivel: "atencao",
+      texto: "O slide de presença está sem reunião da agenda",
+      detalhe: "Sem ela, não há QR code para registrar presença. Escolha a reunião em \"Reunião da agenda\" ou desligue o slide.",
+    });
+  }
+
+  const ligados = new Set(reuniao.secoes.filter((s) => s.tipo === "livre" && s.ativo).map((s) => s.id));
+  const vazios = reuniao.livres.filter((l) => ligados.has(l.id) && l.layout === "conteudo" && !l.texto.trim() && !l.imagemId);
+  if (vazios.length > 0) {
+    out.push({
+      id: "vazios",
+      nivel: "atencao",
+      texto: vazios.length === 1 ? "1 slide de conteúdo está vazio" : `${vazios.length} slides de conteúdo estão vazios`,
+      detalhe: `Escreva o texto ou adicione uma imagem: ${vazios.map((l) => l.titulo || "sem título").join(", ")}.`,
+    });
+  }
+  return out;
 }
 
 /** Períodos de apuração do ano (slide de regras), a partir do calendário de premiação. */

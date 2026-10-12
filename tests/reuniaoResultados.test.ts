@@ -12,6 +12,7 @@ import {
   resultadosDaEquipe,
   reuniaoPadrao,
   validarReuniao,
+  verificarAntesDeApresentar,
 } from "../src/lib/reuniaoResultados";
 import type { AtletaDoc, EventoDoc, HistoricoPontoDoc, RegraPontuacaoDoc } from "../src/lib/types";
 
@@ -101,6 +102,33 @@ test("roteiro padrão segue a reunião de setembro e pula seções vazias", () =
     "divisoria", "podio", "classificacao", "podio", "classificacao", "divisoria", "divisoria", "app", "obrigado",
   ]);
   assert.equal(new Set(slides.map((s) => s.chave)).size, slides.length, "chaves únicas");
+  // Cada slide sabe de que seção veio e tem um nome para a miniatura.
+  assert.ok(slides.every((s) => s.secaoId && s.rotulo));
+  assert.deepEqual(slides.slice(7, 10).map((s) => s.rotulo), ["Premiação · abertura", "Pódio · Corrida", "Classificação · Corrida"]);
+  assert.equal(slides[2].rotulo, "Fala da Diretoria");
+});
+
+test("antes de apresentar: eventos sem pontos, período aberto, fotos, QR e slide vazio", () => {
+  const base = reuniaoPadrao({ nome: "3º Trimestre", inicio: "2026-09-01", fim: "2026-11-30" }, null);
+  base.livres[1].texto = "";
+  const v = verificarAntesDeApresentar({
+    reuniao: base,
+    eventos: [
+      { id: "e1", titulo: "Serra da Onça", data: "2026-10-04" },
+      { id: "e2", titulo: "Corrida X", data: "2026-09-06" },
+      { id: "e3", titulo: "Futura", data: "2026-11-20" },
+      { id: "r1", titulo: "Reunião", data: "2026-10-07", tipo: "reuniao" },
+    ],
+    lancamentos: [{ eventoId: "e2", estornado: false }],
+    semFoto: [{ id: "a", nome: "Ana" }],
+    hoje: "2026-10-12",
+  });
+  assert.deepEqual(v.map((x) => x.id), ["eventos", "periodo", "fotos", "presenca", "vazios"]);
+  assert.match(v[0].texto, /^1 evento/);
+  assert.equal(v[0].acao?.href, "/gestao/pontuacao?evento=e1");
+  // Período fechado, tudo certo: lista vazia.
+  const ok = reuniaoPadrao({ nome: "2º", inicio: "2026-06-01", fim: "2026-08-31" }, "r1");
+  assert.deepEqual(verificarAntesDeApresentar({ reuniao: ok, eventos: [], lancamentos: [], semFoto: [], hoje: "2026-10-12" }), []);
 });
 
 test("validação: período obrigatório, seções livres precisam do slide", () => {

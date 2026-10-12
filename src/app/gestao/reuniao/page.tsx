@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { collection, doc, getDoc, getDocs, onSnapshot } from "firebase/firestore";
-import { CalendarRange, Download, Loader2, MonitorPlay, Plus, Save, Search, Star, Trash2, UserPlus, X } from "lucide-react";
+import { AlertTriangle, CalendarRange, CheckCircle2, CloudOff, Download, Info, Loader2, MonitorPlay, Plus, Save, Search, Star, Trash2, UserPlus, X } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
+import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
@@ -37,6 +38,7 @@ import {
   regrasParaSlide,
   resultadosDaEquipe,
   reuniaoPadrao,
+  verificarAntesDeApresentar,
   type ReuniaoResultadosDoc,
 } from "@/lib/reuniaoResultados";
 import type { AtletaDoc, EventoDoc, HistoricoMensalDoc, HistoricoPontoDoc, RegraPontuacaoDoc } from "@/lib/types";
@@ -183,6 +185,47 @@ function EditorNovos({
   );
 }
 
+/** Pré-voo: o que vai sair errado no telão, com o atalho para resolver. */
+function AntesDeApresentar({ itens }: { itens: ReturnType<typeof verificarAntesDeApresentar> }) {
+  if (itens.length === 0) {
+    return (
+      <div className="flex items-center gap-2.5 rounded-[var(--radius-lg)] border border-success/30 bg-success-subtle px-4 py-3" role="status">
+        <CheckCircle2 className="size-5 shrink-0 text-success" aria-hidden="true" />
+        <p className="text-sm font-semibold text-text">Pronto para apresentar</p>
+      </div>
+    );
+  }
+  const atencao = itens.filter((i) => i.nivel === "atencao").length;
+  return (
+    <Card className="flex flex-col gap-3">
+      <p className="text-sm font-bold text-text">
+        Antes de apresentar{" "}
+        {atencao > 0 ? <span className="font-semibold text-accent">· {atencao === 1 ? "1 ponto para ver" : `${atencao} pontos para ver`}</span> : null}
+      </p>
+      <ul className="flex flex-col gap-3">
+        {itens.map((v) => (
+          <li key={v.id} className="flex gap-2.5">
+            {v.nivel === "atencao" ? (
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden="true" />
+            ) : (
+              <Info className="mt-0.5 size-4 shrink-0 text-info" aria-hidden="true" />
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-text">{v.texto}</p>
+              {v.detalhe ? <p className="mt-0.5 text-xs text-text-light">{v.detalhe}</p> : null}
+              {v.acao ? (
+                <Link href={v.acao.href} className="mt-1 inline-flex min-h-9 items-center text-xs font-bold text-primary hover:underline pointer-coarse:min-h-11">
+                  {v.acao.rotulo}
+                </Link>
+              ) : null}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
 export default function ReuniaoResultadosPage() {
   const { usuario } = useActiveSession();
   const { show } = useToast();
@@ -193,6 +236,10 @@ export default function ReuniaoResultadosPage() {
   const [salvas, setSalvas] = useState<ReuniaoResultadosDoc[] | null>(null);
   const [rascunhoEditado, setRascunho] = useState<Rascunho | null>(null);
   const [alterado, setAlterado] = useState(false);
+  const [erroSalvar, setErroSalvar] = useState<string | null>(null);
+  const [destaque, setDestaque] = useState<string | null>(null);
+  // Cada edição sobe a versão: um salvamento só limpa o "alterado" se nada mudou enquanto salvava.
+  const versao = useRef(0);
   const [salvando, setSalvando] = useState(false);
   const [apresentando, setApresentando] = useState<number | null>(null);
   const [exportando, setExportando] = useState<number | null>(null);
@@ -207,6 +254,7 @@ export default function ReuniaoResultadosPage() {
   const criarNova = useCallback(() => {
     if (!dados.calendario || !dados.eventos) return;
     setRascunho(reuniaoPadrao(periodoPadrao(dados.calendario, hoje), reuniaoDaAgenda(dados.eventos, hoje)?.id ?? null));
+    versao.current += 1;
     setAlterado(true);
   }, [dados.calendario, dados.eventos, hoje]);
 
@@ -223,6 +271,7 @@ export default function ReuniaoResultadosPage() {
       const base = r ?? inicial;
       return base ? { ...base, ...campos } : r;
     });
+    versao.current += 1;
     setAlterado(true);
   }
 
@@ -268,21 +317,70 @@ export default function ReuniaoResultadosPage() {
     [calculo, fotos, imagens, qrPresenca, semPermissao, qrApp, urlApp],
   );
 
-  async function salvar() {
-    if (!rascunho) return;
-    setSalvando(true);
-    try {
-      const id = await salvarReuniao(rascunho);
-      setRascunho({ ...rascunho, id });
-      setAlterado(false);
-      setSalvas(await listarReunioes());
-      show("success", "Reunião salva.");
-    } catch (e) {
-      show("error", e instanceof Error ? e.message : "Não foi possível salvar.");
-    } finally {
-      setSalvando(false);
-    }
+  const rascunhoAtual = useRef(rascunho);
+  useEffect(() => {
+    rascunhoAtual.current = rascunho;
+  }, [rascunho]);
+
+  const salvar = useCallback(
+    async (silencioso: boolean) => {
+      const atual = rascunhoAtual.current;
+      if (!atual) return;
+      const v = versao.current;
+      setSalvando(true);
+      try {
+        const id = await salvarReuniao(atual);
+        setRascunho((r) => (r ? { ...r, id } : { ...atual, id }));
+        if (versao.current === v) setAlterado(false);
+        setErroSalvar(null);
+        setSalvas(await listarReunioes());
+        if (!silencioso) show("success", "Reunião salva.");
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Não foi possível salvar.";
+        setErroSalvar(msg);
+        if (!silencioso) show("error", msg);
+      } finally {
+        setSalvando(false);
+      }
+    },
+    [show],
+  );
+
+  // Salva sozinho 2 s depois da última mudança (sem toast; o estado aparece no topo).
+  useEffect(() => {
+    if (!alterado || salvando || erroSalvar) return;
+    const t = setTimeout(() => void salvar(true), 2000);
+    return () => clearTimeout(t);
+  }, [rascunho, alterado, salvando, erroSalvar, salvar]);
+
+  // Saindo com algo por salvar: o navegador pergunta antes.
+  useEffect(() => {
+    if (!alterado && !salvando) return;
+    const aviso = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", aviso);
+    return () => window.removeEventListener("beforeunload", aviso);
+  }, [alterado, salvando]);
+
+  /** Do roteiro para a prévia: rola até o primeiro slide da seção e destaca os dela. */
+  function irPara(secaoId: string) {
+    const primeiro = calculo?.slides.find((sl) => sl.secaoId === secaoId);
+    if (!primeiro) return;
+    document.getElementById(`slide-${primeiro.chave}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setDestaque(secaoId);
+    window.setTimeout(() => setDestaque((d) => (d === secaoId ? null : d)), 1800);
   }
+
+  const verificacoes = useMemo(() => {
+    if (!calculo || !rascunho || !dados.eventos || !dados.lancamentos) return null;
+    const ativa = (tipo: string) => rascunho.secoes.some((x) => x.tipo === tipo && x.ativo);
+    const noPodio = ativa("premiacao") ? [calculo.corrida, calculo.bicicleta].flatMap((e) => e.podio.flatMap((d) => d.atletas)) : [];
+    const novosComFoto = ativa("novos") ? calculo.novos : [];
+    const vistos = new Set<string>();
+    const semFoto = [...noPodio.map((a) => ({ id: a.id, nome: a.nome, fotoVersao: a.fotoVersao })), ...novosComFoto]
+      .filter((a) => !a.fotoVersao && !vistos.has(a.id) && vistos.add(a.id))
+      .map((a) => ({ id: a.id, nome: a.nome }));
+    return verificarAntesDeApresentar({ reuniao: rascunho, eventos: dados.eventos, lancamentos: dados.lancamentos, semFoto, hoje });
+  }, [calculo, rascunho, dados.eventos, dados.lancamentos, hoje]);
 
   async function baixarPdf() {
     if (!calculo || !rascunho) return;
@@ -317,10 +415,28 @@ export default function ReuniaoResultadosPage() {
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <Button variant="secondary" onClick={() => void salvar()} loading={salvando} disabled={!rascunho || !pendente}>
-            <Save className="size-4" aria-hidden="true" />
-            {pendente ? "Salvar" : "Salvo"}
-          </Button>
+          {/* Salva sozinho: aqui só aparece o estado (e o botão quando precisa). */}
+          {erroSalvar ? (
+            <Button variant="secondary" onClick={() => void salvar(false)} loading={salvando}>
+              <CloudOff className="size-4 text-danger" aria-hidden="true" />
+              Não salvou. Tentar de novo
+            </Button>
+          ) : salvando || alterado ? (
+            <span className="flex min-h-11 items-center gap-1.5 px-2 text-sm text-text-light" role="status">
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              Salvando…
+            </span>
+          ) : pendente ? (
+            <Button variant="secondary" onClick={() => void salvar(false)} disabled={!rascunho}>
+              <Save className="size-4" aria-hidden="true" />
+              Salvar
+            </Button>
+          ) : rascunho?.id ? (
+            <span className="flex min-h-11 items-center gap-1.5 px-2 text-sm text-text-light" role="status">
+              <CheckCircle2 className="size-4 text-success" aria-hidden="true" />
+              Salvo
+            </span>
+          ) : null}
           <Button variant="secondary" onClick={() => void baixarPdf()} disabled={!calculo || exportando !== null}>
             {exportando !== null ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Download className="size-4" aria-hidden="true" />}
             {exportando !== null ? `PDF ${exportando}/${total}` : "Baixar PDF"}
@@ -336,6 +452,7 @@ export default function ReuniaoResultadosPage() {
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[380px_minmax(0,1fr)] lg:items-start">
         <div className="flex min-w-0 flex-col gap-5 lg:sticky lg:top-[84px] lg:max-h-[calc(100dvh-100px)] lg:overflow-y-auto lg:pb-4">
+          {verificacoes ? <AntesDeApresentar itens={verificacoes} /> : null}
           <Card className="flex flex-col gap-4">
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-bold text-text">Reunião</p>
@@ -438,7 +555,7 @@ export default function ReuniaoResultadosPage() {
                 <p className="text-sm font-bold text-text">Roteiro</p>
                 <p className="text-xs text-text-light">Ligue, desligue e mude a ordem. Os slides livres você escreve.</p>
               </div>
-              <EditorRoteiro roteiro={rascunho} imagens={imagens} onChange={(r) => atualizar(r)} />
+              <EditorRoteiro roteiro={rascunho} imagens={imagens} onChange={(r) => atualizar(r)} onIrPara={irPara} />
             </Card>
           ) : null}
 
@@ -474,17 +591,22 @@ export default function ReuniaoResultadosPage() {
           ) : (
             <ol className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
               {calculo.slides.map((s, i) => (
-                <li key={s.chave}>
+                <li key={s.chave} id={`slide-${s.chave}`} className="scroll-mt-24">
                   <button
                     type="button"
                     onClick={() => setApresentando(i)}
-                    className="group block w-full overflow-hidden rounded-[var(--radius-lg)] border border-border bg-bg-card text-left shadow-sm transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    aria-label={`Apresentar a partir do slide ${i + 1}`}
+                    className={cn(
+                      "group block w-full overflow-hidden rounded-[var(--radius-lg)] border bg-bg-card text-left shadow-sm transition-[box-shadow,border-color] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                      destaque && s.secaoId === destaque ? "border-primary ring-2 ring-primary" : "border-border",
+                    )}
+                    aria-label={`Apresentar a partir do slide ${i + 1}: ${s.rotulo ?? ""}`}
                   >
                     <SlideEscalado>{renderSlide(i)}</SlideEscalado>
-                    <span className="flex items-center justify-between px-3 py-2 text-xs font-semibold text-text-light">
-                      <span>{i + 1}</span>
-                      <span className="opacity-0 transition-opacity group-hover:opacity-100">Apresentar daqui</span>
+                    <span className="flex items-center justify-between gap-2 px-3 py-2 text-xs">
+                      <span className="min-w-0 truncate font-semibold text-text">
+                        <span className="tabular-nums text-text-muted">{i + 1}</span> {s.rotulo}
+                      </span>
+                      <span className="shrink-0 font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">Apresentar daqui</span>
                     </span>
                   </button>
                 </li>
