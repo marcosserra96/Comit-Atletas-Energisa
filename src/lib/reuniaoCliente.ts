@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { collection, doc, getDoc, onSnapshot, query, serverTimestamp, setDoc, where } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { codigoDinamico, gerarCodigoFixo, gerarSegredo, janelaDoCodigo, urlDoCheckin, type SegredoCheckinDoc } from "@/lib/reunioes";
 import { useQrDataUrl } from "@/lib/useQrDataUrl";
@@ -116,4 +116,35 @@ export function useQrPresenca(evento: EventoDoc | null) {
   const origem = typeof window !== "undefined" ? window.location.origin : "";
   const qr = useQrDataUrl(codigo && eventoId ? urlDoCheckin(origem, eventoId, codigo) : "", 900);
   return { qr: qr || null, semPermissao: !!atual?.negado };
+}
+
+export interface PresenteNaReuniao {
+  atletaId: string;
+  nome: string;
+  equipe: string;
+}
+
+/**
+ * Quem já registrou presença na reunião, ao vivo (lançamentos de reunião
+ * ligados ao evento, sem os estornados). Serve ao contador e ao sorteio.
+ */
+export function usePresentesNaReuniao(eventoId: string | null) {
+  const [presentes, setPresentes] = useState<{ id: string; lista: PresenteNaReuniao[] } | null>(null);
+  useEffect(() => {
+    if (!eventoId) return;
+    return onSnapshot(
+      query(collection(db, "historico_pontos"), where("eventoId", "==", eventoId)),
+      (snap) => {
+        const porAtleta = new Map<string, PresenteNaReuniao>();
+        for (const d of snap.docs) {
+          const l = d.data() as { atletaId?: string; atletaNome?: string; equipe?: string; estornado?: boolean; tipoLancamento?: string };
+          if (!l.atletaId || l.estornado || l.tipoLancamento !== "reuniao") continue;
+          porAtleta.set(l.atletaId, { atletaId: l.atletaId, nome: l.atletaNome ?? "", equipe: l.equipe ?? "" });
+        }
+        setPresentes({ id: eventoId, lista: [...porAtleta.values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")) });
+      },
+      () => setPresentes({ id: eventoId, lista: [] }),
+    );
+  }, [eventoId]);
+  return eventoId && presentes?.id === eventoId ? presentes.lista : null;
 }

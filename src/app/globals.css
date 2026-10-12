@@ -384,3 +384,18 @@ input[type="number"]::-webkit-inner-spin-button {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-muted);
 }
+
+/* Reunião ao vivo: ponto pulsando e número que sobe a cada presença. */
+@keyframes pulso-ao-vivo {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(47, 168, 79, 0.55); }
+  60% { box-shadow: 0 0 0 16px rgba(47, 168, 79, 0); }
+}
+@keyframes numero-sobe {
+  from { transform: translateY(18px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.pulso-ao-vivo { animation: pulso-ao-vivo 1.8s ease-out infinite; }
+.numero-sobe { display: inline-block; animation: numero-sobe 260ms ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .pulso-ao-vivo, .numero-sobe { animation: none; }
+}

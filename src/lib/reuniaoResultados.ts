@@ -16,8 +16,10 @@ export type TipoSecao =
   | "capa"
   | "presenca"
   | "novos"
+  | "aniversariantes"
   | "regras"
   | "resultados"
+  | "destaques"
   | "premiacao"
   | "agenda"
   | "app"
@@ -61,8 +63,10 @@ export const TITULO_SECAO: Record<Exclude<TipoSecao, "livre">, { titulo: string;
   capa: { titulo: "Capa", dica: "Resultados do ano e o período" },
   presenca: { titulo: "Registre sua presença", dica: "QR code da reunião, ao vivo" },
   novos: { titulo: "Boas-vindas aos novos atletas", dica: "Quem entrou nas equipes no período" },
+  aniversariantes: { titulo: "Aniversariantes", dica: "Quem fez aniversário no período (só aparece se houver)" },
   regras: { titulo: "Regras de pontuação", dica: "Critérios cadastrados e períodos de apuração" },
-  resultados: { titulo: "Resultados totais", dica: "Atletas, treinos, pontos e km" },
+  resultados: { titulo: "Resultados totais", dica: "Atletas, treinos, pontos e km, com o período anterior" },
+  destaques: { titulo: "Destaques do período", dica: "Quem mais evoluiu, maior sequência, mais km e desafios" },
   premiacao: { titulo: "Premiação", dica: "Pódio e classificação de cada equipe" },
   agenda: { titulo: "Agenda", dica: "Programação de eventos do ano" },
   app: { titulo: "Aplicativo", dica: "QR code para instalar o app" },
@@ -96,9 +100,11 @@ export function reuniaoPadrao(periodo: { nome: string; inicio: string; fim: stri
       s("presenca"),
       s("livre", diretoria.id),
       s("novos"),
+      s("aniversariantes"),
       s("livre", combinados.id),
       s("regras"),
       s("resultados"),
+      s("destaques"),
       s("premiacao"),
       s("agenda"),
       s("livre", avisos.id),
@@ -109,6 +115,22 @@ export function reuniaoPadrao(periodo: { nome: string; inicio: string; fim: stri
     novosIncluir: [],
     novosExcluir: [],
   };
+}
+
+/**
+ * Reuniões salvas antes de existirem seções novas ganham essas seções no lugar
+ * certo (ligadas; as que dependem de dados somem sozinhas quando não há o que mostrar).
+ */
+export function completarSecoes<T extends Pick<ReuniaoResultadosDoc, "secoes">>(reuniao: T): T {
+  const secoes = [...reuniao.secoes];
+  const garantir = (tipo: TipoSecao, depoisDe: TipoSecao) => {
+    if (secoes.some((x) => x.tipo === tipo)) return;
+    const i = secoes.findIndex((x) => x.tipo === depoisDe);
+    secoes.splice(i >= 0 ? i + 1 : secoes.length, 0, { id: novoId("s"), tipo, ativo: true });
+  };
+  garantir("aniversariantes", "novos");
+  garantir("destaques", "resultados");
+  return secoes.length === reuniao.secoes.length ? reuniao : { ...reuniao, secoes };
 }
 
 export function novoSlideLivre(layout: SlideLivre["layout"]): SlideLivre {
@@ -124,7 +146,7 @@ export function validarReuniao(entrada: unknown): { erro: string } | { dados: Om
   if (!data.test(periodo.inicio ?? "") || !data.test(periodo.fim ?? "") || periodo.fim < periodo.inicio) {
     return { erro: "Escolha o período dos resultados." };
   }
-  const tipos = new Set<TipoSecao>(["capa", "presenca", "novos", "regras", "resultados", "premiacao", "agenda", "app", "obrigado", "livre"]);
+  const tipos = new Set<TipoSecao>(["capa", "presenca", "novos", "aniversariantes", "regras", "resultados", "destaques", "premiacao", "agenda", "app", "obrigado", "livre"]);
   const livres = (Array.isArray(e.livres) ? e.livres : []).slice(0, 30).map((l) => ({
     id: texto(l?.id, 40) || novoId("l"),
     layout: l?.layout === "divisoria" ? ("divisoria" as const) : ("conteudo" as const),
@@ -347,7 +369,18 @@ export type SlideDef = (
   | { chave: string; tipo: "novos"; atletas: NovoAtletaSlide[]; pagina: number; paginas: number }
   | { chave: string; tipo: "conteudo"; titulo: string; texto: string; imagemId: string | null }
   | { chave: string; tipo: "regras"; regras: LinhaRegra[]; periodos: PeriodoApuracao[] }
-  | { chave: string; tipo: "totais"; titulo: string; periodo: string; corrida: ResultadoEquipe["totais"]; bicicleta: ResultadoEquipe["totais"] }
+  | {
+      chave: string;
+      tipo: "totais";
+      titulo: string;
+      periodo: string;
+      corrida: ResultadoEquipe["totais"];
+      bicicleta: ResultadoEquipe["totais"];
+      /** Totais do período anterior, para mostrar a variação. */
+      anterior: { nome: string; treinos: number; pontos: number; km: number } | null;
+    }
+  | { chave: string; tipo: "destaques"; periodo: string; itens: Destaque[]; desafios: DesafioConcluido[] }
+  | { chave: string; tipo: "aniversariantes"; atletas: Aniversariante[]; pagina: number; paginas: number }
   | { chave: string; tipo: "podio"; modalidade: Modalidade; periodo: string; podio: ResultadoEquipe["podio"] }
   | { chave: string; tipo: "classificacao"; modalidade: Modalidade; periodo: string; colunas: LinhaResultado[][]; pagina: number; paginas: number; temNovos: boolean }
   | { chave: string; tipo: "agenda"; ano: string; colunas: ColunaAgenda[] }
@@ -361,6 +394,150 @@ export type SlideDef = (
 };
 
 export const NOVOS_POR_SLIDE = 10;
+export const ANIVERSARIANTES_POR_SLIDE = 10;
+
+// ---------- destaques, aniversariantes e período anterior ----------
+
+export interface Destaque {
+  /** "evolucao" | "sequencia" | "km-corrida" | "km-bicicleta" */
+  id: string;
+  titulo: string;
+  atleta: { id: string; nome: string; modalidade: Modalidade; fotoVersao?: number };
+  /** Número grande ("+12", "9", "1.370"). */
+  valor: string;
+  /** Unidade ao lado do número ("treinos a mais", "semanas seguidas", "km"). */
+  unidade: string;
+  detalhe: string;
+}
+
+export interface DesafioConcluido {
+  titulo: string;
+  concluidos: number;
+  participantes: number;
+}
+
+export interface Aniversariante {
+  id: string;
+  nome: string;
+  modalidade: Modalidade;
+  /** "12/07" */
+  dia: string;
+  fotoVersao?: number;
+}
+
+/** Quem faz aniversário entre as datas (vale para qualquer ano de nascimento). */
+export function aniversariantesDoPeriodo(atletas: readonly AtletaDoc[], inicio: string, fim: string): Aniversariante[] {
+  const dentro = (mmdd: string) => {
+    for (let ano = Number(inicio.slice(0, 4)); ano <= Number(fim.slice(0, 4)); ano++) {
+      const data = `${ano}-${mmdd}`;
+      if (data >= inicio && data <= fim) return data;
+    }
+    return null;
+  };
+  return atletas
+    .filter((a) => (membroAtivoDaEquipe(a, "corrida") || membroAtivoDaEquipe(a, "bicicleta")) && /^\d{4}-\d{2}-\d{2}$/.test(a.dataNascimento ?? ""))
+    .map((a) => ({ a, data: dentro(a.dataNascimento!.slice(5)) }))
+    .filter((x): x is { a: AtletaDoc; data: string } => x.data !== null)
+    .sort((x, y) => x.data.localeCompare(y.data) || x.a.nome.localeCompare(y.a.nome, "pt-BR"))
+    .map(({ a, data }) => ({ id: a.id, nome: a.nome, modalidade: a.equipe as Modalidade, dia: `${data.slice(8, 10)}/${data.slice(5, 7)}`, fotoVersao: a.fotoVersao }));
+}
+
+/**
+ * Período anterior para comparar: o trimestre do calendário que termina antes
+ * deste começar; sem calendário, a mesma quantidade de dias logo antes.
+ */
+export function periodoAnterior(periodo: { inicio: string; fim: string }, trimestres: readonly { nome: string; inicio: string; fim: string }[]) {
+  const t = [...trimestres].filter((x) => x.fim < periodo.inicio).sort((a, b) => a.fim.localeCompare(b.fim)).at(-1);
+  if (t) return { nome: t.nome, inicio: t.inicio, fim: t.fim };
+  const dia = (iso: string, n: number) => {
+    const d = new Date(`${iso}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+  };
+  const dias = Math.round((Date.parse(`${periodo.fim}T12:00:00Z`) - Date.parse(`${periodo.inicio}T12:00:00Z`)) / 86_400_000);
+  const fim = dia(periodo.inicio, -1);
+  return { nome: "período anterior", inicio: dia(fim, -dias), fim };
+}
+
+/** O começo do período anterior com a mesma duração já corrida ("2º Trimestre até 12/07"). */
+export function trechoEquivalente(anterior: { nome: string; inicio: string; fim: string }, inicioAtual: string, ate: string) {
+  const corridos = Math.round((Date.parse(`${ate}T12:00:00Z`) - Date.parse(`${inicioAtual}T12:00:00Z`)) / 86_400_000);
+  const d = new Date(`${anterior.inicio}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + corridos);
+  const fim = d.toISOString().slice(0, 10);
+  if (fim >= anterior.fim) return anterior;
+  return { nome: `${anterior.nome} até ${fim.slice(8, 10)}/${fim.slice(5, 7)}`, inicio: anterior.inicio, fim };
+}
+
+/**
+ * Destaques além do pódio: quem mais evoluiu (treinos a mais que no período
+ * anterior), a maior sequência de semanas treinando até o fim do período e
+ * quem mais somou km em cada equipe.
+ */
+export function destaquesDoPeriodo(params: {
+  atletas: readonly AtletaDoc[];
+  atual: { corrida: ResultadoEquipe; bicicleta: ResultadoEquipe };
+  anterior: { corrida: ResultadoEquipe; bicicleta: ResultadoEquipe } | null;
+  /** Semanas seguidas até o fim do período, por atleta. */
+  sequencias: ReadonlyMap<string, number>;
+}): Destaque[] {
+  const porId = new Map(params.atletas.map((a) => [a.id, a]));
+  const pessoa = (id: string, modalidade: Modalidade) => {
+    const a = porId.get(id);
+    return { id, nome: a?.nome ?? "", modalidade, fotoVersao: a?.fotoVersao };
+  };
+  const linhas = (["corrida", "bicicleta"] as const).flatMap((m) => params.atual[m].ranking.map((l) => ({ ...l, modalidade: m })));
+  const out: Destaque[] = [];
+
+  if (params.anterior) {
+    const antes = new Map((["corrida", "bicicleta"] as const).flatMap((m) => params.anterior![m].ranking.map((l) => [l.id, l.treinos] as const)));
+    const melhor = linhas
+      .map((l) => ({ l, ganho: l.treinos - (antes.get(l.id) ?? 0) }))
+      .filter((x) => x.ganho > 0)
+      .sort((a, b) => b.ganho - a.ganho || b.l.treinos - a.l.treinos || a.l.nome.localeCompare(b.l.nome, "pt-BR"))[0];
+    if (melhor) {
+      const de = antes.get(melhor.l.id) ?? 0;
+      out.push({
+        id: "evolucao",
+        titulo: "Quem mais evoluiu",
+        atleta: pessoa(melhor.l.id, melhor.l.modalidade),
+        valor: `+${melhor.ganho}`,
+        unidade: melhor.ganho === 1 ? "treino a mais" : "treinos a mais",
+        detalhe: `De ${de} para ${melhor.l.treinos} treinos`,
+      });
+    }
+  }
+
+  const seq = linhas
+    .map((l) => ({ l, semanas: params.sequencias.get(l.id) ?? 0 }))
+    .filter((x) => x.semanas >= 2)
+    .sort((a, b) => b.semanas - a.semanas || b.l.treinos - a.l.treinos || a.l.nome.localeCompare(b.l.nome, "pt-BR"))[0];
+  if (seq) {
+    out.push({
+      id: "sequencia",
+      titulo: "Maior sequência",
+      atleta: pessoa(seq.l.id, seq.l.modalidade),
+      valor: String(seq.semanas),
+      unidade: "semanas seguidas",
+      detalhe: "Treinou em todas, sem falhar",
+    });
+  }
+
+  for (const m of ["corrida", "bicicleta"] as const) {
+    const top = [...params.atual[m].ranking].filter((l) => l.km > 0).sort((a, b) => b.km - a.km || a.nome.localeCompare(b.nome, "pt-BR"))[0];
+    if (top) {
+      out.push({
+        id: `km-${m}`,
+        titulo: `Mais km na ${m === "corrida" ? "Corrida" : "Bike"}`,
+        atleta: pessoa(top.id, m),
+        valor: Math.round(top.km).toLocaleString("pt-BR"),
+        unidade: "km",
+        detalhe: `Em ${top.treinos} ${top.treinos === 1 ? "treino" : "treinos"}`,
+      });
+    }
+  }
+  return out;
+}
 
 /** Junta a configuração da reunião com os números e devolve os slides, em ordem. */
 export function montarRoteiro(params: {
@@ -374,6 +551,9 @@ export function montarRoteiro(params: {
   evento: { id: string; titulo: string; horario: string } | null;
   pontosReuniao: number | null;
   hoje: string;
+  anterior?: { nome: string; corrida: ResultadoEquipe["totais"]; bicicleta: ResultadoEquipe["totais"] } | null;
+  destaques?: { itens: Destaque[]; desafios: DesafioConcluido[] };
+  aniversariantes?: Aniversariante[];
 }): SlideDef[] {
   const { reuniao } = params;
   const { periodo } = reuniao;
@@ -425,8 +605,36 @@ export function montarRoteiro(params: {
         break;
       case "resultados":
         slides.push({ chave: `${k}-div`, tipo: "divisoria", sobretitulo: "Resultados", titulo: periodo.nome, subtitulo: intervalo, fundo: "resultados" });
-        slides.push({ chave: k, tipo: "totais", titulo: "Resultados totais", periodo: rotuloPeriodo, corrida: params.corrida.totais, bicicleta: params.bicicleta.totais });
+        slides.push({
+          chave: k,
+          tipo: "totais",
+          titulo: "Resultados totais",
+          periodo: rotuloPeriodo,
+          corrida: params.corrida.totais,
+          bicicleta: params.bicicleta.totais,
+          anterior: params.anterior
+            ? {
+                nome: params.anterior.nome,
+                treinos: params.anterior.corrida.treinos + params.anterior.bicicleta.treinos,
+                pontos: params.anterior.corrida.pontos + params.anterior.bicicleta.pontos,
+                km: params.anterior.corrida.km + params.anterior.bicicleta.km,
+              }
+            : null,
+        });
         break;
+      case "destaques":
+        if (!params.destaques || (params.destaques.itens.length === 0 && params.destaques.desafios.length === 0)) break;
+        slides.push({ chave: k, tipo: "destaques", periodo: rotuloPeriodo, itens: params.destaques.itens, desafios: params.destaques.desafios });
+        break;
+      case "aniversariantes": {
+        const lista = params.aniversariantes ?? [];
+        if (lista.length === 0) break; // ninguém: a seção some
+        const paginas = Math.ceil(lista.length / ANIVERSARIANTES_POR_SLIDE);
+        for (let pg = 0; pg < paginas; pg++) {
+          slides.push({ chave: `${k}-${pg}`, tipo: "aniversariantes", atletas: lista.slice(pg * ANIVERSARIANTES_POR_SLIDE, (pg + 1) * ANIVERSARIANTES_POR_SLIDE), pagina: pg + 1, paginas });
+        }
+        break;
+      }
       case "premiacao": {
         slides.push({ chave: `${k}-div`, tipo: "divisoria", sobretitulo: "Premiação", titulo: periodo.nome, subtitulo: intervalo, fundo: "premiacao" });
         for (const equipe of [params.corrida, params.bicicleta]) {
@@ -481,6 +689,7 @@ function rotuloDoSlide(slide: SlideDef, base: string) {
     case "classificacao":
       return `Classificação · ${NOME_MODALIDADE[slide.modalidade]}${pag(slide.pagina, slide.paginas)}`;
     case "novos":
+    case "aniversariantes":
       return `${base}${pag(slide.pagina, slide.paginas)}`;
     case "divisoria":
       // Divisória que abre uma seção automática (Resultados, Premiação…).
@@ -546,7 +755,7 @@ export function verificarAntesDeApresentar(params: {
       id: "fotos",
       nivel: "atencao",
       texto: params.semFoto.length === 1 ? "1 atleta aparece sem foto" : `${params.semFoto.length} atletas aparecem sem foto`,
-      detalhe: `No pódio ou nos novos atletas, só com as iniciais: ${params.semFoto.map((a) => a.nome).join(", ")}.`,
+      detalhe: `Nos slides, só com as iniciais: ${params.semFoto.map((a) => a.nome).join(", ")}.`,
       acao: { rotulo: `Abrir a ficha de ${params.semFoto[0].nome.split(" ")[0]}`, href: `/gestao/atletas?ficha=${encodeURIComponent(params.semFoto[0].id)}` },
     });
   }

@@ -13,6 +13,11 @@ import {
   reuniaoPadrao,
   validarReuniao,
   verificarAntesDeApresentar,
+  aniversariantesDoPeriodo,
+  completarSecoes,
+  destaquesDoPeriodo,
+  periodoAnterior,
+  trechoEquivalente,
 } from "../src/lib/reuniaoResultados";
 import type { AtletaDoc, EventoDoc, HistoricoPontoDoc, RegraPontuacaoDoc } from "../src/lib/types";
 
@@ -136,4 +141,51 @@ test("validação: período obrigatório, seções livres precisam do slide", ()
   const base = reuniaoPadrao({ nome: "T", inicio: "2026-06-01", fim: "2026-08-31" }, null);
   const r = validarReuniao({ ...base, livres: [] });
   assert.ok("dados" in r && r.dados.secoes.every((s) => s.tipo !== "livre"));
+});
+
+test("aniversariantes: dia e mês dentro do período, inclusive virando o ano", () => {
+  const atletas = [
+    atleta("a", "Ana", "corrida", { dataNascimento: "1990-07-12" }),
+    atleta("b", "Bia", "bicicleta", { dataNascimento: "1985-06-01" }),
+    atleta("c", "Caio", "corrida", { dataNascimento: "1992-09-01" }),
+    atleta("d", "Duda", "fila_corrida", { dataNascimento: "1990-07-01" }),
+    atleta("e", "Edu", "corrida", { dataNascimento: "2000-01-05" }),
+  ];
+  assert.deepEqual(aniversariantesDoPeriodo(atletas, "2026-06-01", "2026-08-31").map((x) => [x.nome, x.dia]), [["Bia", "01/06"], ["Ana", "12/07"]]);
+  assert.deepEqual(aniversariantesDoPeriodo(atletas, "2026-12-01", "2027-02-28").map((x) => x.nome), ["Edu"]);
+});
+
+test("período anterior: trimestre do calendário ou a mesma duração logo antes", () => {
+  const tri = [{ nome: "1º", inicio: "2026-03-01", fim: "2026-05-31" }, { nome: "2º", inicio: "2026-06-01", fim: "2026-08-31" }];
+  assert.deepEqual(periodoAnterior({ inicio: "2026-06-01", fim: "2026-08-31" }, tri), { nome: "1º", inicio: "2026-03-01", fim: "2026-05-31" });
+  assert.deepEqual(periodoAnterior({ inicio: "2026-10-01", fim: "2026-10-31" }, []), { nome: "período anterior", inicio: "2026-08-31", fim: "2026-09-30" });
+});
+
+test("destaques: evolução, sequência e mais km por equipe", () => {
+  const atletas = ["A", "B", "X"].map((n, i) => atleta(n, n, i < 2 ? "corrida" : "bicicleta"));
+  const res = (modalidade: "corrida" | "bicicleta", linhas: [string, number, number][]) =>
+    ({ modalidade, podio: [], totais: { atletas: 0, treinos: 0, pontos: 0, km: 0, kmPorTreino: 0 }, ranking: linhas.map(([id, treinos, km]) => ({ id, nome: id, posicao: 1, pontos: treinos * 5, treinos, km, novo: false })) });
+  const d = destaquesDoPeriodo({
+    atletas,
+    atual: { corrida: res("corrida", [["A", 20, 150], ["B", 12, 200]]), bicicleta: res("bicicleta", [["X", 8, 900]]) },
+    anterior: { corrida: res("corrida", [["A", 18, 0], ["B", 3, 0]]), bicicleta: res("bicicleta", [["X", 8, 0]]) },
+    sequencias: new Map([["A", 9], ["B", 4]]),
+  });
+  assert.deepEqual(d.map((x) => [x.id, x.atleta.id, x.valor]), [["evolucao", "B", "+9"], ["sequencia", "A", "9"], ["km-corrida", "B", "200"], ["km-bicicleta", "X", "900"]]);
+});
+
+test("reuniões antigas ganham as seções novas no lugar certo", () => {
+  const velha = { secoes: reuniaoPadrao({ nome: "T", inicio: "2026-06-01", fim: "2026-08-31" }, null).secoes.filter((x) => x.tipo !== "destaques" && x.tipo !== "aniversariantes") };
+  const nova = completarSecoes(velha).secoes.map((x) => x.tipo);
+  assert.equal(nova[nova.indexOf("novos") + 1], "aniversariantes");
+  assert.equal(nova[nova.indexOf("resultados") + 1], "destaques");
+  const completa = { secoes: completarSecoes(velha).secoes };
+  assert.equal(completarSecoes(completa), completa);
+});
+
+test("período em andamento compara com o mesmo trecho do anterior", () => {
+  const t = trechoEquivalente({ nome: "2º Trimestre", inicio: "2026-06-01", fim: "2026-08-31" }, "2026-09-01", "2026-10-12");
+  assert.deepEqual(t, { nome: "2º Trimestre até 12/07", inicio: "2026-06-01", fim: "2026-07-12" });
+  const inteiro = { nome: "2º", inicio: "2026-06-01", fim: "2026-08-31" };
+  assert.equal(trechoEquivalente(inteiro, "2026-09-01", "2026-12-15"), inteiro);
 });
