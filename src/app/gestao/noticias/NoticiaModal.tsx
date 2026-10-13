@@ -23,10 +23,13 @@ const campoTexto =
 export function NoticiaModal({
   open,
   noticia,
+  inicial,
   onClose,
 }: {
   open: boolean;
   noticia?: NoticiaDoc | null;
+  /** Rascunho de uma notícia nova vindo de outra tela (ex.: resumo da reunião). */
+  inicial?: { titulo: string; resumo: string; corpo: string; visivelAte?: string; notificar?: boolean };
   onClose: () => void;
 }) {
   const { uid, atleta } = useActiveSession();
@@ -36,15 +39,15 @@ export function NoticiaModal({
   const idCorpo = useId();
   const idPrazo = useId();
 
-  const [titulo, setTitulo] = useState(noticia?.titulo ?? "");
-  const [resumo, setResumo] = useState(noticia?.resumo ?? "");
+  const [titulo, setTitulo] = useState(noticia?.titulo ?? inicial?.titulo ?? "");
+  const [resumo, setResumo] = useState(noticia?.resumo ?? inicial?.resumo ?? "");
   const [corpo, setCorpo] = useState(
-    noticia && noticia.corpo && noticia.corpo !== noticia.resumo ? noticia.corpo : "",
+    noticia ? (noticia.corpo && noticia.corpo !== noticia.resumo ? noticia.corpo : "") : (inicial?.corpo ?? ""),
   );
   const [fixado, setFixado] = useState(noticia?.fixado ?? false);
-  const [visivelAte, setVisivelAte] = useState(noticia?.visivelAte ?? "");
+  const [visivelAte, setVisivelAte] = useState(noticia?.visivelAte ?? inicial?.visivelAte ?? "");
   const [loading, setLoading] = useState(false);
-  const [notificar, setNotificar] = useState(false);
+  const [notificar, setNotificar] = useState(inicial?.notificar ?? false);
 
   const hoje = dataIsoLocal();
   const prazoPassado = !!visivelAte && visivelAte < hoje;

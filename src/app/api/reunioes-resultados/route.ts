@@ -18,6 +18,7 @@ function paraApi(id: string, d: FirebaseFirestore.DocumentData): ReuniaoResultad
     livres: d.livres ?? [],
     novosIncluir: d.novosIncluir ?? [],
     novosExcluir: d.novosExcluir ?? [],
+    notas: d.notas ?? {},
     atualizadoEm: em?.toDate ? em.toDate().toISOString() : null,
     atualizadoPorNome: d.atualizadoPorNome ?? null,
   };

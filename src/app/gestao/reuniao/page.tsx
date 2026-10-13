@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { collection, doc, getDoc, getDocs, onSnapshot } from "firebase/firestore";
-import { AlertTriangle, CalendarRange, CheckCircle2, CloudOff, Download, Info, Loader2, MonitorPlay, Plus, Save, Search, Star, Trash2, UserPlus, X } from "lucide-react";
+import { AlertTriangle, CalendarRange, CheckCircle2, CloudOff, Download, Info, Loader2, MonitorPlay, Plus, Save, Search, Send, Star, Trash2, UserPlus, X } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
@@ -16,8 +16,10 @@ import { NotAuthorized } from "@/components/ui/NotAuthorized";
 import { InlineAlert } from "@/components/ui/InlineAlert";
 import { ConfirmActionModal } from "@/components/ui/ConfirmActionModal";
 import { SlideReuniao } from "@/components/reuniao/SlidesReuniao";
-import { Apresentador, SlideEscalado, gerarPdfDosSlides } from "@/components/reuniao/Apresentador";
+import { Apresentador, SlideEscalado, gerarPdfDosSlides, type AcaoDoSlide } from "@/components/reuniao/Apresentador";
 import { EditorRoteiro } from "@/components/reuniao/EditorRoteiro";
+import { useSorteio } from "@/components/reuniao/useSorteio";
+import { NoticiaModal } from "@/app/gestao/noticias/NoticiaModal";
 import { AvatarAtleta } from "@/components/atletas/AvatarAtleta";
 import { temPermissao } from "@/lib/permissoes";
 import { carregarTodosLancamentos } from "@/lib/lancamentosCache";
@@ -48,6 +50,7 @@ import {
   resultadosDaEquipe,
   reuniaoPadrao,
   verificarAntesDeApresentar,
+  resumoParaAtletas,
   type ReuniaoResultadosDoc,
 } from "@/lib/reuniaoResultados";
 import type { AtletaDoc, EventoDoc, HistoricoMensalDoc, HistoricoPontoDoc, RegraPontuacaoDoc } from "@/lib/types";
@@ -254,6 +257,8 @@ export default function ReuniaoResultadosPage() {
   const [apresentando, setApresentando] = useState<number | null>(null);
   const [exportando, setExportando] = useState<number | null>(null);
   const [apagando, setApagando] = useState(false);
+  const [envio, setEnvio] = useState<{ versao: number; aberto: boolean }>({ versao: 0, aberto: false });
+  const podeEnviar = temPermissao(usuario, "noticias");
   const nosPdf = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
@@ -343,13 +348,20 @@ export default function ReuniaoResultadosPage() {
       ...itensDestaque.map((d) => d.atleta),
       ...aniversariantes,
     ];
-    return { slides, novos, corrida, bicicleta, comFoto };
+    return { slides, novos, corrida, bicicleta, comFoto, itensDestaque, desafiosDoPeriodo };
   }, [dados, rascunho, evento, hoje, desafios]);
 
-  const fotos = useFotosAtletas(calculo?.comFoto ?? []);
+  const presentes = usePresentesNaReuniao(evento?.id ?? null);
+  const presentesSorteio = useMemo(() => presentes?.map((p) => ({ id: p.atletaId, nome: p.nome, equipe: p.equipe })) ?? null, [presentes]);
+  const sorteio = useSorteio(presentesSorteio, evento?.id ?? null);
+  // Fotos de quem aparece nos slides, mais os sorteados (aparecem na hora).
+  const comFoto = useMemo(() => {
+    const ganhadores = new Set(sorteio.estado.ganhadores);
+    return [...(calculo?.comFoto ?? []), ...(dados.atletas ?? []).filter((a) => ganhadores.has(a.id))];
+  }, [calculo, dados.atletas, sorteio.estado.ganhadores]);
+  const fotos = useFotosAtletas(comFoto);
   const imagens = useImagensReuniao((rascunho?.livres ?? []).map((l) => l.imagemId).filter((x): x is string => !!x));
   const { qr: qrPresenca, semPermissao } = useQrPresenca(evento);
-  const presentes = usePresentesNaReuniao(evento?.id ?? null);
   const urlApp = typeof window !== "undefined" ? `${window.location.host}/instalar` : "/instalar";
   const qrApp = useQrDataUrl(typeof window !== "undefined" ? `${window.location.origin}/instalar` : "", 800) || null;
 
@@ -365,9 +377,10 @@ export default function ReuniaoResultadosPage() {
           qrApp={qrApp}
           urlApp={urlApp}
           presentes={paraPdf ? null : (presentes?.length ?? null)}
+          sorteio={paraPdf ? undefined : sorteio.estado}
         />
       ) : null,
-    [calculo, fotos, imagens, qrPresenca, semPermissao, qrApp, urlApp, presentes],
+    [calculo, fotos, imagens, qrPresenca, semPermissao, qrApp, urlApp, presentes, sorteio.estado],
   );
 
   const rascunhoAtual = useRef(rascunho);
@@ -457,6 +470,38 @@ export default function ReuniaoResultadosPage() {
     }
   }
 
+  // Notas do apresentador: uma por seção do roteiro (vale para todas as páginas dela).
+  function notaDoSlide(i: number) {
+    const secaoId = calculo?.slides[i]?.secaoId;
+    return secaoId ? (rascunho?.notas?.[secaoId] ?? "") : "";
+  }
+  function mudarNota(i: number, texto: string) {
+    const secaoId = calculo?.slides[i]?.secaoId;
+    if (!secaoId) return;
+    atualizar({ notas: { ...(rascunhoAtual.current?.notas ?? {}), [secaoId]: texto } });
+  }
+  function acaoDoSlide(i: number): AcaoDoSlide | null {
+    if (calculo?.slides[i]?.tipo !== "sorteio") return null;
+    return {
+      rotulo: sorteio.estado.ganhadores.length ? "Sortear de novo" : "Sortear",
+      executar: sorteio.sortear,
+      desabilitado: sorteio.girando || sorteio.elegiveis === 0,
+    };
+  }
+
+  const resumoAtletas =
+    calculo && rascunho
+      ? resumoParaAtletas({
+          periodo: rascunho.periodo,
+          corrida: calculo.corrida,
+          bicicleta: calculo.bicicleta,
+          destaques: calculo.itensDestaque,
+          desafios: calculo.desafiosDoPeriodo,
+          novos: calculo.novos.length,
+          parcial: hoje <= rascunho.periodo.fim,
+        })
+      : null;
+
   if (!pode) return <NotAuthorized />;
 
   const trimestres = dados.calendario ? ordenarTrimestres(dados.calendario.trimestres) : [];
@@ -500,6 +545,12 @@ export default function ReuniaoResultadosPage() {
             {exportando !== null ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Download className="size-4" aria-hidden="true" />}
             {exportando !== null ? `PDF ${exportando}/${total}` : "Baixar PDF"}
           </Button>
+          {podeEnviar ? (
+            <Button variant="secondary" onClick={() => setEnvio((e) => ({ versao: e.versao + 1, aberto: true }))} disabled={!resumoAtletas}>
+              <Send className="size-4" aria-hidden="true" />
+              Enviar aos atletas
+            </Button>
+          ) : null}
           <Button onClick={() => setApresentando(0)} disabled={!calculo || total === 0}>
             <MonitorPlay className="size-4" aria-hidden="true" />
             Apresentar
@@ -676,7 +727,25 @@ export default function ReuniaoResultadosPage() {
       </div>
 
       {apresentando !== null && calculo ? (
-        <Apresentador total={total} inicial={apresentando} renderSlide={renderSlide} onFechar={() => setApresentando(null)} />
+        <Apresentador
+          total={total}
+          inicial={apresentando}
+          renderSlide={renderSlide}
+          onFechar={() => setApresentando(null)}
+          rotulo={(i) => calculo?.slides[i]?.rotulo ?? ""}
+          nota={notaDoSlide}
+          onNota={mudarNota}
+          acao={acaoDoSlide}
+        />
+      ) : null}
+
+      {podeEnviar && resumoAtletas ? (
+        <NoticiaModal
+          key={envio.versao}
+          open={envio.aberto}
+          inicial={{ ...resumoAtletas, notificar: true }}
+          onClose={() => setEnvio((e) => ({ ...e, aberto: false }))}
+        />
       ) : null}
 
       {/* Slides em tamanho real, fora da tela, só para gerar o PDF. */}

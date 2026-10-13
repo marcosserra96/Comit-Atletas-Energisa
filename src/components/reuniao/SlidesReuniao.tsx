@@ -729,6 +729,66 @@ function Aniversariantes({ atletas, pagina, paginas, fotos }: Extract<SlideDef, 
   );
 }
 
+export interface EstadoSorteio {
+  presentes: readonly { id: string; nome: string; equipe: string }[];
+  /** Ids sorteados, em ordem. */
+  ganhadores: string[];
+  /** Nome que está passando na tela durante o sorteio. */
+  girando: string | null;
+  /** Último sorteado, em destaque. */
+  revelado: string | null;
+}
+
+function Sorteio({ estado, fotos }: { estado?: EstadoSorteio; fotos: Record<string, string> }) {
+  const presentes = estado?.presentes ?? [];
+  const porId = new Map(presentes.map((p) => [p.id, p]));
+  const revelado = estado?.revelado ? porId.get(estado.revelado) : undefined;
+  const anteriores = (estado?.ganhadores ?? []).filter((id) => id !== estado?.revelado).map((id) => porId.get(id)).filter((p): p is NonNullable<typeof p> => !!p);
+  const modalidade = (e: string) => (e === "bicicleta" ? "Bike" : e === "corrida" ? "Corrida" : "");
+  return (
+    <Base fundo="premiacao">
+      <div style={{ position: "absolute", left: 700, right: 60, top: 70, textAlign: "center" }}>
+        <div style={{ fontSize: 120, fontWeight: 900, lineHeight: 1, ...laranja }}>Sorteio</div>
+        <div style={{ marginTop: 10, fontSize: 40, fontWeight: 800, color: COR.navy }}>
+          {presentes.length === 0 ? "Registre sua presença para participar" : `Entre os ${presentes.length} ${presentes.length === 1 ? "presente" : "presentes"}`}
+        </div>
+      </div>
+      <div style={{ position: "absolute", left: 760, right: 120, top: 310, height: 520, borderRadius: 40, background: "rgba(255,255,255,.95)", boxShadow: "0 30px 70px rgba(7,29,64,.3)", border: `8px solid ${COR.ouro}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 40 }}>
+        {estado?.girando ? (
+          <div key={estado.girando} style={{ fontSize: 104, fontWeight: 900, color: COR.navy, lineHeight: 1.05 }}>{nomeCurto(estado.girando, 22)}</div>
+        ) : revelado ? (
+          <>
+            <div className="numero-sobe">
+              <Avatar nome={revelado.nome} foto={fotos[revelado.id]} tamanho={230} anel={COR.ouro} />
+            </div>
+            <div style={{ marginTop: 26, fontSize: 84, fontWeight: 900, color: COR.navy, lineHeight: 1 }}>{nomeCurto(revelado.nome, 24)}</div>
+            <div style={{ marginTop: 10, fontSize: 34, fontWeight: 800, color: COR.laranja }}>
+              Parabéns!{modalidade(revelado.equipe) ? ` · ${modalidade(revelado.equipe)}` : ""}
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize: 96, fontWeight: 900, color: COR.navy }}>Quem será?</div>
+            <div style={{ marginTop: 14, fontSize: 32, fontWeight: 700, color: COR.cinza }}>
+              {presentes.length === 0 ? "Escaneie o QR code da reunião e confirme sua presença." : "Só concorre quem registrou presença nesta reunião."}
+            </div>
+          </>
+        )}
+      </div>
+      {anteriores.length ? (
+        <div style={{ position: "absolute", left: 760, right: 120, top: 860, display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 14 }}>
+          {anteriores.map((p, i) => (
+            <span key={p.id} style={{ padding: "10px 24px", borderRadius: 999, background: "#fff", boxShadow: "0 8px 20px rgba(7,29,64,.15)", fontSize: 28, fontWeight: 800, color: COR.navy }}>
+              {i + 1}º · {nomeCurto(p.nome, 20)}
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <LogoCanto />
+    </Base>
+  );
+}
+
 /** Um slide do roteiro, no tamanho nativo (1920×1080). */
 export function SlideReuniao({
   slide,
@@ -739,6 +799,7 @@ export function SlideReuniao({
   qrApp,
   urlApp,
   presentes,
+  sorteio,
 }: {
   slide: SlideDef;
   fotos: Record<string, string>;
@@ -749,6 +810,7 @@ export function SlideReuniao({
   urlApp: string;
   /** Presenças registradas até agora (apresentação ao vivo); sem isso, o contador não aparece. */
   presentes?: number | null;
+  sorteio?: EstadoSorteio;
 }) {
   switch (slide.tipo) {
     case "capa":
@@ -779,5 +841,7 @@ export function SlideReuniao({
       return <Destaques {...slide} fotos={fotos} />;
     case "aniversariantes":
       return <Aniversariantes {...slide} fotos={fotos} />;
+    case "sorteio":
+      return <Sorteio estado={sorteio} fotos={fotos} />;
   }
 }
