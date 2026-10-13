@@ -44,6 +44,81 @@ export interface SlideLivre {
   sobretitulo: string;
   texto: string;
   imagemId: string | null;
+  /** Formatação escolhida pelo comitê (fonte, cores, fundo…). Ausente = visual padrão. */
+  estilo?: Partial<EstiloLivre>;
+}
+
+// ---------- formatação dos slides livres ----------
+
+export type FonteSlide = "barlow" | "condensada" | "montserrat" | "serifada";
+export type FundoLivre = "conteudo" | "claro" | "divisoria" | "resultados" | "premiacao" | "agenda" | "cor";
+
+export interface EstiloLivre {
+  fonte: FonteSlide;
+  /** Escala do texto sobre o tamanho automático. */
+  tamanho: "auto" | "p" | "m" | "g" | "gg";
+  /** null = cor padrão do layout (ajusta sozinha a fundos escuros). */
+  corTitulo: string | null;
+  corTexto: string | null;
+  /** Linha de cima das divisórias, borda e número dos itens. */
+  corDestaque: string | null;
+  alinhamento: "esquerda" | "centro";
+  lista: "numerada" | "marcadores" | "paragrafo";
+  fundo: FundoLivre;
+  corFundo: string;
+  imagemLado: "direita" | "esquerda";
+}
+
+export const FONTES_SLIDE: Record<FonteSlide, { nome: string; familia: string }> = {
+  barlow: { nome: "Padrão", familia: "'Barlow', 'Helvetica Neue', Arial, sans-serif" },
+  condensada: { nome: "Condensada", familia: "'Barlow Condensed', 'Barlow', Arial, sans-serif" },
+  montserrat: { nome: "Montserrat", familia: "'Montserrat', 'Helvetica Neue', Arial, sans-serif" },
+  serifada: { nome: "Serifada", familia: "'Merriweather', Georgia, serif" },
+};
+
+export const ESCALA_TAMANHO: Record<EstiloLivre["tamanho"], number> = { auto: 1, p: 0.8, m: 1, g: 1.2, gg: 1.4 };
+
+const HEX = /^#[0-9a-f]{6}$/i;
+
+/** Formatação completa do slide livre: o que o comitê escolheu sobre o padrão do layout. */
+export function estiloDoLivre(l: Pick<SlideLivre, "layout" | "estilo">): EstiloLivre {
+  const e = l.estilo ?? {};
+  const cor = (v: unknown) => (typeof v === "string" && HEX.test(v) ? v.toLowerCase() : null);
+  const um = <T extends string>(v: unknown, opcoes: readonly T[], padrao: T): T => (opcoes.includes(v as T) ? (v as T) : padrao);
+  const divisoria = l.layout === "divisoria";
+  return {
+    fonte: um(e.fonte, ["barlow", "condensada", "montserrat", "serifada"] as const, "barlow"),
+    tamanho: um(e.tamanho, ["auto", "p", "m", "g", "gg"] as const, "auto"),
+    corTitulo: cor(e.corTitulo),
+    corTexto: cor(e.corTexto),
+    corDestaque: cor(e.corDestaque),
+    alinhamento: um(e.alinhamento, ["esquerda", "centro"] as const, divisoria ? "centro" : "esquerda"),
+    lista: um(e.lista, ["numerada", "marcadores", "paragrafo"] as const, "numerada"),
+    fundo: um(e.fundo, ["conteudo", "claro", "divisoria", "resultados", "premiacao", "agenda", "cor"] as const, divisoria ? "divisoria" : "conteudo"),
+    corFundo: cor(e.corFundo) ?? "#0b2c5f",
+    imagemLado: um(e.imagemLado, ["direita", "esquerda"] as const, "direita"),
+  };
+}
+
+/** Só o que difere do padrão (para salvar pouco e voltar ao padrão quando tudo é desfeito). */
+export function estiloSalvo(layout: SlideLivre["layout"], estilo: Partial<EstiloLivre> | undefined): Partial<EstiloLivre> | undefined {
+  if (!estilo) return undefined;
+  const padrao = estiloDoLivre({ layout });
+  const completo = estiloDoLivre({ layout, estilo });
+  const out: Partial<EstiloLivre> = {};
+  for (const k of Object.keys(completo) as (keyof EstiloLivre)[]) {
+    if (completo[k] !== padrao[k]) (out as Record<string, unknown>)[k] = completo[k];
+  }
+  if (completo.fundo === "cor") out.corFundo = completo.corFundo;
+  else delete out.corFundo;
+  return Object.keys(out).length ? out : undefined;
+}
+
+/** Fundo escuro pede texto claro: luminância relativa abaixo de ~0,35. */
+export function fundoEscuro(hex: string) {
+  if (!HEX.test(hex)) return false;
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.35;
 }
 
 export interface ReuniaoResultadosDoc {
@@ -163,6 +238,11 @@ export function validarReuniao(entrada: unknown): { erro: string } | { dados: Om
     sobretitulo: texto(l?.sobretitulo, 60),
     texto: texto(l?.texto, 1500),
     imagemId: typeof l?.imagemId === "string" && l.imagemId.length < 60 ? l.imagemId : null,
+    ...(() => {
+      const layout = l?.layout === "divisoria" ? ("divisoria" as const) : ("conteudo" as const);
+      const estilo = estiloSalvo(layout, l?.estilo && typeof l.estilo === "object" ? l.estilo : undefined);
+      return estilo ? { estilo } : {};
+    })(),
   }));
   const idsLivres = new Set(livres.map((l) => l.id));
   const secoes = (Array.isArray(e.secoes) ? e.secoes : [])
@@ -284,9 +364,16 @@ export function resultadosDaEquipe(params: {
   };
 }
 
-/** Tabela de classificação em slides: até `porColuna` linhas e `colunas` colunas por slide. */
-export function paginarClassificacao<T>(linhas: readonly T[], porColuna = 15, colunas = 3): T[][][] {
-  const porSlide = porColuna * colunas;
+/**
+ * Tabela de classificação em slides. Cabem `porColuna` linhas por coluna com
+ * folga até `maxPorColuna` (linhas mais baixas), em até `colunas` colunas.
+ * Os atletas são divididos por igual entre os slides e as colunas, para nunca
+ * sobrar um slide com um nome só (46 → um slide 16/15/15; 60 → dois de 30).
+ */
+export function paginarClassificacao<T>(linhas: readonly T[], porColuna = 15, colunas = 3, maxPorColuna = 18): T[][][] {
+  if (linhas.length === 0) return [];
+  const paginas = Math.ceil(linhas.length / (maxPorColuna * colunas));
+  const porSlide = Math.ceil(linhas.length / paginas);
   const slides: T[][][] = [];
   for (let i = 0; i < linhas.length; i += porSlide) {
     const fatia = linhas.slice(i, i + porSlide);
@@ -380,9 +467,9 @@ export type FundoDivisoria = "divisoria" | "resultados" | "premiacao" | "agenda"
 export type SlideDef = (
   | { chave: string; tipo: "capa"; ano: string; meses: string }
   | { chave: string; tipo: "presenca"; evento: { id: string; titulo: string; horario: string } | null; pontos: number | null }
-  | { chave: string; tipo: "divisoria"; sobretitulo: string; titulo: string; subtitulo: string; fundo: FundoDivisoria }
+  | { chave: string; tipo: "divisoria"; sobretitulo: string; titulo: string; subtitulo: string; fundo: FundoDivisoria; estilo?: EstiloLivre }
   | { chave: string; tipo: "novos"; atletas: NovoAtletaSlide[]; pagina: number; paginas: number }
-  | { chave: string; tipo: "conteudo"; titulo: string; texto: string; imagemId: string | null }
+  | { chave: string; tipo: "conteudo"; titulo: string; texto: string; imagemId: string | null; estilo: EstiloLivre }
   | { chave: string; tipo: "regras"; regras: LinhaRegra[]; periodos: PeriodoApuracao[] }
   | {
       chave: string;
@@ -595,9 +682,9 @@ export function montarRoteiro(params: {
         const l = livres.get(secao.id);
         if (!l) break;
         if (l.layout === "divisoria") {
-          slides.push({ chave: k, tipo: "divisoria", sobretitulo: l.sobretitulo, titulo: l.titulo, subtitulo: l.texto, fundo: "divisoria" });
+          slides.push({ chave: k, tipo: "divisoria", sobretitulo: l.sobretitulo, titulo: l.titulo, subtitulo: l.texto, fundo: "divisoria", estilo: estiloDoLivre(l) });
         } else {
-          slides.push({ chave: k, tipo: "conteudo", titulo: l.titulo, texto: l.texto, imagemId: l.imagemId });
+          slides.push({ chave: k, tipo: "conteudo", titulo: l.titulo, texto: l.texto, imagemId: l.imagemId, estilo: estiloDoLivre(l) });
         }
         break;
       }
