@@ -1,7 +1,8 @@
 "use client";
 
 import { useId, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, ChevronDown, ImagePlus, Plus, Trash2, Type, LayoutTemplate } from "lucide-react";
+import { ArrowDown, ArrowUp, Bold, ChevronDown, Copy, ImagePlus, Plus, Trash2, Type, LayoutTemplate } from "lucide-react";
+import { FormatacaoLivre } from "@/components/reuniao/FormatacaoLivre";
 import { cn } from "@/lib/cn";
 import { IMAGEM_SLIDE_LADO } from "@/lib/fotoRegras";
 import { reduzirImagem } from "@/lib/fotos";
@@ -26,6 +27,21 @@ function EditorLivre({
   const { show } = useToast();
   const idTexto = useId();
   const entrada = useRef<HTMLInputElement>(null);
+  const campoTexto = useRef<HTMLTextAreaElement>(null);
+
+  /** Negrito: põe ** em volta do trecho selecionado (ou insere um par para digitar dentro). */
+  function negrito() {
+    const t = campoTexto.current;
+    if (!t) return;
+    const { selectionStart: a, selectionEnd: b, value } = t;
+    const trecho = value.slice(a, b);
+    const novo = `${value.slice(0, a)}**${trecho || "texto"}**${value.slice(b)}`;
+    onChange({ ...livre, texto: novo.slice(0, 1500) });
+    requestAnimationFrame(() => {
+      t.focus();
+      t.setSelectionRange(a + 2, a + 2 + (trecho || "texto").length);
+    });
+  }
   const [enviando, setEnviando] = useState(false);
   const conteudo = livre.layout === "conteudo";
 
@@ -87,10 +103,22 @@ function EditorLivre({
         onChange={(e) => onChange({ ...livre, titulo: e.target.value })}
       />
       <div className="flex flex-col gap-1.5">
-        <label htmlFor={idTexto} className="text-sm font-medium text-text">
-          {conteudo ? "Itens (um por linha)" : "Texto abaixo do título"} <span className="font-normal text-text-muted">(opcional)</span>
-        </label>
+        <div className="flex items-end justify-between gap-2">
+          <label htmlFor={idTexto} className="text-sm font-medium text-text">
+            {conteudo ? "Itens (um por linha)" : "Texto abaixo do título"} <span className="font-normal text-text-muted">(opcional)</span>
+          </label>
+          <button
+            type="button"
+            onClick={negrito}
+            title="Negrito: selecione o trecho e toque aqui"
+            className="flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border border-border text-text-light hover:border-border-strong hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <Bold className="size-4" aria-hidden="true" />
+            <span className="sr-only">Negrito</span>
+          </button>
+        </div>
         <textarea
+          ref={campoTexto}
           id={idTexto}
           rows={conteudo ? 5 : 2}
           maxLength={1500}
@@ -98,6 +126,7 @@ function EditorLivre({
           onChange={(e) => onChange({ ...livre, texto: e.target.value })}
           className="w-full resize-y rounded-[var(--radius)] border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
         />
+        {livre.texto.includes("**") ? <p className="text-xs text-text-muted">O que está entre ** aparece em negrito no slide.</p> : null}
       </div>
       {conteudo ? (
         <div className="flex items-center gap-3">
@@ -117,6 +146,7 @@ function EditorLivre({
           ) : null}
         </div>
       ) : null}
+      <FormatacaoLivre livre={livre} temImagem={!!livre.imagemId} onChange={onChange} />
     </div>
   );
 }
@@ -163,6 +193,18 @@ export function EditorRoteiro({
     setAberto(l.id);
   }
 
+  /** Duplicar: a cópia entra logo abaixo, já aberta para editar. */
+  function duplicar(id: string) {
+    const original = livres.get(id);
+    const i = roteiro.secoes.findIndex((s) => s.id === id);
+    if (!original || i < 0) return;
+    const copia: SlideLivre = { ...original, id: novoSlideLivre(original.layout).id };
+    const secoes = [...roteiro.secoes];
+    secoes.splice(i + 1, 0, { id: copia.id, tipo: "livre", ativo: true });
+    onChange({ secoes, livres: [...roteiro.livres, copia] });
+    setAberto(copia.id);
+  }
+
   function remover(id: string) {
     onChange({ secoes: roteiro.secoes.filter((s) => s.id !== id), livres: roteiro.livres.filter((l) => l.id !== id) });
   }
@@ -204,6 +246,11 @@ export function EditorRoteiro({
                   </span>
                   {livre ? <ChevronDown className={cn("size-4 shrink-0 text-text-muted transition-transform", expandido && "rotate-180")} aria-hidden="true" /> : null}
                 </button>
+                {livre ? (
+                  <button type="button" onClick={() => duplicar(s.id)} aria-label={`Duplicar ${titulo}`} title="Duplicar" className="flex size-9 items-center justify-center rounded text-text-muted hover:bg-bg-inset hover:text-text">
+                    <Copy className="size-4" />
+                  </button>
+                ) : null}
                 {livre ? (
                   <button type="button" onClick={() => remover(s.id)} aria-label={`Remover ${titulo}`} className="flex size-9 items-center justify-center rounded text-text-muted hover:bg-danger/10 hover:text-danger">
                     <Trash2 className="size-4" />

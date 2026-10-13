@@ -20,6 +20,9 @@ import {
   trechoEquivalente,
   sortearEntre,
   resumoParaAtletas,
+  estiloDoLivre,
+  estiloSalvo,
+  fundoEscuro,
 } from "../src/lib/reuniaoResultados";
 import type { AtletaDoc, EventoDoc, HistoricoPontoDoc, RegraPontuacaoDoc } from "../src/lib/types";
 
@@ -71,7 +74,13 @@ test("classificação em colunas iguais, até 45 por slide", () => {
   assert.deepEqual(paginarClassificacao(n(44)).map((s) => s.map((c) => c.length)), [[15, 15, 14]]);
   assert.deepEqual(paginarClassificacao(n(22)).map((s) => s.map((c) => c.length)), [[11, 11]]);
   assert.deepEqual(paginarClassificacao(n(10)).map((s) => s.map((c) => c.length)), [[10]]);
-  assert.deepEqual(paginarClassificacao(n(50)).map((s) => s.map((c) => c.length)), [[15, 15, 15], [5]]);
+  // Sobra pequena cabe no mesmo slide, com linhas mais baixas.
+  assert.deepEqual(paginarClassificacao(n(46)).map((s) => s.map((c) => c.length)), [[16, 16, 14]]);
+  assert.deepEqual(paginarClassificacao(n(54)).map((s) => s.map((c) => c.length)), [[18, 18, 18]]);
+  // Passou do limite: divide por igual, nunca um slide com um nome só.
+  assert.deepEqual(paginarClassificacao(n(55)).map((s) => s.map((c) => c.length)), [[14, 14], [14, 13]]);
+  assert.deepEqual(paginarClassificacao(n(109)).map((s) => s.flat().length), [37, 37, 35]);
+  assert.deepEqual(paginarClassificacao(n(0)), []);
 });
 
 test("regras, agenda e períodos para os slides", () => {
@@ -238,4 +247,19 @@ test("resumo para os atletas com números, pódio e destaques", () => {
   assert.doesNotMatch(r.corpo, /Bike/);
   assert.match(r.corpo, /100 km: 1 de 3 participantes concluiu/);
   assert.match(r.corpo, /aos 2 atletas novos/);
+});
+
+test("formatação do slide livre: guarda só o que muda e limpa o inválido", () => {
+  assert.equal(estiloDoLivre({ layout: "divisoria" }).alinhamento, "centro");
+  assert.equal(estiloDoLivre({ layout: "conteudo" }).fundo, "conteudo");
+  assert.equal(estiloSalvo("conteudo", { fonte: "barlow", alinhamento: "esquerda" }), undefined);
+  assert.deepEqual(estiloSalvo("conteudo", { fonte: "serifada", corTitulo: "#FF0000", fundo: "claro", corFundo: "#000000" }), { fonte: "serifada", corTitulo: "#ff0000", fundo: "claro" });
+  const r = reuniaoPadrao({ nome: "T", inicio: "2026-06-01", fim: "2026-08-31" }, null);
+  const livre = { ...r.livres[0], estilo: { fonte: "comic" as never, corTexto: "red", tamanho: "gg" as const, fundo: "cor" as const, corFundo: "#0B2C5F" } };
+  const v = validarReuniao({ ...r, livres: [livre, ...r.livres.slice(1)] });
+  assert.ok("dados" in v);
+  if ("dados" in v) assert.deepEqual(v.dados.livres[0].estilo, { tamanho: "gg", fundo: "cor", corFundo: "#0b2c5f" });
+  assert.equal(fundoEscuro("#0b2c5f"), true);
+  assert.equal(fundoEscuro("#ffffff"), false);
+  assert.equal(fundoEscuro("#e7a913"), false);
 });

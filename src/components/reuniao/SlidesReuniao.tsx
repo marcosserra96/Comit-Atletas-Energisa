@@ -5,11 +5,22 @@ import "@fontsource/barlow/600.css";
 import "@fontsource/barlow/700.css";
 import "@fontsource/barlow/800.css";
 import "@fontsource/barlow/900.css";
+// Fontes que o comitê pode escolher nos slides escritos (só latin, para pesar pouco).
+import "@fontsource/barlow-condensed/latin-700.css";
+import "@fontsource/barlow-condensed/latin-800.css";
+import "@fontsource/barlow-condensed/latin-900.css";
+import "@fontsource/montserrat/latin-600.css";
+import "@fontsource/montserrat/latin-700.css";
+import "@fontsource/montserrat/latin-800.css";
+import "@fontsource/montserrat/latin-900.css";
+import "@fontsource/merriweather/latin-400.css";
+import "@fontsource/merriweather/latin-700.css";
+import "@fontsource/merriweather/latin-900.css";
 import type { CSSProperties, ReactNode } from "react";
 import { iniciais } from "@/lib/fotoRegras";
 import { formatDistancia, formatPontos } from "@/lib/format";
 import { modalidadeLabel } from "@/lib/labels";
-import type { FundoDivisoria, LinhaResultado, SlideDef } from "@/lib/reuniaoResultados";
+import { ESCALA_TAMANHO, FONTES_SLIDE, fundoEscuro, type EstiloLivre, type FundoDivisoria, type LinhaResultado, type SlideDef } from "@/lib/reuniaoResultados";
 
 /** Tamanho nativo de cada slide; a tela escala para caber. */
 export const SLIDE_L = 1920;
@@ -52,7 +63,7 @@ const laranja: CSSProperties = {
 /** Título azul-marinho com contorno claro (legível sobre o céu do fundo). */
 const marinho: CSSProperties = { color: COR.navy, textShadow: "0 3px 0 rgba(255,255,255,.75), 0 10px 30px rgba(7,29,64,.18)" };
 
-function Base({ fundo, children }: { fundo: keyof typeof FUNDO; children: ReactNode }) {
+function Base({ fundo, children, familia, corSolida }: { fundo: keyof typeof FUNDO; children: ReactNode; familia?: string; corSolida?: string }) {
   return (
     <div
       style={{
@@ -60,9 +71,9 @@ function Base({ fundo, children }: { fundo: keyof typeof FUNDO; children: ReactN
         width: SLIDE_L,
         height: SLIDE_A,
         overflow: "hidden",
-        fontFamily: F,
-        backgroundColor: "#dfeaf7",
-        backgroundImage: `url(${FUNDO[fundo]})`,
+        fontFamily: familia ?? F,
+        backgroundColor: corSolida ?? "#dfeaf7",
+        backgroundImage: corSolida ? undefined : `url(${FUNDO[fundo]})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
@@ -84,16 +95,16 @@ function LogoCanto({ claro = false }: { claro?: boolean }) {
 }
 
 /** Título dos slides de conteúdo: barra no alto à esquerda, como na apresentação. */
-function TituloConteudo({ children, extra }: { children: ReactNode; extra?: ReactNode }) {
+function TituloConteudo({ children, extra, cor = COR.navy, barra = COR.azul, escala = 1, centro = false }: { children: ReactNode; extra?: ReactNode; cor?: string; barra?: string; escala?: number; centro?: boolean }) {
   return (
-    <div style={{ position: "absolute", left: 0, top: 0, right: 0, height: 128, display: "flex", alignItems: "flex-end", padding: "0 72px 18px" }}>
-      <h2 style={{ margin: 0, fontSize: 56, fontWeight: 900, letterSpacing: "0.02em", textTransform: "uppercase", color: COR.navy }}>{children}</h2>
+    <div style={{ position: "absolute", left: 0, top: 0, right: 0, height: 128, display: "flex", alignItems: "flex-end", justifyContent: centro ? "center" : undefined, padding: "0 72px 18px" }}>
+      <h2 style={{ margin: 0, fontSize: Math.round(56 * Math.min(escala, 1.15)), fontWeight: 900, letterSpacing: "0.02em", textTransform: "uppercase", color: cor, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{children}</h2>
       {extra ? (
         <div style={{ marginLeft: "auto", marginBottom: 6, padding: "10px 22px", borderRadius: 999, background: "#fff", border: "2px solid #d6e3f3", fontSize: 24, fontWeight: 700, color: COR.navy, whiteSpace: "nowrap" }}>
           {extra}
         </div>
       ) : null}
-      <div style={{ position: "absolute", left: 72, right: 72, bottom: 0, height: 5, borderRadius: 3, background: `linear-gradient(90deg, ${COR.azul}, ${COR.azul} 70%, rgba(20,98,196,0))` }} />
+      <div style={{ position: "absolute", left: 72, right: 72, bottom: 0, height: 5, borderRadius: 3, background: centro ? `linear-gradient(90deg, transparent, ${barra} 20%, ${barra} 80%, transparent)` : `linear-gradient(90deg, ${barra}, ${barra} 70%, transparent)` }} />
     </div>
   );
 }
@@ -173,14 +184,81 @@ function Capa({ ano, meses }: { ano: string; meses: string }) {
   );
 }
 
-function Divisoria({ sobretitulo, titulo, subtitulo, fundo }: { sobretitulo: string; titulo: string; subtitulo: string; fundo: FundoDivisoria }) {
-  const longo = titulo.length > 16;
+/** "**assim**" vira negrito no slide (o resto fica como foi escrito). */
+function TextoRico({ texto }: { texto: string }) {
+  const partes = texto.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
   return (
-    <Base fundo={fundo}>
-      <div style={{ position: "absolute", left: 760, right: 70, top: 0, bottom: 0, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
-        {sobretitulo ? <div style={{ fontSize: 120, fontWeight: 900, lineHeight: 1, ...laranja }}>{sobretitulo}</div> : null}
-        <div style={{ fontSize: longo ? 112 : 150, fontWeight: 900, lineHeight: 1.02, ...marinho }}>{titulo}</div>
-        {subtitulo ? <div style={{ marginTop: 18, fontSize: 46, fontWeight: 700, color: COR.navy, whiteSpace: "pre-line" }}>{subtitulo}</div> : null}
+    <>
+      {partes.map((p, i) =>
+        p.startsWith("**") && p.endsWith("**") && p.length > 4 ? (
+          <strong key={i} style={{ fontWeight: 900 }}>{p.slice(2, -2)}</strong>
+        ) : (
+          <span key={i}>{p}</span>
+        ),
+      )}
+    </>
+  );
+}
+
+/** Fundo, fonte e cores efetivas de um slide escrito pelo comitê. */
+function visualDoLivre(estilo: EstiloLivre) {
+  const solido = estilo.fundo === "cor";
+  const escuro = solido && fundoEscuro(estilo.corFundo);
+  return {
+    familia: FONTES_SLIDE[estilo.fonte].familia,
+    escala: ESCALA_TAMANHO[estilo.tamanho],
+    fundo: (solido ? "conteudo" : estilo.fundo) as keyof typeof FUNDO,
+    corSolida: solido ? estilo.corFundo : undefined,
+    // Fundos com arte à esquerda deixam o texto do meio para a direita.
+    comArte: !solido && estilo.fundo !== "conteudo",
+    escuro,
+    titulo: estilo.corTitulo ?? (escuro ? "#ffffff" : COR.navy),
+    texto: estilo.corTexto ?? (escuro ? "#ffffff" : COR.navy),
+    destaque: estilo.corDestaque,
+    centro: estilo.alinhamento === "centro",
+  };
+}
+
+function Divisoria({ sobretitulo, titulo, subtitulo, fundo, estilo }: { sobretitulo: string; titulo: string; subtitulo: string; fundo: FundoDivisoria; estilo?: EstiloLivre }) {
+  const longo = titulo.length > 16;
+  const v = estilo ? visualDoLivre(estilo) : null;
+  const escala = v?.escala ?? 1;
+  const comArte = v ? v.comArte : true;
+  const centro = v ? v.centro : true;
+  return (
+    <Base fundo={v ? v.fundo : fundo} familia={v?.familia} corSolida={v?.corSolida}>
+      <div
+        style={{
+          position: "absolute",
+          left: comArte ? 760 : 160,
+          right: comArte ? 70 : 160,
+          top: 0,
+          bottom: 0,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: centro ? "center" : "flex-start",
+          textAlign: centro ? "center" : "left",
+        }}
+      >
+        {sobretitulo ? (
+          <div style={{ fontSize: Math.round(120 * escala), fontWeight: 900, lineHeight: 1, ...(v?.destaque ? { color: v.destaque } : laranja) }}>{sobretitulo}</div>
+        ) : null}
+        <div
+          style={{
+            fontSize: Math.round((longo ? 112 : 150) * escala),
+            fontWeight: 900,
+            lineHeight: 1.02,
+            ...(v && (v.escuro || estilo?.corTitulo) ? { color: v.titulo } : marinho),
+          }}
+        >
+          {titulo}
+        </div>
+        {subtitulo ? (
+          <div style={{ marginTop: 18, fontSize: Math.round(46 * escala), fontWeight: 700, color: v?.texto ?? COR.navy, whiteSpace: "pre-line" }}>
+            <TextoRico texto={subtitulo} />
+          </div>
+        ) : null}
       </div>
       <LogoCanto />
     </Base>
@@ -266,33 +344,70 @@ function Novos({ atletas, fotos, pagina, paginas }: { atletas: { id: string; nom
   );
 }
 
-function Conteudo({ titulo, texto, imagem }: { titulo: string; texto: string; imagem?: string }) {
+function Conteudo({ titulo, texto, imagem, estilo }: { titulo: string; texto: string; imagem?: string; estilo: EstiloLivre }) {
+  const v = visualDoLivre(estilo);
   const linhas = texto.split("\n").map((l) => l.trim()).filter(Boolean);
   const soImagem = !!imagem && linhas.length === 0;
   // Texto para telão: grande quando há pouca coisa, menor só quando a lista é longa ou divide espaço com imagem.
-  const fonte = linhas.length > 7 ? 30 : linhas.length > 5 || imagem ? 34 : 40;
-  const selo = fonte >= 40 ? 64 : 54;
+  const auto = linhas.length > 7 ? 30 : linhas.length > 5 || imagem ? 34 : 40;
+  const fonte = Math.round(auto * v.escala);
+  const selo = Math.round((auto >= 40 ? 64 : 54) * Math.min(v.escala, 1.25));
+  const espaco = auto >= 40 ? 26 : 18;
+  const paragrafo = estilo.lista === "paragrafo";
+  const destaque = v.destaque ?? COR.laranja;
+  const marcador = (i: number) =>
+    estilo.lista === "numerada" ? (
+      <span style={{ flexShrink: 0, width: selo, height: selo, borderRadius: "50%", background: v.destaque ?? `linear-gradient(160deg, ${COR.azul}, ${COR.navy})`, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: selo * 0.5, fontWeight: 900 }}>{i + 1}</span>
+    ) : (
+      <span style={{ flexShrink: 0, width: Math.round(selo * 0.34), height: Math.round(selo * 0.34), borderRadius: "50%", background: destaque }} />
+    );
   return (
-    <Base fundo="conteudo">
-      <TituloConteudo>{titulo}</TituloConteudo>
+    <Base fundo={v.fundo} familia={v.familia} corSolida={v.corSolida}>
+      <TituloConteudo cor={v.titulo} barra={v.destaque ?? (v.escuro ? "#ffffff" : COR.azul)} escala={v.escala} centro={v.centro}>
+        {titulo}
+      </TituloConteudo>
       {soImagem ? (
         <div style={{ position: "absolute", left: 72, right: 72, top: 170, bottom: 120, display: "flex", alignItems: "center", justifyContent: "center" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={imagem} alt="" style={{ maxWidth: "100%", maxHeight: "100%", borderRadius: 24, boxShadow: "0 20px 50px rgba(7,29,64,.25)" }} />
         </div>
       ) : (
-        <div style={{ position: "absolute", left: 72, right: 72, top: 170, bottom: 130, display: "flex", gap: 56, alignItems: "center", justifyContent: "center" }}>
-          <ol style={{ margin: 0, padding: 0, listStyle: "none", flex: 1, maxWidth: imagem ? undefined : 1480, display: "flex", flexDirection: "column", gap: fonte >= 40 ? 26 : 18 }}>
-            {linhas.map((l, i) => (
-              <li
-                key={i}
-                style={{ display: "flex", alignItems: "center", gap: 30, background: "#fff", borderRadius: 22, padding: fonte >= 40 ? "26px 40px 26px 28px" : "20px 32px 20px 24px", boxShadow: "0 12px 30px rgba(7,29,64,.12)", borderLeft: `8px solid ${COR.laranja}` }}
-              >
-                <span style={{ flexShrink: 0, width: selo, height: selo, borderRadius: "50%", background: `linear-gradient(160deg, ${COR.azul}, ${COR.navy})`, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: selo * 0.5, fontWeight: 900 }}>{i + 1}</span>
-                <span style={{ fontSize: fonte, fontWeight: 700, color: COR.navy, lineHeight: 1.2 }}>{l}</span>
-              </li>
-            ))}
-          </ol>
+        <div style={{ position: "absolute", left: 72, right: 72, top: 170, bottom: 130, display: "flex", flexDirection: estilo.imagemLado === "esquerda" ? "row-reverse" : "row", gap: 56, alignItems: "center", justifyContent: "center" }}>
+          {paragrafo ? (
+            <div style={{ flex: 1, maxWidth: imagem ? undefined : 1480, display: "flex", flexDirection: "column", gap: espaco, textAlign: v.centro ? "center" : "left" }}>
+              {linhas.map((l, i) => (
+                <p key={i} style={{ margin: 0, fontSize: fonte, fontWeight: 600, lineHeight: 1.35, color: v.texto }}>
+                  <TextoRico texto={l} />
+                </p>
+              ))}
+            </div>
+          ) : (
+            <ol style={{ margin: 0, padding: 0, listStyle: "none", flex: 1, maxWidth: imagem ? undefined : 1480, display: "flex", flexDirection: "column", gap: espaco }}>
+              {linhas.map((l, i) => (
+                <li
+                  key={i}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: v.centro ? "center" : undefined,
+                    gap: 30,
+                    background: "#fff",
+                    borderRadius: 22,
+                    padding: auto >= 40 ? "26px 40px 26px 28px" : "20px 32px 20px 24px",
+                    boxShadow: "0 12px 30px rgba(7,29,64,.12)",
+                    borderLeft: `8px solid ${destaque}`,
+                    textAlign: v.centro ? "center" : "left",
+                  }}
+                >
+                  {marcador(i)}
+                  {/* Os cartões são brancos: o texto só herda a cor escolhida, nunca o branco automático. */}
+                  <span style={{ fontSize: fonte, fontWeight: 700, color: estilo.corTexto ?? COR.navy, lineHeight: 1.2 }}>
+                    <TextoRico texto={l} />
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
           {imagem ? (
             <div style={{ width: 720, height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -818,11 +933,11 @@ export function SlideReuniao({
     case "presenca":
       return <Presenca evento={slide.evento} pontos={slide.pontos} qr={qrPresenca} semPermissao={presencaSemPermissao} presentes={presentes} />;
     case "divisoria":
-      return <Divisoria sobretitulo={slide.sobretitulo} titulo={slide.titulo} subtitulo={slide.subtitulo} fundo={slide.fundo} />;
+      return <Divisoria sobretitulo={slide.sobretitulo} titulo={slide.titulo} subtitulo={slide.subtitulo} fundo={slide.fundo} estilo={slide.estilo} />;
     case "novos":
       return <Novos atletas={slide.atletas} fotos={fotos} pagina={slide.pagina} paginas={slide.paginas} />;
     case "conteudo":
-      return <Conteudo titulo={slide.titulo} texto={slide.texto} imagem={slide.imagemId ? imagens[slide.imagemId] : undefined} />;
+      return <Conteudo titulo={slide.titulo} texto={slide.texto} imagem={slide.imagemId ? imagens[slide.imagemId] : undefined} estilo={slide.estilo} />;
     case "regras":
       return <Regras {...slide} />;
     case "totais":
