@@ -53,6 +53,7 @@ import {
   verificarAntesDeApresentar,
   resumoParaAtletas,
   temaDaReuniao,
+  FATOR_VELOCIDADE,
   passosDoSlide,
   type ReuniaoResultadosDoc,
 } from "@/lib/reuniaoResultados";
@@ -752,6 +753,7 @@ export default function ReuniaoResultadosPage() {
           renderSlide={renderNaApresentacao}
           passos={passosNaApresentacao}
           transicao={tema.transicao}
+          velocidade={FATOR_VELOCIDADE[tema.velocidade]}
           onFechar={() => setApresentando(null)}
           rotulo={(i) => calculo?.slides[i]?.rotulo ?? ""}
           nota={notaDoSlide}

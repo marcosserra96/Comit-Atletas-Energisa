@@ -126,7 +126,13 @@ export interface TemaReuniao {
   animacoes: boolean;
   /** No pódio, cada clique revela um lugar: 3º, 2º e por fim o 1º. */
   revelarPodio: boolean;
+  /** Velocidade das animações e transições. */
+  velocidade: VelocidadeAnimacao;
 }
+
+export type VelocidadeAnimacao = "lenta" | "normal" | "rapida";
+/** Multiplica a duração das animações: lenta demora mais, rápida menos. */
+export const FATOR_VELOCIDADE: Record<VelocidadeAnimacao, number> = { lenta: 1.7, normal: 1, rapida: 0.55 };
 
 export function temaDaReuniao(tema: Partial<TemaReuniao> | undefined): TemaReuniao {
   const t = tema ?? {};
@@ -135,6 +141,7 @@ export function temaDaReuniao(tema: Partial<TemaReuniao> | undefined): TemaReuni
     transicao: (["nenhuma", "esmaecer", "deslizar", "zoom"] as const).includes(t.transicao as TransicaoSlide) ? (t.transicao as TransicaoSlide) : "esmaecer",
     animacoes: t.animacoes !== false,
     revelarPodio: t.revelarPodio !== false,
+    velocidade: (["lenta", "normal", "rapida"] as const).includes(t.velocidade as VelocidadeAnimacao) ? (t.velocidade as VelocidadeAnimacao) : "normal",
   };
 }
 

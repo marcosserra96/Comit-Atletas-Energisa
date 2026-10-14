@@ -2,13 +2,19 @@
 
 import { cn } from "@/lib/cn";
 import { Switch } from "@/components/ui/Switch";
-import { FONTES_SLIDE, temaDaReuniao, type FonteSlide, type TemaReuniao, type TransicaoSlide } from "@/lib/reuniaoResultados";
+import { FONTES_SLIDE, temaDaReuniao, type FonteSlide, type TemaReuniao, type TransicaoSlide, type VelocidadeAnimacao } from "@/lib/reuniaoResultados";
 
 const TRANSICOES: { valor: TransicaoSlide; nome: string }[] = [
   { valor: "nenhuma", nome: "Nenhuma" },
   { valor: "esmaecer", nome: "Esmaecer" },
   { valor: "deslizar", nome: "Deslizar" },
   { valor: "zoom", nome: "Aproximar" },
+];
+
+const VELOCIDADES: { valor: VelocidadeAnimacao; nome: string }[] = [
+  { valor: "lenta", nome: "Lenta" },
+  { valor: "normal", nome: "Normal" },
+  { valor: "rapida", nome: "Rápida" },
 ];
 
 const grupo = "grid gap-1 rounded-[var(--radius)] bg-bg-inset p-1";
@@ -58,6 +64,25 @@ export function TemaApresentacao({ tema: salvo, onChange }: { tema: Partial<Tema
           {TRANSICOES.map((t) => (
             <button key={t.valor} type="button" role="radio" aria-checked={tema.transicao === t.valor} onClick={() => mudar({ transicao: t.valor })} className={opcao(tema.transicao === t.valor)}>
               {t.nome}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <p className="text-xs font-semibold text-text-light">Velocidade das animações</p>
+        <div className={cn(grupo, "grid-cols-3")} role="radiogroup" aria-label="Velocidade das animações">
+          {VELOCIDADES.map((v) => (
+            <button
+              key={v.valor}
+              type="button"
+              role="radio"
+              aria-checked={tema.velocidade === v.valor}
+              disabled={!tema.animacoes && !tema.revelarPodio && tema.transicao === "nenhuma"}
+              onClick={() => mudar({ velocidade: v.valor })}
+              className={cn(opcao(tema.velocidade === v.valor), "disabled:opacity-40")}
+            >
+              {v.nome}
             </button>
           ))}
         </div>

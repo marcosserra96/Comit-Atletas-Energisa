@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, Maximize2, Minimize2, MonitorUp, X } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -103,6 +103,23 @@ function Telao({ janela, children }: { janela: Window; children: ReactNode }) {
   );
 }
 
+/** Durações das animações (globals.css) para a velocidade escolhida: 1 = normal. */
+function duracoes(fator: number): CSSProperties {
+  const ms = (n: number) => `${Math.round(n * fator)}ms`;
+  return {
+    "--t-entra": ms(650),
+    "--t-d2": ms(120),
+    "--t-d3": ms(240),
+    "--t-d4": ms(360),
+    "--t-d5": ms(480),
+    "--t-d6": ms(600),
+    "--t-podio": ms(750),
+    "--t-podio-texto": ms(500),
+    "--t-podio-atraso": ms(250),
+    "--t-transicao": ms(480),
+  } as CSSProperties;
+}
+
 /**
  * Apresentação. Sozinha: tela cheia no próprio navegador. Com "Tela do
  * apresentador": os slides vão para uma segunda janela (o telão) e esta tela
@@ -119,6 +136,7 @@ export function Apresentador({
   acao,
   passos,
   transicao = "esmaecer",
+  velocidade = 1,
 }: {
   total: number;
   inicial: number;
@@ -133,6 +151,8 @@ export function Apresentador({
   /** Cliques que o slide tem antes de passar ao próximo. */
   passos?: (indice: number) => number;
   transicao?: "nenhuma" | "esmaecer" | "deslizar" | "zoom";
+  /** Multiplica a duração das animações (1 = normal). */
+  velocidade?: number;
 }) {
   const raiz = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ indice: Math.min(inicial, Math.max(0, total - 1)), passo: 0 });
@@ -256,7 +276,7 @@ export function Apresentador({
 
   /** Troca de slide com a transição escolhida (a chave remonta o slide e repete a animação). */
   const comTransicao = (no: ReactNode) => (
-    <div key={indice} className={transicao === "nenhuma" ? undefined : `transicao-${transicao}`} style={{ width: SLIDE_L, height: SLIDE_A }}>
+    <div key={indice} className={transicao === "nenhuma" ? undefined : `transicao-${transicao}`} style={{ width: SLIDE_L, height: SLIDE_A, ...duracoes(velocidade) }}>
       {no}
     </div>
   );
