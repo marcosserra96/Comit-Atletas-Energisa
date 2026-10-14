@@ -206,7 +206,7 @@ export function PreferenciaNotificacoes({
   oQueChega?: string;
   rodape?: string;
 } = {}) {
-  const { estado, ativar, desativar, ocupado, erro } = usePush();
+  const { estado, ativar, desativar, ocupado, erro, aparelho } = usePush();
   const ativo = estado === "ativo";
   const Icone = ativo ? BellRing : estado === "negado" ? BellOff : Bell;
 
@@ -222,7 +222,7 @@ export function PreferenciaNotificacoes({
           <Icone className="size-5" aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="font-bold text-text">Notificações no celular</p>
+          <p className="font-bold text-text">{aparelho === "computador" ? "Notificações neste computador" : "Notificações no celular"}</p>
           {estado === "negado" ? <ComoDesbloquear /> : <p className="mt-0.5 text-sm text-text-light">{textoDoEstado(estado, oQueChega)}</p>}
           {erro ? <p className="mt-1 text-sm font-medium text-danger">{erro}</p> : null}
         </div>
@@ -231,7 +231,7 @@ export function PreferenciaNotificacoes({
       {estado === "desligado" ? (
         <Button onClick={() => void ativar()} loading={ocupado}>
           <Bell className="size-4" />
-          Ativar notificações
+          {erro ? "Tentar de novo" : "Ativar notificações"}
         </Button>
       ) : estado === "ativo" ? (
         <Button variant="secondary" onClick={() => void desativar()} loading={ocupado}>

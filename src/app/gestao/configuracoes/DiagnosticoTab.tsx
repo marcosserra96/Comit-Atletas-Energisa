@@ -12,6 +12,7 @@ import { logAudit } from "@/lib/audit";
 import { ConfirmarPerigoModal } from "@/components/ui/ConfirmarPerigoModal";
 import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
 import { plural } from "@/lib/format";
+import { MonitorErrosCard } from "./MonitorErrosCard";
 
 type ZonaPerigo = "historico_pontos" | "agenda_eventos" | "regras_pontuacao" | "comentarios_atletas";
 
@@ -66,6 +67,7 @@ export function DiagnosticoTab() {
 
   return (
     <div className="flex flex-col gap-5">
+      <MonitorErrosCard />
       <Card className="max-w-xl border-danger/30">
         <div className="mb-4 flex items-center gap-2">
           <AlertOctagon className="size-4 text-danger" />
