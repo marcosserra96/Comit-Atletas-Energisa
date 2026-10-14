@@ -267,14 +267,14 @@ test("formatação do slide livre: guarda só o que muda e limpa o inválido", (
 });
 
 test("tema da apresentação: padrão, validação e cliques do pódio", () => {
-  assert.deepEqual(temaDaReuniao(undefined), { fonte: "barlow", transicao: "esmaecer", animacoes: true, revelarPodio: true });
-  assert.deepEqual(temaDaReuniao({ fonte: "xx" as never, transicao: "zoom", animacoes: false }), { fonte: "barlow", transicao: "zoom", animacoes: false, revelarPodio: true });
+  assert.deepEqual(temaDaReuniao(undefined), { fonte: "barlow", transicao: "esmaecer", animacoes: true, revelarPodio: true, velocidade: "normal" });
+  assert.deepEqual(temaDaReuniao({ fonte: "xx" as never, transicao: "zoom", animacoes: false }), { fonte: "barlow", transicao: "zoom", animacoes: false, revelarPodio: true, velocidade: "normal" });
   const podio = { chave: "p", tipo: "podio" as const, modalidade: "corrida" as const, periodo: "", podio: [1, 2, 3].map((posicao) => ({ posicao, atletas: [], total: 1 })) };
   assert.equal(passosDoSlide(podio, temaDaReuniao(undefined)), 3);
   assert.equal(passosDoSlide(podio, temaDaReuniao({ revelarPodio: false })), 0);
   assert.equal(passosDoSlide({ chave: "a", tipo: "app" }, temaDaReuniao(undefined)), 0);
   const r = reuniaoPadrao({ nome: "T", inicio: "2026-06-01", fim: "2026-08-31" }, null);
-  const v = validarReuniao({ ...r, tema: { fonte: "serifada", transicao: "pular" as never } });
+  const v = validarReuniao({ ...r, tema: { fonte: "serifada", transicao: "pular" as never, velocidade: "lenta" } });
   assert.ok("dados" in v);
-  if ("dados" in v) assert.deepEqual(v.dados.tema, { fonte: "serifada", transicao: "esmaecer", animacoes: true, revelarPodio: true });
+  if ("dados" in v) assert.deepEqual(v.dados.tema, { fonte: "serifada", transicao: "esmaecer", animacoes: true, revelarPodio: true, velocidade: "lenta" });
 });
