@@ -19,6 +19,7 @@ import { SlideReuniao } from "@/components/reuniao/SlidesReuniao";
 import { Apresentador, SlideEscalado, gerarPdfDosSlides, type AcaoDoSlide } from "@/components/reuniao/Apresentador";
 import { EditorRoteiro } from "@/components/reuniao/EditorRoteiro";
 import { useSorteio } from "@/components/reuniao/useSorteio";
+import { TemaApresentacao } from "@/components/reuniao/TemaApresentacao";
 import { NoticiaModal } from "@/app/gestao/noticias/NoticiaModal";
 import { AvatarAtleta } from "@/components/atletas/AvatarAtleta";
 import { temPermissao } from "@/lib/permissoes";
@@ -51,6 +52,8 @@ import {
   reuniaoPadrao,
   verificarAntesDeApresentar,
   resumoParaAtletas,
+  temaDaReuniao,
+  passosDoSlide,
   type ReuniaoResultadosDoc,
 } from "@/lib/reuniaoResultados";
 import type { AtletaDoc, EventoDoc, HistoricoMensalDoc, HistoricoPontoDoc, RegraPontuacaoDoc } from "@/lib/types";
@@ -365,8 +368,9 @@ export default function ReuniaoResultadosPage() {
   const urlApp = typeof window !== "undefined" ? `${window.location.host}/instalar` : "/instalar";
   const qrApp = useQrDataUrl(typeof window !== "undefined" ? `${window.location.origin}/instalar` : "", 800) || null;
 
+  const tema = useMemo(() => temaDaReuniao(rascunho?.tema), [rascunho?.tema]);
   const renderSlide = useCallback(
-    (i: number, paraPdf = false) =>
+    (i: number, paraPdf = false, aoVivo?: { passo?: number; aoVivo?: boolean }) =>
       calculo?.slides[i] ? (
         <SlideReuniao
           slide={calculo.slides[i]}
@@ -378,10 +382,15 @@ export default function ReuniaoResultadosPage() {
           urlApp={urlApp}
           presentes={paraPdf ? null : (presentes?.length ?? null)}
           sorteio={paraPdf ? undefined : sorteio.estado}
+          tema={tema}
+          passo={aoVivo && tema.revelarPodio ? aoVivo.passo : undefined}
+          animar={!!aoVivo?.aoVivo && tema.animacoes}
         />
       ) : null,
-    [calculo, fotos, imagens, qrPresenca, semPermissao, qrApp, urlApp, presentes, sorteio.estado],
+    [calculo, fotos, imagens, qrPresenca, semPermissao, qrApp, urlApp, presentes, sorteio.estado, tema],
   );
+  const renderNaApresentacao = useCallback((i: number, opcoes?: { passo?: number; aoVivo?: boolean }) => renderSlide(i, false, opcoes ?? {}), [renderSlide]);
+  const passosNaApresentacao = useCallback((i: number) => passosDoSlide(calculo?.slides[i], tema), [calculo, tema]);
 
   const rascunhoAtual = useRef(rascunho);
   useEffect(() => {
@@ -662,6 +671,16 @@ export default function ReuniaoResultadosPage() {
           {rascunho ? (
             <Card className="flex flex-col gap-3">
               <div>
+                <p className="text-sm font-bold text-text">Aparência</p>
+                <p className="text-xs text-text-light">Fonte, transição e animações da apresentação inteira.</p>
+              </div>
+              <TemaApresentacao tema={rascunho.tema} onChange={(t) => atualizar({ tema: t })} />
+            </Card>
+          ) : null}
+
+          {rascunho ? (
+            <Card className="flex flex-col gap-3">
+              <div>
                 <p className="text-sm font-bold text-text">Roteiro</p>
                 <p className="text-xs text-text-light">Ligue, desligue e mude a ordem. Os slides livres você escreve.</p>
               </div>
@@ -730,7 +749,9 @@ export default function ReuniaoResultadosPage() {
         <Apresentador
           total={total}
           inicial={apresentando}
-          renderSlide={renderSlide}
+          renderSlide={renderNaApresentacao}
+          passos={passosNaApresentacao}
+          transicao={tema.transicao}
           onFechar={() => setApresentando(null)}
           rotulo={(i) => calculo?.slides[i]?.rotulo ?? ""}
           nota={notaDoSlide}

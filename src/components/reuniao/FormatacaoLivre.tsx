@@ -142,7 +142,7 @@ export function FormatacaoLivre({ livre, temImagem, onChange }: { livre: SlideLi
                   <span className="text-lg font-extrabold leading-none" style={{ fontFamily: FONTES_SLIDE[f].familia }} aria-hidden="true">
                     Aa
                   </span>
-                  <span className="truncate text-xs font-semibold">{FONTES_SLIDE[f].nome}</span>
+                  <span className="truncate text-xs font-semibold">{f === "barlow" ? "Da apresentação" : FONTES_SLIDE[f].nome}</span>
                 </button>
               ))}
             </div>

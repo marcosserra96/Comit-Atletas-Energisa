@@ -16,11 +16,11 @@ import "@fontsource/montserrat/latin-900.css";
 import "@fontsource/merriweather/latin-400.css";
 import "@fontsource/merriweather/latin-700.css";
 import "@fontsource/merriweather/latin-900.css";
-import type { CSSProperties, ReactNode } from "react";
+import { createContext, useContext, type CSSProperties, type ReactNode } from "react";
 import { iniciais } from "@/lib/fotoRegras";
 import { formatDistancia, formatPontos } from "@/lib/format";
 import { modalidadeLabel } from "@/lib/labels";
-import { ESCALA_TAMANHO, FONTES_SLIDE, fundoEscuro, type EstiloLivre, type FundoDivisoria, type LinhaResultado, type SlideDef } from "@/lib/reuniaoResultados";
+import { ESCALA_TAMANHO, FONTES_SLIDE, fundoEscuro, type EstiloLivre, type TemaReuniao, type FundoDivisoria, type LinhaResultado, type SlideDef } from "@/lib/reuniaoResultados";
 
 /** Tamanho nativo de cada slide; a tela escala para caber. */
 export const SLIDE_L = 1920;
@@ -63,15 +63,20 @@ const laranja: CSSProperties = {
 /** Título azul-marinho com contorno claro (legível sobre o céu do fundo). */
 const marinho: CSSProperties = { color: COR.navy, textShadow: "0 3px 0 rgba(255,255,255,.75), 0 10px 30px rgba(7,29,64,.18)" };
 
+/** Fonte da apresentação e se os elementos entram animados (só ao vivo). */
+const ContextoSlide = createContext<{ familia?: string; animar: boolean }>({ animar: false });
+
 function Base({ fundo, children, familia, corSolida }: { fundo: keyof typeof FUNDO; children: ReactNode; familia?: string; corSolida?: string }) {
+  const ctx = useContext(ContextoSlide);
   return (
     <div
+      className={ctx.animar ? "slide-animado" : undefined}
       style={{
         position: "relative",
         width: SLIDE_L,
         height: SLIDE_A,
         overflow: "hidden",
-        fontFamily: familia ?? F,
+        fontFamily: familia ?? ctx.familia ?? F,
         backgroundColor: corSolida ?? "#dfeaf7",
         backgroundImage: corSolida ? undefined : `url(${FUNDO[fundo]})`,
         backgroundSize: "cover",
@@ -98,7 +103,7 @@ function LogoCanto({ claro = false }: { claro?: boolean }) {
 function TituloConteudo({ children, extra, cor = COR.navy, barra = COR.azul, escala = 1, centro = false }: { children: ReactNode; extra?: ReactNode; cor?: string; barra?: string; escala?: number; centro?: boolean }) {
   return (
     <div style={{ position: "absolute", left: 0, top: 0, right: 0, height: 128, display: "flex", alignItems: "flex-end", justifyContent: centro ? "center" : undefined, padding: "0 72px 18px" }}>
-      <h2 style={{ margin: 0, fontSize: Math.round(56 * Math.min(escala, 1.15)), fontWeight: 900, letterSpacing: "0.02em", textTransform: "uppercase", color: cor, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{children}</h2>
+      <h2 style={{ margin: 0, minWidth: 0, fontSize: Math.round(56 * Math.min(escala, 1.15)), fontWeight: 900, letterSpacing: "0.02em", textTransform: "uppercase", color: cor, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{children}</h2>
       {extra ? (
         <div style={{ marginLeft: "auto", marginBottom: 6, padding: "10px 22px", borderRadius: 999, background: "#fff", border: "2px solid #d6e3f3", fontSize: 24, fontWeight: 700, color: COR.navy, whiteSpace: "nowrap" }}>
           {extra}
@@ -205,7 +210,8 @@ function visualDoLivre(estilo: EstiloLivre) {
   const solido = estilo.fundo === "cor";
   const escuro = solido && fundoEscuro(estilo.corFundo);
   return {
-    familia: FONTES_SLIDE[estilo.fonte].familia,
+    // "Padrão" segue a fonte escolhida para a apresentação.
+    familia: estilo.fonte === "barlow" ? undefined : FONTES_SLIDE[estilo.fonte].familia,
     escala: ESCALA_TAMANHO[estilo.tamanho],
     fundo: (solido ? "conteudo" : estilo.fundo) as keyof typeof FUNDO,
     corSolida: solido ? estilo.corFundo : undefined,
@@ -571,7 +577,10 @@ const MEDALHA: Record<number, string> = { 1: COR.ouro, 2: COR.prata, 3: COR.bron
 /** Versões mais claras das medalhas para texto sobre o azul-marinho (contraste no telão). */
 const MEDALHA_TEXTO: Record<number, string> = { 1: "#f5bd2e", 2: "#d4dde8", 3: "#ef9a5e" };
 
-function Podio({ modalidade, podio, fotos, periodo }: Extract<SlideDef, { tipo: "podio" }> & { fotos: Record<string, string> }) {
+function Podio({ modalidade, podio, fotos, periodo, revelados }: Extract<SlideDef, { tipo: "podio" }> & { fotos: Record<string, string>; revelados?: number }) {
+  // Revelação no clique: o 3º lugar primeiro, o 1º por último. Sem `revelados`, tudo à vista.
+  const ordemDeRevelar = [...podio].sort((a, b) => b.posicao - a.posicao).map((d) => d.posicao);
+  const aparece = (posicao: number) => revelados === undefined || ordemDeRevelar.indexOf(posicao) < revelados;
   const ordem = [2, 1, 3].map((p) => podio.find((d) => d.posicao === p)).filter((d): d is NonNullable<typeof d> => !!d);
   const nome = modalidade === "corrida" ? "Corrida" : "Bike";
   // Degraus baixos e cheios: o conteúdo ocupa o degrau, e a altura ainda mostra quem ganhou.
@@ -592,9 +601,26 @@ function Podio({ modalidade, podio, fotos, periodo }: Extract<SlideDef, { tipo: 
           const largura = dupla ? (primeiro ? 640 : 580) : primeiro ? 540 : 440;
           const fontePontos = dupla ? 52 : primeiro ? 76 : 62;
           const fonteNome = dupla ? 28 : primeiro ? 38 : 32;
+          const visivel = aparece(d.posicao);
+          if (!visivel) {
+            // Ainda escondido: o degrau e a medalha ficam, a pessoa é surpresa.
+            return (
+              <div key={d.posicao} style={{ position: "relative", flex: `0 1 ${largura}px`, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
+                <div style={{ position: "relative", marginBottom: 40 }}>
+                  <div style={{ width: foto, height: foto, borderRadius: "50%", background: "rgba(255,255,255,.55)", border: `8px dashed ${cor}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: foto * 0.42, fontWeight: 900, color: cor }}>?</div>
+                  <span style={{ position: "absolute", left: "50%", bottom: -30, transform: "translateX(-50%)", width: 76, height: 76, borderRadius: "50%", background: `radial-gradient(circle at 35% 30%, #ffffff99, ${cor} 62%)`, border: "5px solid #fff", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 42, fontWeight: 900, textShadow: "0 2px 3px rgba(0,0,0,.3)", boxShadow: "0 6px 14px rgba(0,0,0,.25)" }}>
+                    {d.posicao}
+                  </span>
+                </div>
+                <div style={{ width: "100%", height: altura[d.posicao] ?? 240, borderRadius: "26px 26px 0 0", background: `linear-gradient(180deg, ${COR.navy}, ${COR.navyEscuro})`, borderTop: `12px solid ${cor}`, boxShadow: "0 -10px 30px rgba(7,29,64,.25)", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,.35)", fontSize: 120, fontWeight: 900 }}>
+                  {d.posicao}º
+                </div>
+              </div>
+            );
+          }
           return (
             <div key={d.posicao} style={{ position: "relative", flex: `0 1 ${largura}px`, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <div style={{ display: "flex", gap: dupla ? 40 : 0, marginBottom: 40 }}>
+              <div className={revelados !== undefined ? "podio-revela" : undefined} style={{ display: "flex", gap: dupla ? 40 : 0, marginBottom: 40 }}>
                 {d.atletas.map((a) => (
                   <div key={a.id} style={{ position: "relative" }}>
                     <Avatar nome={a.nome} foto={fotos[a.id]} tamanho={foto} anel={cor} />
@@ -619,6 +645,7 @@ function Podio({ modalidade, podio, fotos, periodo }: Extract<SlideDef, { tipo: 
                   gap: 24,
                   color: "#fff",
                 }}
+                className={revelados !== undefined ? "podio-revela-texto" : undefined}
               >
                 {d.atletas.map((a, i) => (
                   <div key={a.id} style={{ flex: 1, minWidth: 0, textAlign: "center", borderLeft: i > 0 ? "2px solid rgba(255,255,255,.14)" : "none", paddingLeft: i > 0 ? 24 : 0 }}>
@@ -915,6 +942,9 @@ export function SlideReuniao({
   urlApp,
   presentes,
   sorteio,
+  tema,
+  passo,
+  animar = false,
 }: {
   slide: SlideDef;
   fotos: Record<string, string>;
@@ -926,6 +956,43 @@ export function SlideReuniao({
   /** Presenças registradas até agora (apresentação ao vivo); sem isso, o contador não aparece. */
   presentes?: number | null;
   sorteio?: EstadoSorteio;
+  /** Fonte da apresentação inteira. */
+  tema?: Pick<TemaReuniao, "fonte">;
+  /** Cliques já dados neste slide (pódio revelado aos poucos). Sem isso, tudo à vista. */
+  passo?: number;
+  /** Ao vivo: os elementos entram um a um. */
+  animar?: boolean;
+}) {
+  const familia = tema && tema.fonte !== "barlow" ? FONTES_SLIDE[tema.fonte].familia : undefined;
+  return (
+    <ContextoSlide.Provider value={{ familia, animar }}>
+      <ConteudoDoSlide slide={slide} fotos={fotos} imagens={imagens} qrPresenca={qrPresenca} presencaSemPermissao={presencaSemPermissao} qrApp={qrApp} urlApp={urlApp} presentes={presentes} sorteio={sorteio} passo={passo} />
+    </ContextoSlide.Provider>
+  );
+}
+
+function ConteudoDoSlide({
+  slide,
+  fotos,
+  imagens,
+  qrPresenca,
+  presencaSemPermissao,
+  qrApp,
+  urlApp,
+  presentes,
+  sorteio,
+  passo,
+}: {
+  slide: SlideDef;
+  fotos: Record<string, string>;
+  imagens: Record<string, string>;
+  qrPresenca: string | null;
+  presencaSemPermissao: boolean;
+  qrApp: string | null;
+  urlApp: string;
+  presentes?: number | null;
+  sorteio?: EstadoSorteio;
+  passo?: number;
 }) {
   switch (slide.tipo) {
     case "capa":
@@ -943,7 +1010,7 @@ export function SlideReuniao({
     case "totais":
       return <Totais {...slide} />;
     case "podio":
-      return <Podio {...slide} fotos={fotos} />;
+      return <Podio {...slide} fotos={fotos} revelados={passo} />;
     case "classificacao":
       return <Classificacao {...slide} />;
     case "agenda":

@@ -117,19 +117,33 @@ export function Apresentador({
   nota,
   onNota,
   acao,
+  passos,
+  transicao = "esmaecer",
 }: {
   total: number;
   inicial: number;
-  renderSlide: (indice: number) => ReactNode;
+  /** `passo`: cliques já dados no slide (pódio revelado aos poucos); `aoVivo`: anima a entrada. */
+  renderSlide: (indice: number, opcoes?: { passo?: number; aoVivo?: boolean }) => ReactNode;
   onFechar: () => void;
   rotulo?: (indice: number) => string;
   nota?: (indice: number) => string;
   onNota?: (indice: number, texto: string) => void;
   /** Botão extra para o slide atual (ex.: "Sortear"). */
   acao?: (indice: number) => AcaoDoSlide | null;
+  /** Cliques que o slide tem antes de passar ao próximo. */
+  passos?: (indice: number) => number;
+  transicao?: "nenhuma" | "esmaecer" | "deslizar" | "zoom";
 }) {
   const raiz = useRef<HTMLDivElement>(null);
-  const [indice, setIndice] = useState(Math.min(inicial, Math.max(0, total - 1)));
+  const [pos, setPos] = useState({ indice: Math.min(inicial, Math.max(0, total - 1)), passo: 0 });
+  const { indice, passo } = pos;
+  const passosRef = useRef(passos);
+  useEffect(() => {
+    passosRef.current = passos;
+  });
+  const totalPassos = passos?.(indice) ?? 0;
+  const noInicio = indice === 0 && passo === 0;
+  const noFim = indice >= total - 1 && passo >= totalPassos;
   const [escala, setEscala] = useState(1);
   const [controles, setControles] = useState(true);
   const [cheia, setCheia] = useState(false);
@@ -144,7 +158,20 @@ export function Apresentador({
     acaoRef.current = acaoAtual;
   });
 
-  const ir = useCallback((delta: number) => setIndice((i) => Math.max(0, Math.min(total - 1, i + delta))), [total]);
+  // Avançar revela o próximo passo do slide (se houver) antes de trocar; voltar desfaz.
+  const ir = useCallback(
+    (delta: number) =>
+      setPos(({ indice: i, passo: p }) => {
+        const de = (n: number) => passosRef.current?.(n) ?? 0;
+        if (delta > 0) {
+          if (p < de(i)) return { indice: i, passo: p + 1 };
+          return i < total - 1 ? { indice: i + 1, passo: 0 } : { indice: i, passo: p };
+        }
+        if (p > 0) return { indice: i, passo: p - 1 };
+        return i > 0 ? { indice: i - 1, passo: de(i - 1) } : { indice: i, passo: p };
+      }),
+    [total],
+  );
 
   const mostrarControles = useCallback(() => {
     setControles(true);
@@ -176,8 +203,8 @@ export function Apresentador({
       } else if (["ArrowLeft", "PageUp", "Backspace"].includes(e.key)) {
         e.preventDefault();
         ir(-1);
-      } else if (e.key === "Home") setIndice(0);
-      else if (e.key === "End") setIndice(total - 1);
+      } else if (e.key === "Home") setPos({ indice: 0, passo: 0 });
+      else if (e.key === "End") setPos({ indice: total - 1, passo: passosRef.current?.(total - 1) ?? 0 });
       else if ((e.key === "s" || e.key === "S") && acaoRef.current && !acaoRef.current.desabilitado) acaoRef.current.executar();
       else if (e.key === "Escape" && !document.fullscreenElement) onFechar();
     };
@@ -227,6 +254,13 @@ export function Apresentador({
     setTelao({ janela, alvo });
   }
 
+  /** Troca de slide com a transição escolhida (a chave remonta o slide e repete a animação). */
+  const comTransicao = (no: ReactNode) => (
+    <div key={indice} className={transicao === "nenhuma" ? undefined : `transicao-${transicao}`} style={{ width: SLIDE_L, height: SLIDE_A }}>
+      {no}
+    </div>
+  );
+
   const alternarTelaCheia = () => {
     if (document.fullscreenElement) void document.exitFullscreen();
     else void raiz.current?.requestFullscreen?.().catch(() => undefined);
@@ -239,9 +273,11 @@ export function Apresentador({
   // ---------- modo apresentador (dois monitores) ----------
   if (telao) {
     const proximo = indice + 1 < total ? indice + 1 : null;
+    // Ainda há o que revelar neste slide: o "próximo" é o próximo clique.
+    const revelaAqui = passo < totalPassos;
     return (
       <div ref={raiz} role="dialog" aria-modal="true" aria-label="Tela do apresentador" className="fixed inset-0 z-[100] flex flex-col bg-[#0b1220] text-white">
-        {createPortal(<Telao janela={telao.janela}>{renderSlide(indice)}</Telao>, telao.alvo)}
+        {createPortal(<Telao janela={telao.janela}>{comTransicao(renderSlide(indice, { passo, aoVivo: true }))}</Telao>, telao.alvo)}
         <div className="flex items-center gap-4 border-b border-white/10 px-6 py-3">
           <p className="text-sm font-semibold text-white/70">Tela do apresentador</p>
           <p className="ml-auto text-sm tabular-nums text-white/70">
@@ -262,13 +298,13 @@ export function Apresentador({
               {rotulo ? ` · ${rotulo(indice)}` : ""}
             </p>
             <div className="flex min-h-0 flex-1 items-start justify-center overflow-hidden rounded-xl ring-2 ring-[#f37021]">
-              <AreaMedida>{(l, a) => <SlideNaArea largura={l} altura={a}>{renderSlide(indice)}</SlideNaArea>}</AreaMedida>
+              <AreaMedida>{(l, a) => <SlideNaArea largura={l} altura={a}>{renderSlide(indice, { passo })}</SlideNaArea>}</AreaMedida>
             </div>
             <div className="flex items-center justify-center gap-3">
-              <button type="button" className={botao} onClick={() => ir(-1)} disabled={indice === 0} aria-label="Slide anterior">
+              <button type="button" className={botao} onClick={() => ir(-1)} disabled={noInicio} aria-label="Slide anterior">
                 <ChevronLeft className="size-6" />
               </button>
-              <button type="button" className={botao} onClick={() => ir(1)} disabled={indice >= total - 1} aria-label="Próximo slide">
+              <button type="button" className={botao} onClick={() => ir(1)} disabled={noFim} aria-label="Próximo slide">
                 <ChevronRight className="size-6" />
               </button>
               {acaoAtual ? (
@@ -280,10 +316,12 @@ export function Apresentador({
           </div>
           <div className="flex min-h-0 flex-col gap-4">
             <div>
-              <p className="mb-2 text-sm font-semibold text-white/70">{proximo !== null ? `Próximo${rotulo ? ` · ${rotulo(proximo)}` : ""}` : "Último slide"}</p>
-              {proximo !== null ? (
+              <p className="mb-2 text-sm font-semibold text-white/70">
+                {revelaAqui ? `Próximo clique · revela o ${totalPassos - passo}º lugar` : proximo !== null ? `Próximo${rotulo ? ` · ${rotulo(proximo)}` : ""}` : "Último slide"}
+              </p>
+              {revelaAqui || proximo !== null ? (
                 <div className="overflow-hidden rounded-lg opacity-90">
-                  <SlideEscalado>{renderSlide(proximo)}</SlideEscalado>
+                  <SlideEscalado>{revelaAqui ? renderSlide(indice, { passo: passo + 1 }) : renderSlide(proximo!)}</SlideEscalado>
                 </div>
               ) : null}
             </div>
@@ -336,7 +374,7 @@ export function Apresentador({
       }}
     >
       <div style={{ width: SLIDE_L * escala, height: SLIDE_A * escala, position: "relative", overflow: "hidden" }}>
-        <div style={{ width: SLIDE_L, height: SLIDE_A, transform: `scale(${escala})`, transformOrigin: "top left" }}>{renderSlide(indice)}</div>
+        <div style={{ width: SLIDE_L, height: SLIDE_A, transform: `scale(${escala})`, transformOrigin: "top left" }}>{comTransicao(renderSlide(indice, { passo, aoVivo: true }))}</div>
       </div>
 
       <div
@@ -345,13 +383,13 @@ export function Apresentador({
           controles || acaoAtual ? "opacity-100" : "pointer-events-none opacity-0",
         )}
       >
-        <button type="button" className={botao} onClick={() => ir(-1)} disabled={indice === 0} aria-label="Slide anterior">
+        <button type="button" className={botao} onClick={() => ir(-1)} disabled={noInicio} aria-label="Slide anterior">
           <ChevronLeft className="size-6" />
         </button>
         <span className="min-w-20 text-center text-sm font-semibold tabular-nums text-white">
           {indice + 1} / {total}
         </span>
-        <button type="button" className={botao} onClick={() => ir(1)} disabled={indice >= total - 1} aria-label="Próximo slide">
+        <button type="button" className={botao} onClick={() => ir(1)} disabled={noFim} aria-label="Próximo slide">
           <ChevronRight className="size-6" />
         </button>
         {acaoAtual ? (
