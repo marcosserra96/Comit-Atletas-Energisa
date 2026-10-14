@@ -104,7 +104,11 @@ function LogoCanto({ claro = false }: { claro?: boolean }) {
 }
 
 /** Título dos slides de conteúdo: barra no alto à esquerda, como na apresentação. */
-function TituloConteudo({ children, extra, cor = COR.navy, barra = COR.azul, escala = 1, centro = false }: { children: ReactNode; extra?: ReactNode; cor?: string; barra?: string; escala?: number; centro?: boolean }) {
+/**
+ * `barra`: linha colorida sob o título. O fundo "conteudo" já traz essa linha
+ * desenhada, então só se passa a cor quando o slide usa outro fundo.
+ */
+function TituloConteudo({ children, extra, cor = COR.navy, barra, escala = 1, centro = false }: { children: ReactNode; extra?: ReactNode; cor?: string; barra?: string; escala?: number; centro?: boolean }) {
   return (
     <div style={{ position: "absolute", left: 0, top: 0, right: 0, height: 128, display: "flex", alignItems: "flex-end", justifyContent: centro ? "center" : undefined, padding: "0 72px 18px" }}>
       <h2 style={{ margin: 0, minWidth: 0, fontSize: Math.round(56 * Math.min(escala, 1.15)), fontWeight: 900, letterSpacing: "0.02em", textTransform: "uppercase", color: cor, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{children}</h2>
@@ -113,7 +117,7 @@ function TituloConteudo({ children, extra, cor = COR.navy, barra = COR.azul, esc
           {extra}
         </div>
       ) : null}
-      <div style={{ position: "absolute", left: 72, right: 72, bottom: 0, height: 5, borderRadius: 3, background: centro ? `linear-gradient(90deg, transparent, ${barra} 20%, ${barra} 80%, transparent)` : `linear-gradient(90deg, ${barra}, ${barra} 70%, transparent)` }} />
+      {barra ? <div style={{ position: "absolute", left: 72, right: 72, bottom: 0, height: 5, borderRadius: 3, background: centro ? `linear-gradient(90deg, transparent, ${barra} 20%, ${barra} 80%, transparent)` : `linear-gradient(90deg, ${barra}, ${barra} 70%, transparent)` }} /> : null}
     </div>
   );
 }
@@ -373,7 +377,8 @@ function Conteudo({ titulo, texto, imagem, estilo }: { titulo: string; texto: st
     );
   return (
     <Base fundo={v.fundo} familia={v.familia} corSolida={v.corSolida}>
-      <TituloConteudo cor={v.titulo} barra={v.destaque ?? (v.escuro ? "#ffffff" : COR.azul)} escala={v.escala} centro={v.centro}>
+      {/* O fundo padrão já tem a linha sob o título; nos outros fundos ela é desenhada. */}
+      <TituloConteudo cor={v.titulo} barra={v.fundo === "conteudo" && !v.corSolida ? undefined : (v.destaque ?? (v.escuro ? "#ffffff" : COR.azul))} escala={v.escala} centro={v.centro}>
         {titulo}
       </TituloConteudo>
       {soImagem ? (
