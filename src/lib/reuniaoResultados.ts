@@ -114,6 +114,32 @@ export function estiloSalvo(layout: SlideLivre["layout"], estilo: Partial<Estilo
   return Object.keys(out).length ? out : undefined;
 }
 
+export type TransicaoSlide = "nenhuma" | "esmaecer" | "deslizar" | "zoom";
+
+export interface TemaReuniao {
+  fonte: FonteSlide;
+  transicao: TransicaoSlide;
+  /** Os elementos de cada slide entram um a um. */
+  animacoes: boolean;
+  /** No pódio, cada clique revela um lugar: 3º, 2º e por fim o 1º. */
+  revelarPodio: boolean;
+}
+
+export function temaDaReuniao(tema: Partial<TemaReuniao> | undefined): TemaReuniao {
+  const t = tema ?? {};
+  return {
+    fonte: (["barlow", "condensada", "montserrat", "serifada"] as const).includes(t.fonte as FonteSlide) ? (t.fonte as FonteSlide) : "barlow",
+    transicao: (["nenhuma", "esmaecer", "deslizar", "zoom"] as const).includes(t.transicao as TransicaoSlide) ? (t.transicao as TransicaoSlide) : "esmaecer",
+    animacoes: t.animacoes !== false,
+    revelarPodio: t.revelarPodio !== false,
+  };
+}
+
+/** Quantos cliques um slide tem antes de passar para o próximo (pódio revelado aos poucos). */
+export function passosDoSlide(slide: SlideDef | undefined, tema: TemaReuniao) {
+  return slide?.tipo === "podio" && tema.revelarPodio ? slide.podio.length : 0;
+}
+
 /** Fundo escuro pede texto claro: luminância relativa abaixo de ~0,35. */
 export function fundoEscuro(hex: string) {
   if (!HEX.test(hex)) return false;
@@ -135,6 +161,8 @@ export interface ReuniaoResultadosDoc {
   novosExcluir: string[];
   /** Anotações do apresentador por seção (aparecem só na tela do apresentador). */
   notas?: Record<string, string>;
+  /** Aparência da apresentação inteira: fonte, transição e animações. */
+  tema?: Partial<TemaReuniao>;
   atualizadoEm?: string | null;
   atualizadoPorNome?: string | null;
 }
@@ -260,6 +288,7 @@ export function validarReuniao(entrada: unknown): { erro: string } | { dados: Om
       livres,
       novosIncluir: ids(e.novosIncluir),
       novosExcluir: ids(e.novosExcluir),
+      tema: temaDaReuniao(e.tema && typeof e.tema === "object" ? e.tema : undefined),
       notas: Object.fromEntries(
         Object.entries(e.notas && typeof e.notas === "object" ? e.notas : {})
           .filter(([k, v]) => typeof v === "string" && v.trim() && k.length < 60)

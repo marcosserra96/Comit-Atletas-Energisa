@@ -396,6 +396,33 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 .pulso-ao-vivo { animation: pulso-ao-vivo 1.8s ease-out infinite; }
 .numero-sobe { display: inline-block; animation: numero-sobe 260ms ease-out; }
+/* Apresentação da reunião: entrada dos elementos, pódio revelado e transições.
+   Usa as propriedades `translate`/`scale` (separadas de `transform`) para não
+   desfazer o posicionamento que os slides já fazem com transform. */
+@keyframes slide-entra {
+  from { opacity: 0; translate: 0 28px; }
+  to { opacity: 1; translate: 0 0; }
+}
+@keyframes podio-revela {
+  0% { opacity: 0; scale: 0.4; }
+  70% { opacity: 1; scale: 1.08; }
+  100% { opacity: 1; scale: 1; }
+}
+@keyframes transicao-esmaecer { from { opacity: 0; } to { opacity: 1; } }
+@keyframes transicao-deslizar { from { opacity: 0; translate: 8% 0; } to { opacity: 1; translate: 0 0; } }
+@keyframes transicao-zoom { from { opacity: 0; scale: 0.92; } to { opacity: 1; scale: 1; } }
+.slide-animado > * { animation: slide-entra 650ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.slide-animado > *:nth-child(2) { animation-delay: 120ms; }
+.slide-animado > *:nth-child(3) { animation-delay: 240ms; }
+.slide-animado > *:nth-child(4) { animation-delay: 360ms; }
+.slide-animado > *:nth-child(5) { animation-delay: 480ms; }
+.slide-animado > *:nth-child(n + 6) { animation-delay: 600ms; }
+.podio-revela { animation: podio-revela 750ms cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.podio-revela-texto { animation: slide-entra 500ms 250ms ease-out both; }
+.transicao-esmaecer { animation: transicao-esmaecer 450ms ease-out both; }
+.transicao-deslizar { animation: transicao-deslizar 500ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.transicao-zoom { animation: transicao-zoom 500ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
 @media (prefers-reduced-motion: reduce) {
-  .pulso-ao-vivo, .numero-sobe { animation: none; }
+  .pulso-ao-vivo, .numero-sobe, .slide-animado > *, .podio-revela, .podio-revela-texto,
+  .transicao-esmaecer, .transicao-deslizar, .transicao-zoom { animation: none; }
 }
