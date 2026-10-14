@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { app, auth, usandoEmulador } from "@/lib/firebase";
+import * as Sentry from "@sentry/nextjs";
 import { useInstalacao } from "@/lib/pwa/instalacao";
+import { classificarErroPush, mensagemDeErroPush } from "@/lib/push/erros";
 
 /** Chave pública de Web Push do projeto (pública por natureza; pode ser trocada por variável). */
 const VAPID =
@@ -80,7 +82,15 @@ function plataformaAtual() {
 }
 
 async function registrarAparelho() {
-  const token = await obterToken();
+  let token: string;
+  try {
+    token = await obterToken();
+  } catch (e) {
+    // Falha de rede costuma ser passageira: tenta mais uma vez antes de desistir.
+    if (classificarErroPush(e) !== "rede") throw e;
+    await new Promise((r) => setTimeout(r, 1500));
+    token = await obterToken();
+  }
   if (!token) throw new Error("O navegador não liberou as notificações.");
   await chamarApi("POST", token, plataformaAtual());
   gravar(CHAVE_TOKEN, token);
@@ -170,11 +180,19 @@ export function usePush() {
       setPermissao(resultado);
       setInscrito(resultado === "granted");
     } catch (e) {
-      setErro(e instanceof Error ? e.message : "Não foi possível ativar agora.");
+      const tipo = classificarErroPush(e);
+      setErro(mensagemDeErroPush(tipo, instalacao.aparelho === "computador" ? "computador" : "celular"));
+      // Vai para o monitor sem a mensagem crua (que pode conter "Failed to fetch", ignorado lá).
+      if (tipo !== "bloqueado" && tipo !== "sessao") {
+        Sentry.captureMessage(`Avisos: falha ao ativar (${tipo})`, {
+          level: "warning",
+          tags: { push_erro: tipo, push_codigo: String((e as { code?: string })?.code ?? "sem_codigo") },
+        });
+      }
     } finally {
       setOcupado(false);
     }
-  }, []);
+  }, [instalacao.aparelho]);
 
   const desativar = useCallback(async () => {
     setOcupado(true);
@@ -186,5 +204,5 @@ export function usePush() {
     }
   }, []);
 
-  return { estado, ativar, desativar, ocupado, erro };
+  return { estado, ativar, desativar, ocupado, erro, aparelho: instalacao.aparelho };
 }
