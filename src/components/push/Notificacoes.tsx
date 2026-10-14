@@ -162,7 +162,7 @@ export function ConviteNotificacoes({ className }: { className?: string }) {
           </Link>
         ) : (
           <Button
-            className="flex-1"
+            className="flex-1 whitespace-nowrap"
             loading={ocupado}
             onClick={async () => {
               await ativar();

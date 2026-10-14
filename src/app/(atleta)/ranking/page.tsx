@@ -605,7 +605,8 @@ export default function RankingPage() {
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold text-primary">Sua posição</p>
                 <p className="truncate text-sm font-bold text-text sm:text-base">
-                  {myRankAtleta.pontuacaoTotal > 0 ? `${myRankAtleta.rank}º lugar no ranking` : "Ainda sem pontos no período"}
+                  {/* O selo ao lado já mostra a posição; o texto curto não corta no celular. */}
+                  {myRankAtleta.pontuacaoTotal > 0 ? `${myRankAtleta.rank}º lugar` : "Ainda sem pontos"}
                 </p>
               </div>
               {/* Treinos e km só existem no ranking publicado; sem ele, mostrar "0"
