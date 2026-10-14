@@ -36,7 +36,7 @@ import { FichaAtletaModal } from "../atletas/ficha/FichaAtletaModal";
 import { EstornarModal } from "./EstornarModal";
 import { FiltrosExtrato } from "./extrato/FiltrosExtrato";
 import { LoteCard } from "./extrato/LoteCard";
-import { LinhaLancamento } from "./extrato/LinhaLancamento";
+import { TabelaLancamentos } from "./extrato/TabelaLancamentos";
 import { EditarLancamentoModal } from "./extrato/EditarLancamentoModal";
 import { EditarLoteModal } from "./extrato/EditarLoteModal";
 import type { AtletaDoc, HistoricoPontoDoc, RegraPontuacaoDoc } from "@/lib/types";
@@ -44,7 +44,17 @@ import type { AtletaDoc, HistoricoPontoDoc, RegraPontuacaoDoc } from "@/lib/type
 const LOTES_POR_VEZ = 30;
 const LINHAS_POR_VEZ = 60;
 
-type Visao = "lotes" | "atletas";
+/** "tabela": um lançamento por linha, todas as colunas (a visão de antes, padrão); "lotes": agrupado por lançamento. */
+type Visao = "tabela" | "lotes";
+const CHAVE_VISAO = "extrato:visao";
+
+function visaoSalva(): Visao {
+  try {
+    return localStorage.getItem(CHAVE_VISAO) === "lotes" ? "lotes" : "tabela";
+  } catch {
+    return "tabela";
+  }
+}
 
 /**
  * Extrato de pontos do comitê: cada lançamento numa linha (com os atletas
@@ -64,7 +74,7 @@ export function ExtratoTab() {
   const [regras, setRegras] = useState<RegraPontuacaoDoc[]>([]);
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState<FiltroExtrato>(FILTRO_VAZIO);
-  const [visao, setVisao] = useState<Visao>("lotes");
+  const [visao, setVisao] = useState<Visao>(visaoSalva);
   const [limite, setLimite] = useState(LOTES_POR_VEZ);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [ultimoIndice, setUltimoIndice] = useState<number | null>(null);
@@ -128,7 +138,7 @@ export function ExtratoTab() {
   const resumo = useMemo(() => resumoDoExtrato(filtrados), [filtrados]);
   const lotes = useMemo(() => (visao === "lotes" ? agruparPorLote(filtrados, filtro.campoData) : []), [filtrados, visao, filtro.campoData]);
   const linhas = useMemo(() => {
-    if (visao !== "atletas") return [];
+    if (visao !== "tabela") return [];
     const porTreino = filtro.campoData === "treino";
     return [...filtrados].sort((a, b) =>
       porTreino
@@ -289,10 +299,16 @@ export function ExtratoTab() {
             setVisao(v);
             setLimite(v === "lotes" ? LOTES_POR_VEZ : LINHAS_POR_VEZ);
             setSelecionados(new Set());
+            // Lembra a escolha neste navegador.
+            try {
+              localStorage.setItem(CHAVE_VISAO, v);
+            } catch {
+              /* navegador sem armazenamento: só não lembra */
+            }
           }}
           options={[
+            { value: "tabela", label: "Tabela" },
             { value: "lotes", label: "Por lançamento" },
-            { value: "atletas", label: "Por atleta" },
           ]}
         />
         <div className="flex items-center gap-1">
@@ -316,7 +332,7 @@ export function ExtratoTab() {
         </div>
       </div>
 
-      {isAdmin && visao === "atletas" && selecionados.size > 0 ? (
+      {isAdmin && visao === "tabela" && selecionados.size > 0 ? (
         <Card className="flex flex-wrap items-center justify-between gap-3 border-danger/30 bg-danger/[0.04] py-3">
           <p className="text-sm font-semibold text-text">{plural(selecionados.size, "lançamento selecionado", "lançamentos selecionados")}</p>
           <div className="flex items-center gap-2">
@@ -371,22 +387,21 @@ export function ExtratoTab() {
           })}
         </div>
       ) : (
-        <Card className="px-4 py-1">
-          <ul className="divide-y divide-border-subtle">
-            {linhasVisiveis.map((l, i) => (
-              <li key={l.id}>
-                <LinhaLancamento
-                  lancamento={l}
-                  modo="atleta"
-                  onEditar={setEditando}
-                  onEstornar={(x) => setEstornando([x])}
-                  onExcluir={isAdmin ? (x) => setExcluindo([x]) : undefined}
-                  selecao={isAdmin ? { marcado: selecionados.has(l.id), onChange: (shift) => marcar(l.id, i, shift) } : undefined}
-                />
-              </li>
-            ))}
-          </ul>
-        </Card>
+        <TabelaLancamentos
+          linhas={linhasVisiveis}
+          onEditar={setEditando}
+          onEstornar={(x) => setEstornando([x])}
+          onExcluir={isAdmin ? (x) => setExcluindo([x]) : undefined}
+          selecao={
+            isAdmin
+              ? {
+                  marcados: selecionados,
+                  onMarcar: marcar,
+                  onTodos: (ligar) => setSelecionados(ligar ? new Set(linhasVisiveis.map((l) => l.id)) : new Set()),
+                }
+              : undefined
+          }
+        />
       )}
 
       {!carregando && filtrados.length > 0 ? (
