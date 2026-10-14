@@ -50,7 +50,7 @@ export interface SlideLivre {
 
 // ---------- formatação dos slides livres ----------
 
-export type FonteSlide = "barlow" | "condensada" | "montserrat" | "serifada";
+export type FonteSlide = "barlow" | "condensada" | "montserrat" | "dmsans" | "segoe" | "serifada";
 export type FundoLivre = "conteudo" | "claro" | "divisoria" | "resultados" | "premiacao" | "agenda" | "cor";
 
 export interface EstiloLivre {
@@ -73,6 +73,9 @@ export const FONTES_SLIDE: Record<FonteSlide, { nome: string; familia: string }>
   barlow: { nome: "Padrão", familia: "'Barlow', 'Helvetica Neue', Arial, sans-serif" },
   condensada: { nome: "Condensada", familia: "'Barlow Condensed', 'Barlow', Arial, sans-serif" },
   montserrat: { nome: "Montserrat", familia: "'Montserrat', 'Helvetica Neue', Arial, sans-serif" },
+  dmsans: { nome: "DM Sans", familia: "'DM Sans', 'Helvetica Neue', Arial, sans-serif" },
+  // Segoe UI é a fonte do Windows (não pode ser embutida): fora do Windows, cai numa parecida.
+  segoe: { nome: "Segoe UI", familia: "'Segoe UI', 'Segoe UI Variable', 'Selawik', 'DM Sans', system-ui, sans-serif" },
   serifada: { nome: "Serifada", familia: "'Merriweather', Georgia, serif" },
 };
 
@@ -87,7 +90,7 @@ export function estiloDoLivre(l: Pick<SlideLivre, "layout" | "estilo">): EstiloL
   const um = <T extends string>(v: unknown, opcoes: readonly T[], padrao: T): T => (opcoes.includes(v as T) ? (v as T) : padrao);
   const divisoria = l.layout === "divisoria";
   return {
-    fonte: um(e.fonte, ["barlow", "condensada", "montserrat", "serifada"] as const, "barlow"),
+    fonte: um(e.fonte, ["barlow", "condensada", "montserrat", "dmsans", "segoe", "serifada"] as const, "barlow"),
     tamanho: um(e.tamanho, ["auto", "p", "m", "g", "gg"] as const, "auto"),
     corTitulo: cor(e.corTitulo),
     corTexto: cor(e.corTexto),
@@ -128,7 +131,7 @@ export interface TemaReuniao {
 export function temaDaReuniao(tema: Partial<TemaReuniao> | undefined): TemaReuniao {
   const t = tema ?? {};
   return {
-    fonte: (["barlow", "condensada", "montserrat", "serifada"] as const).includes(t.fonte as FonteSlide) ? (t.fonte as FonteSlide) : "barlow",
+    fonte: (["barlow", "condensada", "montserrat", "dmsans", "segoe", "serifada"] as const).includes(t.fonte as FonteSlide) ? (t.fonte as FonteSlide) : "barlow",
     transicao: (["nenhuma", "esmaecer", "deslizar", "zoom"] as const).includes(t.transicao as TransicaoSlide) ? (t.transicao as TransicaoSlide) : "esmaecer",
     animacoes: t.animacoes !== false,
     revelarPodio: t.revelarPodio !== false,
