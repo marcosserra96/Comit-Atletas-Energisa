@@ -389,6 +389,17 @@ function Presenca({ evento, pontos, qr, semPermissao, presentes }: { evento: { t
         <Linha style={{ fontSize: 104, fontWeight: 900, lineHeight: 1, ...laranja }}><T k="presenca.linha1" /></Linha>
         <Linha style={{ fontSize: 150, fontWeight: 900, lineHeight: 1, ...marinho }}><T k="presenca.linha2" /></Linha>
       </div>
+      {/* Moldura de leitura em volta do QR, no estilo da arte. */}
+      {(
+        [
+          { left: 878, top: 332, borderWidth: "10px 0 0 10px", borderRadius: "34px 0 0 0", cor: "#2f8df0" },
+          { left: 1372, top: 332, borderWidth: "10px 10px 0 0", borderRadius: "0 34px 0 0", cor: COR.laranja },
+          { left: 878, top: 818, borderWidth: "0 0 10px 10px", borderRadius: "0 0 0 34px", cor: COR.laranja },
+          { left: 1372, top: 818, borderWidth: "0 10px 10px 0", borderRadius: "0 0 34px 0", cor: "#2fa84f" },
+        ] as const
+      ).map((c) => (
+        <div key={`${c.left}-${c.top}`} style={{ position: "absolute", left: c.left, top: c.top, width: 90, height: 90, borderStyle: "solid", borderColor: c.cor, borderWidth: c.borderWidth, borderRadius: c.borderRadius, filter: "drop-shadow(0 0 10px rgba(255,255,255,.6))" }} />
+      ))}
       <div style={{ position: "absolute", left: 900, top: 350, width: 540, height: 540, borderRadius: 40, background: "#fff", boxShadow: "0 30px 60px rgba(7,29,64,.28)", display: "flex", alignItems: "center", justifyContent: "center", border: `10px solid ${COR.azul}` }}>
         {qr ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -403,8 +414,11 @@ function Presenca({ evento, pontos, qr, semPermissao, presentes }: { evento: { t
           </div>
         )}
       </div>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/reuniao/mao-celular.webp" alt="" style={{ position: "absolute", left: 1475, top: 470, width: 420 }} />
+      {/* Só a mão com o celular (sem a moldura da arte), espelhada para apontar para o QR. */}
+      <div style={{ position: "absolute", left: 1468, top: 400, width: 385, height: 525, overflow: "hidden", transform: "scaleX(-1)" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/reuniao/mao-celular.webp" alt="" style={{ position: "absolute", left: 0, top: 0, width: 700, maxWidth: "none" }} />
+      </div>
       {/* Ao vivo: sobe a cada presença registrada (só na apresentação, não no PDF). */}
       {typeof presentes === "number" ? (
         <div style={{ position: "absolute", left: 300, top: 640, width: 520, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
