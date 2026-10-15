@@ -43,3 +43,12 @@ test("controle remoto: estado limpo e comandos em ordem", () => {
   assert.deepEqual(e?.acao, { rotulo: "Sortear", desabilitado: false });
   assert.deepEqual(comandosDepois([{ seq: 3, comando: "proximo" }, { seq: 1, comando: "anterior" }, { seq: 2, comando: "acao" }], 1).map((c) => c.seq), [2, 3]);
 });
+
+test("PowerPoint: negrito vira trechos", async () => {
+  const { trechosComNegrito } = await import("../src/lib/pptxReuniao");
+  assert.deepEqual(trechosComNegrito("Treino **mínimo** de 5 km"), [
+    { texto: "Treino ", negrito: false },
+    { texto: "mínimo", negrito: true },
+    { texto: " de 5 km", negrito: false },
+  ]);
+});
