@@ -7,13 +7,102 @@ import { cn } from "@/lib/cn";
 import { IMAGEM_SLIDE_LADO } from "@/lib/fotoRegras";
 import { reduzirImagem } from "@/lib/fotos";
 import { enviarImagemSlide, guardarImagemNoCache } from "@/lib/reuniaoCliente";
-import { novoSlideLivre, TITULO_SECAO, type ReuniaoResultadosDoc, type SecaoReuniao, type SlideLivre } from "@/lib/reuniaoResultados";
+import { CAMPOS_DE_TEXTO, novoSlideLivre, TEXTOS_PADRAO, TITULO_SECAO, type ReuniaoResultadosDoc, type SecaoReuniao, type SlideLivre } from "@/lib/reuniaoResultados";
 import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
 import { Switch } from "@/components/ui/Switch";
 
-type Roteiro = Pick<ReuniaoResultadosDoc, "secoes" | "livres">;
+type Roteiro = Pick<ReuniaoResultadosDoc, "secoes" | "livres"> & Partial<Pick<ReuniaoResultadosDoc, "textos" | "tempos" | "contagem">>;
+
+/** Minutos planejados para a seção (a tela do apresentador avisa quando passa). */
+function TempoPlanejado({ minutos, onChange }: { minutos?: number; onChange: (m: number | null) => void }) {
+  const id = useId();
+  return (
+    <div className="flex items-center gap-2">
+      <label htmlFor={id} className="text-sm font-medium text-text">
+        Tempo planejado
+      </label>
+      <input
+        id={id}
+        type="number"
+        inputMode="decimal"
+        min={0}
+        max={180}
+        step={0.5}
+        value={minutos ?? ""}
+        placeholder="—"
+        onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
+        className="h-9 w-20 rounded-[var(--radius-sm)] border border-border bg-bg px-2 text-sm tabular-nums text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+      />
+      <span className="text-sm text-text-light">min</span>
+    </div>
+  );
+}
+
+/** Seção automática aberta: textos fixos do slide e, na contagem, os minutos. */
+function EditorSecao({
+  secao,
+  roteiro,
+  onChange,
+}: {
+  secao: SecaoReuniao;
+  roteiro: Roteiro;
+  onChange: (r: Partial<Roteiro>) => void;
+}) {
+  const campos = secao.tipo === "livre" ? [] : (CAMPOS_DE_TEXTO[secao.tipo] ?? []);
+  const textos = roteiro.textos ?? {};
+  const mudarTexto = (chave: string, valor: string) => {
+    const novo = { ...textos };
+    if (valor.trim()) novo[chave] = valor;
+    else delete novo[chave];
+    onChange({ textos: novo });
+  };
+  return (
+    <div className="flex flex-col gap-3 border-t border-border-subtle px-3 pb-3 pt-3">
+      {campos.map((c) => (
+        <TextField
+          key={c.chave}
+          label={c.rotulo}
+          value={textos[c.chave] ?? ""}
+          placeholder={TEXTOS_PADRAO[c.chave]}
+          maxLength={80}
+          onChange={(e) => mudarTexto(c.chave, e.target.value)}
+        />
+      ))}
+      {secao.tipo === "contagem" ? (
+        <div className="flex items-center gap-2">
+          <label htmlFor={`contagem-${secao.id}`} className="text-sm font-medium text-text">
+            Contar
+          </label>
+          <input
+            id={`contagem-${secao.id}`}
+            type="number"
+            min={1}
+            max={60}
+            value={roteiro.contagem?.minutos ?? 5}
+            onChange={(e) => onChange({ contagem: { minutos: Math.min(60, Math.max(1, Number(e.target.value) || 5)) } })}
+            className="h-9 w-20 rounded-[var(--radius-sm)] border border-border bg-bg px-2 text-sm tabular-nums text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+          />
+          <span className="text-sm text-text-light">min, ou até o horário da reunião da agenda</span>
+        </div>
+      ) : null}
+      {campos.some((c) => textos[c.chave]) ? (
+        <button type="button" onClick={() => onChange({ textos: Object.fromEntries(Object.entries(textos).filter(([k]) => !campos.some((c) => c.chave === k))) })} className="self-start text-xs font-semibold text-text-light hover:text-text">
+          Voltar aos textos padrão
+        </button>
+      ) : null}
+      {secao.tipo !== "contagem" ? <TempoPlanejado minutos={roteiro.tempos?.[secao.id]} onChange={(m) => onChange({ tempos: tempoNovo(roteiro.tempos, secao.id, m) })} /> : null}
+    </div>
+  );
+}
+
+function tempoNovo(tempos: Record<string, number> | undefined, id: string, m: number | null) {
+  const novo = { ...(tempos ?? {}) };
+  if (m && m > 0) novo[id] = Math.min(180, m);
+  else delete novo[id];
+  return novo;
+}
 
 function EditorLivre({
   livre,
@@ -160,7 +249,7 @@ export function EditorRoteiro({
 }: {
   roteiro: Roteiro;
   imagens: Record<string, string>;
-  onChange: (r: Roteiro) => void;
+  onChange: (r: Partial<Roteiro>) => void;
   /** Tocar numa seção mostra os slides dela na prévia. */
   onIrPara?: (secaoId: string) => void;
 }) {
@@ -218,7 +307,7 @@ export function EditorRoteiro({
             ? [livre.sobretitulo, livre.titulo].filter(Boolean).join(" ") || "Slide livre"
             : TITULO_SECAO[s.tipo as Exclude<typeof s.tipo, "livre">].titulo;
           const dica = livre ? (livre.layout === "divisoria" ? "Divisória · escrito pelo comitê" : "Conteúdo · escrito pelo comitê") : TITULO_SECAO[s.tipo as Exclude<typeof s.tipo, "livre">].dica;
-          const expandido = aberto === s.id && !!livre;
+          const expandido = aberto === s.id;
           return (
             <li key={s.id} className={cn("rounded-[var(--radius)] border bg-bg-card", s.ativo ? "border-border" : "border-dashed border-border opacity-60")}>
               <div className="flex items-center gap-1 pl-2">
@@ -233,18 +322,19 @@ export function EditorRoteiro({
                 <button
                   type="button"
                   onClick={() => {
-                    if (livre) setAberto(expandido ? null : s.id);
+                    setAberto(expandido ? null : s.id);
                     if (s.ativo) onIrPara?.(s.id);
                   }}
                   className="flex min-h-14 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] px-2 text-left hover:bg-bg-inset/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  aria-expanded={livre ? expandido : undefined}
+                  aria-expanded={expandido}
                   title={s.ativo ? "Mostrar na prévia" : undefined}
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold text-text">{titulo}</span>
                     <span className="block truncate text-xs text-text-light">{dica}</span>
                   </span>
-                  {livre ? <ChevronDown className={cn("size-4 shrink-0 text-text-muted transition-transform", expandido && "rotate-180")} aria-hidden="true" /> : null}
+                  {roteiro.tempos?.[s.id] ? <span className="shrink-0 text-xs tabular-nums text-text-muted">{String(roteiro.tempos[s.id]).replace(".", ",")} min</span> : null}
+                  <ChevronDown className={cn("size-4 shrink-0 text-text-muted transition-transform", expandido && "rotate-180")} aria-hidden="true" />
                 </button>
                 {livre ? (
                   <button type="button" onClick={() => duplicar(s.id)} aria-label={`Duplicar ${titulo}`} title="Duplicar" className="flex size-9 items-center justify-center rounded text-text-muted hover:bg-bg-inset hover:text-text">
@@ -259,7 +349,14 @@ export function EditorRoteiro({
                 <Switch ativo={s.ativo} onChange={(ativo) => atualizarSecao(s.id, { ativo })} rotulo={`Mostrar ${titulo}`} />
               </div>
               {expandido && livre ? (
-                <EditorLivre livre={livre} imagem={livre.imagemId ? imagens[livre.imagemId] : undefined} onChange={atualizarLivre} />
+                <>
+                  <EditorLivre livre={livre} imagem={livre.imagemId ? imagens[livre.imagemId] : undefined} onChange={atualizarLivre} />
+                  <div className="px-3 pb-3">
+                    <TempoPlanejado minutos={roteiro.tempos?.[s.id]} onChange={(m) => onChange({ tempos: tempoNovo(roteiro.tempos, s.id, m) })} />
+                  </div>
+                </>
+              ) : expandido ? (
+                <EditorSecao secao={s} roteiro={roteiro} onChange={onChange} />
               ) : null}
             </li>
           );

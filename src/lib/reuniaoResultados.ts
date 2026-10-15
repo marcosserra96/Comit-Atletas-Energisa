@@ -27,6 +27,7 @@ export type TipoSecao =
   | "app"
   | "sorteio"
   | "obrigado"
+  | "contagem"
   | "livre";
 
 export interface SecaoReuniao {
@@ -173,6 +174,12 @@ export interface ReuniaoResultadosDoc {
   notas?: Record<string, string>;
   /** Aparência da apresentação inteira: fonte, transição e animações. */
   tema?: Partial<TemaReuniao>;
+  /** Textos trocados nos slides automáticos (chave de TEXTOS_PADRAO → texto). */
+  textos?: Record<string, string>;
+  /** Minutos planejados por seção do roteiro (id da seção → minutos). */
+  tempos?: Record<string, number>;
+  /** Contagem regressiva antes de começar. */
+  contagem?: { minutos: number };
   atualizadoEm?: string | null;
   atualizadoPorNome?: string | null;
 }
@@ -190,7 +197,112 @@ export const TITULO_SECAO: Record<Exclude<TipoSecao, "livre">, { titulo: string;
   app: { titulo: "Aplicativo", dica: "QR code para instalar o app" },
   sorteio: { titulo: "Sorteio", dica: "Sorteio ao vivo entre quem registrou presença" },
   obrigado: { titulo: "Obrigado", dica: "Encerramento" },
+  contagem: { titulo: "Contagem regressiva", dica: "“Começamos em 5:00” no telão, com o QR de presença" },
 };
+
+/** Textos fixos dos slides automáticos que o comitê pode trocar. */
+export const TEXTOS_PADRAO = {
+  "capa.titulo": "Resultados",
+  "presenca.linha1": "Registre sua",
+  "presenca.linha2": "Presença",
+  "novos.sobretitulo": "Boas-vindas",
+  "novos.titulo": "Novos Atletas",
+  "novos.cabecalho": "Novos atletas",
+  "aniversariantes.titulo": "Aniversariantes",
+  "regras.titulo": "Regras do programa",
+  "resultados.sobretitulo": "Resultados",
+  "resultados.titulo": "Resultados totais",
+  "destaques.titulo": "Destaques do período",
+  "premiacao.sobretitulo": "Premiação",
+  "premiacao.podio": "Time de",
+  "agenda.sobretitulo": "Agenda",
+  "agenda.titulo": "Programação",
+  "app.linha1": "Aplicativo",
+  "app.linha2": "Atletas Energisa",
+  "sorteio.titulo": "Sorteio",
+  "obrigado.linha1": "Obrigado!",
+  "obrigado.linha2": "BORA TREINAR!",
+  "contagem.linha1": "Começamos em",
+} as const;
+export type ChaveTexto = keyof typeof TEXTOS_PADRAO;
+
+/** Campos de texto editáveis de cada seção, na ordem em que aparecem. */
+export const CAMPOS_DE_TEXTO: Partial<Record<TipoSecao, { chave: ChaveTexto; rotulo: string }[]>> = {
+  capa: [{ chave: "capa.titulo", rotulo: "Título" }],
+  presenca: [
+    { chave: "presenca.linha1", rotulo: "Linha de cima" },
+    { chave: "presenca.linha2", rotulo: "Linha de baixo" },
+  ],
+  novos: [
+    { chave: "novos.sobretitulo", rotulo: "Abertura, linha de cima" },
+    { chave: "novos.titulo", rotulo: "Abertura, título" },
+    { chave: "novos.cabecalho", rotulo: "Título dos cartões" },
+  ],
+  aniversariantes: [{ chave: "aniversariantes.titulo", rotulo: "Título" }],
+  regras: [{ chave: "regras.titulo", rotulo: "Título" }],
+  resultados: [
+    { chave: "resultados.sobretitulo", rotulo: "Abertura, linha de cima" },
+    { chave: "resultados.titulo", rotulo: "Título dos números" },
+  ],
+  destaques: [{ chave: "destaques.titulo", rotulo: "Título" }],
+  premiacao: [
+    { chave: "premiacao.sobretitulo", rotulo: "Abertura, linha de cima" },
+    { chave: "premiacao.podio", rotulo: "Pódio, linha de cima" },
+  ],
+  agenda: [
+    { chave: "agenda.sobretitulo", rotulo: "Abertura, linha de cima" },
+    { chave: "agenda.titulo", rotulo: "Título da programação" },
+  ],
+  app: [
+    { chave: "app.linha1", rotulo: "Linha de cima" },
+    { chave: "app.linha2", rotulo: "Linha de baixo" },
+  ],
+  sorteio: [{ chave: "sorteio.titulo", rotulo: "Título" }],
+  obrigado: [
+    { chave: "obrigado.linha1", rotulo: "Linha de cima" },
+    { chave: "obrigado.linha2", rotulo: "Linha de baixo" },
+  ],
+  contagem: [{ chave: "contagem.linha1", rotulo: "Texto acima do relógio" }],
+};
+
+/** Texto do slide: o que o comitê escreveu ou o padrão. */
+export function textoDoSlide(textos: Record<string, string> | undefined, chave: ChaveTexto) {
+  const t = textos?.[chave]?.trim();
+  return t ? t : TEXTOS_PADRAO[chave];
+}
+
+/**
+ * Nova reunião a partir de outra: mesmo roteiro, slides escritos, textos,
+ * aparência, tempos e anotações. Período, reunião da agenda e ajustes de
+ * novos atletas recomeçam (são de cada reunião).
+ */
+export function duplicarReuniao(
+  origem: Omit<ReuniaoResultadosDoc, "id" | "atualizadoEm" | "atualizadoPorNome"> & Partial<Pick<ReuniaoResultadosDoc, "id" | "atualizadoEm" | "atualizadoPorNome">>,
+  periodo: { nome: string; inicio: string; fim: string },
+  eventoId: string | null,
+): Omit<ReuniaoResultadosDoc, "id"> {
+  // Ids novos para os slides livres: a cópia é independente da original.
+  const mapa = new Map(origem.livres.map((l) => [l.id, novoId("l")]));
+  const novoIdSecao = (s: SecaoReuniao) => (s.tipo === "livre" ? mapa.get(s.id) ?? novoId("l") : novoId("s"));
+  const secoes = origem.secoes.map((s) => ({ ...s, id: novoIdSecao(s) }));
+  const deParaSecao = new Map(origem.secoes.map((s, i) => [s.id, secoes[i].id]));
+  const remapear = <T,>(r: Record<string, T> | undefined) =>
+    Object.fromEntries(Object.entries(r ?? {}).flatMap(([k, v]) => (deParaSecao.has(k) ? [[deParaSecao.get(k)!, v]] : [])));
+  return {
+    titulo: `Reunião de resultados · ${periodo.nome}`,
+    periodo,
+    eventoId,
+    secoes,
+    livres: origem.livres.map((l) => ({ ...l, id: mapa.get(l.id)! })),
+    novosIncluir: [],
+    novosExcluir: [],
+    tema: origem.tema,
+    textos: origem.textos,
+    tempos: remapear(origem.tempos),
+    contagem: origem.contagem,
+    notas: remapear(origem.notas),
+  };
+}
 
 function novoId(prefixo: string) {
   return `${prefixo}-${Math.random().toString(36).slice(2, 9)}`;
@@ -215,6 +327,7 @@ export function reuniaoPadrao(periodo: { nome: string; inicio: string; fim: stri
     periodo,
     eventoId,
     secoes: [
+      { ...s("contagem"), ativo: false },
       s("capa"),
       s("presenca"),
       s("livre", diretoria.id),
@@ -252,6 +365,8 @@ export function completarSecoes<T extends Pick<ReuniaoResultadosDoc, "secoes">>(
   garantir("destaques", "resultados");
   // Sorteio entra desligado: só faz sentido quando há brinde.
   garantir("sorteio", "obrigado", "antes", false);
+  // Contagem regressiva entra desligada, antes da capa.
+  if (!secoes.some((x) => x.tipo === "contagem")) secoes.unshift({ id: novoId("s"), tipo: "contagem", ativo: false });
   return secoes.length === reuniao.secoes.length ? reuniao : { ...reuniao, secoes };
 }
 
@@ -268,7 +383,7 @@ export function validarReuniao(entrada: unknown): { erro: string } | { dados: Om
   if (!data.test(periodo.inicio ?? "") || !data.test(periodo.fim ?? "") || periodo.fim < periodo.inicio) {
     return { erro: "Escolha o período dos resultados." };
   }
-  const tipos = new Set<TipoSecao>(["capa", "presenca", "novos", "aniversariantes", "regras", "resultados", "destaques", "premiacao", "agenda", "app", "sorteio", "obrigado", "livre"]);
+  const tipos = new Set<TipoSecao>(["capa", "presenca", "novos", "aniversariantes", "regras", "resultados", "destaques", "premiacao", "agenda", "app", "sorteio", "obrigado", "contagem", "livre"]);
   const livres = (Array.isArray(e.livres) ? e.livres : []).slice(0, 30).map((l) => ({
     id: texto(l?.id, 40) || novoId("l"),
     layout: l?.layout === "divisoria" ? ("divisoria" as const) : ("conteudo" as const),
@@ -299,6 +414,18 @@ export function validarReuniao(entrada: unknown): { erro: string } | { dados: Om
       novosIncluir: ids(e.novosIncluir),
       novosExcluir: ids(e.novosExcluir),
       tema: temaDaReuniao(e.tema && typeof e.tema === "object" ? e.tema : undefined),
+      textos: Object.fromEntries(
+        Object.entries(e.textos && typeof e.textos === "object" ? e.textos : {})
+          .filter(([k, v]) => k in TEXTOS_PADRAO && typeof v === "string" && v.trim())
+          .map(([k, v]) => [k, (v as string).trim().slice(0, 80)]),
+      ),
+      tempos: Object.fromEntries(
+        Object.entries(e.tempos && typeof e.tempos === "object" ? e.tempos : {})
+          .filter(([k, v]) => k.length < 60 && typeof v === "number" && Number.isFinite(v) && v > 0)
+          .slice(0, 60)
+          .map(([k, v]) => [k, Math.min(180, Math.round((v as number) * 2) / 2)]),
+      ),
+      contagem: { minutos: Math.min(60, Math.max(1, Math.round(Number(e.contagem?.minutos) || 5))) },
       notas: Object.fromEntries(
         Object.entries(e.notas && typeof e.notas === "object" ? e.notas : {})
           .filter(([k, v]) => typeof v === "string" && v.trim() && k.length < 60)
@@ -505,6 +632,14 @@ export type FundoDivisoria = "divisoria" | "resultados" | "premiacao" | "agenda"
 
 export type SlideDef = (
   | { chave: string; tipo: "capa"; ano: string; meses: string }
+  | {
+      chave: string;
+      tipo: "contagem";
+      minutos: number;
+      /** Início da reunião da agenda (ISO, horário de Brasília), quando houver. */
+      inicioEm: string | null;
+      evento: { titulo: string; horario: string } | null;
+    }
   | { chave: string; tipo: "presenca"; evento: { id: string; titulo: string; horario: string } | null; pontos: number | null }
   | { chave: string; tipo: "divisoria"; sobretitulo: string; titulo: string; subtitulo: string; fundo: FundoDivisoria; estilo?: EstiloLivre }
   | { chave: string; tipo: "novos"; atletas: NovoAtletaSlide[]; pagina: number; paginas: number }
@@ -683,14 +818,14 @@ export function destaquesDoPeriodo(params: {
 
 /** Junta a configuração da reunião com os números e devolve os slides, em ordem. */
 export function montarRoteiro(params: {
-  reuniao: Pick<ReuniaoResultadosDoc, "periodo" | "secoes" | "livres">;
+  reuniao: Pick<ReuniaoResultadosDoc, "periodo" | "secoes" | "livres"> & Partial<Pick<ReuniaoResultadosDoc, "textos" | "contagem">>;
   corrida: ResultadoEquipe;
   bicicleta: ResultadoEquipe;
   novos: NovoAtletaSlide[];
   regras: LinhaRegra[];
   periodos: PeriodoApuracao[];
   agenda: ColunaAgenda[];
-  evento: { id: string; titulo: string; horario: string } | null;
+  evento: { id: string; titulo: string; horario: string; inicioEm?: string | null } | null;
   pontosReuniao: number | null;
   hoje: string;
   anterior?: { nome: string; corrida: ResultadoEquipe["totais"]; bicicleta: ResultadoEquipe["totais"] } | null;
@@ -705,12 +840,22 @@ export function montarRoteiro(params: {
   const rotuloPeriodo = `${periodo.nome} · ${intervalo.replace(/[()]/g, "")} ${ano}`;
   const livres = new Map(reuniao.livres.map((l) => [l.id, l]));
   const slides: SlideDef[] = [];
+  const t = (chave: ChaveTexto) => textoDoSlide(reuniao.textos, chave);
 
   for (const secao of reuniao.secoes) {
     if (!secao.ativo) continue;
     const k = secao.id;
     const inicio = slides.length;
     switch (secao.tipo) {
+      case "contagem":
+        slides.push({
+          chave: k,
+          tipo: "contagem",
+          minutos: reuniao.contagem?.minutos ?? 5,
+          inicioEm: params.evento?.inicioEm ?? null,
+          evento: params.evento ? { titulo: params.evento.titulo, horario: params.evento.horario } : null,
+        });
+        break;
       case "capa":
         slides.push({ chave: k, tipo: "capa", ano, meses: mesesDoPeriodo(periodo.inicio, periodo.fim) });
         break;
@@ -729,7 +874,7 @@ export function montarRoteiro(params: {
       }
       case "novos": {
         if (params.novos.length === 0) break; // ninguém novo: a seção some
-        slides.push({ chave: `${k}-div`, tipo: "divisoria", sobretitulo: "Boas-vindas", titulo: "Novos Atletas", subtitulo: "", fundo: "divisoria" });
+        slides.push({ chave: `${k}-div`, tipo: "divisoria", sobretitulo: t("novos.sobretitulo"), titulo: t("novos.titulo"), subtitulo: "", fundo: "divisoria" });
         const paginas = Math.ceil(params.novos.length / NOVOS_POR_SLIDE);
         for (let p = 0; p < paginas; p++) {
           slides.push({
@@ -746,11 +891,11 @@ export function montarRoteiro(params: {
         slides.push({ chave: k, tipo: "regras", regras: params.regras, periodos: params.periodos });
         break;
       case "resultados":
-        slides.push({ chave: `${k}-div`, tipo: "divisoria", sobretitulo: "Resultados", titulo: periodo.nome, subtitulo: intervalo, fundo: "resultados" });
+        slides.push({ chave: `${k}-div`, tipo: "divisoria", sobretitulo: t("resultados.sobretitulo"), titulo: periodo.nome, subtitulo: intervalo, fundo: "resultados" });
         slides.push({
           chave: k,
           tipo: "totais",
-          titulo: "Resultados totais",
+          titulo: t("resultados.titulo"),
           periodo: rotuloPeriodo,
           corrida: params.corrida.totais,
           bicicleta: params.bicicleta.totais,
@@ -778,7 +923,7 @@ export function montarRoteiro(params: {
         break;
       }
       case "premiacao": {
-        slides.push({ chave: `${k}-div`, tipo: "divisoria", sobretitulo: "Premiação", titulo: periodo.nome, subtitulo: intervalo, fundo: "premiacao" });
+        slides.push({ chave: `${k}-div`, tipo: "divisoria", sobretitulo: t("premiacao.sobretitulo"), titulo: periodo.nome, subtitulo: intervalo, fundo: "premiacao" });
         for (const equipe of [params.corrida, params.bicicleta]) {
           if (equipe.ranking.length === 0) continue;
           if (equipe.podio.length > 0) slides.push({ chave: `${k}-${equipe.modalidade}-podio`, tipo: "podio", modalidade: equipe.modalidade, periodo: rotuloPeriodo, podio: equipe.podio });
@@ -799,7 +944,7 @@ export function montarRoteiro(params: {
         break;
       }
       case "agenda":
-        slides.push({ chave: `${k}-div`, tipo: "divisoria", sobretitulo: "Agenda", titulo: ano, subtitulo: "", fundo: "agenda" });
+        slides.push({ chave: `${k}-div`, tipo: "divisoria", sobretitulo: t("agenda.sobretitulo"), titulo: ano, subtitulo: "", fundo: "agenda" });
         if (params.agenda.length > 0) slides.push({ chave: k, tipo: "agenda", ano, colunas: params.agenda });
         break;
       case "app":

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { collection, doc, getDoc, getDocs, onSnapshot } from "firebase/firestore";
-import { AlertTriangle, CalendarRange, CheckCircle2, CloudOff, Download, Info, Loader2, MonitorPlay, Plus, Save, Search, Send, Star, Trash2, UserPlus, X } from "lucide-react";
+import { AlertTriangle, CalendarRange, CheckCircle2, CloudOff, Download, Info, Loader2, MonitorPlay, Plus, Save, Copy, Search, Send, Star, Trash2, UserPlus, X } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
@@ -53,6 +53,8 @@ import {
   verificarAntesDeApresentar,
   resumoParaAtletas,
   temaDaReuniao,
+  nomeDaSecao,
+  duplicarReuniao,
   FATOR_VELOCIDADE,
   passosDoSlide,
   type ReuniaoResultadosDoc,
@@ -278,6 +280,15 @@ export default function ReuniaoResultadosPage() {
     setAlterado(true);
   }, [dados.calendario, dados.eventos, hoje]);
 
+  // Próxima reunião a partir desta: roteiro, slides escritos, textos e aparência iguais.
+  function duplicar() {
+    if (!rascunho || !dados.calendario || !dados.eventos) return;
+    setRascunho(duplicarReuniao(rascunho, periodoPadrao(dados.calendario, hoje), reuniaoDaAgenda(dados.eventos, hoje)?.id ?? null));
+    versao.current += 1;
+    setAlterado(true);
+    show("success", "Cópia criada com o período e a reunião da agenda atuais. Ela salva sozinha.");
+  }
+
   // Sem nada aberto: a última reunião salva ou, sem nenhuma, uma nova pelo roteiro padrão.
   const inicial = useMemo<Rascunho | null>(() => {
     if (salvas === null || !dados.calendario || !dados.eventos) return null;
@@ -295,7 +306,8 @@ export default function ReuniaoResultadosPage() {
     setAlterado(true);
   }
 
-  const evento = useMemo(() => dados.eventos?.find((e) => e.id === rascunho?.eventoId) ?? null, [dados.eventos, rascunho?.eventoId]);
+  const eventoId = rascunho?.eventoId;
+  const evento = useMemo(() => dados.eventos?.find((e) => e.id === eventoId) ?? null, [dados.eventos, eventoId]);
 
   const calculo = useMemo(() => {
     if (!dados.pronto || !rascunho) return null;
@@ -339,7 +351,15 @@ export default function ReuniaoResultadosPage() {
       regras: regrasParaSlide(dados.regras!),
       periodos: periodosDeApuracao(dados.calendario!.trimestres, periodo.fim.slice(0, 4), hoje),
       agenda: agendaDoAno(dados.eventos!, periodo.fim.slice(0, 4), hoje),
-      evento: evento ? { id: evento.id, titulo: evento.titulo, horario: `${formatShortDate(evento.data)} · ${horarioDoEvento(evento)}` } : null,
+      evento: evento
+        ? {
+            id: evento.id,
+            titulo: evento.titulo,
+            horario: `${formatShortDate(evento.data)} · ${horarioDoEvento(evento)}`,
+            // Horário de Brasília (o portal inteiro trabalha nele).
+            inicioEm: evento.horaInicio ? `${evento.data}T${evento.horaInicio}:00-03:00` : null,
+          }
+        : null,
       pontosReuniao,
       hoje,
       anterior: temAnterior ? { nome: ant.nome, corrida: anterior.corrida.totais, bicicleta: anterior.bicicleta.totais } : null,
@@ -370,6 +390,7 @@ export default function ReuniaoResultadosPage() {
   const qrApp = useQrDataUrl(typeof window !== "undefined" ? `${window.location.origin}/instalar` : "", 800) || null;
 
   const tema = useMemo(() => temaDaReuniao(rascunho?.tema), [rascunho?.tema]);
+  const textos = rascunho?.textos;
   const renderSlide = useCallback(
     (i: number, paraPdf = false, aoVivo?: { passo?: number; aoVivo?: boolean }) =>
       calculo?.slides[i] ? (
@@ -386,9 +407,11 @@ export default function ReuniaoResultadosPage() {
           tema={tema}
           passo={aoVivo && tema.revelarPodio ? aoVivo.passo : undefined}
           animar={!!aoVivo?.aoVivo && tema.animacoes}
+          aoVivo={!!aoVivo?.aoVivo}
+          textos={textos}
         />
       ) : null,
-    [calculo, fotos, imagens, qrPresenca, semPermissao, qrApp, urlApp, presentes, sorteio.estado, tema],
+    [calculo, fotos, imagens, qrPresenca, semPermissao, qrApp, urlApp, presentes, sorteio.estado, tema, textos],
   );
   const renderNaApresentacao = useCallback((i: number, opcoes?: { passo?: number; aoVivo?: boolean }) => renderSlide(i, false, opcoes ?? {}), [renderSlide]);
   const passosNaApresentacao = useCallback((i: number) => passosDoSlide(calculo?.slides[i], tema), [calculo, tema]);
@@ -490,6 +513,17 @@ export default function ReuniaoResultadosPage() {
     if (!secaoId) return;
     atualizar({ notas: { ...(rascunhoAtual.current?.notas ?? {}), [secaoId]: texto } });
   }
+  /** Seção do roteiro do slide, para o relógio "nesta parte" da tela do apresentador. */
+  function secaoDoSlide(i: number) {
+    const secaoId = calculo?.slides[i]?.secaoId;
+    const sec = secaoId ? rascunho?.secoes.find((x) => x.id === secaoId) : undefined;
+    if (!sec || !rascunho) return null;
+    return { id: sec.id, nome: nomeDaSecao(sec, rascunho.livres.find((l) => l.id === sec.id)), minutos: rascunho.tempos?.[sec.id] };
+  }
+  const minutosPlanejados = rascunho
+    ? rascunho.secoes.filter((x) => x.ativo).reduce((soma, x) => soma + (rascunho.tempos?.[x.id] ?? 0), 0)
+    : 0;
+
   function acaoDoSlide(i: number): AcaoDoSlide | null {
     if (calculo?.slides[i]?.tipo !== "sorteio") return null;
     return {
@@ -581,6 +615,12 @@ export default function ReuniaoResultadosPage() {
                   <Plus className="size-4" aria-hidden="true" />
                   Nova
                 </Button>
+                {rascunho?.id ? (
+                  <Button size="sm" variant="ghost" onClick={duplicar} disabled={!dados.calendario} title="Nova reunião com o mesmo roteiro, slides escritos, textos e aparência">
+                    <Copy className="size-4" aria-hidden="true" />
+                    Duplicar
+                  </Button>
+                ) : null}
                 {rascunho?.id ? (
                   <Button size="sm" variant="ghost" onClick={() => setApagando(true)} aria-label="Apagar esta reunião">
                     <Trash2 className="size-4" aria-hidden="true" />
@@ -754,6 +794,8 @@ export default function ReuniaoResultadosPage() {
           passos={passosNaApresentacao}
           transicao={tema.transicao}
           velocidade={FATOR_VELOCIDADE[tema.velocidade]}
+          secao={secaoDoSlide}
+          minutosPlanejados={minutosPlanejados}
           onFechar={() => setApresentando(null)}
           rotulo={(i) => calculo?.slides[i]?.rotulo ?? ""}
           nota={notaDoSlide}

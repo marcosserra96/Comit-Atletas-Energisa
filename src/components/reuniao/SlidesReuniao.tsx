@@ -20,11 +20,11 @@ import "@fontsource/dm-sans/latin-900.css";
 import "@fontsource/merriweather/latin-400.css";
 import "@fontsource/merriweather/latin-700.css";
 import "@fontsource/merriweather/latin-900.css";
-import { createContext, useContext, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { iniciais } from "@/lib/fotoRegras";
 import { formatDistancia, formatPontos } from "@/lib/format";
 import { modalidadeLabel } from "@/lib/labels";
-import { ESCALA_TAMANHO, FONTES_SLIDE, fundoEscuro, type EstiloLivre, type TemaReuniao, type FundoDivisoria, type LinhaResultado, type SlideDef } from "@/lib/reuniaoResultados";
+import { ESCALA_TAMANHO, FONTES_SLIDE, fundoEscuro, textoDoSlide, type ChaveTexto, type EstiloLivre, type TemaReuniao, type FundoDivisoria, type LinhaResultado, type SlideDef } from "@/lib/reuniaoResultados";
 
 /** Tamanho nativo de cada slide; a tela escala para caber. */
 export const SLIDE_L = 1920;
@@ -115,7 +115,12 @@ function Linha({
 }
 
 /** Fonte da apresentação e se os elementos entram animados (só ao vivo). */
-const ContextoSlide = createContext<{ familia?: string; animar: boolean }>({ animar: false });
+const ContextoSlide = createContext<{ familia?: string; animar: boolean; textos?: Record<string, string> }>({ animar: false });
+
+/** Texto fixo do slide, trocável pelo comitê no roteiro. */
+function T({ k }: { k: ChaveTexto }) {
+  return <>{textoDoSlide(useContext(ContextoSlide).textos, k)}</>;
+}
 
 function Base({ fundo, children, familia, corSolida }: { fundo: keyof typeof FUNDO; children: ReactNode; familia?: string; corSolida?: string }) {
   const ctx = useContext(ContextoSlide);
@@ -216,13 +221,62 @@ const juntarExtra = (...partes: (string | undefined)[]) => partes.filter(Boolean
 
 // ---------------- slides ----------------
 
+/** Relógio da contagem: até o horário da reunião, ou N minutos a partir de quando aparece. */
+function useRestante(alvo: number | null) {
+  const [agora, setAgora] = useState(() => Date.now());
+  useEffect(() => {
+    if (alvo === null) return;
+    const t = window.setInterval(() => setAgora(Date.now()), 250);
+    return () => window.clearInterval(t);
+  }, [alvo]);
+  return alvo === null ? null : Math.max(0, alvo - agora);
+}
+
+function Contagem({ minutos, inicioEm, evento, qr, aoVivo }: Extract<SlideDef, { tipo: "contagem" }> & { qr: string | null; aoVivo: boolean }) {
+  // Reunião da agenda começa nas próximas 3 h: conta até ela. Senão, conta os minutos escolhidos.
+  const [alvo] = useState(() => {
+    if (!aoVivo) return null;
+    const inicio = inicioEm ? Date.parse(inicioEm) : NaN;
+    const agora = Date.now();
+    return Number.isFinite(inicio) && inicio > agora && inicio - agora < 3 * 3600_000 ? inicio : agora + minutos * 60_000;
+  });
+  const restante = useRestante(alvo);
+  const ms = restante ?? minutos * 60_000;
+  const mm = Math.floor(ms / 60_000);
+  const ss = Math.floor((ms % 60_000) / 1000);
+  const acabou = restante === 0;
+  return (
+    <Base fundo="divisoria">
+      <div style={{ position: "absolute", left: 700, right: 60, top: 0, bottom: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+        <Linha style={{ fontSize: 96, fontWeight: 900, lineHeight: 1, ...laranja }}>{acabou ? "Vamos começar!" : <T k="contagem.linha1" />}</Linha>
+        <div style={{ marginTop: 10, fontSize: 300, fontWeight: 900, lineHeight: 1, color: COR.navy, fontVariantNumeric: "tabular-nums", textShadow: "0 6px 0 rgba(255,255,255,.7)" }}>
+          {String(mm).padStart(2, "0")}:{String(ss).padStart(2, "0")}
+        </div>
+        {evento ? <Linha style={{ marginTop: 12, fontSize: 36, fontWeight: 700, color: COR.navy }}>{`${evento.titulo} · ${evento.horario}`}</Linha> : null}
+        {qr ? (
+          <div style={{ marginTop: 40, display: "flex", alignItems: "center", gap: 28, padding: "18px 30px 18px 18px", borderRadius: 28, background: "rgba(255,255,255,.95)", boxShadow: "0 18px 40px rgba(7,29,64,.2)" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qr} alt="" style={{ width: 200, height: 200 }} />
+            <div style={{ textAlign: "left", fontSize: 34, fontWeight: 800, color: COR.navy, lineHeight: 1.2 }}>
+              Já chegou?
+              <br />
+              <span style={{ color: COR.laranja }}>Registre sua presença</span>
+            </div>
+          </div>
+        ) : null}
+      </div>
+      <LogoCanto />
+    </Base>
+  );
+}
+
 function Capa({ ano, meses }: { ano: string; meses: string }) {
   return (
     <Base fundo="capa">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/reuniao/logo-atletas.webp" alt="" style={{ position: "absolute", right: 56, top: 40, width: 230 }} />
       <div style={{ position: "absolute", left: 980, top: 250, width: 860, textAlign: "center" }}>
-        <Linha style={{ fontSize: 176, fontWeight: 900, lineHeight: 0.95, color: "#fff", textShadow: "0 8px 30px rgba(0,0,0,.35)" }}>Resultados</Linha>
+        <Linha style={{ fontSize: 176, fontWeight: 900, lineHeight: 0.95, color: "#fff", textShadow: "0 8px 30px rgba(0,0,0,.35)" }}><T k="capa.titulo" /></Linha>
         <Linha
           style={{
             fontSize: 196,
@@ -330,8 +384,8 @@ function Presenca({ evento, pontos, qr, semPermissao, presentes }: { evento: { t
   return (
     <Base fundo="divisoria">
       <div style={{ position: "absolute", left: 700, right: 60, top: 70, textAlign: "center" }}>
-        <Linha style={{ fontSize: 104, fontWeight: 900, lineHeight: 1, ...laranja }}>Registre sua</Linha>
-        <Linha style={{ fontSize: 150, fontWeight: 900, lineHeight: 1, ...marinho }}>Presença</Linha>
+        <Linha style={{ fontSize: 104, fontWeight: 900, lineHeight: 1, ...laranja }}><T k="presenca.linha1" /></Linha>
+        <Linha style={{ fontSize: 150, fontWeight: 900, lineHeight: 1, ...marinho }}><T k="presenca.linha2" /></Linha>
       </div>
       <div style={{ position: "absolute", left: 900, top: 350, width: 540, height: 540, borderRadius: 40, background: "#fff", boxShadow: "0 30px 60px rgba(7,29,64,.28)", display: "flex", alignItems: "center", justifyContent: "center", border: `10px solid ${COR.azul}` }}>
         {qr ? (
@@ -381,7 +435,7 @@ function Novos({ atletas, fotos, pagina, paginas }: { atletas: { id: string; nom
   const card = colunas <= 4 ? 330 : 300;
   return (
     <Base fundo="conteudo">
-      <TituloConteudo extra={juntarExtra(`${atletas.length} ${atletas.length === 1 ? "atleta" : "atletas"}`, paginas > 1 ? `${pagina}/${paginas}` : undefined)}>Novos atletas</TituloConteudo>
+      <TituloConteudo extra={juntarExtra(`${atletas.length} ${atletas.length === 1 ? "atleta" : "atletas"}`, paginas > 1 ? `${pagina}/${paginas}` : undefined)}><T k="novos.cabecalho" /></TituloConteudo>
       <div style={{ position: "absolute", left: 72, right: 72, top: 170, bottom: 130, display: "flex", flexWrap: "wrap", justifyContent: "center", alignContent: "center", gap: 36 }}>
         {atletas.map((a) => (
           <div key={a.id} style={{ width: card, borderRadius: 22, overflow: "hidden", background: "#fff", boxShadow: "0 18px 40px rgba(7,29,64,.18)", border: `4px solid ${COR.navy}` }}>
@@ -495,7 +549,7 @@ function Regras({ regras, periodos }: Extract<SlideDef, { tipo: "regras" }>) {
   const fonte = regras.length > 6 ? 30 : 36;
   return (
     <Base fundo="conteudo">
-      <TituloConteudo>Regras do programa</TituloConteudo>
+      <TituloConteudo><T k="regras.titulo" /></TituloConteudo>
       <div style={{ position: "absolute", left: 72, right: 72, top: 128, bottom: 120, display: "flex", flexDirection: "column", justifyContent: "center" }}>
         <div style={{ display: "flex", gap: 40, alignItems: "stretch" }}>
           <div style={{ ...cartao, flex: 1, padding: "36px 44px" }}>
@@ -644,7 +698,7 @@ function Podio({ modalidade, podio, fotos, periodo, revelados }: Extract<SlideDe
   return (
     <Base fundo="claro">
       <div style={{ position: "absolute", left: 72, top: 50 }}>
-        <Linha style={{ fontSize: 84, fontWeight: 900, lineHeight: 1, ...laranja }}>Time de</Linha>
+        <Linha style={{ fontSize: 84, fontWeight: 900, lineHeight: 1, ...laranja }}><T k="premiacao.podio" /></Linha>
         <Linha style={{ fontSize: 120, fontWeight: 900, lineHeight: 1, ...marinho }}>{nome}</Linha>
         <div style={{ marginTop: 18, display: "inline-block", padding: "10px 22px", borderRadius: 999, background: "rgba(255,255,255,.9)", border: "2px solid #d6e3f3", fontSize: 24, fontWeight: 700, color: COR.navy }}>{periodo}</div>
       </div>
@@ -799,7 +853,7 @@ function Agenda({ colunas }: Extract<SlideDef, { tipo: "agenda" }>) {
   const alt = Math.min(110, Math.floor(760 / Math.max(max, 1)) - 12);
   return (
     <Base fundo="conteudo">
-      <TituloConteudo>Programação</TituloConteudo>
+      <TituloConteudo><T k="agenda.titulo" /></TituloConteudo>
       <div style={{ position: "absolute", left: 72, right: 72, top: 170, display: "flex", gap: 36 }}>
         {colunas.map((c) => (
           <div key={c.titulo} style={{ flex: 1, minWidth: 0 }}>
@@ -836,8 +890,8 @@ function App({ qr, url }: { qr: string | null; url: string }) {
   return (
     <Base fundo="app">
       <div style={{ position: "absolute", left: 760, right: 60, top: 70, textAlign: "center" }}>
-        <Linha style={{ fontSize: 104, fontWeight: 900, lineHeight: 1, ...laranja }}>Aplicativo</Linha>
-        <Linha style={{ fontSize: 120, fontWeight: 900, lineHeight: 1.02, ...marinho }}>Atletas Energisa</Linha>
+        <Linha style={{ fontSize: 104, fontWeight: 900, lineHeight: 1, ...laranja }}><T k="app.linha1" /></Linha>
+        <Linha style={{ fontSize: 120, fontWeight: 900, lineHeight: 1.02, ...marinho }}><T k="app.linha2" /></Linha>
       </div>
       <div style={{ position: "absolute", left: 1010, top: 360, width: 460, height: 460, borderRadius: 36, background: "#fff", border: `10px solid ${COR.azul}`, boxShadow: "0 30px 60px rgba(7,29,64,.28)", display: "flex", alignItems: "center", justifyContent: "center" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -853,8 +907,8 @@ function Obrigado() {
   return (
     <Base fundo="agenda">
       <div style={{ position: "absolute", left: 760, right: 60, top: 0, bottom: 0, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
-        <Linha style={{ fontSize: 140, fontWeight: 900, lineHeight: 1, ...laranja }}>Obrigado!</Linha>
-        <Linha style={{ fontSize: 150, fontWeight: 900, lineHeight: 1.02, ...marinho }}>BORA TREINAR!</Linha>
+        <Linha style={{ fontSize: 140, fontWeight: 900, lineHeight: 1, ...laranja }}><T k="obrigado.linha1" /></Linha>
+        <Linha style={{ fontSize: 150, fontWeight: 900, lineHeight: 1.02, ...marinho }}><T k="obrigado.linha2" /></Linha>
       </div>
       <LogoCanto />
     </Base>
@@ -865,7 +919,7 @@ function Destaques({ itens, desafios, periodo, fotos }: Extract<SlideDef, { tipo
   const largura = itens.length <= 2 ? 560 : itens.length === 3 ? 500 : 400;
   return (
     <Base fundo="conteudo">
-      <TituloConteudo extra={periodo}>Destaques do período</TituloConteudo>
+      <TituloConteudo extra={periodo}><T k="destaques.titulo" /></TituloConteudo>
       <div style={{ position: "absolute", left: 72, right: 72, top: 175, bottom: desafios.length ? 250 : 130, display: "flex", gap: 32, justifyContent: "center", alignItems: "center" }}>
         {itens.map((d) => (
           <div key={d.id} style={{ ...cartao, width: largura, height: desafios.length ? 600 : 680, border: "none", overflow: "hidden", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
@@ -908,7 +962,7 @@ function Aniversariantes({ atletas, pagina, paginas, fotos }: Extract<SlideDef, 
   return (
     <Base fundo="conteudo">
       <TituloConteudo extra={juntarExtra(`${atletas.length} ${atletas.length === 1 ? "aniversariante" : "aniversariantes"}`, paginas > 1 ? `${pagina}/${paginas}` : undefined)}>
-        Aniversariantes
+        <T k="aniversariantes.titulo" />
       </TituloConteudo>
       <div style={{ position: "absolute", left: 72, right: 72, top: 180, bottom: 140, display: "flex", flexWrap: "wrap", justifyContent: "center", alignContent: "center", columnGap: 56, rowGap: 44 }}>
         {atletas.map((a) => (
@@ -946,7 +1000,7 @@ function Sorteio({ estado, fotos }: { estado?: EstadoSorteio; fotos: Record<stri
   return (
     <Base fundo="premiacao">
       <div style={{ position: "absolute", left: 700, right: 60, top: 70, textAlign: "center" }}>
-        <Linha style={{ fontSize: 120, fontWeight: 900, lineHeight: 1, ...laranja }}>Sorteio</Linha>
+        <Linha style={{ fontSize: 120, fontWeight: 900, lineHeight: 1, ...laranja }}><T k="sorteio.titulo" /></Linha>
         <div style={{ marginTop: 10, fontSize: 40, fontWeight: 800, color: COR.navy }}>
           {presentes.length === 0 ? "Registre sua presença para participar" : `Entre os ${presentes.length} ${presentes.length === 1 ? "presente" : "presentes"}`}
         </div>
@@ -1001,6 +1055,8 @@ export function SlideReuniao({
   tema,
   passo,
   animar = false,
+  textos,
+  aoVivo = false,
 }: {
   slide: SlideDef;
   fotos: Record<string, string>;
@@ -1018,11 +1074,15 @@ export function SlideReuniao({
   passo?: number;
   /** Ao vivo: os elementos entram um a um. */
   animar?: boolean;
+  /** Textos fixos trocados pelo comitê. */
+  textos?: Record<string, string>;
+  /** Na apresentação (relógios andam); nas miniaturas e no PDF, fica parado. */
+  aoVivo?: boolean;
 }) {
   const familia = tema && tema.fonte !== "barlow" ? FONTES_SLIDE[tema.fonte].familia : undefined;
   return (
-    <ContextoSlide.Provider value={{ familia, animar }}>
-      <ConteudoDoSlide slide={slide} fotos={fotos} imagens={imagens} qrPresenca={qrPresenca} presencaSemPermissao={presencaSemPermissao} qrApp={qrApp} urlApp={urlApp} presentes={presentes} sorteio={sorteio} passo={passo} />
+    <ContextoSlide.Provider value={{ familia, animar, textos }}>
+      <ConteudoDoSlide slide={slide} fotos={fotos} imagens={imagens} qrPresenca={qrPresenca} presencaSemPermissao={presencaSemPermissao} qrApp={qrApp} urlApp={urlApp} presentes={presentes} sorteio={sorteio} passo={passo} aoVivo={aoVivo} />
     </ContextoSlide.Provider>
   );
 }
@@ -1038,6 +1098,7 @@ function ConteudoDoSlide({
   presentes,
   sorteio,
   passo,
+  aoVivo,
 }: {
   slide: SlideDef;
   fotos: Record<string, string>;
@@ -1049,8 +1110,11 @@ function ConteudoDoSlide({
   presentes?: number | null;
   sorteio?: EstadoSorteio;
   passo?: number;
+  aoVivo: boolean;
 }) {
   switch (slide.tipo) {
+    case "contagem":
+      return <Contagem {...slide} qr={qrPresenca} aoVivo={aoVivo} />;
     case "capa":
       return <Capa ano={slide.ano} meses={slide.meses} />;
     case "presenca":
