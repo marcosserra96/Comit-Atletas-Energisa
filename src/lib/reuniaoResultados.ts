@@ -10,6 +10,7 @@ import { calcularPosicoesRanking, montarPodio, type DegrauDoPodio } from "@/lib/
 import type { RegrasDeTreino } from "@/lib/activityConsolidation";
 import { formatKmTotal, formatPontos, plural } from "@/lib/format";
 import { modalidadeLabel } from "@/lib/labels";
+import { opcoesDaEnquete } from "@/lib/enquete";
 import type { AtletaDoc, EventoDoc, HistoricoMensalDoc, HistoricoPontoDoc, Modalidade, RegraPontuacaoDoc } from "@/lib/types";
 
 // ---------- configuração salva da reunião ----------
@@ -39,7 +40,7 @@ export interface SecaoReuniao {
 /** Slide escrito pelo comitê: divisória (título grande) ou conteúdo (texto e/ou imagem). */
 export interface SlideLivre {
   id: string;
-  layout: "divisoria" | "conteudo";
+  layout: "divisoria" | "conteudo" | "enquete";
   titulo: string;
   /** Linha de cima, colorida, nas divisórias ("Fala da"). */
   sobretitulo: string;
@@ -47,6 +48,8 @@ export interface SlideLivre {
   imagemId: string | null;
   /** Formatação escolhida pelo comitê (fonte, cores, fundo…). Ausente = visual padrão. */
   estilo?: Partial<EstiloLivre>;
+  /** Enquete: a pesquisa criada quando a votação foi aberta. */
+  pesquisaId?: string | null;
 }
 
 // ---------- formatação dos slides livres ----------
@@ -371,6 +374,9 @@ export function completarSecoes<T extends Pick<ReuniaoResultadosDoc, "secoes">>(
 }
 
 export function novoSlideLivre(layout: SlideLivre["layout"]): SlideLivre {
+  if (layout === "enquete") {
+    return { id: novoId("l"), layout, sobretitulo: "", titulo: "Qual prova fazemos no próximo trimestre?", texto: "Opção 1\nOpção 2\nOpção 3", imagemId: null, pesquisaId: null };
+  }
   return { id: novoId("l"), layout, sobretitulo: "", titulo: layout === "divisoria" ? "Novo tema" : "Novo slide", texto: "", imagemId: null };
 }
 
@@ -384,15 +390,17 @@ export function validarReuniao(entrada: unknown): { erro: string } | { dados: Om
     return { erro: "Escolha o período dos resultados." };
   }
   const tipos = new Set<TipoSecao>(["capa", "presenca", "novos", "aniversariantes", "regras", "resultados", "destaques", "premiacao", "agenda", "app", "sorteio", "obrigado", "contagem", "livre"]);
+  const layoutDe = (v: unknown) => (v === "divisoria" ? ("divisoria" as const) : v === "enquete" ? ("enquete" as const) : ("conteudo" as const));
   const livres = (Array.isArray(e.livres) ? e.livres : []).slice(0, 30).map((l) => ({
     id: texto(l?.id, 40) || novoId("l"),
-    layout: l?.layout === "divisoria" ? ("divisoria" as const) : ("conteudo" as const),
+    layout: layoutDe(l?.layout),
+    ...(typeof l?.pesquisaId === "string" && /^[A-Za-z0-9_-]{1,60}$/.test(l.pesquisaId) ? { pesquisaId: l.pesquisaId } : {}),
     titulo: texto(l?.titulo, 120),
     sobretitulo: texto(l?.sobretitulo, 60),
     texto: texto(l?.texto, 1500),
     imagemId: typeof l?.imagemId === "string" && l.imagemId.length < 60 ? l.imagemId : null,
     ...(() => {
-      const layout = l?.layout === "divisoria" ? ("divisoria" as const) : ("conteudo" as const);
+      const layout = layoutDe(l?.layout);
       const estilo = estiloSalvo(layout, l?.estilo && typeof l.estilo === "object" ? l.estilo : undefined);
       return estilo ? { estilo } : {};
     })(),
@@ -644,6 +652,7 @@ export type SlideDef = (
   | { chave: string; tipo: "divisoria"; sobretitulo: string; titulo: string; subtitulo: string; fundo: FundoDivisoria; estilo?: EstiloLivre }
   | { chave: string; tipo: "novos"; atletas: NovoAtletaSlide[]; pagina: number; paginas: number }
   | { chave: string; tipo: "conteudo"; titulo: string; texto: string; imagemId: string | null; estilo: EstiloLivre }
+  | { chave: string; tipo: "enquete"; livreId: string; pergunta: string; opcoes: string[]; pesquisaId: string | null }
   | { chave: string; tipo: "regras"; regras: LinhaRegra[]; periodos: PeriodoApuracao[] }
   | {
       chave: string;
@@ -865,7 +874,9 @@ export function montarRoteiro(params: {
       case "livre": {
         const l = livres.get(secao.id);
         if (!l) break;
-        if (l.layout === "divisoria") {
+        if (l.layout === "enquete") {
+          slides.push({ chave: k, tipo: "enquete", livreId: l.id, pergunta: l.titulo, opcoes: opcoesDaEnquete(l.texto), pesquisaId: l.pesquisaId ?? null });
+        } else if (l.layout === "divisoria") {
           slides.push({ chave: k, tipo: "divisoria", sobretitulo: l.sobretitulo, titulo: l.titulo, subtitulo: l.texto, fundo: "divisoria", estilo: estiloDoLivre(l) });
         } else {
           slides.push({ chave: k, tipo: "conteudo", titulo: l.titulo, texto: l.texto, imagemId: l.imagemId, estilo: estiloDoLivre(l) });
@@ -1009,6 +1020,8 @@ export function verificarAntesDeApresentar(params: {
   /** Quem aparece com foto nos slides (pódio e novos). */
   semFoto: readonly { id: string; nome: string }[];
   hoje: string;
+  /** Quem apresenta pode abrir votação (permissão Pesquisas). */
+  podeEnquete?: boolean;
 }): Verificacao[] {
   const { reuniao, hoje } = params;
   const { periodo } = reuniao;
@@ -1056,6 +1069,15 @@ export function verificarAntesDeApresentar(params: {
       texto: "O slide de presença está sem reunião da agenda",
       detalhe: "Sem ela, não há QR code para registrar presença. Escolha a reunião em \"Reunião da agenda\" ou desligue o slide.",
     });
+  }
+
+  const ligadasEnquete = new Set(reuniao.secoes.filter((s) => s.tipo === "livre" && s.ativo).map((s) => s.id));
+  const enquetes = reuniao.livres.filter((l) => l.layout === "enquete" && ligadasEnquete.has(l.id));
+  const incompletas = enquetes.filter((l) => opcoesDaEnquete(l.texto).length < 2);
+  if (incompletas.length > 0) {
+    out.push({ id: "enquete", nivel: "atencao", texto: "Enquete com menos de 2 opções", detalhe: `Escreva pelo menos duas opções, uma por linha: ${incompletas.map((l) => l.titulo || "Enquete").join(", ")}.` });
+  } else if (enquetes.length > 0 && params.podeEnquete === false) {
+    out.push({ id: "enquete", nivel: "atencao", texto: "Você não pode abrir a votação", detalhe: "A enquete usa as Pesquisas do portal: peça a um administrador a permissão Pesquisas ou apresente com quem tem." });
   }
 
   if (ativa("sorteio") && !reuniao.eventoId) {

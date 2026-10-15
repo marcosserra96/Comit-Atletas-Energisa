@@ -68,6 +68,10 @@ export interface PesquisaDoc {
   fechaEmTs?: unknown;
   /** Rascunho não aparece para os atletas. */
   publicada: boolean;
+  /** Enquete ao vivo da reunião: não manda aviso de abertura nem lembrete. */
+  semAviso?: boolean;
+  /** Criada pela tela da reunião de resultados. */
+  origem?: "reuniao";
   criadoEm?: unknown;
   criadoPor?: string;
   criadoPorNome?: string;

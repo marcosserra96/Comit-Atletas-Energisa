@@ -55,6 +55,8 @@ async function processar(request: Request, autenticado: boolean) {
   const pesquisas = await db.collection("pesquisas").where("publicada", "==", true).get();
   for (const doc of pesquisas.docs) {
     const p = { ...(doc.data() as PesquisaDoc), id: doc.id };
+    // Enquete da reunião: votação ao vivo, sem aviso no celular de todo mundo.
+    if (p.semAviso) continue;
     const abertura = pesquisaPrecisaAvisoDeAbertura(p, agora);
     const lembrete = pesquisaPrecisaLembrete(p, agora);
     if (!abertura && !lembrete) continue;

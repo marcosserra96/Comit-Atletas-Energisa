@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, Bold, ChevronDown, Copy, ImagePlus, Plus, Trash2, Type, LayoutTemplate } from "lucide-react";
+import { ArrowDown, ArrowUp, BarChart3, Bold, ChevronDown, Copy, ImagePlus, Plus, Trash2, Type, LayoutTemplate } from "lucide-react";
 import { FormatacaoLivre } from "@/components/reuniao/FormatacaoLivre";
 import { cn } from "@/lib/cn";
 import { IMAGEM_SLIDE_LADO } from "@/lib/fotoRegras";
@@ -133,6 +133,7 @@ function EditorLivre({
   }
   const [enviando, setEnviando] = useState(false);
   const conteudo = livre.layout === "conteudo";
+  const enquete = livre.layout === "enquete";
 
   async function escolherImagem(arquivo?: File) {
     if (!arquivo) return;
@@ -157,6 +158,7 @@ function EditorLivre({
           [
             { v: "divisoria", t: "Divisória", d: "Título grande", I: Type },
             { v: "conteudo", t: "Conteúdo", d: "Lista e/ou imagem", I: LayoutTemplate },
+            { v: "enquete", t: "Enquete", d: "Votação ao vivo", I: BarChart3 },
           ] as const
         ).map(({ v, t, I }) => (
           <button
@@ -175,7 +177,7 @@ function EditorLivre({
           </button>
         ))}
       </div>
-      {conteudo ? null : (
+      {conteudo || enquete ? null : (
         <TextField
           label="Linha de cima (laranja)"
           value={livre.sobretitulo}
@@ -185,19 +187,28 @@ function EditorLivre({
         />
       )}
       <TextField
-        label={conteudo ? "Título" : "Título (azul)"}
+        label={enquete ? "Pergunta" : conteudo ? "Título" : "Título (azul)"}
         value={livre.titulo}
-        maxLength={120}
-        placeholder={conteudo ? "Ex.: Relembrando nossos combinados" : "Ex.: Diretoria"}
+        maxLength={enquete ? 140 : 120}
+        placeholder={enquete ? "Ex.: Qual prova fazemos no próximo trimestre?" : conteudo ? "Ex.: Relembrando nossos combinados" : "Ex.: Diretoria"}
         onChange={(e) => onChange({ ...livre, titulo: e.target.value })}
       />
       <div className="flex flex-col gap-1.5">
         <div className="flex items-end justify-between gap-2">
           <label htmlFor={idTexto} className="text-sm font-medium text-text">
-            {conteudo ? "Itens (um por linha)" : "Texto abaixo do título"} <span className="font-normal text-text-muted">(opcional)</span>
+            {enquete ? (
+              <>
+                Opções <span className="font-normal text-text-muted">(uma por linha, de 2 a 6)</span>
+              </>
+            ) : (
+              <>
+                {conteudo ? "Itens (um por linha)" : "Texto abaixo do título"} <span className="font-normal text-text-muted">(opcional)</span>
+              </>
+            )}
           </label>
           <button
             type="button"
+            hidden={enquete}
             onClick={negrito}
             title="Negrito: selecione o trecho e toque aqui"
             className="flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border border-border text-text-light hover:border-border-strong hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -209,7 +220,7 @@ function EditorLivre({
         <textarea
           ref={campoTexto}
           id={idTexto}
-          rows={conteudo ? 5 : 2}
+          rows={conteudo || enquete ? 5 : 2}
           maxLength={1500}
           value={livre.texto}
           onChange={(e) => onChange({ ...livre, texto: e.target.value })}
@@ -235,7 +246,13 @@ function EditorLivre({
           ) : null}
         </div>
       ) : null}
-      <FormatacaoLivre livre={livre} temImagem={!!livre.imagemId} onChange={onChange} />
+      {enquete ? (
+        <p className="text-xs text-text-light">
+          Na apresentação, toque em <span className="font-semibold">Abrir votação</span>: aparece um QR code e os atletas votam pelo app, com o resultado ao vivo no telão. Precisa da permissão Pesquisas.
+        </p>
+      ) : (
+        <FormatacaoLivre livre={livre} temImagem={!!livre.imagemId} onChange={onChange} />
+      )}
     </div>
   );
 }
@@ -306,7 +323,7 @@ export function EditorRoteiro({
           const titulo = livre
             ? [livre.sobretitulo, livre.titulo].filter(Boolean).join(" ") || "Slide livre"
             : TITULO_SECAO[s.tipo as Exclude<typeof s.tipo, "livre">].titulo;
-          const dica = livre ? (livre.layout === "divisoria" ? "Divisória · escrito pelo comitê" : "Conteúdo · escrito pelo comitê") : TITULO_SECAO[s.tipo as Exclude<typeof s.tipo, "livre">].dica;
+          const dica = livre ? (livre.layout === "divisoria" ? "Divisória · escrito pelo comitê" : livre.layout === "enquete" ? "Enquete ao vivo" : "Conteúdo · escrito pelo comitê") : TITULO_SECAO[s.tipo as Exclude<typeof s.tipo, "livre">].dica;
           const expandido = aberto === s.id;
           return (
             <li key={s.id} className={cn("rounded-[var(--radius)] border bg-bg-card", s.ativo ? "border-border" : "border-dashed border-border opacity-60")}>
@@ -370,6 +387,10 @@ export function EditorRoteiro({
         <Button type="button" size="sm" variant="secondary" onClick={() => adicionar("conteudo")}>
           <Plus className="size-4" aria-hidden="true" />
           Slide de conteúdo
+        </Button>
+        <Button type="button" size="sm" variant="secondary" onClick={() => adicionar("enquete")}>
+          <Plus className="size-4" aria-hidden="true" />
+          Enquete
         </Button>
       </div>
     </div>

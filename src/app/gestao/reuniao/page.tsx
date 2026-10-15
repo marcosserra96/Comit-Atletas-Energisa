@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { collection, doc, getDoc, getDocs, onSnapshot } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, onSnapshot, serverTimestamp, setDoc, Timestamp, updateDoc } from "firebase/firestore";
 import { AlertTriangle, CalendarRange, CheckCircle2, CloudOff, Download, Info, Loader2, MonitorPlay, Plus, Save, Copy, Search, Send, Star, Trash2, UserPlus, X } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useActiveSession } from "@/lib/session/SessionProvider";
@@ -19,6 +19,8 @@ import { SlideReuniao } from "@/components/reuniao/SlidesReuniao";
 import { Apresentador, SlideEscalado, gerarPdfDosSlides, type AcaoDoSlide } from "@/components/reuniao/Apresentador";
 import { EditorRoteiro } from "@/components/reuniao/EditorRoteiro";
 import { useSorteio } from "@/components/reuniao/useSorteio";
+import { useEnquetes } from "@/components/reuniao/useEnquetes";
+import { DURACAO_ENQUETE_MS, pesquisaDaEnquete } from "@/lib/enquete";
 import { TemaApresentacao } from "@/components/reuniao/TemaApresentacao";
 import { NoticiaModal } from "@/app/gestao/noticias/NoticiaModal";
 import { AvatarAtleta } from "@/components/atletas/AvatarAtleta";
@@ -245,7 +247,8 @@ function AntesDeApresentar({ itens }: { itens: ReturnType<typeof verificarAntesD
 }
 
 export default function ReuniaoResultadosPage() {
-  const { usuario } = useActiveSession();
+  const { usuario, uid, atleta: eu } = useActiveSession();
+  const podeEnquete = temPermissao(usuario, "pesquisas");
   const { show } = useToast();
   const pode = temPermissao(usuario, "informativo");
   const dados = useDadosReuniao();
@@ -378,6 +381,11 @@ export default function ReuniaoResultadosPage() {
   const presentes = usePresentesNaReuniao(evento?.id ?? null);
   const presentesSorteio = useMemo(() => presentes?.map((p) => ({ id: p.atletaId, nome: p.nome, equipe: p.equipe })) ?? null, [presentes]);
   const sorteio = useSorteio(presentesSorteio, evento?.id ?? null);
+  const listaEnquetes = useMemo(
+    () => (calculo?.slides ?? []).flatMap((sl) => (sl.tipo === "enquete" && sl.pesquisaId ? [{ pesquisaId: sl.pesquisaId, opcoes: sl.opcoes }] : [])),
+    [calculo],
+  );
+  const enquetes = useEnquetes(listaEnquetes);
   // Fotos de quem aparece nos slides, mais os sorteados (aparecem na hora).
   const comFoto = useMemo(() => {
     const ganhadores = new Set(sorteio.estado.ganhadores);
@@ -409,9 +417,10 @@ export default function ReuniaoResultadosPage() {
           animar={!!aoVivo?.aoVivo && tema.animacoes}
           aoVivo={!!aoVivo?.aoVivo}
           textos={textos}
+          enquetes={enquetes}
         />
       ) : null,
-    [calculo, fotos, imagens, qrPresenca, semPermissao, qrApp, urlApp, presentes, sorteio.estado, tema, textos],
+    [calculo, fotos, imagens, qrPresenca, semPermissao, qrApp, urlApp, presentes, sorteio.estado, tema, textos, enquetes],
   );
   const renderNaApresentacao = useCallback((i: number, opcoes?: { passo?: number; aoVivo?: boolean }) => renderSlide(i, false, opcoes ?? {}), [renderSlide]);
   const passosNaApresentacao = useCallback((i: number) => passosDoSlide(calculo?.slides[i], tema), [calculo, tema]);
@@ -484,8 +493,8 @@ export default function ReuniaoResultadosPage() {
     );
     const vistos = new Set<string>();
     const semFoto = naTela.filter((a) => !a.fotoVersao && !vistos.has(a.id) && vistos.add(a.id)).map((a) => ({ id: a.id, nome: a.nome }));
-    return verificarAntesDeApresentar({ reuniao: rascunho, eventos: dados.eventos, lancamentos: dados.lancamentos, semFoto, hoje });
-  }, [calculo, rascunho, dados.eventos, dados.lancamentos, hoje]);
+    return verificarAntesDeApresentar({ reuniao: rascunho, eventos: dados.eventos, lancamentos: dados.lancamentos, semFoto, hoje, podeEnquete });
+  }, [calculo, rascunho, dados.eventos, dados.lancamentos, hoje, podeEnquete]);
 
   async function baixarPdf() {
     if (!calculo || !rascunho) return;
@@ -524,8 +533,48 @@ export default function ReuniaoResultadosPage() {
     ? rascunho.secoes.filter((x) => x.ativo).reduce((soma, x) => soma + (rascunho.tempos?.[x.id] ?? 0), 0)
     : 0;
 
+  /** Enquete: publica a pergunta como pesquisa (sem aviso no celular) e guarda o id no slide. */
+  async function abrirEnquete(livreId: string, pergunta: string, opcoes: string[]) {
+    if (opcoes.length < 2) {
+      show("error", "A enquete precisa de pelo menos 2 opções.");
+      return;
+    }
+    try {
+      const ref = doc(collection(db, "pesquisas"));
+      const agora = new Date();
+      const dados = pesquisaDaEnquete({ id: ref.id, pergunta, opcoes, agora, uid, nome: eu.nome });
+      await setDoc(ref, {
+        ...dados,
+        abreEmTs: Timestamp.fromDate(new Date(dados.abreEm)),
+        fechaEmTs: Timestamp.fromDate(new Date(dados.fechaEm)),
+        criadoEm: serverTimestamp(),
+        atualizadoEm: serverTimestamp(),
+      });
+      const atual = rascunhoAtual.current;
+      if (atual) atualizar({ livres: atual.livres.map((l) => (l.id === livreId ? { ...l, pesquisaId: ref.id } : l)) });
+    } catch {
+      show("error", "Não foi possível abrir a votação. Confira se você tem a permissão Pesquisas.");
+    }
+  }
+  async function mudarFimDaEnquete(pesquisaId: string, fim: Date) {
+    try {
+      await updateDoc(doc(db, "pesquisas", pesquisaId), { fechaEm: fim.toISOString(), fechaEmTs: Timestamp.fromDate(fim), atualizadoEm: serverTimestamp() });
+    } catch {
+      show("error", "Não foi possível mudar a votação agora.");
+    }
+  }
+
   function acaoDoSlide(i: number): AcaoDoSlide | null {
-    if (calculo?.slides[i]?.tipo !== "sorteio") return null;
+    const sl = calculo?.slides[i];
+    if (sl?.tipo === "enquete") {
+      if (!podeEnquete) return { rotulo: "Precisa da permissão Pesquisas", executar: () => undefined, desabilitado: true };
+      const e = sl.pesquisaId ? enquetes[sl.pesquisaId] : undefined;
+      if (!sl.pesquisaId || (e && !e.pesquisa)) return { rotulo: "Abrir votação", executar: () => void abrirEnquete(sl.livreId, sl.pergunta, sl.opcoes) };
+      if (!e) return { rotulo: "Carregando…", executar: () => undefined, desabilitado: true };
+      if (e.situacao === "aberta") return { rotulo: "Encerrar votação", executar: () => void mudarFimDaEnquete(sl.pesquisaId!, new Date()) };
+      return { rotulo: "Reabrir votação", executar: () => void mudarFimDaEnquete(sl.pesquisaId!, new Date(Date.now() + DURACAO_ENQUETE_MS)) };
+    }
+    if (sl?.tipo !== "sorteio") return null;
     return {
       rotulo: sorteio.estado.ganhadores.length ? "Sortear de novo" : "Sortear",
       executar: sorteio.sortear,

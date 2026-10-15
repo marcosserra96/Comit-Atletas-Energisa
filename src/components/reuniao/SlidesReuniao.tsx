@@ -24,6 +24,8 @@ import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState
 import { iniciais } from "@/lib/fotoRegras";
 import { formatDistancia, formatPontos } from "@/lib/format";
 import { modalidadeLabel } from "@/lib/labels";
+import { percentuais } from "@/lib/enquete";
+import { useQrDataUrl } from "@/lib/useQrDataUrl";
 import { ESCALA_TAMANHO, FONTES_SLIDE, fundoEscuro, textoDoSlide, type ChaveTexto, type EstiloLivre, type TemaReuniao, type FundoDivisoria, type LinhaResultado, type SlideDef } from "@/lib/reuniaoResultados";
 
 /** Tamanho nativo de cada slide; a tela escala para caber. */
@@ -1041,6 +1043,71 @@ function Sorteio({ estado, fotos }: { estado?: EstadoSorteio; fotos: Record<stri
   );
 }
 
+export interface EstadoEnquete {
+  votos: number[];
+  total: number;
+  situacao: "nova" | "aberta" | "encerrada";
+}
+
+const CORES_ENQUETE = ["#1462c4", "#f37021", "#2fa84f", "#7c3aed", "#e7a913", "#0891b2"];
+
+function Enquete({ pergunta, opcoes, pesquisaId, estado }: Extract<SlideDef, { tipo: "enquete" }> & { estado?: EstadoEnquete }) {
+  const url = pesquisaId && typeof window !== "undefined" ? `${window.location.origin}/pesquisas/${pesquisaId}` : "";
+  const qr = useQrDataUrl(url, 520);
+  const votos = estado?.votos ?? opcoes.map(() => 0);
+  const total = votos.reduce((a, b) => a + b, 0);
+  const pct = percentuais(votos);
+  const maior = Math.max(0, ...votos);
+  const situacao = estado?.situacao ?? (pesquisaId ? "encerrada" : "nova");
+  const altura = opcoes.length > 4 ? 92 : 112;
+  return (
+    <Base fundo="conteudo">
+      <div style={{ position: "absolute", left: 72, top: 52, right: 640 }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 12, padding: "8px 22px", borderRadius: 999, background: situacao === "aberta" ? COR.verde : situacao === "encerrada" ? COR.navy : COR.laranja, color: "#fff", fontSize: 26, fontWeight: 800 }}>
+          {situacao === "aberta" ? <span className="pulso-ao-vivo" style={{ width: 14, height: 14, borderRadius: "50%", background: "#fff" }} /> : null}
+          {situacao === "aberta" ? "Votação aberta" : situacao === "encerrada" ? "Resultado da enquete" : "Enquete"}
+        </span>
+        <div style={{ marginTop: 44, fontSize: pergunta.length > 70 ? 54 : 66, fontWeight: 900, lineHeight: 1.08, color: COR.navy, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{pergunta}</div>
+      </div>
+      <div style={{ position: "absolute", left: 72, right: 640, top: pergunta.length > 50 ? 400 : 330, bottom: 110, display: "flex", flexDirection: "column", justifyContent: "center", gap: 22 }}>
+        {opcoes.map((o, i) => {
+          const cor = CORES_ENQUETE[i % CORES_ENQUETE.length];
+          const lider = total > 0 && votos[i] === maior;
+          return (
+            <div key={o} style={{ position: "relative", height: altura, borderRadius: 22, background: "#fff", boxShadow: "0 10px 26px rgba(7,29,64,.1)", overflow: "hidden", border: lider ? `4px solid ${cor}` : "4px solid transparent" }}>
+              <div style={{ position: "absolute", inset: 0, width: `${total ? (votos[i] / total) * 100 : 0}%`, background: `${cor}2b`, transition: "width .6s cubic-bezier(.2,.7,.2,1)" }} />
+              <div style={{ position: "relative", height: "100%", display: "flex", alignItems: "center", gap: 22, padding: "0 30px" }}>
+                <span style={{ width: 22, height: 22, borderRadius: 6, background: cor, flexShrink: 0 }} />
+                <Linha minimo={0.7} style={{ flex: "1 1 0", minWidth: 0, width: "auto", fontSize: opcoes.length > 4 ? 36 : 42, fontWeight: 800, color: COR.navy }}>{o}</Linha>
+                <span style={{ fontSize: opcoes.length > 4 ? 40 : 48, fontWeight: 900, color: cor, fontVariantNumeric: "tabular-nums" }}>{pct[i]}%</span>
+                <span style={{ width: 120, textAlign: "right", fontSize: 26, fontWeight: 700, color: COR.cinza, fontVariantNumeric: "tabular-nums" }}>{votos[i]} {votos[i] === 1 ? "voto" : "votos"}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ position: "absolute", right: 72, top: 140, width: 500, bottom: 120, borderRadius: 36, background: "#fff", boxShadow: "0 24px 60px rgba(7,29,64,.2)", border: `8px solid ${COR.azul}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 30, textAlign: "center" }}>
+        {situacao === "aberta" && qr ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qr} alt="" style={{ width: 360, height: 360 }} />
+            <div style={{ marginTop: 14, fontSize: 36, fontWeight: 900, color: COR.navy }}>Vote pelo app</div>
+          </>
+        ) : (
+          <div style={{ fontSize: 34, fontWeight: 800, color: COR.cinza, lineHeight: 1.25, padding: "0 10px" }}>
+            {situacao === "nova" ? "O QR code aparece quando a votação abrir." : "Votação encerrada."}
+          </div>
+        )}
+        <div style={{ marginTop: 26, display: "flex", alignItems: "baseline", gap: 12, color: COR.navy }}>
+          <span key={total} className="numero-sobe" style={{ fontSize: 88, fontWeight: 900, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{total}</span>
+          <span style={{ fontSize: 34, fontWeight: 800 }}>{total === 1 ? "voto" : "votos"}</span>
+        </div>
+      </div>
+      <LogoCanto />
+    </Base>
+  );
+}
+
 /** Um slide do roteiro, no tamanho nativo (1920×1080). */
 export function SlideReuniao({
   slide,
@@ -1057,6 +1124,7 @@ export function SlideReuniao({
   animar = false,
   textos,
   aoVivo = false,
+  enquetes,
 }: {
   slide: SlideDef;
   fotos: Record<string, string>;
@@ -1078,11 +1146,13 @@ export function SlideReuniao({
   textos?: Record<string, string>;
   /** Na apresentação (relógios andam); nas miniaturas e no PDF, fica parado. */
   aoVivo?: boolean;
+  /** Votos ao vivo das enquetes, por id da pesquisa. */
+  enquetes?: Record<string, EstadoEnquete>;
 }) {
   const familia = tema && tema.fonte !== "barlow" ? FONTES_SLIDE[tema.fonte].familia : undefined;
   return (
     <ContextoSlide.Provider value={{ familia, animar, textos }}>
-      <ConteudoDoSlide slide={slide} fotos={fotos} imagens={imagens} qrPresenca={qrPresenca} presencaSemPermissao={presencaSemPermissao} qrApp={qrApp} urlApp={urlApp} presentes={presentes} sorteio={sorteio} passo={passo} aoVivo={aoVivo} />
+      <ConteudoDoSlide slide={slide} fotos={fotos} imagens={imagens} qrPresenca={qrPresenca} presencaSemPermissao={presencaSemPermissao} qrApp={qrApp} urlApp={urlApp} presentes={presentes} sorteio={sorteio} passo={passo} aoVivo={aoVivo} enquetes={enquetes} />
     </ContextoSlide.Provider>
   );
 }
@@ -1099,6 +1169,7 @@ function ConteudoDoSlide({
   sorteio,
   passo,
   aoVivo,
+  enquetes,
 }: {
   slide: SlideDef;
   fotos: Record<string, string>;
@@ -1111,8 +1182,11 @@ function ConteudoDoSlide({
   sorteio?: EstadoSorteio;
   passo?: number;
   aoVivo: boolean;
+  enquetes?: Record<string, EstadoEnquete>;
 }) {
   switch (slide.tipo) {
+    case "enquete":
+      return <Enquete {...slide} estado={slide.pesquisaId ? enquetes?.[slide.pesquisaId] : undefined} />;
     case "contagem":
       return <Contagem {...slide} qr={qrPresenca} aoVivo={aoVivo} />;
     case "capa":

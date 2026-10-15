@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { ChevronLeft, ChevronRight, Maximize2, Minimize2, MonitorUp, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2, MonitorUp, Smartphone, X } from "lucide-react";
+import { useControleRemoto } from "@/components/reuniao/useControleRemoto";
+import { PainelControleRemoto } from "@/components/reuniao/PainelControleRemoto";
 import { cn } from "@/lib/cn";
 import { SLIDE_A, SLIDE_L } from "@/components/reuniao/SlidesReuniao";
 
@@ -304,6 +306,42 @@ export function Apresentador({
     else void raiz.current?.requestFullscreen?.().catch(() => undefined);
   };
 
+  // ---------- controle pelo celular ----------
+  const estadoRemoto = {
+    indice,
+    total,
+    rotulo: rotulo?.(indice) || `Slide ${indice + 1}`,
+    proximo: passo < totalPassos ? `Revela o ${totalPassos - passo}º lugar` : indice + 1 < total ? rotulo?.(indice + 1) || `Slide ${indice + 2}` : "Último slide",
+    nota: nota?.(indice) ?? "",
+    acao: acaoAtual ? { rotulo: acaoAtual.rotulo, desabilitado: !!acaoAtual.desabilitado } : null,
+  };
+  const remoto = useControleRemoto(estadoRemoto, (c) => {
+    if (c === "proximo") ir(1);
+    else if (c === "anterior") ir(-1);
+    else if (c === "acao" && acaoRef.current && !acaoRef.current.desabilitado) acaoRef.current.executar();
+  });
+  const [painelRemoto, setPainelRemoto] = useState(false);
+  const alternarRemoto = () => {
+    if (!remoto.sessao) void remoto.abrir();
+    setPainelRemoto((v) => !v || !remoto.sessao);
+  };
+  const painel =
+    painelRemoto && remoto.sessao ? (
+      <PainelControleRemoto
+        sessao={remoto.sessao}
+        conectado={remoto.conectado}
+        erro={remoto.erro}
+        onFechar={() => {
+          remoto.fechar();
+          setPainelRemoto(false);
+        }}
+      />
+    ) : painelRemoto && remoto.erro ? (
+      <div role="alert" className="absolute bottom-24 right-6 z-10 max-w-xs rounded-xl bg-white px-4 py-3 text-sm font-semibold text-[#c2410c] shadow-2xl">
+        {remoto.erro}
+      </div>
+    ) : null;
+
   const botao =
     "flex size-12 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition-colors hover:bg-white/20 disabled:opacity-30";
   const botaoAcao = "flex h-12 items-center gap-2 rounded-full bg-[#f37021] px-5 text-sm font-bold text-white shadow-lg transition-transform active:scale-[0.97] disabled:opacity-40";
@@ -326,6 +364,10 @@ export function Apresentador({
           <p className="ml-auto text-sm tabular-nums text-white/70">
             {new Date(agora).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
           </p>
+          <button type="button" onClick={alternarRemoto} aria-pressed={!!remoto.sessao} className={cn("flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold hover:bg-white/10", remoto.sessao ? "text-[#7ee2a8]" : "text-white/80")}>
+            <Smartphone className="size-4" aria-hidden="true" />
+            {remoto.sessao ? (remoto.conectado ? "Celular conectado" : "Controle ligado") : "Controle pelo celular"}
+          </button>
           <button type="button" onClick={() => telao.janela.close()} className="rounded-full px-4 py-2 text-sm font-semibold text-white/80 hover:bg-white/10">
             Voltar a uma tela
           </button>
@@ -334,6 +376,7 @@ export function Apresentador({
             Encerrar
           </button>
         </div>
+        {painel}
         <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)] gap-6 p-6">
           <div className="flex min-h-0 flex-col gap-3">
             <p className="text-sm font-semibold text-white/70">
@@ -432,6 +475,7 @@ export function Apresentador({
       <div style={{ width: SLIDE_L * escala, height: SLIDE_A * escala, position: "relative", overflow: "hidden" }}>
         <div style={{ width: SLIDE_L, height: SLIDE_A, transform: `scale(${escala})`, transformOrigin: "top left" }}>{comTransicao(renderSlide(indice, { passo, aoVivo: true }))}</div>
       </div>
+      {painel}
 
       <div
         className={cn(
@@ -457,6 +501,16 @@ export function Apresentador({
         <button type="button" className={cn(botao, "w-auto gap-2 px-4 text-sm font-semibold")} onClick={abrirTelao} title="Os slides vão para uma segunda janela (o projetor); aqui ficam o próximo slide, o tempo e as anotações">
           <MonitorUp className="size-5" />
           <span className="hidden sm:inline">Tela do apresentador</span>
+        </button>
+        <button
+          type="button"
+          className={cn(botao, remoto.sessao && "bg-[#15803d]/80 hover:bg-[#15803d]")}
+          onClick={alternarRemoto}
+          aria-pressed={!!remoto.sessao}
+          aria-label="Controle pelo celular"
+          title="Passe os slides pelo celular"
+        >
+          <Smartphone className="size-5" />
         </button>
         <button type="button" className={botao} onClick={alternarTelaCheia} aria-label={cheia ? "Sair da tela cheia" : "Tela cheia"}>
           {cheia ? <Minimize2 className="size-5" /> : <Maximize2 className="size-5" />}
