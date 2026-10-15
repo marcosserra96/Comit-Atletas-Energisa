@@ -265,6 +265,7 @@ export default function ReuniaoResultadosPage() {
   const [salvando, setSalvando] = useState(false);
   const [apresentando, setApresentando] = useState<number | null>(null);
   const [exportando, setExportando] = useState<number | null>(null);
+  const [formato, setFormato] = useState<"pdf" | "pptx">("pdf");
   const [apagando, setApagando] = useState(false);
   const [envio, setEnvio] = useState<{ versao: number; aberto: boolean }>({ versao: 0, aberto: false });
   const podeEnviar = temPermissao(usuario, "noticias");
@@ -496,8 +497,35 @@ export default function ReuniaoResultadosPage() {
     return verificarAntesDeApresentar({ reuniao: rascunho, eventos: dados.eventos, lancamentos: dados.lancamentos, semFoto, hoje, podeEnquete });
   }, [calculo, rascunho, dados.eventos, dados.lancamentos, hoje, podeEnquete]);
 
+  async function baixarPptx() {
+    if (!calculo || !rascunho) return;
+    setFormato("pptx");
+    setExportando(0);
+    try {
+      await new Promise((r) => setTimeout(r, 400));
+      const nos = nosPdf.current.slice(0, calculo.slides.length).filter((n): n is HTMLDivElement => !!n);
+      const { gerarPptxDosSlides } = await import("@/lib/pptxReuniao");
+      await gerarPptxDosSlides({
+        slides: calculo.slides,
+        nos,
+        notas: notaDoSlide,
+        imagens,
+        temaFonte: tema.fonte,
+        titulo: rascunho.titulo,
+        nomeArquivo: `reuniao-resultados-${slug(rascunho.periodo.nome)}-${rascunho.periodo.inicio.slice(0, 4)}.pptx`,
+        onProgresso: setExportando,
+      });
+      show("success", "PowerPoint gerado. Os slides escritos pelo comitê vêm com texto editável.");
+    } catch {
+      show("error", "Não foi possível gerar o PowerPoint agora. Tente novamente.");
+    } finally {
+      setExportando(null);
+    }
+  }
+
   async function baixarPdf() {
     if (!calculo || !rascunho) return;
+    setFormato("pdf");
     setExportando(0);
     try {
       // Espera os slides fora da tela renderizarem (fotos e QR já em cache).
@@ -635,8 +663,12 @@ export default function ReuniaoResultadosPage() {
             </span>
           ) : null}
           <Button variant="secondary" onClick={() => void baixarPdf()} disabled={!calculo || exportando !== null}>
-            {exportando !== null ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Download className="size-4" aria-hidden="true" />}
-            {exportando !== null ? `PDF ${exportando}/${total}` : "Baixar PDF"}
+            {exportando !== null && formato === "pdf" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Download className="size-4" aria-hidden="true" />}
+            {exportando !== null && formato === "pdf" ? `PDF ${exportando}/${total}` : "PDF"}
+          </Button>
+          <Button variant="secondary" onClick={() => void baixarPptx()} disabled={!calculo || exportando !== null} title="Baixar em PowerPoint (.pptx): slides escritos com texto editável, slides de números como imagem, anotações incluídas">
+            {exportando !== null && formato === "pptx" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Download className="size-4" aria-hidden="true" />}
+            {exportando !== null && formato === "pptx" ? `PowerPoint ${exportando}/${total}` : "PowerPoint"}
           </Button>
           {podeEnviar ? (
             <Button variant="secondary" onClick={() => setEnvio((e) => ({ versao: e.versao + 1, aberto: true }))} disabled={!resumoAtletas}>
