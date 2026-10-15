@@ -137,6 +137,8 @@ export function Apresentador({
   passos,
   transicao = "esmaecer",
   velocidade = 1,
+  secao,
+  minutosPlanejados = 0,
 }: {
   total: number;
   inicial: number;
@@ -153,10 +155,28 @@ export function Apresentador({
   transicao?: "nenhuma" | "esmaecer" | "deslizar" | "zoom";
   /** Multiplica a duração das animações (1 = normal). */
   velocidade?: number;
+  /** Seção do roteiro do slide e os minutos planejados para ela. */
+  secao?: (indice: number) => { id: string; nome: string; minutos?: number } | null;
+  /** Soma dos minutos planejados de todo o roteiro (0 = sem plano). */
+  minutosPlanejados?: number;
 }) {
   const raiz = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState({ indice: Math.min(inicial, Math.max(0, total - 1)), passo: 0 });
+  const [pos, setPosEstado] = useState({ indice: Math.min(inicial, Math.max(0, total - 1)), passo: 0 });
   const { indice, passo } = pos;
+  const posRef = useRef(pos);
+  const secaoRef = useRef(secao);
+  useEffect(() => {
+    secaoRef.current = secao;
+  });
+  // Quando a seção muda, o relógio "nesta parte" recomeça.
+  const [parte, setParte] = useState(() => ({ id: secao?.(pos.indice)?.id ?? "", em: Date.now() }));
+  const setPos = useCallback((prox: { indice: number; passo: number }) => {
+    const idAntes = secaoRef.current?.(posRef.current.indice)?.id ?? "";
+    const idDepois = secaoRef.current?.(prox.indice)?.id ?? "";
+    posRef.current = prox;
+    setPosEstado(prox);
+    if (idAntes !== idDepois) setParte({ id: idDepois, em: Date.now() });
+  }, []);
   const passosRef = useRef(passos);
   useEffect(() => {
     passosRef.current = passos;
@@ -180,17 +200,15 @@ export function Apresentador({
 
   // Avançar revela o próximo passo do slide (se houver) antes de trocar; voltar desfaz.
   const ir = useCallback(
-    (delta: number) =>
-      setPos(({ indice: i, passo: p }) => {
-        const de = (n: number) => passosRef.current?.(n) ?? 0;
-        if (delta > 0) {
-          if (p < de(i)) return { indice: i, passo: p + 1 };
-          return i < total - 1 ? { indice: i + 1, passo: 0 } : { indice: i, passo: p };
-        }
-        if (p > 0) return { indice: i, passo: p - 1 };
-        return i > 0 ? { indice: i - 1, passo: de(i - 1) } : { indice: i, passo: p };
-      }),
-    [total],
+    (delta: number) => {
+      const { indice: i, passo: p } = posRef.current;
+      const de = (n: number) => passosRef.current?.(n) ?? 0;
+      let prox = { indice: i, passo: p };
+      if (delta > 0) prox = p < de(i) ? { indice: i, passo: p + 1 } : i < total - 1 ? { indice: i + 1, passo: 0 } : prox;
+      else prox = p > 0 ? { indice: i, passo: p - 1 } : i > 0 ? { indice: i - 1, passo: de(i - 1) } : prox;
+      if (prox.indice !== i || prox.passo !== p) setPos(prox);
+    },
+    [total, setPos],
   );
 
   const mostrarControles = useCallback(() => {
@@ -240,7 +258,7 @@ export function Apresentador({
       document.body.style.overflow = "";
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [ir, onFechar, total, telao]);
+  }, [ir, onFechar, total, telao, setPos]);
 
   // Abre já em tela cheia quando o navegador permite.
   useEffect(() => {
@@ -293,6 +311,11 @@ export function Apresentador({
   // ---------- modo apresentador (dois monitores) ----------
   if (telao) {
     const proximo = indice + 1 < total ? indice + 1 : null;
+    const secaoAtual = secao?.(indice) ?? null;
+    const decorridoParte = agora - parte.em;
+    const planejadoParte = (secaoAtual?.minutos ?? 0) * 60_000;
+    const estourou = planejadoParte > 0 && decorridoParte > planejadoParte;
+    const quaseLa = planejadoParte > 0 && !estourou && decorridoParte > planejadoParte * 0.8;
     // Ainda há o que revelar neste slide: o "próximo" é o próximo clique.
     const revelaAqui = passo < totalPassos;
     return (
@@ -345,11 +368,24 @@ export function Apresentador({
                 </div>
               ) : null}
             </div>
-            <div className="flex items-center justify-between rounded-lg bg-white/5 px-4 py-3">
+            <div className="flex items-center justify-between gap-4 rounded-lg bg-white/5 px-4 py-3">
               <div>
                 <p className="text-xs font-semibold text-white/60">Tempo de reunião</p>
-                <p className="text-3xl font-black tabular-nums">{formatarTempo(agora - inicio)}</p>
+                <p className="text-3xl font-black tabular-nums">
+                  {formatarTempo(agora - inicio)}
+                  {minutosPlanejados > 0 ? <span className="text-base font-semibold text-white/50"> de {formatarTempo(minutosPlanejados * 60_000)}</span> : null}
+                </p>
               </div>
+              {secaoAtual ? (
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-semibold text-white/60">Nesta parte · {secaoAtual.nome}</p>
+                  <p className={cn("text-2xl font-black tabular-nums", estourou ? "text-[#ff7a6b]" : quaseLa ? "text-[#ffc15c]" : "text-white")}>
+                    {formatarTempo(agora - parte.em)}
+                    {secaoAtual.minutos ? <span className="text-sm font-semibold text-white/50"> de {formatarTempo(secaoAtual.minutos * 60_000)}</span> : null}
+                  </p>
+                  {estourou ? <p className="text-xs font-semibold text-[#ff7a6b]">Passou do tempo planejado</p> : null}
+                </div>
+              ) : null}
               <button type="button" onClick={() => setInicio(Date.now())} className="rounded-full px-3 py-1.5 text-xs font-semibold text-white/70 hover:bg-white/10">
                 Zerar
               </button>

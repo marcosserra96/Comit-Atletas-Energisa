@@ -25,6 +25,8 @@ import {
   fundoEscuro,
   temaDaReuniao,
   passosDoSlide,
+  textoDoSlide,
+  duplicarReuniao,
 } from "../src/lib/reuniaoResultados";
 import type { AtletaDoc, EventoDoc, HistoricoPontoDoc, RegraPontuacaoDoc } from "../src/lib/types";
 
@@ -277,4 +279,44 @@ test("tema da apresentação: padrão, validação e cliques do pódio", () => {
   const v = validarReuniao({ ...r, tema: { fonte: "serifada", transicao: "pular" as never, velocidade: "lenta" } });
   assert.ok("dados" in v);
   if ("dados" in v) assert.deepEqual(v.dados.tema, { fonte: "serifada", transicao: "esmaecer", animacoes: true, revelarPodio: true, velocidade: "lenta" });
+});
+
+test("textos dos slides automáticos: padrão, troca e validação", () => {
+  assert.equal(textoDoSlide(undefined, "obrigado.linha2"), "BORA TREINAR!");
+  assert.equal(textoDoSlide({ "obrigado.linha2": "  Até a próxima!  " }, "obrigado.linha2"), "Até a próxima!");
+  assert.equal(textoDoSlide({ "obrigado.linha2": "   " }, "obrigado.linha2"), "BORA TREINAR!");
+  const r = reuniaoPadrao({ nome: "T", inicio: "2026-06-01", fim: "2026-08-31" }, null);
+  const v = validarReuniao({ ...r, textos: { "capa.titulo": "Balanço", inventado: "x", "app.linha1": "" }, tempos: { [r.secoes[1].id]: 4.3, x: -1 }, contagem: { minutos: 999 } });
+  assert.ok("dados" in v);
+  if ("dados" in v) {
+    assert.deepEqual(v.dados.textos, { "capa.titulo": "Balanço" });
+    assert.deepEqual(v.dados.tempos, { [r.secoes[1].id]: 4.5 });
+    assert.deepEqual(v.dados.contagem, { minutos: 60 });
+  }
+});
+
+test("contagem regressiva entra desligada antes da capa", () => {
+  const r = reuniaoPadrao({ nome: "T", inicio: "2026-06-01", fim: "2026-08-31" }, null);
+  assert.equal(r.secoes[0].tipo, "contagem");
+  assert.equal(r.secoes[0].ativo, false);
+  const velha = { secoes: r.secoes.filter((x) => x.tipo !== "contagem") };
+  assert.equal(completarSecoes(velha).secoes[0].tipo, "contagem");
+});
+
+test("duplicar reunião copia roteiro, textos e tempos com ids novos", () => {
+  const r = { ...reuniaoPadrao({ nome: "2º", inicio: "2026-06-01", fim: "2026-08-31" }, "ev1"), novosIncluir: ["x"], textos: { "capa.titulo": "Balanço" } };
+  const livre = r.secoes.find((x) => x.tipo === "livre")!;
+  r.tempos = { [livre.id]: 5 };
+  r.notas = { [livre.id]: "lembrar" };
+  const c = duplicarReuniao(r, { nome: "3º", inicio: "2026-09-01", fim: "2026-11-30" }, "ev2");
+  assert.equal(c.periodo.nome, "3º");
+  assert.equal(c.eventoId, "ev2");
+  assert.deepEqual(c.novosIncluir, []);
+  assert.deepEqual(c.textos, { "capa.titulo": "Balanço" });
+  assert.equal(c.secoes.length, r.secoes.length);
+  const novaLivre = c.secoes.find((x) => x.tipo === "livre")!;
+  assert.notEqual(novaLivre.id, livre.id);
+  assert.ok(c.livres.some((l) => l.id === novaLivre.id));
+  assert.deepEqual(c.tempos, { [novaLivre.id]: 5 });
+  assert.deepEqual(c.notas, { [novaLivre.id]: "lembrar" });
 });
