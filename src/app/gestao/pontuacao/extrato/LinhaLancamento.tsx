@@ -6,7 +6,7 @@ import { formatKm, formatPontos } from "@/lib/format";
 import { camposEditaveis, dataCurta, type LancamentoComEdicao } from "@/lib/extrato";
 import { AvatarPessoa } from "@/components/atletas/AvatarAtleta";
 import { Badge } from "@/components/ui/Badge";
-import { MenuAcoes, type AcaoDoMenu } from "@/components/ui/MenuAcoes";
+import { MenuAcoes, useMenuDeContexto, type AcaoDoMenu } from "@/components/ui/MenuAcoes";
 import type { HistoricoPontoDoc } from "@/lib/types";
 
 /**
@@ -41,6 +41,7 @@ export function LinhaLancamento({
     ...(onExcluir ? [{ rotulo: "Excluir de vez", icone: Trash2, onSelect: () => onExcluir(l), perigo: true }] : []),
   ];
   const titulo = modo === "ficha" ? l.regraDesc : l.atletaNome;
+  const menuContexto = useMenuDeContexto();
   const detalhes = [
     modo !== "ficha" && l.regraDesc !== contexto?.regraDesc ? l.regraDesc : null,
     modo === "atleta" && l.descricaoLote ? l.descricaoLote : null,
@@ -49,7 +50,8 @@ export function LinhaLancamento({
   ].filter(Boolean);
 
   return (
-    <div className={cn("flex items-start gap-3 py-2.5", l.estornado && "opacity-75")}>
+    <div className={cn("flex items-start gap-3 py-2.5", l.estornado && "opacity-75")} onContextMenu={menuContexto.abrir(acoes, `Ações do lançamento de ${l.atletaNome}`)}>
+      {menuContexto.menu}
       {selecao ? (
         <input
           type="checkbox"

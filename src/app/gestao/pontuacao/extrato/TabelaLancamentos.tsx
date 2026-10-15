@@ -1,6 +1,7 @@
 "use client";
 
 import { Pencil, RotateCcw, Trash2 } from "lucide-react";
+import { useMenuDeContexto, type AcaoDoMenu } from "@/components/ui/MenuAcoes";
 import { cn } from "@/lib/cn";
 import { formatKm, formatPontos } from "@/lib/format";
 import { camposEditaveis, dataCurta, momentoDoRegistro, type LancamentoComEdicao } from "@/lib/extrato";
@@ -31,9 +32,11 @@ export function TabelaLancamentos({
   onExcluir?: (l: HistoricoPontoDoc) => void;
   selecao?: { marcados: Set<string>; onMarcar: (id: string, indice: number, shift: boolean) => void; onTodos: (marcar: boolean) => void };
 }) {
+  const menuContexto = useMenuDeContexto();
   const todosMarcados = !!selecao && linhas.length > 0 && linhas.every((l) => selecao.marcados.has(l.id));
   return (
     <>
+      {menuContexto.menu}
       <Card className="hidden overflow-x-auto p-0 xl:block">
         <table className="w-full text-sm">
           <thead>
@@ -65,9 +68,14 @@ export function TabelaLancamentos({
             {linhas.map((lanc, indice) => {
               const l = lanc as LancamentoComEdicao;
               const editavel = camposEditaveis(l).observacao;
+              const acoes: AcaoDoMenu[] = [
+                ...(editavel ? [{ rotulo: "Editar", icone: Pencil, onSelect: () => onEditar(l) }] : []),
+                ...(!l.estornado ? [{ rotulo: "Estornar", icone: RotateCcw, onSelect: () => onEstornar(l), perigo: true }] : []),
+                ...(onExcluir ? [{ rotulo: "Excluir de vez", icone: Trash2, onSelect: () => onExcluir(l), perigo: true }] : []),
+              ];
               const ultimaEdicao = l.edicoes?.[l.edicoes.length - 1];
               return (
-                <tr key={l.id} className={cn("border-b border-border-subtle align-top last:border-0 hover:bg-bg-inset/40", l.estornado && "text-text-muted")}>
+                <tr key={l.id} onContextMenu={menuContexto.abrir(acoes, `Ações do lançamento de ${l.atletaNome}`)} className={cn("border-b border-border-subtle align-top last:border-0 hover:bg-bg-inset/40", l.estornado && "text-text-muted")}>
                   {selecao ? (
                     <td className="py-3 pl-4">
                       <input

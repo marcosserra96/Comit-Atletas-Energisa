@@ -7,7 +7,7 @@ import { formatPontos, plural } from "@/lib/format";
 import { tipoLancamentoLabel } from "@/lib/labels";
 import { dataCurta, momentoDoRegistro, type LoteExtrato } from "@/lib/extrato";
 import { Badge } from "@/components/ui/Badge";
-import { MenuAcoes, type AcaoDoMenu } from "@/components/ui/MenuAcoes";
+import { MenuAcoes, useMenuDeContexto, type AcaoDoMenu } from "@/components/ui/MenuAcoes";
 import { LinhaLancamento } from "./LinhaLancamento";
 import type { HistoricoPontoDoc } from "@/lib/types";
 
@@ -35,6 +35,7 @@ export function LoteCard({
   onExcluir: (l: HistoricoPontoDoc) => void;
 }) {
   const [aberto, setAberto] = useState(false);
+  const menuContexto = useMenuDeContexto();
   const validos = lote.itens.filter((l) => !l.estornado);
   const tudoEstornado = validos.length === 0;
   const acoes: AcaoDoMenu[] = [
@@ -55,7 +56,8 @@ export function LoteCard({
 
   return (
     <li className="rounded-[var(--radius-lg)] border border-border bg-bg-card shadow-[var(--shadow-card)]">
-      <div className="flex items-center gap-2 pr-2">
+      {menuContexto.menu}
+      <div className="flex items-center gap-2 pr-2" onContextMenu={menuContexto.abrir(acoes, `Ações do lançamento ${lote.titulo}`)}>
         <button
           type="button"
           onClick={() => setAberto((v) => !v)}

@@ -19,7 +19,7 @@ import { consolidarAtividades } from "@/lib/activityConsolidation";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { MenuAcoes } from "@/components/ui/MenuAcoes";
+import { MenuAcoes, useMenuDeContexto, type AcaoDoMenu } from "@/components/ui/MenuAcoes";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -150,6 +150,13 @@ export function VerAtletasTab() {
     );
   }
 
+  // Clique direito num atleta: as mesmas ações do "⋯".
+  const contexto = useMenuDeContexto();
+  const acoesDoAtleta = (a: AtletaDoc): AcaoDoMenu[] => [
+    { rotulo: "Abrir ficha", icone: IdCard, onSelect: () => setFichaAberta(a) },
+    ...(isAdmin ? [{ rotulo: "Visualizar como atleta", icone: Eye, onSelect: () => visualizarComoAtleta(a.id) }] : []),
+  ];
+
   return (
     <div className="flex flex-col gap-4">
       <PainelNumeros
@@ -263,6 +270,7 @@ export function VerAtletasTab() {
               return (
                 <li
                   key={a.id}
+                  onContextMenu={contexto.abrir(acoesDoAtleta(a), `Ações de ${a.nome}`)}
                   className="flex items-center gap-1 pr-2 sm:rounded-[var(--radius-lg)] sm:border sm:border-border sm:bg-bg-card sm:shadow-[var(--shadow-card)]"
                 >
                   <button
@@ -291,13 +299,7 @@ export function VerAtletasTab() {
                       ) : null}
                     </span>
                   </button>
-                  <MenuAcoes
-                    rotulo={`Ações de ${a.nome}`}
-                    acoes={[
-                      { rotulo: "Abrir ficha", icone: IdCard, onSelect: () => setFichaAberta(a) },
-                      ...(isAdmin ? [{ rotulo: "Visualizar como atleta", icone: Eye, onSelect: () => visualizarComoAtleta(a.id) }] : []),
-                    ]}
-                  />
+                  <MenuAcoes rotulo={`Ações de ${a.nome}`} acoes={acoesDoAtleta(a)} />
                 </li>
               );
             })}
@@ -322,7 +324,7 @@ export function VerAtletasTab() {
               {filtrados.map((a) => {
                 const resumo = resumos[a.id];
                 return (
-                  <tr key={a.id} className="border-b border-border last:border-0 hover:bg-primary/[0.03]">
+                  <tr key={a.id} onContextMenu={contexto.abrir(acoesDoAtleta(a), `Ações de ${a.nome}`)} className="border-b border-border last:border-0 hover:bg-primary/[0.03]">
                     <td className="px-3.5 py-2.5">
                       <div className="flex items-center gap-3">
                         <AvatarAtleta nome={a.nome} foto={fotos[a.id]} className="size-8 text-xs" tom="bg-primary/10 text-primary" />
@@ -366,6 +368,7 @@ export function VerAtletasTab() {
         </Card>
       )}
 
+      {contexto.menu}
       <FichaAtletaModal
         key={fichaAberta?.id ?? "none"}
         atleta={fichaAberta}
