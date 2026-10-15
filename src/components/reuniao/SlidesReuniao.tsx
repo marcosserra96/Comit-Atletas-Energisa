@@ -20,7 +20,7 @@ import "@fontsource/dm-sans/latin-900.css";
 import "@fontsource/merriweather/latin-400.css";
 import "@fontsource/merriweather/latin-700.css";
 import "@fontsource/merriweather/latin-900.css";
-import { createContext, useContext, type CSSProperties, type ReactNode } from "react";
+import { createContext, useContext, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { iniciais } from "@/lib/fotoRegras";
 import { formatDistancia, formatPontos } from "@/lib/format";
 import { modalidadeLabel } from "@/lib/labels";
@@ -67,6 +67,53 @@ const laranja: CSSProperties = {
 /** Título azul-marinho com contorno claro (legível sobre o céu do fundo). */
 const marinho: CSSProperties = { color: COR.navy, textShadow: "0 3px 0 rgba(255,255,255,.75), 0 10px 30px rgba(7,29,64,.18)" };
 
+/**
+ * Uma linha de título que nunca sai do espaço: mede o texto e, se passar da
+ * largura disponível (fonte mais larga, nome comprido), diminui o tamanho até
+ * caber. Ocupa a largura do container; o alinhamento vem do text-align.
+ */
+function Linha({
+  style,
+  children,
+  as: Tag = "div",
+  className,
+  minimo = 0.45,
+}: {
+  style: CSSProperties;
+  children: ReactNode;
+  as?: "div" | "h2" | "span";
+  className?: string;
+  /** Até quanto pode diminuir (fração do tamanho). Abaixo disso, corta com reticências. */
+  minimo?: number;
+}) {
+  const ref = useRef<HTMLElement>(null);
+  const { familia } = useContext(ContextoSlide);
+  const base = typeof style.fontSize === "number" ? style.fontSize : 0;
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || !base) return;
+    let vivo = true;
+    const ajustar = () => {
+      if (!vivo) return;
+      el.style.fontSize = `${base}px`;
+      const disponivel = el.clientWidth;
+      const natural = el.scrollWidth;
+      if (disponivel > 0 && natural > disponivel + 1) el.style.fontSize = `${Math.max(12, Math.floor(base * Math.max(minimo, disponivel / natural)))}px`;
+    };
+    ajustar();
+    // A fonte da apresentação pode chegar depois: mede de novo quando carregar.
+    void document.fonts?.ready.then(ajustar);
+    return () => {
+      vivo = false;
+    };
+  }, [base, children, familia, minimo]);
+  return (
+    <Tag ref={ref as never} className={className} style={{ ...style, display: "block", width: style.width ?? "100%", maxWidth: "100%", whiteSpace: "nowrap", ...(minimo > 0.45 ? { overflow: "hidden", textOverflow: "ellipsis" } : {}) }}>
+      {children}
+    </Tag>
+  );
+}
+
 /** Fonte da apresentação e se os elementos entram animados (só ao vivo). */
 const ContextoSlide = createContext<{ familia?: string; animar: boolean }>({ animar: false });
 
@@ -111,7 +158,7 @@ function LogoCanto({ claro = false }: { claro?: boolean }) {
 function TituloConteudo({ children, extra, cor = COR.navy, barra, escala = 1, centro = false }: { children: ReactNode; extra?: ReactNode; cor?: string; barra?: string; escala?: number; centro?: boolean }) {
   return (
     <div style={{ position: "absolute", left: 0, top: 0, right: 0, height: 128, display: "flex", alignItems: "flex-end", justifyContent: centro ? "center" : undefined, padding: "0 72px 18px" }}>
-      <h2 style={{ margin: 0, minWidth: 0, fontSize: Math.round(56 * Math.min(escala, 1.15)), fontWeight: 900, letterSpacing: "0.02em", textTransform: "uppercase", color: cor, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{children}</h2>
+      <Linha as="h2" style={{ margin: 0, flex: "1 1 auto", minWidth: 0, fontSize: Math.round(56 * Math.min(escala, 1.15)), fontWeight: 900, letterSpacing: "0.02em", textTransform: "uppercase", color: cor, textAlign: centro ? "center" : undefined }}>{children}</Linha>
       {extra ? (
         <div style={{ marginLeft: "auto", marginBottom: 6, padding: "10px 22px", borderRadius: 999, background: "#fff", border: "2px solid #d6e3f3", fontSize: 24, fontWeight: 700, color: COR.navy, whiteSpace: "nowrap" }}>
           {extra}
@@ -175,8 +222,8 @@ function Capa({ ano, meses }: { ano: string; meses: string }) {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/reuniao/logo-atletas.webp" alt="" style={{ position: "absolute", right: 56, top: 40, width: 230 }} />
       <div style={{ position: "absolute", left: 980, top: 250, width: 860, textAlign: "center" }}>
-        <div style={{ fontSize: 176, fontWeight: 900, lineHeight: 0.95, color: "#fff", textShadow: "0 8px 30px rgba(0,0,0,.35)" }}>Resultados</div>
-        <div
+        <Linha style={{ fontSize: 176, fontWeight: 900, lineHeight: 0.95, color: "#fff", textShadow: "0 8px 30px rgba(0,0,0,.35)" }}>Resultados</Linha>
+        <Linha
           style={{
             fontSize: 196,
             fontWeight: 900,
@@ -188,8 +235,8 @@ function Capa({ ano, meses }: { ano: string; meses: string }) {
           }}
         >
           {ano}
-        </div>
-        <div style={{ marginTop: 18, fontSize: 52, fontWeight: 600, color: "rgba(255,255,255,.92)" }}>{meses}</div>
+        </Linha>
+        <Linha style={{ marginTop: 18, fontSize: 52, fontWeight: 600, color: "rgba(255,255,255,.92)" }}>{meses}</Linha>
       </div>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/reuniao/logo-energisa.webp" alt="" style={{ position: "absolute", right: 56, bottom: 44, width: 190, opacity: 0.95 }} />
@@ -256,9 +303,9 @@ function Divisoria({ sobretitulo, titulo, subtitulo, fundo, estilo }: { sobretit
         }}
       >
         {sobretitulo ? (
-          <div style={{ fontSize: Math.round(120 * escala), fontWeight: 900, lineHeight: 1, ...(v?.destaque ? { color: v.destaque } : laranja) }}>{sobretitulo}</div>
+          <Linha style={{ fontSize: Math.round(120 * escala), fontWeight: 900, lineHeight: 1, ...(v?.destaque ? { color: v.destaque } : laranja) }}>{sobretitulo}</Linha>
         ) : null}
-        <div
+        <Linha
           style={{
             fontSize: Math.round((longo ? 112 : 150) * escala),
             fontWeight: 900,
@@ -267,7 +314,7 @@ function Divisoria({ sobretitulo, titulo, subtitulo, fundo, estilo }: { sobretit
           }}
         >
           {titulo}
-        </div>
+        </Linha>
         {subtitulo ? (
           <div style={{ marginTop: 18, fontSize: Math.round(46 * escala), fontWeight: 700, color: v?.texto ?? COR.navy, whiteSpace: "pre-line" }}>
             <TextoRico texto={subtitulo} />
@@ -283,8 +330,8 @@ function Presenca({ evento, pontos, qr, semPermissao, presentes }: { evento: { t
   return (
     <Base fundo="divisoria">
       <div style={{ position: "absolute", left: 700, right: 60, top: 70, textAlign: "center" }}>
-        <div style={{ fontSize: 104, fontWeight: 900, lineHeight: 1, ...laranja }}>Registre sua</div>
-        <div style={{ fontSize: 150, fontWeight: 900, lineHeight: 1, ...marinho }}>Presença</div>
+        <Linha style={{ fontSize: 104, fontWeight: 900, lineHeight: 1, ...laranja }}>Registre sua</Linha>
+        <Linha style={{ fontSize: 150, fontWeight: 900, lineHeight: 1, ...marinho }}>Presença</Linha>
       </div>
       <div style={{ position: "absolute", left: 900, top: 350, width: 540, height: 540, borderRadius: 40, background: "#fff", boxShadow: "0 30px 60px rgba(7,29,64,.28)", display: "flex", alignItems: "center", justifyContent: "center", border: `10px solid ${COR.azul}` }}>
         {qr ? (
@@ -347,7 +394,7 @@ function Novos({ atletas, fotos, pagina, paginas }: { atletas: { id: string; nom
               )}
             </div>
             <div style={{ background: COR.navy, color: "#fff", padding: "14px 18px 16px" }}>
-              <div style={{ fontSize: 30, fontWeight: 800, lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{nomeCurto(a.nome, 18)}</div>
+              <Linha minimo={0.75} style={{ fontSize: 30, fontWeight: 800, lineHeight: 1.1 }}>{nomeCurto(a.nome, 18)}</Linha>
               <div style={{ marginTop: 4, fontSize: 20, fontWeight: 800, letterSpacing: "0.12em", color: "#ffb37a" }}>{modalidadeLabel[a.modalidade].toUpperCase()}</div>
             </div>
           </div>
@@ -597,8 +644,8 @@ function Podio({ modalidade, podio, fotos, periodo, revelados }: Extract<SlideDe
   return (
     <Base fundo="claro">
       <div style={{ position: "absolute", left: 72, top: 50 }}>
-        <div style={{ fontSize: 84, fontWeight: 900, lineHeight: 1, ...laranja }}>Time de</div>
-        <div style={{ fontSize: 120, fontWeight: 900, lineHeight: 1, ...marinho }}>{nome}</div>
+        <Linha style={{ fontSize: 84, fontWeight: 900, lineHeight: 1, ...laranja }}>Time de</Linha>
+        <Linha style={{ fontSize: 120, fontWeight: 900, lineHeight: 1, ...marinho }}>{nome}</Linha>
         <div style={{ marginTop: 18, display: "inline-block", padding: "10px 22px", borderRadius: 999, background: "rgba(255,255,255,.9)", border: "2px solid #d6e3f3", fontSize: 24, fontWeight: 700, color: COR.navy }}>{periodo}</div>
       </div>
       <div style={{ position: "absolute", left: 80, right: 80, bottom: 0, top: 120, display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 28 }}>
@@ -658,15 +705,15 @@ function Podio({ modalidade, podio, fotos, periodo, revelados }: Extract<SlideDe
               >
                 {d.atletas.map((a, i) => (
                   <div key={a.id} style={{ flex: 1, minWidth: 0, textAlign: "center", borderLeft: i > 0 ? "2px solid rgba(255,255,255,.14)" : "none", paddingLeft: i > 0 ? 24 : 0 }}>
-                    <div style={{ fontSize: fonteNome, fontWeight: 900, lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{nomeCurto(a.nome, dupla ? 16 : 22)}</div>
+                    <Linha minimo={0.7} style={{ fontSize: fonteNome, fontWeight: 900, lineHeight: 1.1 }}>{nomeCurto(a.nome, dupla ? 16 : 22)}</Linha>
                     {/* Pontos decidem a posição: são o número grande. Treinos e km vêm de apoio. */}
                     <div style={{ marginTop: 14, display: "flex", alignItems: "baseline", justifyContent: "center", gap: 10, color: MEDALHA_TEXTO[d.posicao] ?? cor }}>
                       <span style={{ fontSize: fontePontos, fontWeight: 900, lineHeight: 1 }}>{formatPontos(a.pontos)}</span>
                       <span style={{ fontSize: dupla ? 22 : 26, fontWeight: 800 }}>pontos</span>
                     </div>
-                    <div style={{ marginTop: 14, fontSize: dupla ? 23 : 27, fontWeight: 700, color: "rgba(255,255,255,.8)", whiteSpace: "nowrap" }}>
+                    <Linha minimo={0.75} style={{ marginTop: 14, fontSize: dupla ? 23 : 27, fontWeight: 700, color: "rgba(255,255,255,.8)" }}>
                       {a.treinos} {a.treinos === 1 ? "treino" : "treinos"} · {kmInteiro(a.km)} km
-                    </div>
+                    </Linha>
                   </div>
                 ))}
               </div>
@@ -724,10 +771,10 @@ function Classificacao({ modalidade, colunas, pagina, paginas, temNovos, periodo
                   }}
                 >
                   <span style={{ fontWeight: 900, color: medalha ?? COR.cinza }}>{l.posicao}º</span>
-                  <span style={{ fontWeight: medalha ? 800 : 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontSize: estreita && nomeCurto(l.nome).length + (l.novo ? 2 : 0) > 15 ? Math.round(fonte * 0.86) : undefined }}>
+                  <Linha as="span" minimo={0.72} style={{ fontWeight: medalha ? 800 : 600, fontSize: fonte }}>
                     {l.novo ? <span style={{ color: COR.laranja }}>★ </span> : null}
                     {nomeCurto(l.nome)}
-                  </span>
+                  </Linha>
                   <span style={{ textAlign: "right", fontWeight: 900 }}>{numero(l.pontos, formatPontos(l.pontos))}</span>
                   <span style={{ textAlign: "right", fontWeight: 600 }}>{numero(l.treinos, String(l.treinos))}</span>
                   <span style={{ textAlign: "right", fontWeight: 600 }}>{numero(Math.round(l.km), kmInteiro(l.km))}</span>
@@ -762,8 +809,8 @@ function Agenda({ colunas }: Extract<SlideDef, { tipo: "agenda" }>) {
                 <div key={e.id} style={{ height: alt, display: "flex", alignItems: "center", gap: 18, background: "#fff", borderRadius: 14, padding: "0 18px", boxShadow: "0 8px 20px rgba(7,29,64,.10)", opacity: e.feito ? 0.75 : 1 }}>
                   <span style={{ flexShrink: 0, width: 108, textAlign: "center", padding: "8px 0", borderRadius: 10, background: COR.navy, color: "#fff", fontSize: 32, fontWeight: 900 }}>{formatarDataCurta(e.data)}</span>
                   <span style={{ minWidth: 0, flex: 1 }}>
-                    <span style={{ display: "block", fontSize: 28, fontWeight: 800, color: COR.navy, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.titulo}</span>
-                    <span style={{ display: "block", fontSize: 22, fontWeight: 600, color: COR.cinza, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.local}</span>
+                    <Linha as="span" minimo={0.75} style={{ fontSize: 28, fontWeight: 800, color: COR.navy }}>{e.titulo}</Linha>
+                    <Linha as="span" minimo={0.8} style={{ fontSize: 22, fontWeight: 600, color: COR.cinza }}>{e.local}</Linha>
                   </span>
                   {e.feito ? (
                     <span style={{ flexShrink: 0, width: 46, height: 46, borderRadius: "50%", background: COR.verde, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30, fontWeight: 900 }}>✓</span>
@@ -789,8 +836,8 @@ function App({ qr, url }: { qr: string | null; url: string }) {
   return (
     <Base fundo="app">
       <div style={{ position: "absolute", left: 760, right: 60, top: 70, textAlign: "center" }}>
-        <div style={{ fontSize: 104, fontWeight: 900, lineHeight: 1, ...laranja }}>Aplicativo</div>
-        <div style={{ fontSize: 120, fontWeight: 900, lineHeight: 1.02, ...marinho }}>Atletas Energisa</div>
+        <Linha style={{ fontSize: 104, fontWeight: 900, lineHeight: 1, ...laranja }}>Aplicativo</Linha>
+        <Linha style={{ fontSize: 120, fontWeight: 900, lineHeight: 1.02, ...marinho }}>Atletas Energisa</Linha>
       </div>
       <div style={{ position: "absolute", left: 1010, top: 360, width: 460, height: 460, borderRadius: 36, background: "#fff", border: `10px solid ${COR.azul}`, boxShadow: "0 30px 60px rgba(7,29,64,.28)", display: "flex", alignItems: "center", justifyContent: "center" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -806,8 +853,8 @@ function Obrigado() {
   return (
     <Base fundo="agenda">
       <div style={{ position: "absolute", left: 760, right: 60, top: 0, bottom: 0, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
-        <div style={{ fontSize: 140, fontWeight: 900, lineHeight: 1, ...laranja }}>Obrigado!</div>
-        <div style={{ fontSize: 150, fontWeight: 900, lineHeight: 1.02, ...marinho }}>BORA TREINAR!</div>
+        <Linha style={{ fontSize: 140, fontWeight: 900, lineHeight: 1, ...laranja }}>Obrigado!</Linha>
+        <Linha style={{ fontSize: 150, fontWeight: 900, lineHeight: 1.02, ...marinho }}>BORA TREINAR!</Linha>
       </div>
       <LogoCanto />
     </Base>
@@ -899,27 +946,27 @@ function Sorteio({ estado, fotos }: { estado?: EstadoSorteio; fotos: Record<stri
   return (
     <Base fundo="premiacao">
       <div style={{ position: "absolute", left: 700, right: 60, top: 70, textAlign: "center" }}>
-        <div style={{ fontSize: 120, fontWeight: 900, lineHeight: 1, ...laranja }}>Sorteio</div>
+        <Linha style={{ fontSize: 120, fontWeight: 900, lineHeight: 1, ...laranja }}>Sorteio</Linha>
         <div style={{ marginTop: 10, fontSize: 40, fontWeight: 800, color: COR.navy }}>
           {presentes.length === 0 ? "Registre sua presença para participar" : `Entre os ${presentes.length} ${presentes.length === 1 ? "presente" : "presentes"}`}
         </div>
       </div>
       <div style={{ position: "absolute", left: 760, right: 120, top: 310, height: 520, borderRadius: 40, background: "rgba(255,255,255,.95)", boxShadow: "0 30px 70px rgba(7,29,64,.3)", border: `8px solid ${COR.ouro}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 40 }}>
         {estado?.girando ? (
-          <div key={estado.girando} style={{ fontSize: 104, fontWeight: 900, color: COR.navy, lineHeight: 1.05 }}>{nomeCurto(estado.girando, 22)}</div>
+          <Linha key={estado.girando} style={{ fontSize: 104, fontWeight: 900, color: COR.navy, lineHeight: 1.05 }}>{nomeCurto(estado.girando, 22)}</Linha>
         ) : revelado ? (
           <>
             <div className="numero-sobe">
               <Avatar nome={revelado.nome} foto={fotos[revelado.id]} tamanho={230} anel={COR.ouro} />
             </div>
-            <div style={{ marginTop: 26, fontSize: 84, fontWeight: 900, color: COR.navy, lineHeight: 1 }}>{nomeCurto(revelado.nome, 24)}</div>
+            <Linha style={{ marginTop: 26, fontSize: 84, fontWeight: 900, color: COR.navy, lineHeight: 1 }}>{nomeCurto(revelado.nome, 24)}</Linha>
             <div style={{ marginTop: 10, fontSize: 34, fontWeight: 800, color: COR.laranja }}>
               Parabéns!{modalidade(revelado.equipe) ? ` · ${modalidade(revelado.equipe)}` : ""}
             </div>
           </>
         ) : (
           <>
-            <div style={{ fontSize: 96, fontWeight: 900, color: COR.navy }}>Quem será?</div>
+            <Linha style={{ fontSize: 96, fontWeight: 900, color: COR.navy }}>Quem será?</Linha>
             <div style={{ marginTop: 14, fontSize: 32, fontWeight: 700, color: COR.cinza }}>
               {presentes.length === 0 ? "Escaneie o QR code da reunião e confirme sua presença." : "Só concorre quem registrou presença nesta reunião."}
             </div>
