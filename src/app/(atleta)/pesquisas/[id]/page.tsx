@@ -413,7 +413,8 @@ export default function ResponderPesquisaPage() {
           </span>
           <h1 className="text-xl font-extrabold text-text">{enviada ? "Obrigado pela resposta!" : "Você já respondeu"}</h1>
           <p className="max-w-sm text-sm text-text-light">
-            {pesquisa.titulo}. Sua resposta foi registrada e não pode ser alterada.
+            {pesquisa.titulo}
+            {/[.!?…]$/.test(pesquisa.titulo.trim()) ? "" : "."} Sua resposta foi registrada e não pode ser alterada.
           </p>
           <Link
             href={withPreview("/dashboard")}
