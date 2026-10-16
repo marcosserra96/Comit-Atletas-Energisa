@@ -61,6 +61,7 @@ import { modalidadeLabel } from "@/lib/labels";
 import { eventoOnline } from "@/lib/eventos";
 import { RespostaEvento, useRespostasEventos } from "@/components/eventos/RespostaEvento";
 import { CardTrimestre } from "@/components/inicio/CardTrimestre";
+import { CartaoComemoracao } from "@/components/inicio/CartaoComemoracao";
 import { useTrimestreDoAtleta } from "@/lib/trimestre";
 import { PendenciasNoInicio } from "@/components/avisos/CentralDeAvisos";
 import { ConviteNotificacoes } from "@/components/push/Notificacoes";
@@ -415,6 +416,8 @@ export default function DashboardPage() {
             </p>
           </div>
         ) : null}
+
+        <CartaoComemoracao atleta={atleta} hoje={dataIsoLocal()} somenteLeitura={isPreview} className="mb-5 lg:mb-6" />
 
         {isPreview ? null : (
           <>
