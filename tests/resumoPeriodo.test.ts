@@ -68,3 +68,15 @@ test("título da imagem diminui para nomes longos", () => {
   assert.equal(tamanhoDoTitulo("Outubro"), 230);
   assert.ok(tamanhoDoTitulo("3º Trimestre") < 180);
 });
+
+test("período em andamento avisa na imagem que os números são até hoje", () => {
+  const [atual, passado, tri] = periodosDoResumo("2026-10-23", TRI);
+  assert.equal(atual.emAndamento, true);
+  assert.equal(atual.subtitulo, "2026 · até 23/10");
+  assert.equal(passado.emAndamento, false);
+  assert.equal(passado.subtitulo, "2026");
+  assert.equal(tri.subtitulo, "Set a Nov · até 23/10");
+  const ano = periodosDoResumo("2026-12-05", TRI).at(-1)!;
+  assert.equal(ano.subtitulo, "Meu ano até 05/12");
+  assert.equal(periodosDoResumo("2027-01-05", TRI).at(-1)!.subtitulo, "Meu ano no programa");
+});

@@ -19,6 +19,8 @@ export interface PeriodoResumo {
   inicio: string;
   /** Último dia contado: o fim do período ou hoje, se ainda não acabou. */
   fim: string;
+  /** O período ainda não terminou: os números são até hoje. */
+  emAndamento: boolean;
   /** Para o nome do arquivo ("outubro-2026", "3-trimestre-2026", "ano-2026"). */
   arquivo: string;
 }
@@ -51,6 +53,9 @@ function diasEntre(de: string, ate: string) {
   return Math.round((Date.parse(`${ate}T12:00:00Z`) - Date.parse(`${de}T12:00:00Z`)) / 86_400_000);
 }
 
+/** "23/10" */
+const diaMes = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+
 const slug = (t: string) =>
   t
     .normalize("NFD")
@@ -71,10 +76,11 @@ export function periodoDoMes(hoje: string, deslocamento: 0 | -1): PeriodoResumo 
     id: deslocamento === 0 ? "este" : "passado",
     rotulo: MESES[mes],
     titulo: MESES[mes],
-    subtitulo: String(ano),
+    subtitulo: ultimo < hoje ? String(ano) : `${ano} · até ${diaMes(hoje)}`,
     nomeNaFrase: `Seu ${MESES[mes].toLowerCase()}`,
     inicio: `${ano}-${mm}-01`,
     fim: ultimo < hoje ? ultimo : hoje,
+    emAndamento: ultimo >= hoje,
     arquivo: `${slug(MESES[mes])}-${ano}`,
   };
 }
@@ -100,10 +106,11 @@ export function periodoDoTrimestre(t: TrimestreDoResumo, hoje: string): PeriodoR
     id: "trimestre",
     rotulo: "Trimestre",
     titulo: nome,
-    subtitulo: `${MESES_CURTOS[i]} a ${MESES_CURTOS[f]} ${ano}`,
+    subtitulo: t.fim < hoje ? `${MESES_CURTOS[i]} a ${MESES_CURTOS[f]} ${ano}` : `${MESES_CURTOS[i]} a ${MESES_CURTOS[f]} · até ${diaMes(hoje)}`,
     nomeNaFrase: `Seu ${nome}`,
     inicio: t.inicio,
     fim: t.fim < hoje ? t.fim : hoje,
+    emAndamento: t.fim >= hoje,
     arquivo: slug(/\d{4}/.test(nome) ? nome : `${nome} ${ano}`),
   };
 }
@@ -122,10 +129,11 @@ export function periodoDoAno(ano: string, hoje: string): PeriodoResumo {
     id: "ano",
     rotulo: ano,
     titulo: ano,
-    subtitulo: "Meu ano no programa",
+    subtitulo: fim < hoje ? "Meu ano no programa" : `Meu ano até ${diaMes(hoje)}`,
     nomeNaFrase: `Seu ${ano}`,
     inicio: `${ano}-01-01`,
     fim: fim < hoje ? fim : hoje,
+    emAndamento: fim >= hoje,
     arquivo: `ano-${ano}`,
   };
 }

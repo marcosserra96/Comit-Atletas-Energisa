@@ -469,15 +469,6 @@ export default function DashboardPage() {
         ) : null}
 
         <CartaoComemoracao atleta={atleta} hoje={dataIsoLocal()} somenteLeitura={isPreview} className="mb-5 lg:mb-6" />
-        {/* Na visualização como atleta não há compartilhamento: o destaque não aparece. */}
-        {paramsDoMes && !isPreview ? (
-          <DestaqueCompartilharMes
-            params={paramsDoMes}
-            hoje={dataIsoLocal()}
-            onAbrir={(p) => setCompartilhar(p)}
-            className="mb-5 lg:mb-6"
-          />
-        ) : null}
 
         {isPreview ? null : (
           <>
@@ -489,6 +480,10 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-start lg:gap-6">
           {/* Coluna principal: como estou e o que vem pela frente. */}
           <div className="flex min-w-0 flex-col gap-5 lg:gap-6">
+            {/* Fixo: o mês atual (ainda aberto) ou, logo depois de fechar, o período que fechou. Na visualização como atleta não há compartilhamento. */}
+            {paramsDoMes && !isPreview ? (
+              <DestaqueCompartilharMes params={paramsDoMes} hoje={dataIsoLocal()} onAbrir={(p) => setCompartilhar(p)} />
+            ) : null}
             {trimestre !== null && modalidade && !waitlisted ? (
               <CardTrimestre
                 trimestre={trimestre}
@@ -510,7 +505,6 @@ export default function DashboardPage() {
                 conquistadas={conquistas.conquistadas}
                 total={conquistas.total}
                 hrefTodas={withPreview("/desempenho#conquistas")}
-                onCompartilhar={isPreview ? undefined : () => setCompartilhar("auto")}
               />
             ) : null}
             <section className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-[var(--shadow-card)] sm:p-5">
