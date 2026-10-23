@@ -61,3 +61,8 @@ test("preferências e quem do comitê recebe", () => {
   assert.equal(podeReceberAvisoComite({ role: "comite", permissoes: ["atletas"] }, "comite_senha"), true);
   assert.equal(podeReceberAvisoComite({ role: "atleta" }, "comite_senha"), false);
 });
+
+test("preferências antigas ganham o resumo do mês ligado", () => {
+  assert.equal(normalizarPreferencias({ pontos: false }).resumo_mes, true);
+  assert.equal(normalizarPreferencias({ resumo_mes: false }).resumo_mes, false);
+});

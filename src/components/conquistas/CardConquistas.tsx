@@ -108,7 +108,7 @@ export function CardConquistas({
       {onCompartilhar ? (
         <Button variant="secondary" className="mt-4 w-full" onClick={onCompartilhar}>
           <Share2 className="size-4" aria-hidden="true" />
-          Compartilhar meu mês
+          Compartilhar meu resumo
         </Button>
       ) : null}
     </section>

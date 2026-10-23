@@ -6,7 +6,7 @@
 // ---------- preferências ----------
 
 /** Tipos de aviso que cada pessoa pode ligar ou desligar. */
-export type TipoAviso = "pontos" | "ranking" | "conquistas" | "comite_acesso" | "comite_justificativa" | "comite_senha";
+export type TipoAviso = "pontos" | "ranking" | "conquistas" | "resumo_mes" | "comite_acesso" | "comite_justificativa" | "comite_senha";
 
 export type PreferenciasAviso = Record<TipoAviso, boolean>;
 
@@ -14,6 +14,7 @@ export const PREFERENCIAS_PADRAO: PreferenciasAviso = {
   pontos: true,
   ranking: true,
   conquistas: true,
+  resumo_mes: true,
   comite_acesso: true,
   comite_justificativa: true,
   comite_senha: true,
@@ -23,12 +24,13 @@ export const TIPO_AVISO_INFO: Record<TipoAviso, { titulo: string; texto: string 
   pontos: { titulo: "Pontos lançados", texto: "Quando o comitê lançar pontos para você." },
   ranking: { titulo: "Ultrapassagem no ranking", texto: "Quando alguém passar você no ranking do trimestre." },
   conquistas: { titulo: "Conquistas", texto: "Quando você ganhar uma medalha nova, inclusive de desafio." },
+  resumo_mes: { titulo: "Resumo do mês, do trimestre e do ano", texto: "Quando cada um fechar, como foi, com a imagem pronta para compartilhar." },
   comite_acesso: { titulo: "Pedido de acesso", texto: "Quando alguém pedir para entrar no portal." },
   comite_justificativa: { titulo: "Justificativa de ausência", texto: "Quando um atleta enviar uma justificativa para analisar." },
   comite_senha: { titulo: "Pedido de nova senha", texto: "Quando alguém não conseguir entrar e pedir ajuda." },
 };
 
-export const TIPOS_ATLETA: TipoAviso[] = ["pontos", "ranking", "conquistas"];
+export const TIPOS_ATLETA: TipoAviso[] = ["pontos", "ranking", "conquistas", "resumo_mes"];
 export const TIPOS_COMITE: TipoAviso[] = ["comite_acesso", "comite_justificativa", "comite_senha"];
 
 export function normalizarPreferencias(valor: unknown): PreferenciasAviso {

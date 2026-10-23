@@ -11,6 +11,7 @@ import { Pista, Roda } from "@/components/informativo/ArteInformativo";
 import type { MedalhaDoAtleta } from "@/lib/conquistas";
 import type { Modalidade } from "@/lib/types";
 import { Medalha } from "./Medalha";
+import { tamanhoDoTitulo } from "@/lib/resumoPeriodo";
 
 export const CARTAO_L = 1080;
 export const CARTAO_A = 1920;
@@ -22,8 +23,10 @@ export interface DadosCartaoDoMes {
   nome: string;
   foto?: string;
   modalidade: Modalidade;
-  mes: string;
-  ano: string;
+  /** Título grande: o mês, o trimestre ("3º Trimestre") ou o ano. */
+  titulo: string;
+  /** Linha colorida abaixo do título ("2026", "Set a Nov 2026", "Meu ano no programa"). */
+  subtitulo: string;
   treinos: number;
   km: number;
   pontos: number;
@@ -77,10 +80,10 @@ export const CartaoDoMes = forwardRef<HTMLDivElement, { dados: DadosCartaoDoMes 
         </span>
       </div>
 
-      {/* O mês é o título da peça. */}
-      <div style={{ position: "absolute", left: 80, top: 300 }}>
-        <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 230, lineHeight: 0.84, letterSpacing: "-0.02em", textTransform: "uppercase" }}>{dados.mes}</div>
-        <div style={{ marginTop: 18, fontFamily: DISPLAY, fontWeight: 700, fontSize: 72, color: cor }}>{dados.ano}</div>
+      {/* O período é o título da peça; nomes longos ("3º Trimestre") diminuem para caber na largura. */}
+      <div style={{ position: "absolute", left: 80, right: 80, top: 300 }}>
+        <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: tamanhoDoTitulo(dados.titulo), lineHeight: 0.84, letterSpacing: "-0.02em", textTransform: "uppercase", whiteSpace: "nowrap" }}>{dados.titulo}</div>
+        <div style={{ marginTop: 18, fontFamily: DISPLAY, fontWeight: 700, fontSize: 72, color: cor }}>{dados.subtitulo}</div>
       </div>
 
       <div style={{ position: "absolute", left: 88, right: 88, top: 720, display: "flex", alignItems: "center", gap: 40 }}>
