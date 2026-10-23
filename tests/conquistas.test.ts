@@ -101,3 +101,15 @@ test("equivalência da equipe", () => {
   assert.equal(equivalenciaDaEquipe(12561, "bicicleta"), "31% de uma volta ao mundo");
   assert.equal(equivalenciaDaEquipe(45000, "bicicleta"), "1,1 volta ao mundo");
 });
+
+test("km de outra modalidade não contam (quem trocou de equipe)", () => {
+  const lanc = [
+    l({ id: "b1", equipe: "bicicleta", kmPercorrido: 300, dataTreino: "2026-03-01", descricaoLote: "Pedal" }),
+    l({ id: "c1", equipe: "corrida", kmPercorrido: 8, dataTreino: "2026-09-01", descricaoLote: "Rodagem" }),
+  ];
+  const { medalhas } = calcularMedalhas({ lancamentos: lanc, regrasTreino: undefined, modalidade: "corrida", hoje: "2026-10-01" });
+  const maior = (prefixo: string) => medalhas.filter((m) => m.id.startsWith(prefixo)).at(-1)!;
+  assert.equal(maior("km_").progresso.atual, 8);
+  // Os dois treinos continuam contando como treino.
+  assert.equal(maior("treinos_").progresso.atual, 2);
+});

@@ -38,6 +38,7 @@ import { apagarReuniao, listarReunioes, salvarReuniao, useImagensReuniao, usePre
 import { listarDesafios } from "@/lib/desafiosCliente";
 import { agruparPorAtleta, participacaoNoDesafio, type DesafioDoc } from "@/lib/desafios";
 import { calcularSequencia } from "@/lib/conquistas";
+import { consolidarAtividades } from "@/lib/activityConsolidation";
 import {
   agendaDoAno,
   aniversariantesDoPeriodo,
@@ -46,6 +47,7 @@ import {
   membroAtivoDaEquipe,
   montarRoteiro,
   periodoAnterior,
+  periodoDoAno,
   trechoEquivalente,
   novosAtletas,
   periodosDeApuracao,
@@ -337,7 +339,11 @@ export default function ReuniaoResultadosPage() {
       if (!membroAtivoDaEquipe(a, "corrida") && !membroAtivoDaEquipe(a, "bicicleta")) continue;
       sequencias.set(a.id, calcularSequencia(porAtleta.get(a.id) ?? [], dados.regrasTreino!, ate).atual);
     }
-    const itensDestaque = destaquesDoPeriodo({ atletas, atual: { corrida, bicicleta }, anterior: temAnterior ? anterior : null, sequencias });
+    const atividades = consolidarAtividades(
+      dados.lancamentos!.filter((l) => l.dataTreino >= periodo.inicio && l.dataTreino <= ate),
+      dados.regrasTreino!,
+    );
+    const itensDestaque = destaquesDoPeriodo({ atletas, atual: { corrida, bicicleta }, anterior: temAnterior ? anterior : null, sequencias, sequenciaAte: ate, atividades });
     const desafiosDoPeriodo = desafios
       .filter((d) => d.inicio <= periodo.fim && d.fim >= periodo.inicio && d.inicio <= hoje)
       .map((d) => {
@@ -627,7 +633,13 @@ export default function ReuniaoResultadosPage() {
 
   const trimestres = dados.calendario ? ordenarTrimestres(dados.calendario.trimestres) : [];
   const reunioesAgenda = (dados.eventos ?? []).filter((e) => e.tipo === "reuniao").sort((a, b) => b.data.localeCompare(a.data));
-  const valorPeriodo = rascunho ? trimestres.find((t) => t.inicio === rascunho.periodo.inicio && t.fim === rascunho.periodo.fim)?.id ?? "personalizado" : "";
+  // Fechamento do ano: os anos do calendário e o ano corrente.
+  const anos = [...new Set([...trimestres.map((t) => t.inicio.slice(0, 4)), hoje.slice(0, 4)])].sort().reverse();
+  const periodosAnuais = anos.map((ano) => ({ ano, ...periodoDoAno(trimestres, ano) }));
+  const anoEscolhido = rascunho ? periodosAnuais.find((p) => p.inicio === rascunho.periodo.inicio && p.fim === rascunho.periodo.fim) : undefined;
+  const valorPeriodo = rascunho
+    ? trimestres.find((t) => t.inicio === rascunho.periodo.inicio && t.fim === rascunho.periodo.fim)?.id ?? (anoEscolhido ? `ano:${anoEscolhido.ano}` : "personalizado")
+    : "";
   const total = calculo?.slides.length ?? 0;
 
   return (
@@ -739,15 +751,26 @@ export default function ReuniaoResultadosPage() {
                     value={valorPeriodo}
                     onChange={(e) => {
                       const t = trimestres.find((x) => x.id === e.target.value);
+                      const a = periodosAnuais.find((x) => `ano:${x.ano}` === e.target.value);
                       if (t) atualizar({ periodo: { nome: t.nome, inicio: t.inicio, fim: t.fim }, titulo: `Reunião de resultados · ${t.nome}` });
+                      else if (a) atualizar({ periodo: { nome: a.nome, inicio: a.inicio, fim: a.fim }, titulo: `Fechamento de ${a.ano}` });
                       else atualizar({ periodo: { ...rascunho.periodo, nome: rascunho.periodo.nome || "Período" } });
                     }}
                   >
-                    {trimestres.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.nome} · {formatShortDate(t.inicio)} a {formatShortDate(t.fim)}
-                      </option>
-                    ))}
+                    <optgroup label="Trimestres">
+                      {trimestres.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.nome} · {formatShortDate(t.inicio)} a {formatShortDate(t.fim)}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Ano inteiro">
+                      {periodosAnuais.map((p) => (
+                        <option key={p.ano} value={`ano:${p.ano}`}>
+                          {hoje <= p.fim && hoje >= p.inicio ? `${p.ano} até agora` : `Fechamento de ${p.ano}`} · {formatShortDate(p.inicio)} a {formatShortDate(p.fim)}
+                        </option>
+                      ))}
+                    </optgroup>
                     <option value="personalizado">Outras datas</option>
                   </Select>
                   {trimestres.length === 0 ? (

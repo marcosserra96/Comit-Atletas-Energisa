@@ -16,6 +16,9 @@ import {
   aniversariantesDoPeriodo,
   completarSecoes,
   destaquesDoPeriodo,
+  paginarDestaques,
+  periodoDoAno,
+  noPeriodo,
   periodoAnterior,
   trechoEquivalente,
   sortearEntre,
@@ -183,10 +186,59 @@ test("destaques: evolução, sequência e mais km por equipe", () => {
   const d = destaquesDoPeriodo({
     atletas,
     atual: { corrida: res("corrida", [["A", 20, 150], ["B", 12, 200]]), bicicleta: res("bicicleta", [["X", 8, 900]]) },
-    anterior: { corrida: res("corrida", [["A", 18, 0], ["B", 3, 0]]), bicicleta: res("bicicleta", [["X", 8, 0]]) },
+    anterior: { nome: "2º Trimestre", corrida: res("corrida", [["A", 18, 0], ["B", 3, 0]]), bicicleta: res("bicicleta", [["X", 8, 0]]) },
     sequencias: new Map([["A", 9], ["B", 4]]),
+    sequenciaAte: "2026-08-31",
   });
   assert.deepEqual(d.map((x) => [x.id, x.atleta.id, x.valor]), [["evolucao", "B", "+9"], ["sequencia", "A", "9"], ["km-corrida", "B", "200"], ["km-bicicleta", "X", "900"]]);
+  // A comparação diz com o quê.
+  assert.equal(d[0].detalhe, "12 treinos, contra 3 no 2º Trimestre");
+  assert.equal(d[1].detalhe, "Treinou toda semana até 31/08");
+});
+
+test("destaques: quem não treinou no período anterior não conta como evolução", () => {
+  const atletas = ["A", "N"].map((n) => atleta(n, n, "corrida"));
+  const res = (linhas: [string, number][]) =>
+    ({ modalidade: "corrida" as const, podio: [], totais: { atletas: 0, treinos: 0, pontos: 0, km: 0, kmPorTreino: 0 }, ranking: linhas.map(([id, treinos]) => ({ id, nome: id, posicao: 1, pontos: treinos * 5, treinos, km: 0, novo: false })) });
+  const vazio = { ...res([]), modalidade: "bicicleta" as const };
+  const d = destaquesDoPeriodo({ atletas, atual: { corrida: res([["A", 10], ["N", 30]]), bicicleta: vazio }, anterior: { nome: "2025", corrida: res([["A", 6]]), bicicleta: vazio }, sequencias: new Map() });
+  assert.equal(d[0].atleta.id, "A");
+  assert.match(d[0].detalhe, /contra 6 em 2025$/);
+});
+
+test("destaques: treino mais longo de cada equipe e divisão em dois slides", () => {
+  const atletas = [atleta("A", "Ana", "corrida"), atleta("X", "Xavier", "bicicleta")];
+  const res = (modalidade: "corrida" | "bicicleta", id: string) =>
+    ({ modalidade, podio: [], totais: { atletas: 0, treinos: 0, pontos: 0, km: 0, kmPorTreino: 0 }, ranking: [{ id, nome: id, posicao: 1, pontos: 50, treinos: 10, km: 100, novo: false }] });
+  const ativ = (atletaId: string, data: string, km: number, tipo: "treino" | "evento" | "avulso", descricao = "Treino") => ({ chave: `${atletaId}${data}`, atletaId, data, tipo, descricao, pontos: 5, km });
+  const d = destaquesDoPeriodo({
+    atletas,
+    atual: { corrida: res("corrida", "A"), bicicleta: res("bicicleta", "X") },
+    anterior: { nome: "2º Trimestre", corrida: res("corrida", "A"), bicicleta: { ...res("bicicleta", "X"), ranking: [{ ...res("bicicleta", "X").ranking[0], treinos: 5 }] } },
+    sequencias: new Map([["A", 6]]),
+    atividades: [ativ("A", "2026-09-12", 21.1, "evento", "Meia de Cuiabá"), ativ("A", "2026-09-20", 12, "treino"), ativ("X", "2026-10-02", 92.4, "treino"), ativ("X", "2026-10-03", 500, "avulso")],
+  });
+  const longos = d.filter((x) => x.id.startsWith("longo-"));
+  assert.deepEqual(longos.map((x) => [x.id, x.valor, x.detalhe]), [["longo-corrida", "21,1", "Meia de Cuiabá · 12/09"], ["longo-bicicleta", "92,4", "Num só treino, em 02/10"]]);
+  const paginas = paginarDestaques(d);
+  assert.deepEqual(paginas.map((p) => p.map((x) => x.id)), [["evolucao", "sequencia"], ["km-corrida", "longo-corrida", "km-bicicleta", "longo-bicicleta"]]);
+  assert.equal(paginarDestaques(d.slice(0, 4)).length, 1);
+  // Só um cartão geral: vai junto com a Corrida.
+  assert.deepEqual(paginarDestaques(d.filter((x) => x.id !== "evolucao")).map((p) => p.map((x) => x.id)), [["sequencia", "km-corrida", "longo-corrida"], ["km-bicicleta", "longo-bicicleta"]]);
+});
+
+test("fechamento do ano: período do calendário e comparação com o ano anterior", () => {
+  const tri = [
+    { nome: "1º", inicio: "2025-03-01", fim: "2025-05-31" }, { nome: "4º", inicio: "2025-12-01", fim: "2026-02-28" },
+    { nome: "1º", inicio: "2026-03-01", fim: "2026-05-31" }, { nome: "4º", inicio: "2026-12-01", fim: "2027-02-28" },
+  ];
+  const ano = periodoDoAno(tri, "2026");
+  assert.deepEqual(ano, { nome: "Ano de 2026", inicio: "2026-03-01", fim: "2027-02-28" });
+  assert.deepEqual(periodoAnterior(ano, tri), { nome: "2025", inicio: "2025-03-01", fim: "2026-02-28" });
+  // Sem calendário: ano civil, comparado com o ano civil anterior.
+  assert.deepEqual(periodoAnterior(periodoDoAno([], "2026"), []), { nome: "2025", inicio: "2025-01-01", fim: "2025-12-31" });
+  assert.equal(noPeriodo("2º Trimestre até 12/07"), "no 2º Trimestre até 12/07");
+  assert.equal(noPeriodo("Período anterior"), "no período anterior");
 });
 
 test("reuniões antigas ganham as seções novas no lugar certo", () => {
