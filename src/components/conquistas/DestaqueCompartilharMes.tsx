@@ -89,13 +89,24 @@ export function DestaqueCompartilharMes({
         <h2 id="destaque-mes-titulo" className={cn("text-lg font-extrabold leading-tight text-text [text-wrap:balance]", destaque && "pr-8")}>
           {destaque ? `Seu ${nome} virou imagem` : "Compartilhe seu mês"}
         </h2>
-        <p className="mt-1 text-sm text-text-secondary [text-wrap:pretty]">
-          {destaque
-            ? `${plural(dados.treinos, "treino")}${km} ${onde}. Compartilhe no status do WhatsApp ou nos stories.`
-            : dados.treinos > 0
-              ? `${periodo.titulo} até agora: ${plural(dados.treinos, "treino")}${km}. O mês ainda não fechou, então a imagem mostra os números até hoje.`
-              : `Seu primeiro treino de ${nome} já aparece na imagem. Dá para escolher também o mês passado.`}
-        </p>
+        {destaque ? (
+          <p className="mt-1 text-sm text-text-secondary [text-wrap:pretty]">
+            {plural(dados.treinos, "treino")}
+            {km} {onde}. Compartilhe no status do WhatsApp ou nos stories.
+          </p>
+        ) : (
+          <>
+            <p className="mt-1 text-sm text-text-secondary [text-wrap:pretty]">
+              Uma imagem com os seus treinos, pronta para mostrar sua evolução no status ou nos stories.
+            </p>
+            {/* O mês ainda está aberto: os números são até hoje (a imagem também avisa). */}
+            <p className="mt-1.5 text-xs font-semibold text-text-light">
+              {dados.treinos > 0
+                ? `${periodo.titulo} até agora: ${plural(dados.treinos, "treino")}${km}`
+                : `Seu primeiro treino de ${nome} já entra nela`}
+            </p>
+          </>
+        )}
         <Button className="mt-3" size="sm" onClick={abrir}>
           <Share2 className="size-4" aria-hidden="true" />
           Ver e compartilhar
