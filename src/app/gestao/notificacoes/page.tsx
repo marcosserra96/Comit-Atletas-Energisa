@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useState } from "react";
 import Image from "next/image";
-import { BellRing, CalendarClock, ClipboardList, Flag, Medal, Megaphone, Newspaper, Send, ShieldCheck, Trophy, TrendingUp, UsersRound } from "lucide-react";
+import { BellRing, CalendarCheck, CalendarClock, ClipboardList, Flag, Medal, Megaphone, Newspaper, Send, ShieldCheck, Trophy, TrendingUp, UsersRound } from "lucide-react";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -60,6 +60,7 @@ const ICONE_ORIGEM: Record<OrigemPush, typeof Send> = {
   pontos: Trophy,
   ranking: TrendingUp,
   conquistas: Medal,
+  resumo_mes: CalendarCheck,
   desafio: Flag,
   comite: ShieldCheck,
 };

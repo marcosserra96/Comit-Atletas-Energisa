@@ -69,6 +69,9 @@ import { CardConquistas } from "@/components/conquistas/CardConquistas";
 import { CardDesafios } from "@/components/conquistas/CardDesafios";
 import { ComemoracaoConquista } from "@/components/conquistas/ComemoracaoConquista";
 import { CompartilharMes } from "@/components/conquistas/CompartilharMes";
+import { DestaqueCompartilharMes } from "@/components/conquistas/DestaqueCompartilharMes";
+import { useTrimestresDoCalendario } from "@/lib/useTrimestresDoCalendario";
+import type { IdPeriodoResumo } from "@/lib/resumoPeriodo";
 import { useConquistas } from "@/lib/useConquistas";
 import { useFotoAtleta } from "@/lib/fotos";
 
@@ -304,8 +307,56 @@ export default function DashboardPage() {
 
   const conquistas = useConquistas({ atleta, lancamentos: meusLancamentos, regrasTreino, preview: isPreview });
   const foto = useFotoAtleta(atleta);
-  const [compartilhando, setCompartilhando] = useState(false);
+  // Qual mês abre na imagem para compartilhar (null = fechado; "auto" = o padrão do dia).
+  const [compartilhar, setCompartilhar] = useState<"auto" | IdPeriodoResumo | null>(null);
+  // Link do aviso "fechou" (/dashboard?compartilhar=mes|trimestre|ano): abre direto no período.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const pedido = url.searchParams.get("compartilhar");
+    const periodo = pedido === "mes" ? "passado" : pedido === "trimestre" || pedido === "ano" ? pedido : null;
+    if (!periodo) return;
+    const id = window.setTimeout(() => {
+      // Tira o parâmetro junto com a abertura, para recarregar a página não abrir de novo.
+      url.searchParams.delete("compartilhar");
+      window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+      setCompartilhar(periodo);
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, []);
   const mostrarConquistas = Boolean(conquistas.modalidade && !waitlisted);
+  // Trimestres do calendário; sem calendário, o trimestre que vale no ranking.
+  const doCalendario = useTrimestresDoCalendario();
+  const trimestreNome = trimestre?.nome;
+  const trimestreInicio = trimestre?.inicio;
+  const trimestreFim = trimestre?.fim;
+  const trimestresDoResumo = useMemo(
+    () =>
+      doCalendario.length
+        ? doCalendario
+        : trimestreNome && trimestreInicio && trimestreFim
+          ? [{ nome: trimestreNome, inicio: trimestreInicio, fim: trimestreFim }]
+          : [],
+    [doCalendario, trimestreNome, trimestreInicio, trimestreFim],
+  );
+  const posicaoNoCartao = rankingDesativado || rankingOcultoAtual ? null : (trimestre?.posicao ?? null);
+  const paramsDoMes = useMemo(
+    () =>
+      mostrarConquistas && conquistas.modalidade && meusLancamentos && regrasTreino
+        ? {
+            atleta,
+            modalidade: conquistas.modalidade,
+            foto,
+            lancamentos: meusLancamentos,
+            historicoMensal: meuHistoricoMensal ?? [],
+            regrasTreino,
+            semanas: conquistas.sequencia?.atual ?? 0,
+            medalhas: conquistas.recentes,
+            posicaoTrimestre: posicaoNoCartao,
+            trimestres: trimestresDoResumo,
+          }
+        : null,
+    [mostrarConquistas, conquistas.modalidade, conquistas.sequencia, conquistas.recentes, meusLancamentos, meuHistoricoMensal, regrasTreino, atleta, foto, posicaoNoCartao, trimestresDoResumo],
+  );
 
   const fontesComErro = [
     erroHistorico ? "histórico" : null,
@@ -418,6 +469,15 @@ export default function DashboardPage() {
         ) : null}
 
         <CartaoComemoracao atleta={atleta} hoje={dataIsoLocal()} somenteLeitura={isPreview} className="mb-5 lg:mb-6" />
+        {/* Na visualização como atleta não há compartilhamento: o destaque não aparece. */}
+        {paramsDoMes && !isPreview ? (
+          <DestaqueCompartilharMes
+            params={paramsDoMes}
+            hoje={dataIsoLocal()}
+            onAbrir={(p) => setCompartilhar(p)}
+            className="mb-5 lg:mb-6"
+          />
+        ) : null}
 
         {isPreview ? null : (
           <>
@@ -450,7 +510,7 @@ export default function DashboardPage() {
                 conquistadas={conquistas.conquistadas}
                 total={conquistas.total}
                 hrefTodas={withPreview("/desempenho#conquistas")}
-                onCompartilhar={isPreview ? undefined : () => setCompartilhando(true)}
+                onCompartilhar={isPreview ? undefined : () => setCompartilhar("auto")}
               />
             ) : null}
             <section className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-[var(--shadow-card)] sm:p-5">
@@ -827,11 +887,13 @@ export default function DashboardPage() {
 
       {mostrarConquistas && !isPreview ? (
         <>
-          <ComemoracaoConquista novas={conquistas.novas} onFechar={conquistas.marcarComoVistas} onCompartilhar={() => setCompartilhando(true)} />
+          <ComemoracaoConquista novas={conquistas.novas} onFechar={conquistas.marcarComoVistas} onCompartilhar={() => setCompartilhar("auto")} />
           {conquistas.modalidade && meusLancamentos ? (
             <CompartilharMes
-              aberto={compartilhando}
-              onFechar={() => setCompartilhando(false)}
+              key={compartilhar ?? "fechado"}
+              aberto={compartilhar !== null}
+              periodoInicial={compartilhar && compartilhar !== "auto" ? compartilhar : undefined}
+              onFechar={() => setCompartilhar(null)}
               atleta={atleta}
               modalidade={conquistas.modalidade}
               foto={foto}
@@ -840,7 +902,8 @@ export default function DashboardPage() {
               regrasTreino={regrasTreino}
               semanas={conquistas.sequencia?.atual ?? 0}
               medalhas={conquistas.recentes}
-              posicaoTrimestre={rankingDesativado || rankingOcultoAtual ? null : (trimestre?.posicao ?? null)}
+              posicaoTrimestre={posicaoNoCartao}
+              trimestres={trimestresDoResumo}
             />
           ) : null}
         </>

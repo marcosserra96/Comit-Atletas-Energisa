@@ -18,7 +18,7 @@ import {
 } from "@/lib/push/automaticos";
 import type { OrigemPush } from "@/lib/push/regras";
 import type { DesafioDoc } from "@/lib/desafios";
-import type { HistoricoPontoDoc, RegraPontuacaoDoc } from "@/lib/types";
+import type { AtletaDoc, HistoricoMensalDoc, HistoricoPontoDoc, RegraPontuacaoDoc } from "@/lib/types";
 import { idDoToken, registrarEnvio, type MensagemPush, type ResultadoPush } from "@/lib/server/push";
 
 /**
@@ -349,6 +349,61 @@ export async function reiniciarFotografiaDoRanking(db: Firestore) {
   await avisarUltrapassagens(db, true);
 }
 
+// ---------- resumo do mês, do trimestre e do ano ----------
+
+/**
+ * Quando um período fecha (o mês no dia 1º, o trimestre do calendário no dia
+ * seguinte ao fim, o ano em 1º de janeiro; a partir das 10h, com folga de 3
+ * dias), cada atleta que treinou nele recebe o resumo, com o link que abre a
+ * imagem para compartilhar. Quem não treinou não recebe nada. Fechando mais de
+ * um junto, sai só o maior. O período é marcado antes do envio, para uma
+ * falha no meio não mandar duas vezes.
+ */
+async function avisarResumoDoPeriodo(db: Firestore) {
+  const { avisoDeResumoParaEnviar, mensagemDoResumo } = await import("@/lib/resumoPeriodo");
+  const { normalizarCalendario } = await import("@/lib/calendarioPremiacao");
+  const calendario = normalizarCalendario((await db.collection("configuracoes").doc("calendario_premiacao").get()).data() as never);
+  const ref = db.collection(CONTROLE).doc("resumo_periodo");
+  const aviso = await db.runTransaction(async (tx) => {
+    const enviados = ((await tx.get(ref)).data() ?? {}) as { mes?: string; trimestre?: string; ano?: string };
+    const a = avisoDeResumoParaEnviar(Date.now(), calendario.trimestres, enviados);
+    if (a) tx.set(ref, { ...enviados, ...a.marcas, em: Date.now() });
+    return a;
+  });
+  if (!aviso) return 0;
+  const { periodo } = aviso;
+
+  const [{ calcularResultadosRanking }, { regrasDeTreino }] = await Promise.all([import("@/lib/rankingPeriods"), import("@/lib/activityConsolidation")]);
+  const [atletasSnap, lancSnap, mensalSnap, regrasSnap] = await Promise.all([
+    db.collection("atletas").where("equipe", "in", ["corrida", "bicicleta"]).get(),
+    db.collection("historico_pontos").where("dataTreino", ">=", periodo.inicio).where("dataTreino", "<=", periodo.fim).get(),
+    db.collection("historico_mensal").where("competencia", ">=", periodo.inicio.slice(0, 7)).where("competencia", "<=", periodo.fim.slice(0, 7)).get(),
+    db.collection("regras_pontuacao").get(),
+  ]);
+  const atletas = atletasSnap.docs.map((d) => ({ ...(d.data() as AtletaDoc), id: d.id }));
+  const regrasTreino = regrasDeTreino(regrasSnap.docs.map((d) => ({ ...(d.data() as RegraPontuacaoDoc), id: d.id })));
+  // O mesmo cálculo do ranking e da imagem (já deixa de fora inativos e perfis ocultos).
+  const resultados = calcularResultadosRanking(
+    atletas,
+    lancSnap.docs.map((d) => ({ ...(d.data() as HistoricoPontoDoc), id: d.id })),
+    "trimestre",
+    periodo.inicio,
+    periodo.fim,
+    mensalSnap.docs.map((d) => ({ ...(d.data() as HistoricoMensalDoc), id: d.id })),
+    regrasTreino,
+  );
+  const envios = resultados
+    .filter((r) => r.treinos > 0)
+    .map((r) => ({
+      atletaId: r.atletaId,
+      mensagem: { ...mensagemDoResumo({ periodo, treinos: r.treinos, km: r.km }), link: aviso.link, tag: `resumo-${periodo.arquivo}` },
+    }));
+  if (envios.length === 0) return 0;
+  const r = await enviarIndividuais(db, envios, "resumo_mes");
+  await registrar(db, "resumo_mes", { titulo: `Resumo: ${periodo.titulo}`, corpo: `${envios.length} atleta(s) receberam o resumo.`, link: "/dashboard" }, r);
+  return envios.length;
+}
+
 // ---------- comitê ----------
 
 const PEDIDOS = [
@@ -390,8 +445,9 @@ export async function processarAvisosAutomaticos(db: Firestore, partes: { atleta
   try {
     const pontos = partes.atletas ? await avisarPontos(db) : 0;
     const ranking = partes.atletas ? await avisarUltrapassagens(db) : 0;
+    const resumo = partes.atletas ? await avisarResumoDoPeriodo(db).catch((error) => (console.error("Falha no resumo do período:", error), 0)) : 0;
     const comite = partes.comite ? await avisarComite(db) : 0;
-    return { pontos, ranking, comite };
+    return { pontos, ranking, resumo, comite };
   } finally {
     await destravar(db);
   }
