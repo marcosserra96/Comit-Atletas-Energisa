@@ -3,7 +3,8 @@
 import { dataIsoLocal } from "@/lib/date";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { collection, getDocs, onSnapshot, orderBy, query, where } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, where } from "firebase/firestore";
+import { avisoDeFimDoCalendario, hojeBrasil, normalizarCalendario, type CalendarioPremiacaoDoc } from "@/lib/calendarioPremiacao";
 import { Activity, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { db } from "@/lib/firebase";
@@ -59,6 +60,19 @@ export function VisaoEstrategica() {
   const podeAtletas = temPermissao(usuario, "atletas");
   const [pedidosSenha, setPedidosSenha] = useState<PedidoSenha[] | null>(null);
   const [versaoPedidos, setVersaoPedidos] = useState(0);
+
+  // Calendário de premiação: avisa quando está acabando sem o próximo trimestre.
+  const [calendario, setCalendario] = useState<CalendarioPremiacaoDoc | null>(null);
+  useEffect(() => {
+    if (!isAdmin) return;
+    let ativo = true;
+    getDoc(doc(db, "configuracoes", "calendario_premiacao"))
+      .then((snap) => ativo && setCalendario(normalizarCalendario(snap.data() as Partial<CalendarioPremiacaoDoc> | undefined)))
+      .catch(() => ativo && setCalendario(null));
+    return () => {
+      ativo = false;
+    };
+  }, [isAdmin]);
 
   // Pedidos de nova senha vêm do servidor: na abertura, a cada 2 min e ao fechar a lista.
   useEffect(() => {
@@ -207,6 +221,7 @@ export function VisaoEstrategica() {
   const mesAtualIdx = stats.seriesMensal.length - 1;
 
   const dadosAtencao: DadosAtencao = {
+    fimDoCalendario: calendario ? avisoDeFimDoCalendario(calendario, hojeBrasil()) : null,
     solicitacoes: pendentes,
     pedidosSenha: pedidosSenha ?? [],
     atletasSemVinculo: (atletas ?? []).filter((a) => !a.authUid),

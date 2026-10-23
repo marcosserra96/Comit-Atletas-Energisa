@@ -20,6 +20,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Badge } from "@/components/ui/Badge";
 import { SportBadge } from "@/components/ui/SportBadge";
 import { formatPontos, formatShortDate, plural } from "@/lib/format";
+import type { avisoDeFimDoCalendario } from "@/lib/calendarioPremiacao";
 import { equipeLabel } from "@/lib/labels";
 import { ehReuniao, horarioDoEvento } from "@/lib/eventos";
 import { RequestCard } from "./atletas/RequestCard";
@@ -33,7 +34,7 @@ import { useFotoAtleta } from "@/lib/fotos";
 import type { AtletaDoc, EventoDoc, RegraPontuacaoDoc, SolicitacaoAcessoDoc } from "@/lib/types";
 import { AvatarPessoa } from "@/components/atletas/AvatarAtleta";
 
-type ChaveAtencao = "senhas" | "solicitacoes" | "fila" | "eventos" | "inativos" | "semParticipacao" | "criterios";
+type ChaveAtencao = "calendario" | "senhas" | "solicitacoes" | "fila" | "eventos" | "inativos" | "semParticipacao" | "criterios";
 
 export interface DadosAtencao {
   solicitacoes: SolicitacaoAcessoDoc[] | null;
@@ -44,6 +45,8 @@ export interface DadosAtencao {
   inativos30d: AtletaDoc[];
   semParticipacao: AtletaDoc[];
   criteriosSemUso: RegraPontuacaoDoc[];
+  /** Calendário de premiação acabando sem o próximo trimestre (só administrador). */
+  fimDoCalendario?: ReturnType<typeof avisoDeFimDoCalendario>;
 }
 
 export interface PermissoesAtencao {
@@ -250,6 +253,16 @@ export function PainelAtencao({
       destaque: true,
     });
   }
+  const fim = permissoes.admin ? dados.fimDoCalendario : null;
+  if (fim) {
+    itens.push({
+      chave: "calendario",
+      icon: CalendarClock,
+      titulo: fim.jaEncerrou ? "Ranking sem trimestre" : "Calendário de premiação acabando",
+      dica: fim.jaEncerrou ? "Cadastre os próximos trimestres" : `O ${fim.ultimo.nome} termina em ${formatShortDate(fim.ultimo.fim)}`,
+      destaque: true,
+    });
+  }
   if (permissoes.registrar && dados.eventosPendentes.length > 0) {
     itens.push({
       chave: "eventos",
@@ -297,6 +310,20 @@ export function PainelAtencao({
 
   function conteudo(chave: ChaveAtencao) {
     switch (chave) {
+      case "calendario": {
+        const f = dados.fimDoCalendario;
+        if (!f) return null;
+        return (
+          <div className="flex flex-col gap-3 text-sm text-text-secondary">
+            <p>
+              {f.jaEncerrou
+                ? `O último trimestre cadastrado, o ${f.ultimo.nome}, já acabou. Sem um próximo no calendário, o ranking dos atletas mostra só o geral, sem trimestre, e a ocultação antes da premiação não é programada.`
+                : `É o último trimestre cadastrado. Depois de ${formatShortDate(f.encerra)}, quando termina a premiação dele, o ranking dos atletas passa a mostrar só o geral, sem trimestre, e a ocultação antes da premiação deixa de ser programada.`}
+            </p>
+            <p>Em Configurar portal → Ranking e premiação, use “Gerar trimestres” para criar os do próximo ano e ajuste as datas e as premiações.</p>
+          </div>
+        );
+      }
       case "senhas":
         return <PedidosDeSenha pedidos={dados.pedidosSenha} />;
       case "solicitacoes":
@@ -397,6 +424,7 @@ export function PainelAtencao({
   }
 
   const rodape: Partial<Record<ChaveAtencao, ReactNode>> = {
+    calendario: <LinkRodape href="/gestao/configuracoes?tab=ranking">Abrir o calendário de premiação</LinkRodape>,
     solicitacoes: <LinkRodape href="/gestao/atletas?tab=pendentes">Ver também as recusadas</LinkRodape>,
     eventos: <p className="text-xs text-text-muted">Eventos dos últimos 7 dias ainda sem lançamento.</p>,
     inativos: <p className="text-xs text-text-muted">Abra a ficha para ver o histórico e registrar um comentário.</p>,

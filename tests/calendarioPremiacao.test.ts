@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  avisoDeFimDoCalendario,
   gerarTrimestresDoAno,
   janelaDaPremiacao,
   normalizarCalendario,
@@ -127,4 +128,23 @@ test("mês da premiação antes do trimestre é recusado; mês inválido é desc
   assert.match(validarCalendario(cal).porTrimestre.a, /mês da premiação/);
   const lixo = normalizarCalendario({ trimestres: [{ id: "a", nome: "A", inicio: "2026-10-01", fim: "2026-12-31", premiacao: "", premiacaoMes: "jan" }] });
   assert.equal(lixo.trimestres[0].premiacaoMes, "");
+});
+
+test("aviso de fim do calendário: só quando o último trimestre está perto do fim e nada vem depois", () => {
+  const t = (id: string, inicio: string, fim: string, premiacao = "") => ({ id, nome: `${id}º Trimestre`, inicio, fim, premiacao, premiacaoMes: "" });
+  const cal = normalizarCalendario({
+    ativo: true,
+    trimestres: [t("1", "2026-03-01", "2026-05-31"), t("2", "2026-06-01", "2026-08-31"), t("3", "2026-09-01", "2026-11-30", "2026-12-10")],
+  });
+  // Mais de 45 dias antes do fim: ainda não avisa.
+  assert.equal(avisoDeFimDoCalendario(cal, "2026-10-10"), null);
+  const aviso = avisoDeFimDoCalendario(cal, "2026-10-23")!;
+  assert.deepEqual(aviso, { ultimo: { nome: "3º Trimestre", fim: "2026-11-30" }, encerra: "2026-12-10", jaEncerrou: false });
+  // Depois da premiação, continua avisando (o ranking já está sem trimestre).
+  assert.equal(avisoDeFimDoCalendario(cal, "2026-12-20")!.jaEncerrou, true);
+  // Com o próximo cadastrado, nada.
+  const comProximo = normalizarCalendario({ ...cal, trimestres: [...cal.trimestres, t("4", "2026-12-01", "2027-02-28")] });
+  assert.equal(avisoDeFimDoCalendario(comProximo, "2026-11-20"), null);
+  // Calendário desligado, nada.
+  assert.equal(avisoDeFimDoCalendario({ ...cal, ativo: false }, "2026-11-20"), null);
 });

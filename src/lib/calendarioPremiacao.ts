@@ -199,3 +199,29 @@ export function planoDoCalendario(cal: CalendarioPremiacaoDoc, hoje: string) {
     oculto: Boolean(ocultacao && ocultacao.janela.inicio <= hoje && hoje <= ocultacao.janela.fim),
   };
 }
+
+/** Com quantos dias de antecedência a gestão é avisada de que o calendário está acabando. */
+export const DIAS_AVISO_FIM_DO_CALENDARIO = 45;
+
+/**
+ * O calendário está acabando sem o próximo trimestre cadastrado? Quando o
+ * último trimestre (e a premiação dele) termina, o ranking deixa de ter
+ * trimestre e passa a mostrar só o geral. Avisa com antecedência, e também
+ * depois, enquanto nada for cadastrado.
+ */
+export function avisoDeFimDoCalendario(cal: CalendarioPremiacaoDoc, hoje: string, dias = DIAS_AVISO_FIM_DO_CALENDARIO) {
+  if (!cal.ativo) return null;
+  const ordenados = ordenarTrimestres(cal.trimestres).filter((t) => t.inicio && t.fim);
+  if (!ordenados.length) return null;
+  if (ordenados.some((t) => t.inicio > hoje)) return null; // o próximo já está lá
+  const ultimo = ordenados.at(-1)!;
+  const premiacao = premiacaoDoTrimestre(ultimo);
+  const encerra = premiacao && premiacao.fim > ultimo.fim ? premiacao.fim : ultimo.fim;
+  if (somarDias(hoje, dias) < ultimo.fim) return null;
+  return {
+    ultimo: { nome: ultimo.nome.trim(), fim: ultimo.fim },
+    /** Dia em que o ranking fica sem trimestre. */
+    encerra,
+    jaEncerrou: hoje > encerra,
+  };
+}
