@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { SubTabs } from "@/components/ui/SubTabs";
 import { NotAuthorized } from "@/components/ui/NotAuthorized";
@@ -25,6 +26,8 @@ type Tab =
   | "consistencia"
   | "diagnostico"
   | "auditoria";
+
+const ABAS: Tab[] = ["usuarios", "identidade", "informativo", "ranking", "termos", "perfis_ocultos", "consistencia", "diagnostico", "auditoria"];
 
 /** Conteúdo de cada aba. O TabPanel usa `key={tab}` pra remontar e animar a entrada. */
 function conteudoDaAba(tab: Tab) {
@@ -52,7 +55,9 @@ function conteudoDaAba(tab: Tab) {
 
 export default function ConfigurarPortalPage() {
   const { usuario } = useActiveSession();
-  const [tab, setTab] = useState<Tab>("usuarios");
+  // ?tab=ranking abre direto uma aba (ex.: o aviso de fim do calendário no Início).
+  const pedida = useSearchParams().get("tab");
+  const [tab, setTab] = useState<Tab>(() => (ABAS.includes(pedida as Tab) ? (pedida as Tab) : "usuarios"));
 
   if (usuario.role !== "administrador") {
     return <NotAuthorized />;
