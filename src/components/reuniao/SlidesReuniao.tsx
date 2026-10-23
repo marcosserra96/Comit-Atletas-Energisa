@@ -931,11 +931,11 @@ function Obrigado() {
   );
 }
 
-function Destaques({ itens, desafios, periodo, fotos }: Extract<SlideDef, { tipo: "destaques" }> & { fotos: Record<string, string> }) {
+function Destaques({ itens, desafios, periodo, pagina, paginas, fotos }: Extract<SlideDef, { tipo: "destaques" }> & { fotos: Record<string, string> }) {
   const largura = itens.length <= 2 ? 560 : itens.length === 3 ? 500 : 400;
   return (
     <Base fundo="conteudo">
-      <TituloConteudo extra={periodo}><T k="destaques.titulo" /></TituloConteudo>
+      <TituloConteudo extra={juntarExtra(periodo, paginas > 1 ? `${pagina}/${paginas}` : undefined)}><T k="destaques.titulo" /></TituloConteudo>
       <div style={{ position: "absolute", left: 72, right: 72, top: 175, bottom: desafios.length ? 250 : 130, display: "flex", gap: 32, justifyContent: "center", alignItems: "center" }}>
         {itens.map((d) => (
           <div key={d.id} style={{ ...cartao, width: largura, height: desafios.length ? 600 : 680, border: "none", overflow: "hidden", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
@@ -950,7 +950,7 @@ function Destaques({ itens, desafios, periodo, fotos }: Extract<SlideDef, { tipo
                 <span style={{ fontSize: 104, fontWeight: 900, lineHeight: 1 }}>{d.valor}</span>
                 <span style={{ fontSize: 30, fontWeight: 800, color: COR.navy }}>{d.unidade}</span>
               </div>
-              <div style={{ marginTop: 8, fontSize: 26, fontWeight: 700, color: COR.cinza }}>{d.detalhe}</div>
+              <div style={{ marginTop: 8, padding: "0 22px", fontSize: d.detalhe.length > 30 ? 24 : 26, lineHeight: 1.25, fontWeight: 700, color: COR.cinza, textWrap: "balance" }}>{d.detalhe}</div>
             </div>
           </div>
         ))}

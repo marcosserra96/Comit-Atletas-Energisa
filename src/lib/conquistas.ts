@@ -3,7 +3,7 @@
  * para subir no ranking e números da equipe. Tudo puro (sem Firebase): roda no
  * celular do atleta e no servidor (para avisar quando uma medalha sai).
  */
-import { consolidarAtividades, type RegrasDeTreino } from "@/lib/activityConsolidation";
+import { chaveAtividade, consolidarAtividades, type RegrasDeTreino } from "@/lib/activityConsolidation";
 import type { HistoricoPontoDoc, Modalidade } from "@/lib/types";
 
 // ---------- medalhas ----------
@@ -171,6 +171,13 @@ export function diaQueAlcancou(itens: { data: string; valor: number }[], meta: n
   return null;
 }
 
+function modalidadeDoLancamento(equipe: string | undefined): Modalidade | null {
+  if (!equipe) return null;
+  if (equipe.includes("bicicleta")) return "bicicleta";
+  if (equipe.includes("corrida")) return "corrida";
+  return null;
+}
+
 export function calcularMedalhas(params: {
   lancamentos: readonly HistoricoPontoDoc[];
   regrasTreino: RegrasDeTreino | undefined;
@@ -182,7 +189,11 @@ export function calcularMedalhas(params: {
   const { lancamentos, regrasTreino, modalidade, hoje } = params;
   const atividades = consolidarAtividades(lancamentos, regrasTreino).filter((a) => a.data <= hoje);
   const treinos = atividades.filter((a) => a.tipo === "treino").map((a) => ({ data: a.data, valor: 1 }));
-  const km = atividades.filter((a) => a.km > 0).map((a) => ({ data: a.data, valor: a.km }));
+  // Km só da modalidade da medalha: quem trocou de equipe não leva os km de bike para as medalhas de corrida.
+  const daModalidade = new Set(
+    lancamentos.filter((l) => { const m = modalidadeDoLancamento(l.equipe); return !m || m === modalidade; }).map((l) => chaveAtividade(l)),
+  );
+  const km = atividades.filter((a) => a.km > 0 && daModalidade.has(a.chave)).map((a) => ({ data: a.data, valor: a.km }));
   const validos = lancamentos.filter((l) => !l.estornado && l.pontos > 0 && l.dataTreino <= hoje);
   const provas = consolidarAtividades(validos.filter((l) => l.tipoLancamento === "evento"), regrasTreino).map((a) => ({ data: a.data, valor: 1 }));
   const recordes = validos.filter((l) => /recorde/i.test(l.regraDesc)).map((l) => ({ data: l.dataTreino, valor: 1 }));
