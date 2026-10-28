@@ -399,6 +399,26 @@ export default function RankingPage() {
     visibility,
   ]);
 
+  // O ranking publicado não guarda a foto (ficaria velha quando alguém troca):
+  // a versão vem do cadastro de atletas da modalidade, que a tela já pode ler.
+  const [versoesDeFoto, setVersoesDeFoto] = useState<Record<string, number>>({});
+  useEffect(() => {
+    if (!possuiResultadosPublicados || !athleteDirectory || !podeConsultar) return;
+    const unsubscribe = onSnapshot(
+      query(collection(db, athleteDirectory), where("equipe", "==", modalidade)),
+      (snap) => {
+        const versoes: Record<string, number> = {};
+        for (const d of snap.docs) {
+          const v = (d.data() as AtletaPublicoDoc).fotoVersao;
+          if (v) versoes[d.id] = v;
+        }
+        setVersoesDeFoto(versoes);
+      },
+      () => setVersoesDeFoto({}),
+    );
+    return unsubscribe;
+  }, [athleteDirectory, modalidade, podeConsultar, possuiResultadosPublicados]);
+
   const atletasAtuais = useMemo<RankingEntry[] | null>(() => {
     const lista: RankingEntry[] | null = possuiResultadosPublicados ? resultados : legacy;
     if (!lista) return null;
@@ -426,7 +446,9 @@ export default function RankingPage() {
         )
       : atletasComRank;
   }, [atletasComRank, search]);
-  const fotos = useFotosAtletas(atletasComRank ?? []);
+  const fotos = useFotosAtletas(
+    (atletasComRank ?? []).map((a) => ({ id: a.id, fotoVersao: ("fotoVersao" in a ? a.fotoVersao : undefined) ?? versoesDeFoto[a.id] })),
+  );
 
   // Quem não pontuou não sobe ao pódio (no começo do mês, quase todos estão zerados).
   const comPontos = atletasComRank?.filter((atleta) => atleta.pontuacaoTotal > 0) ?? [];
