@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   detectarUltrapassagens,
+  mensagemDeAcessoLiberado,
   mensagemDePontos,
   mensagemDeUltrapassagem,
   normalizarPreferencias,
@@ -65,4 +66,12 @@ test("preferências e quem do comitê recebe", () => {
 test("preferências antigas ganham o resumo do mês ligado", () => {
   assert.equal(normalizarPreferencias({ pontos: false }).resumo_mes, true);
   assert.equal(normalizarPreferencias({ resumo_mes: false }).resumo_mes, false);
+});
+
+test("acesso liberado: mensagem com o primeiro nome", () => {
+  assert.deepEqual(mensagemDeAcessoLiberado("Ana Beatriz Lima"), {
+    titulo: "Seu acesso foi liberado!",
+    corpo: "Boas-vindas ao Atletas Energisa, Ana. Toque para entrar no portal.",
+  });
+  assert.equal(mensagemDeAcessoLiberado("").corpo, "Boas-vindas ao Atletas Energisa. Toque para entrar no portal.");
 });

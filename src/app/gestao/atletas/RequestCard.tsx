@@ -16,6 +16,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { addAuditToBatch } from "@/lib/audit";
+import { apiAutenticada } from "@/lib/apiCliente";
 import { formatRelativeTime } from "@/lib/format";
 import { roleLabel } from "@/lib/labels";
 import { RejectRequestModal } from "./RejectRequestModal";
@@ -30,6 +31,11 @@ const roleOptions: { value: Role; label: string }[] = [
   { value: "comite", label: "Comitê" },
   { value: "administrador", label: "Administrador" },
 ];
+
+/** Avisa a pessoa no celular (se ela ativou o aviso na tela de espera). Sem esperar: o agendador cobre uma falha. */
+function avisarLiberacao(uid: string) {
+  void apiAutenticada("/api/acesso/liberado", { method: "POST", body: JSON.stringify({ uid }) }).catch(() => undefined);
+}
 
 export function RequestCard({
   solicitacao,
@@ -93,6 +99,7 @@ export function RequestCard({
         criadoPorNome: adminAtleta.nome,
       });
       await batch.commit();
+      avisarLiberacao(solicitacao.uid);
       show("success", `${primeiroNome} vinculado(a) como ${roleLabel[roleEscolhida]}.`);
     } catch {
       show("error", "Não foi possível vincular agora. Tente novamente.");
@@ -154,6 +161,7 @@ export function RequestCard({
         criadoPorNome: adminAtleta.nome,
       });
       await batch.commit();
+      avisarLiberacao(solicitacao.uid);
       show("success", `Perfil de ${roleEscolhida} criado para ${primeiroNome}.`);
     } catch {
       show("error", "Não foi possível criar o perfil agora. Tente novamente.");

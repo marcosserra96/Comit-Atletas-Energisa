@@ -19,15 +19,24 @@ export async function POST(request: Request) {
 
     const usuario = (await db.collection("usuarios").doc(decodedToken.uid).get()).data();
     const atletaId = String(usuario?.atletaId || "");
-    if (!atletaId) return Response.json({ error: "Notificações são para atletas." }, { status: 403 });
-
     const plataforma = String((body as { plataforma?: unknown }).plataforma ?? "").slice(0, 20);
     const ref = db.collection("push_tokens").doc(idDoToken(token));
+
+    if (!atletaId) {
+      // Quem pediu acesso e ainda espera a liberação: o aparelho fica guardado só
+      // para o aviso "acesso liberado" (sem atleta, não recebe mais nada).
+      const solicitacao = (await db.collection("solicitacoes_acesso").doc(decodedToken.uid).get()).data();
+      if (solicitacao?.status !== "pendente") return Response.json({ error: "Notificações são para atletas." }, { status: 403 });
+      await ref.set({ token, uid: decodedToken.uid, aguardandoAcesso: true, plataforma, atualizadoEm: FieldValue.serverTimestamp() }, { merge: true });
+      return Response.json({ ok: true, aguardando: true });
+    }
+
     await ref.set(
       {
         token,
         uid: decodedToken.uid,
         atletaId,
+        aguardandoAcesso: FieldValue.delete(),
         plataforma,
         atualizadoEm: FieldValue.serverTimestamp(),
       },
