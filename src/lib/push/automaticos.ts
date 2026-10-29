@@ -223,3 +223,14 @@ export function mensagemDeConquista(titulos: string[]) {
   if (titulos.length === 1) return { titulo: "Nova conquista!", corpo: `Você ganhou a medalha "${titulos[0]}". Veja no seu desempenho.` };
   return { titulo: `${titulos.length} conquistas novas!`, corpo: `Você ganhou: ${titulos.slice(0, 3).join(", ")}${titulos.length > 3 ? " e mais" : ""}.`.slice(0, 180) };
 }
+
+// ---------- acesso liberado ----------
+
+/** "Seu acesso foi liberado!" · "Boas-vindas ao Atletas Energisa, Ana. Toque para entrar no portal." */
+export function mensagemDeAcessoLiberado(nome: string) {
+  const primeiro = nome.trim().split(/\s+/)[0];
+  return {
+    titulo: "Seu acesso foi liberado!",
+    corpo: `Boas-vindas ao Atletas Energisa${primeiro ? `, ${primeiro}` : ""}. Toque para entrar no portal.`,
+  };
+}

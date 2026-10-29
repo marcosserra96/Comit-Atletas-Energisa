@@ -21,7 +21,7 @@ export const DESTINOS_PUSH = [
 export const LIMITE_TITULO = 60;
 export const LIMITE_CORPO = 180;
 
-export type OrigemPush = "manual" | "noticia" | "pesquisa_abertura" | "pesquisa_lembrete" | "reuniao" | "pontos" | "ranking" | "conquistas" | "resumo_mes" | "desafio" | "comite";
+export type OrigemPush = "manual" | "noticia" | "pesquisa_abertura" | "pesquisa_lembrete" | "reuniao" | "pontos" | "ranking" | "conquistas" | "resumo_mes" | "desafio" | "comite" | "acesso";
 
 export const ORIGEM_PUSH_LABEL: Record<OrigemPush, string> = {
   manual: "Enviada pelo comitê",
@@ -35,6 +35,7 @@ export const ORIGEM_PUSH_LABEL: Record<OrigemPush, string> = {
   resumo_mes: "Resumo do período",
   desafio: "Desafio novo",
   comite: "Aviso para o comitê",
+  acesso: "Acesso liberado",
 };
 
 /** Link interno seguro: só caminhos do portal, sem domínio nem protocolo. */

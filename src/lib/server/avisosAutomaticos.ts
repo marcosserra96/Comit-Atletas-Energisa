@@ -4,6 +4,7 @@ import type { Firestore } from "firebase-admin/firestore";
 import {
   detectarUltrapassagens,
   INTERVALO_AVISO_RANKING_MS,
+  mensagemDeAcessoLiberado,
   mensagemDeConquista,
   mensagemDePedidos,
   mensagemDePontos,
@@ -106,14 +107,15 @@ const ERROS_TOKEN_MORTO = new Set([
 export async function enviarIndividuais(
   db: Firestore,
   envios: { atletaId: string; mensagem: MensagemPush }[],
-  tipo: TipoAviso,
+  /** null: aviso essencial (acesso liberado), sai para todos, sem olhar as preferências. */
+  tipo: TipoAviso | null,
 ): Promise<ResultadoPush & { atletaIds: string[] }> {
   const vazio = { atletas: 0, aparelhos: 0, enviados: 0, falhas: 0, atletaIds: [] as string[] };
   if (envios.length === 0) return vazio;
   const ids = [...new Set(envios.map((e) => e.atletaId))];
 
   const prefs = await db.getAll(...ids.map((id) => db.collection("push_preferencias").doc(id)));
-  const querem = new Set(prefs.filter((p) => normalizarPreferencias(p.data())[tipo]).map((p) => p.id));
+  const querem = new Set(prefs.filter((p) => tipo === null || normalizarPreferencias(p.data())[tipo]).map((p) => p.id));
   const tokens = await db.collection("push_tokens").get();
   const aparelhos = new Map<string, { id: string; token: string }[]>();
   for (const d of tokens.docs) {
@@ -404,6 +406,50 @@ async function avisarResumoDoPeriodo(db: Firestore) {
   return envios.length;
 }
 
+// ---------- acesso liberado ----------
+
+/**
+ * Quem pediu acesso e ativou o aviso na tela de espera: assim que o comitê
+ * libera (existe usuarios/{uid}), o aparelho passa a ser do atleta (recebe os
+ * avisos normais daqui em diante) e chega "Seu acesso foi liberado". Se o
+ * pedido foi recusado, o aparelho é esquecido, sem aviso. Roda no agendador e
+ * logo depois da liberação (`uid`), e cada aparelho é avisado uma vez só.
+ */
+export async function avisarAcessosLiberados(db: Firestore, uid?: string) {
+  let consulta = db.collection("push_tokens").where("aguardandoAcesso", "==", true);
+  if (uid) consulta = consulta.where("uid", "==", uid);
+  const snap = await consulta.get();
+  if (snap.empty) return 0;
+  const porUid = new Map<string, typeof snap.docs>();
+  for (const d of snap.docs) {
+    const u = String(d.data().uid ?? "");
+    if (u) porUid.set(u, [...(porUid.get(u) ?? []), d]);
+  }
+  const { FieldValue } = await import("firebase-admin/firestore");
+  const envios: { atletaId: string; mensagem: MensagemPush }[] = [];
+  for (const [u, docs] of porUid) {
+    const usuario = (await db.collection("usuarios").doc(u).get()).data();
+    const atletaId = String(usuario?.atletaId || "");
+    const batch = db.batch();
+    if (!atletaId) {
+      const sol = (await db.collection("solicitacoes_acesso").doc(u).get()).data();
+      if (sol?.status === "pendente") continue; // ainda esperando
+      docs.forEach((d) => batch.delete(d.ref)); // recusado ou removido: esquece o aparelho
+      await batch.commit();
+      continue;
+    }
+    // Marca antes de enviar: uma falha no meio não manda o aviso duas vezes.
+    docs.forEach((d) => batch.update(d.ref, { atletaId, aguardandoAcesso: FieldValue.delete(), atualizadoEm: FieldValue.serverTimestamp() }));
+    await batch.commit();
+    const nome = String((await db.collection("atletas").doc(atletaId).get()).data()?.nome ?? "");
+    envios.push({ atletaId, mensagem: { ...mensagemDeAcessoLiberado(nome), link: "/dashboard", tag: `acesso-${atletaId}` } });
+  }
+  if (envios.length === 0) return 0;
+  const r = await enviarIndividuais(db, envios, null);
+  await registrar(db, "acesso", { titulo: "Acesso liberado", corpo: `${envios.length} pessoa(s) avisadas de que o acesso foi liberado.`, link: "/gestao/atletas" }, r);
+  return envios.length;
+}
+
 // ---------- comitê ----------
 
 const PEDIDOS = [
@@ -447,7 +493,8 @@ export async function processarAvisosAutomaticos(db: Firestore, partes: { atleta
     const ranking = partes.atletas ? await avisarUltrapassagens(db) : 0;
     const resumo = partes.atletas ? await avisarResumoDoPeriodo(db).catch((error) => (console.error("Falha no resumo do período:", error), 0)) : 0;
     const comite = partes.comite ? await avisarComite(db) : 0;
-    return { pontos, ranking, resumo, comite };
+    const acessos = partes.comite ? await avisarAcessosLiberados(db).catch((error) => (console.error("Falha no aviso de acesso:", error), 0)) : 0;
+    return { pontos, ranking, resumo, comite, acessos };
   } finally {
     await destravar(db);
   }
