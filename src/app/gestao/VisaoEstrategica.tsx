@@ -265,6 +265,7 @@ export function VisaoEstrategica() {
           admin: isAdmin,
           atletas: podeAtletas,
           registrar: temPermissao(usuario, "registrar"),
+          notificacoes: temPermissao(usuario, "notificacoes"),
         }}
       />
 
