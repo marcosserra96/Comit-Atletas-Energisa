@@ -29,6 +29,7 @@ import { useToast } from "@/components/ui/Toast";
 import { LinkDeSenha } from "@/components/senha/LinkDeSenha";
 import { dispensarPedidoSenha, gerarLinkSenha, type LinkSenha, type PedidoSenha } from "@/lib/senhaComite";
 import { FichaAtletaModal } from "./atletas/ficha/FichaAtletaModal";
+import { LembreteParados } from "./LembreteParados";
 import { AvatarAtleta } from "@/components/atletas/AvatarAtleta";
 import { useFotoAtleta } from "@/lib/fotos";
 import type { AtletaDoc, EventoDoc, RegraPontuacaoDoc, SolicitacaoAcessoDoc } from "@/lib/types";
@@ -51,6 +52,8 @@ export interface DadosAtencao {
 
 export interface PermissoesAtencao {
   admin: boolean;
+  /** Pode enviar notificações (lembrete para os parados). */
+  notificacoes?: boolean;
   atletas: boolean;
   registrar: boolean;
 }
@@ -363,11 +366,14 @@ export function PainelAtencao({
         );
       case "inativos":
         return (
-          <Lista>
-            {dados.inativos30d.map((a) => (
-              <LinhaAtleta key={a.id} atleta={a} detalhe={equipeLabel[a.equipe] ?? a.equipe} onAbrir={abrirFicha(a)} />
-            ))}
-          </Lista>
+          <>
+            {permissoes.notificacoes ? <LembreteParados atletaIds={dados.inativos30d.map((a) => a.id)} /> : null}
+            <Lista>
+              {dados.inativos30d.map((a) => (
+                <LinhaAtleta key={a.id} atleta={a} detalhe={equipeLabel[a.equipe] ?? a.equipe} onAbrir={abrirFicha(a)} />
+              ))}
+            </Lista>
+          </>
         );
       case "semParticipacao":
         return (
@@ -427,7 +433,7 @@ export function PainelAtencao({
     calendario: <LinkRodape href="/gestao/configuracoes?tab=ranking">Abrir o calendário de premiação</LinkRodape>,
     solicitacoes: <LinkRodape href="/gestao/atletas?tab=pendentes">Ver também as recusadas</LinkRodape>,
     eventos: <p className="text-xs text-text-muted">Eventos dos últimos 7 dias ainda sem lançamento.</p>,
-    inativos: <p className="text-xs text-text-muted">Abra a ficha para ver o histórico e registrar um comentário.</p>,
+    inativos: <p className="text-xs text-text-muted">Abra a ficha para ver o histórico e registrar um comentário. Quem fica 3 semanas sem treinar também recebe um convite automático (no máximo um por mês).</p>,
     fila: <LinkRodape href="/gestao/atletas?tab=equipes">Reordenar as filas</LinkRodape>,
     criterios: <LinkRodape href="/gestao/criterios">Editar critérios</LinkRodape>,
   };

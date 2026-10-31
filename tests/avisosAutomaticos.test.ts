@@ -2,7 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   detectarUltrapassagens,
+  ehHoraDaVespera,
   mensagemDeAcessoLiberado,
+  mensagemDeConvite,
+  mensagemDeVespera,
+  precisaConviteParaTreinar,
   mensagemDePontos,
   mensagemDeUltrapassagem,
   normalizarPreferencias,
@@ -74,4 +78,33 @@ test("acesso liberado: mensagem com o primeiro nome", () => {
     corpo: "Boas-vindas ao Atletas Energisa, Ana. Toque para entrar no portal.",
   });
   assert.equal(mensagemDeAcessoLiberado("").corpo, "Boas-vindas ao Atletas Energisa. Toque para entrar no portal.");
+});
+
+test("véspera do evento: só no dia anterior, a partir das 18h de Brasília", () => {
+  const br = (iso: string) => Date.parse(`${iso}-03:00`);
+  assert.equal(ehHoraDaVespera("2026-11-08", br("2026-11-07T17:59:00")), false);
+  assert.equal(ehHoraDaVespera("2026-11-08", br("2026-11-07T18:00:00")), true);
+  assert.equal(ehHoraDaVespera("2026-11-08", br("2026-11-08T08:00:00")), false);
+  assert.equal(ehHoraDaVespera("2027-01-01", br("2026-12-31T20:00:00")), true);
+  assert.deepEqual(mensagemDeVespera({ titulo: "Corrida Unimed", local: "Parque das Águas", horaInicio: "07:00" }), {
+    titulo: "Amanhã: Corrida Unimed",
+    corpo: "Você confirmou presença, às 07:00, em Parque das Águas. Bom evento!",
+  });
+  assert.equal(mensagemDeVespera({ titulo: "Reunião mensal", local: "Online", horaInicio: "19:00", reuniao: true, online: true }).corpo, "Você confirmou presença, às 19:00, online. Até lá!");
+  assert.equal(mensagemDeVespera({ titulo: "Treinão" }).corpo, "Você confirmou presença. Bom evento!");
+});
+
+test("convite para voltar a treinar: 3 semanas a 4 meses, sem justificativa, um por mês", () => {
+  const base = { hoje: "2026-11-30", ausenciaJustificada: false };
+  assert.equal(precisaConviteParaTreinar({ ...base, ultimaAtividade: "2026-11-10" }), false); // 20 dias
+  assert.equal(precisaConviteParaTreinar({ ...base, ultimaAtividade: "2026-11-09" }), true); // 21 dias
+  assert.equal(precisaConviteParaTreinar({ ...base, ultimaAtividade: "2026-07-01" }), false); // mais de 4 meses
+  assert.equal(precisaConviteParaTreinar({ ...base, ultimaAtividade: null }), false); // nunca treinou
+  assert.equal(precisaConviteParaTreinar({ ...base, ultimaAtividade: "2026-11-01", ausenciaJustificada: true }), false);
+  assert.equal(precisaConviteParaTreinar({ ...base, ultimaAtividade: "2026-11-01", ultimoConvite: "2026-11-15" }), false);
+  assert.equal(precisaConviteParaTreinar({ ...base, ultimaAtividade: "2026-10-01", ultimoConvite: "2026-10-31" }), true);
+  assert.deepEqual(mensagemDeConvite("Ana Beatriz Lima", "2026-11-01", "2026-11-30"), {
+    titulo: "Sentimos sua falta, Ana",
+    corpo: "Faz 4 semanas do seu último treino. Que tal voltar esta semana? Veja os próximos treinos e provas na agenda.",
+  });
 });

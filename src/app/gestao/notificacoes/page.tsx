@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useState } from "react";
 import Image from "next/image";
-import { BellRing, KeyRound, CalendarCheck, CalendarClock, ClipboardList, Flag, Medal, Megaphone, Newspaper, Send, ShieldCheck, Trophy, TrendingUp, UsersRound } from "lucide-react";
+import { BellRing, HeartHandshake, KeyRound, CalendarCheck, CalendarClock, ClipboardList, Flag, Medal, Megaphone, Newspaper, Send, ShieldCheck, Trophy, TrendingUp, UsersRound } from "lucide-react";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -64,6 +64,8 @@ const ICONE_ORIGEM: Record<OrigemPush, typeof Send> = {
   desafio: Flag,
   comite: ShieldCheck,
   acesso: KeyRound,
+  evento_vespera: CalendarClock,
+  lembrete_treino: HeartHandshake,
 };
 
 function dataHora(iso: string | null) {

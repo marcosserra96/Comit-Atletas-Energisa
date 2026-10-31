@@ -6,7 +6,7 @@
 // ---------- preferências ----------
 
 /** Tipos de aviso que cada pessoa pode ligar ou desligar. */
-export type TipoAviso = "pontos" | "ranking" | "conquistas" | "resumo_mes" | "comite_acesso" | "comite_justificativa" | "comite_senha";
+export type TipoAviso = "pontos" | "ranking" | "conquistas" | "resumo_mes" | "eventos" | "lembrete_treino" | "comite_acesso" | "comite_justificativa" | "comite_senha";
 
 export type PreferenciasAviso = Record<TipoAviso, boolean>;
 
@@ -15,6 +15,8 @@ export const PREFERENCIAS_PADRAO: PreferenciasAviso = {
   ranking: true,
   conquistas: true,
   resumo_mes: true,
+  eventos: true,
+  lembrete_treino: true,
   comite_acesso: true,
   comite_justificativa: true,
   comite_senha: true,
@@ -24,13 +26,15 @@ export const TIPO_AVISO_INFO: Record<TipoAviso, { titulo: string; texto: string 
   pontos: { titulo: "Pontos lançados", texto: "Quando o comitê lançar pontos para você." },
   ranking: { titulo: "Ultrapassagem no ranking", texto: "Quando alguém passar você no ranking do trimestre." },
   conquistas: { titulo: "Conquistas", texto: "Quando você ganhar uma medalha nova, inclusive de desafio." },
+  eventos: { titulo: "Lembrete de evento", texto: "Na véspera dos eventos em que você confirmou presença." },
+  lembrete_treino: { titulo: "Convite para voltar a treinar", texto: "Depois de 3 semanas sem treino, um convite para voltar (no máximo um por mês)." },
   resumo_mes: { titulo: "Resumo do mês, do trimestre e do ano", texto: "Quando cada um fechar, como foi, com a imagem pronta para compartilhar." },
   comite_acesso: { titulo: "Pedido de acesso", texto: "Quando alguém pedir para entrar no portal." },
   comite_justificativa: { titulo: "Justificativa de ausência", texto: "Quando um atleta enviar uma justificativa para analisar." },
   comite_senha: { titulo: "Pedido de nova senha", texto: "Quando alguém não conseguir entrar e pedir ajuda." },
 };
 
-export const TIPOS_ATLETA: TipoAviso[] = ["pontos", "ranking", "conquistas", "resumo_mes"];
+export const TIPOS_ATLETA: TipoAviso[] = ["pontos", "ranking", "conquistas", "eventos", "resumo_mes", "lembrete_treino"];
 export const TIPOS_COMITE: TipoAviso[] = ["comite_acesso", "comite_justificativa", "comite_senha"];
 
 export function normalizarPreferencias(valor: unknown): PreferenciasAviso {
@@ -232,5 +236,68 @@ export function mensagemDeAcessoLiberado(nome: string) {
   return {
     titulo: "Seu acesso foi liberado!",
     corpo: `Boas-vindas ao Atletas Energisa${primeiro ? `, ${primeiro}` : ""}. Toque para entrar no portal.`,
+  };
+}
+
+// ---------- véspera do evento ----------
+
+/** Hora de Brasília a partir da qual sai o lembrete da véspera. */
+export const HORA_DA_VESPERA = 18;
+
+function brasilia(agora: number) {
+  const b = new Date(agora - 3 * 60 * 60_000);
+  return { hoje: b.toISOString().slice(0, 10), hora: b.getUTCHours() };
+}
+
+function somarDiasIso(iso: string, dias: number) {
+  const d = new Date(`${iso}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + dias);
+  return d.toISOString().slice(0, 10);
+}
+
+/** O evento é amanhã e já passou das 18h de hoje (Brasília)? */
+export function ehHoraDaVespera(dataDoEvento: string, agora: number) {
+  const { hoje, hora } = brasilia(agora);
+  return dataDoEvento === somarDiasIso(hoje, 1) && hora >= HORA_DA_VESPERA;
+}
+
+/** "Amanhã: Corrida Unimed" · "Você confirmou presença, às 7h, em Parque das Águas. Bom evento!" */
+export function mensagemDeVespera(e: { titulo: string; local?: string; horaInicio?: string; reuniao?: boolean; online?: boolean }) {
+  const hora = e.horaInicio ? `, às ${e.horaInicio}` : "";
+  const onde = e.online ? ", online" : e.local?.trim() ? `, em ${e.local.trim()}` : "";
+  return {
+    titulo: `Amanhã: ${e.titulo}`.slice(0, 60),
+    corpo: `Você confirmou presença${hora}${onde}. ${e.reuniao ? "Até lá!" : "Bom evento!"}`.slice(0, 180),
+  };
+}
+
+// ---------- convite para voltar a treinar ----------
+
+/** A partir de quantos dias sem treino o atleta recebe o convite. */
+export const DIAS_SEM_TREINO = 21;
+/** Depois disso, a pessoa provavelmente saiu do programa: não insiste. */
+export const DIAS_SEM_TREINO_MAXIMO = 120;
+/** Intervalo mínimo entre dois convites para a mesma pessoa. */
+export const DIAS_ENTRE_CONVITES = 30;
+
+/**
+ * Convida quem está parado entre 3 semanas e 4 meses, sem ausência
+ * justificada no período e sem convite nos últimos 30 dias.
+ */
+export function precisaConviteParaTreinar(p: { ultimaAtividade: string | null; hoje: string; ultimoConvite?: string | null; ausenciaJustificada: boolean }) {
+  if (!p.ultimaAtividade || p.ausenciaJustificada) return false;
+  const dias = Math.round((Date.parse(`${p.hoje}T12:00:00Z`) - Date.parse(`${p.ultimaAtividade}T12:00:00Z`)) / 86_400_000);
+  if (dias < DIAS_SEM_TREINO || dias > DIAS_SEM_TREINO_MAXIMO) return false;
+  if (p.ultimoConvite && Math.round((Date.parse(`${p.hoje}T12:00:00Z`) - Date.parse(`${p.ultimoConvite}T12:00:00Z`)) / 86_400_000) < DIAS_ENTRE_CONVITES) return false;
+  return true;
+}
+
+/** "Sentimos sua falta, Ana" · "Faz 3 semanas do seu último treino…" */
+export function mensagemDeConvite(nome: string, ultimaAtividade: string, hoje: string) {
+  const primeiro = nome.trim().split(/\s+/)[0];
+  const semanas = Math.floor(Math.round((Date.parse(`${hoje}T12:00:00Z`) - Date.parse(`${ultimaAtividade}T12:00:00Z`)) / 86_400_000) / 7);
+  return {
+    titulo: `Sentimos sua falta${primeiro ? `, ${primeiro}` : ""}`.slice(0, 60),
+    corpo: `Faz ${semanas} semanas do seu último treino. Que tal voltar esta semana? Veja os próximos treinos e provas na agenda.`,
   };
 }

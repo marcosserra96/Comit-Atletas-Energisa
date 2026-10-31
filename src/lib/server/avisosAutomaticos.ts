@@ -4,7 +4,11 @@ import type { Firestore } from "firebase-admin/firestore";
 import {
   detectarUltrapassagens,
   INTERVALO_AVISO_RANKING_MS,
+  ehHoraDaVespera,
   mensagemDeAcessoLiberado,
+  mensagemDeConvite,
+  mensagemDeVespera,
+  precisaConviteParaTreinar,
   mensagemDeConquista,
   mensagemDePedidos,
   mensagemDePontos,
@@ -427,6 +431,96 @@ async function avisarResumoDoPeriodo(db: Firestore) {
   return envios.length;
 }
 
+// ---------- véspera do evento ----------
+
+/**
+ * Na véspera (a partir das 18h), quem confirmou presença recebe o lembrete com
+ * horário e local. Um por evento: a reserva impede repetir.
+ */
+async function avisarVesperas(db: Firestore) {
+  const amanha = new Date(Date.now() - 3 * 60 * 60_000 + 24 * 60 * 60_000).toISOString().slice(0, 10);
+  if (!ehHoraDaVespera(amanha, Date.now())) return 0;
+  const snap = await db.collection("agenda_eventos").where("data", "==", amanha).get();
+  const { reservarAviso } = await import("@/lib/server/push");
+  let total = 0;
+  for (const d of snap.docs) {
+    const e = d.data() as { titulo?: string; local?: string; horaInicio?: string; tipo?: string; online?: boolean; inscritos?: string[] };
+    const inscritos = [...new Set((e.inscritos ?? []).filter(Boolean))];
+    if (!inscritos.length || !(await reservarAviso(db, `vespera_${d.id}`))) continue;
+    const mensagem = {
+      ...mensagemDeVespera({ titulo: String(e.titulo ?? "Evento"), local: e.local, horaInicio: e.horaInicio, reuniao: e.tipo === "reuniao", online: e.online }),
+      link: "/eventos",
+      tag: `vespera-${d.id}`,
+    };
+    const r = await enviarIndividuais(db, inscritos.map((atletaId) => ({ atletaId, mensagem })), "eventos");
+    await registrar(db, "evento_vespera", mensagem, r);
+    total += r.atletas;
+  }
+  return total;
+}
+
+// ---------- convite para voltar a treinar ----------
+
+/**
+ * Uma vez por dia (a partir das 10h): quem está há 3 semanas sem treinar (e
+ * até 4 meses), sem ausência justificada, recebe um convite para voltar. No
+ * máximo um convite por pessoa a cada 30 dias.
+ */
+async function convidarQuemParou(db: Firestore) {
+  const b = new Date(Date.now() - 3 * 60 * 60_000);
+  const hoje = b.toISOString().slice(0, 10);
+  if (b.getUTCHours() < 10) return 0;
+  const ref = db.collection(CONTROLE).doc("convites_treino");
+  const controle = (await ref.get()).data() as { dia?: string; enviados?: Record<string, string> } | undefined;
+  if (controle?.dia === hoje) return 0;
+  const enviados = { ...(controle?.enviados ?? {}) };
+  await ref.set({ dia: hoje, enviados }, { merge: true });
+
+  const desde = new Date(Date.parse(`${hoje}T12:00:00Z`) - 125 * 86_400_000).toISOString().slice(0, 10);
+  const [atletasSnap, lancSnap, justSnap, regrasSnap] = await Promise.all([
+    db.collection("atletas").where("equipe", "in", ["corrida", "bicicleta"]).get(),
+    db.collection("historico_pontos").where("dataTreino", ">=", desde).get(),
+    db.collection("justificativas_ausencia").where("fim", ">=", desde).get(),
+    db.collection("regras_pontuacao").get(),
+  ]);
+  const { consolidarAtividades, regrasDeTreino } = await import("@/lib/activityConsolidation");
+  const regrasTreino = regrasDeTreino(regrasSnap.docs.map((d) => ({ ...(d.data() as RegraPontuacaoDoc), id: d.id })));
+  const porAtleta = new Map<string, HistoricoPontoDoc[]>();
+  for (const d of lancSnap.docs) {
+    const l = { ...(d.data() as HistoricoPontoDoc), id: d.id };
+    porAtleta.set(l.atletaId, [...(porAtleta.get(l.atletaId) ?? []), l]);
+  }
+  // Ausência justificada (pedida ou aprovada) que pega as últimas 3 semanas: não convida.
+  const limite = new Date(Date.parse(`${hoje}T12:00:00Z`) - 21 * 86_400_000).toISOString().slice(0, 10);
+  const justificados = new Set(
+    justSnap.docs
+      .map((d) => d.data() as { atletaId?: string; inicio?: string; fim?: string; status?: string })
+      .filter((j) => j.atletaId && j.status !== "recusada" && j.status !== "cancelada" && (j.inicio ?? "") <= hoje && (j.fim ?? "") >= limite)
+      .map((j) => j.atletaId!),
+  );
+
+  const envios: { atletaId: string; mensagem: MensagemPush }[] = [];
+  for (const d of atletasSnap.docs) {
+    const a = d.data() as { nome?: string; ativo?: boolean; visivelNasListas?: boolean };
+    if (a.ativo === false || a.visivelNasListas === false) continue;
+    const lancamentos = porAtleta.get(d.id) ?? [];
+    const ultima = consolidarAtividades(lancamentos, regrasTreino)
+      .filter((x) => (x.tipo === "treino" || x.tipo === "evento") && x.data <= hoje)
+      .map((x) => x.data)
+      .sort()
+      .at(-1) ?? null;
+    const temFaltaJustificada = lancamentos.some((l) => !l.estornado && l.regraId === "falta_justificada" && l.dataTreino >= limite);
+    if (!precisaConviteParaTreinar({ ultimaAtividade: ultima, hoje, ultimoConvite: enviados[d.id], ausenciaJustificada: justificados.has(d.id) || temFaltaJustificada })) continue;
+    envios.push({ atletaId: d.id, mensagem: { ...mensagemDeConvite(String(a.nome ?? ""), ultima!, hoje), link: "/eventos", tag: `convite-${d.id}` } });
+    enviados[d.id] = hoje;
+  }
+  if (envios.length === 0) return 0;
+  await ref.set({ dia: hoje, enviados }, { merge: true });
+  const r = await enviarIndividuais(db, envios, "lembrete_treino");
+  await registrar(db, "lembrete_treino", { titulo: "Convite para voltar a treinar", corpo: `${r.atletas} atleta(s) sem treinar há 3 semanas ou mais receberam o convite.`, link: "/gestao" }, r);
+  return r.atletas;
+}
+
 // ---------- acesso liberado ----------
 
 /**
@@ -512,11 +606,13 @@ export async function processarAvisosAutomaticos(db: Firestore, partes: { atleta
   try {
     const pontos = partes.atletas ? await avisarPontos(db) : 0;
     const ranking = partes.atletas ? await avisarUltrapassagens(db) : 0;
+    const vesperas = partes.atletas ? await avisarVesperas(db).catch((error) => (console.error("Falha no lembrete de véspera:", error), 0)) : 0;
+    const convites = partes.atletas ? await convidarQuemParou(db).catch((error) => (console.error("Falha no convite para treinar:", error), 0)) : 0;
     const desafios = partes.atletas ? await conferirPontosDosDesafios(db).catch((error) => (console.error("Falha na conferência dos desafios:", error), 0)) : 0;
     const resumo = partes.atletas ? await avisarResumoDoPeriodo(db).catch((error) => (console.error("Falha no resumo do período:", error), 0)) : 0;
     const comite = partes.comite ? await avisarComite(db) : 0;
     const acessos = partes.comite ? await avisarAcessosLiberados(db).catch((error) => (console.error("Falha no aviso de acesso:", error), 0)) : 0;
-    return { pontos, ranking, resumo, desafios, comite, acessos };
+    return { pontos, ranking, resumo, desafios, vesperas, convites, comite, acessos };
   } finally {
     await destravar(db);
   }

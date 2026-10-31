@@ -62,6 +62,8 @@ import { eventoOnline } from "@/lib/eventos";
 import { RespostaEvento, useRespostasEventos } from "@/components/eventos/RespostaEvento";
 import { CardTrimestre } from "@/components/inicio/CardTrimestre";
 import { CartaoComemoracao } from "@/components/inicio/CartaoComemoracao";
+import { MetaDoMes } from "@/components/inicio/MetaDoMes";
+import { calcularResultadosRanking } from "@/lib/rankingPeriods";
 import { useTrimestreDoAtleta } from "@/lib/trimestre";
 import { PendenciasNoInicio } from "@/components/avisos/CentralDeAvisos";
 import { ConviteNotificacoes } from "@/components/push/Notificacoes";
@@ -270,6 +272,16 @@ export default function DashboardPage() {
       regrasTreino,
     });
   }, [atleta.equipe, diasTreino, meusLancamentos, meuHistoricoMensal, regrasTreino]);
+
+  // Mês passado (para as sugestões da meta pessoal): o mesmo cálculo do ranking.
+  const mesPassado = useMemo(() => {
+    if (!meusLancamentos || !regrasTreino) return { km: 0, treinos: 0 };
+    const hoje = dataIsoLocal();
+    const inicio = new Date(Date.UTC(Number(hoje.slice(0, 4)), Number(hoje.slice(5, 7)) - 2, 1));
+    const fim = new Date(Date.UTC(Number(hoje.slice(0, 4)), Number(hoje.slice(5, 7)) - 1, 0));
+    const [meu] = calcularResultadosRanking([atleta], meusLancamentos, "mes", inicio.toISOString().slice(0, 10), fim.toISOString().slice(0, 10), meuHistoricoMensal ?? [], regrasTreino);
+    return { km: meu?.km ?? 0, treinos: meu?.treinos ?? 0 };
+  }, [atleta, meusLancamentos, meuHistoricoMensal, regrasTreino]);
 
   const ultimosLancamentos = useMemo(
     () => [...(meusLancamentos ?? [])].sort((a, b) => b.dataTreino.localeCompare(a.dataTreino)).slice(0, 5),
@@ -558,6 +570,18 @@ export default function DashboardPage() {
                       : `${aderenciaMes.feitos} de ${plural(aderenciaMes.previstos, "treino previsto", "treinos previstos")} até hoje`}
                   </p>
                 </div>
+              ) : null}
+
+              {modalidade && !waitlisted && insights ? (
+                <MetaDoMes
+                  atletaId={atleta.id}
+                  hoje={dataIsoLocal()}
+                  nomeDoMes={mesAtual}
+                  realizado={{ km: insights.kmMes, treinos: insights.treinosMes }}
+                  mesPassado={mesPassado}
+                  modalidade={modalidade}
+                  somenteLeitura={isPreview}
+                />
               ) : null}
 
               {linhaRanking && !trimestre ? (
