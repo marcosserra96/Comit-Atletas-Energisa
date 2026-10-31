@@ -44,7 +44,7 @@ const SECOES: { status: StatusDesafio; titulo: string }[] = [
 const MODALIDADE_LABEL: Record<DesafioDoc["modalidade"], string> = { todas: "Corrida e Bike", corrida: "Corrida", bicicleta: "Bike" };
 
 function semId(d: DesafioDoc): RascunhoDesafio {
-  return { titulo: d.titulo, modalidade: d.modalidade, tipo: d.tipo, metas: d.metas, inicio: d.inicio, fim: d.fim, icone: d.icone, nivel: d.nivel };
+  return { titulo: d.titulo, modalidade: d.modalidade, tipo: d.tipo, metas: d.metas, inicio: d.inicio, fim: d.fim, icone: d.icone, nivel: d.nivel, pontos: d.pontos ?? 0 };
 }
 
 export default function DesafiosPage() {
@@ -171,6 +171,7 @@ export default function DesafiosPage() {
                         <div className="mt-2 flex flex-wrap gap-1.5">
                           <Badge tone="neutral">{MODALIDADE_LABEL[d.modalidade]}</Badge>
                           <Badge tone="neutral">{textoMetaGestao(d)}</Badge>
+                          {d.pontos ? <Badge tone="accent">+{d.pontos} {d.pontos === 1 ? "ponto" : "pontos"}</Badge> : null}
                         </div>
                       </div>
                       {g.status === "ativo" ? (
@@ -251,7 +252,7 @@ export default function DesafiosPage() {
         title="Excluir desafio"
         description={
           concluidosDoExcluido > 0
-            ? `${plural(concluidosDoExcluido, "atleta já ganhou", "atletas já ganharam")} a medalha de “${excluindo?.titulo ?? ""}”. Excluir tira essa medalha de todos. Não dá para desfazer.`
+            ? `${plural(concluidosDoExcluido, "atleta já ganhou", "atletas já ganharam")} a medalha de “${excluindo?.titulo ?? ""}”. Excluir tira essa medalha de todos${excluindo?.pontos ? ` e estorna os ${excluindo.pontos} pontos de cada um` : ""}. Não dá para desfazer.`
             : `Excluir “${excluindo?.titulo ?? ""}”? Não dá para desfazer.`
         }
         onClose={() => setExcluindo(null)}

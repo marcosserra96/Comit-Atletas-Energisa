@@ -21,6 +21,8 @@ export interface DesafioDoc {
   fim: string;
   icone: IconeMedalha;
   nivel: NivelMedalha;
+  /** Pontos para quem completar (lançados sozinhos no dia em que completou). 0 ou ausente: só a medalha. */
+  pontos?: number;
   atualizadoPorNome?: string | null;
 }
 
@@ -52,6 +54,7 @@ export const NIVEIS_DESAFIO: { nivel: NivelMedalha; rotulo: string }[] = [
 ];
 
 export const LIMITE_TITULO_DESAFIO = 40;
+export const LIMITE_PONTOS_DESAFIO = 500;
 const LIMITE_DIAS = 366;
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -101,7 +104,10 @@ export function validarDesafio(entrada: unknown): { dados: Omit<DesafioDoc, "id"
 
   const icone = ICONES_DESAFIO.some((i) => i.id === e.icone) ? (e.icone as IconeMedalha) : "bandeira";
   const nivel = [1, 2, 3, 4, 5].includes(Number(e.nivel)) ? (Number(e.nivel) as NivelMedalha) : 3;
-  return { dados: { titulo, modalidade, tipo, metas, inicio, fim, icone, nivel } };
+  const brutoPontos = e.pontos === undefined || e.pontos === null || e.pontos === "" ? 0 : Number(e.pontos);
+  if (!Number.isInteger(brutoPontos) || brutoPontos < 0) return { erro: "Os pontos precisam ser um número inteiro (ou deixe em branco para dar só a medalha)." };
+  if (brutoPontos > LIMITE_PONTOS_DESAFIO) return { erro: `O desafio pode valer até ${LIMITE_PONTOS_DESAFIO} pontos.` };
+  return { dados: { titulo, modalidade, tipo, metas, inicio, fim, icone, nivel, pontos: brutoPontos } };
 }
 
 export type StatusDesafio = "agendado" | "ativo" | "encerrado";
@@ -260,7 +266,7 @@ export function mensagemDeDesafioNovo(d: DesafioDoc, modalidade: Modalidade, hoj
   const quando = statusDoDesafio(d, hoje) === "agendado" ? ` Começa em ${diaMes(d.inicio)}.` : "";
   return {
     titulo: `Novo desafio: ${d.titulo}`.slice(0, 60),
-    corpo: `${textoMeta(d, modalidade)} ${noPeriodo(d)} e ganhe a medalha.${quando}`.slice(0, 180),
+    corpo: `${textoMeta(d, modalidade)} ${noPeriodo(d)} e ganhe a medalha${d.pontos ? ` e ${d.pontos} ${d.pontos === 1 ? "ponto" : "pontos"}` : ""}.${quando}`.slice(0, 180),
   };
 }
 
@@ -310,4 +316,53 @@ export function agruparPorAtleta(lancamentos: readonly HistoricoPontoDoc[]) {
     else mapa.set(l.atletaId, [l]);
   }
   return mapa;
+}
+
+// ---------- pontos do desafio ----------
+
+/** Critério dos lançamentos de desafio (não conta como treino nem como prova). */
+export const REGRA_DESAFIO = "desafio";
+
+/** Um lançamento por atleta e desafio: o id fixo impede pontos em dobro. */
+export function idLancamentoDoDesafio(desafioId: string, atletaId: string) {
+  return `desafio_${desafioId}_${atletaId}`;
+}
+
+export function descricaoDoLancamentoDoDesafio(titulo: string) {
+  return `Desafio concluído: ${titulo}`;
+}
+
+export type AcaoPontosDesafio =
+  | { acao: "criar"; pontos: number; data: string }
+  | { acao: "atualizar"; pontos: number; data: string }
+  | { acao: "reativar"; pontos: number; data: string }
+  | { acao: "estornar"; motivo: string };
+
+/**
+ * O que fazer com os pontos de um atleta num desafio, comparando o que deveria
+ * existir com o lançamento que já existe:
+ * - completou e o desafio vale pontos → cria (ou ajusta valor e data);
+ * - deixou de completar, o desafio foi excluído ou passou a valer 0 → estorna;
+ * - estorno feito pelo portal e voltou a completar → reativa;
+ * - estorno feito pelo comitê à mão → respeita (não mexe).
+ */
+export function acaoDePontosDoDesafio(params: {
+  /** null: o desafio foi excluído. */
+  pontos: number | null;
+  concluidoEm: string | null;
+  existente: { estornado: boolean; estornoAutomatico?: boolean; pontos: number; dataTreino: string } | null;
+}): AcaoPontosDesafio | null {
+  const { pontos, concluidoEm, existente } = params;
+  const deve = pontos !== null && pontos > 0 && concluidoEm !== null;
+  if (!existente) return deve ? { acao: "criar", pontos: pontos!, data: concluidoEm! } : null;
+  if (existente.estornado) {
+    return deve && existente.estornoAutomatico ? { acao: "reativar", pontos: pontos!, data: concluidoEm! } : null;
+  }
+  if (!deve) {
+    const motivo =
+      pontos === null ? "O desafio foi excluído." : pontos === 0 ? "O desafio deixou de valer pontos." : "O desafio deixou de estar completo (algum lançamento foi estornado ou alterado).";
+    return { acao: "estornar", motivo };
+  }
+  if (existente.pontos !== pontos || existente.dataTreino !== concluidoEm) return { acao: "atualizar", pontos: pontos!, data: concluidoEm! };
+  return null;
 }

@@ -4,6 +4,7 @@ import { mensagemDeDesafioNovo, modalidadesDoDesafio, statusDoDesafio, validarDe
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 /**
  * Desafios do comitê. Ficam só no servidor (sem regra nova no Firestore):
@@ -22,6 +23,7 @@ function paraApi(id: string, d: FirebaseFirestore.DocumentData): DesafioDoc {
     fim: String(d.fim ?? ""),
     icone: d.icone ?? "bandeira",
     nivel: d.nivel ?? 3,
+    pontos: Number(d.pontos) || 0,
     atualizadoPorNome: d.atualizadoPorNome ?? null,
   };
 }
@@ -79,19 +81,34 @@ export async function POST(request: Request) {
         }
       }
     }
-    return Response.json({ id: ref.id, avisados });
+    // Pontos: quem já completou recebe agora; mudou o valor ou a meta, ajusta o que já foi dado.
+    let pontuados = 0;
+    try {
+      const { sincronizarPontosDosDesafios } = await import("@/lib/server/pontosDesafios");
+      pontuados = (await sincronizarPontosDosDesafios(db, { desafioIds: [ref.id] })).filter((m) => m.acao === "criar" || m.acao === "reativar").length;
+    } catch (erro) {
+      console.error("Desafio salvo, mas os pontos não foram sincronizados:", erro);
+    }
+    return Response.json({ id: ref.id, avisados, pontuados });
   } catch (error) {
     return apiErrorResponse(error, "Não foi possível salvar o desafio.");
   }
 }
 
-/** DELETE { id } → exclui. As medalhas desse desafio deixam de aparecer. */
+/** DELETE { id } → exclui. As medalhas desse desafio deixam de aparecer e os pontos dele são estornados. */
 export async function DELETE(request: Request) {
   try {
     const { db } = await authenticatedPermissionRequest(request, "regras");
     const { id } = (await request.json().catch(() => ({}))) as { id?: unknown };
     if (typeof id !== "string" || !id) throw new ApiAuthError("Desafio não informado.", 400);
     await db.collection(COLECAO).doc(id.slice(0, 60)).delete();
+    // Os pontos dados por este desafio são estornados (a medalha também deixa de aparecer).
+    try {
+      const { sincronizarPontosDosDesafios } = await import("@/lib/server/pontosDesafios");
+      await sincronizarPontosDosDesafios(db, { desafioIds: [id.slice(0, 60)] });
+    } catch (erro) {
+      console.error("Desafio excluído, mas os pontos não foram estornados:", erro);
+    }
     return Response.json({ ok: true });
   } catch (error) {
     return apiErrorResponse(error, "Não foi possível excluir o desafio.");

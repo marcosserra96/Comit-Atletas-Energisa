@@ -229,7 +229,28 @@ async function avisarConquistasDe(db: Firestore, atletaIds: string[]) {
     const r = await enviarIndividuais(db, envios, "conquistas");
     await registrar(db, "conquistas", { titulo: "Conquistas", corpo: `${envios.length} atleta(s) ganharam medalha nova.`, link: "/desempenho" }, r);
   }
+  // Desafio que vale pontos: quem completou (ou deixou de completar) tem os pontos ajustados.
+  // O lançamento novo gera o aviso de pontos na próxima rodada.
+  try {
+    const { sincronizarPontosDosDesafios } = await import("@/lib/server/pontosDesafios");
+    await sincronizarPontosDosDesafios(db, { atletaIds: ids });
+  } catch (error) {
+    console.error("Falha nos pontos de desafio:", error);
+  }
   return envios.length;
+}
+
+/**
+ * Uma vez por hora, confere os pontos de todos os desafios: pega estornos e
+ * edições de lançamentos que tiraram (ou devolveram) alguém da meta.
+ */
+async function conferirPontosDosDesafios(db: Firestore) {
+  const ref = db.collection(CONTROLE).doc("pontos_desafios");
+  const ultima = Number((await ref.get()).data()?.em ?? 0);
+  if (Date.now() - ultima < 60 * 60_000) return 0;
+  await ref.set({ em: Date.now() });
+  const { sincronizarPontosDosDesafios } = await import("@/lib/server/pontosDesafios");
+  return (await sincronizarPontosDosDesafios(db)).length;
 }
 
 /** Pódio e liderança: medalhas que só existem no momento do ranking. */
@@ -491,10 +512,11 @@ export async function processarAvisosAutomaticos(db: Firestore, partes: { atleta
   try {
     const pontos = partes.atletas ? await avisarPontos(db) : 0;
     const ranking = partes.atletas ? await avisarUltrapassagens(db) : 0;
+    const desafios = partes.atletas ? await conferirPontosDosDesafios(db).catch((error) => (console.error("Falha na conferência dos desafios:", error), 0)) : 0;
     const resumo = partes.atletas ? await avisarResumoDoPeriodo(db).catch((error) => (console.error("Falha no resumo do período:", error), 0)) : 0;
     const comite = partes.comite ? await avisarComite(db) : 0;
     const acessos = partes.comite ? await avisarAcessosLiberados(db).catch((error) => (console.error("Falha no aviso de acesso:", error), 0)) : 0;
-    return { pontos, ranking, resumo, comite, acessos };
+    return { pontos, ranking, resumo, desafios, comite, acessos };
   } finally {
     await destravar(db);
   }

@@ -36,7 +36,14 @@ function LinhaDesafio({ item, modalidade, hoje }: { item: DesafioDoAtleta; modal
         rotulo={`${desafio.titulo}: ${concluido ? "concluído" : textoProgresso(medalha)}`}
       />
       <div className="min-w-0 flex-1">
-        <p className="pt-0.5 text-md font-extrabold leading-tight text-text">{desafio.titulo}</p>
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-0.5 text-md font-extrabold leading-tight text-text">
+          {desafio.titulo}
+          {desafio.pontos ? (
+            <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold tabular-nums", concluido ? "bg-success/10 text-success" : "bg-accent-subtle text-accent")}>
+              {concluido ? "Ganhou " : "Vale "}+{desafio.pontos} {desafio.pontos === 1 ? "ponto" : "pontos"}
+            </span>
+          ) : null}
+        </p>
         <p className="mt-0.5 text-sm text-text-light">
           {textoMeta(desafio, modalidade)} {noPeriodo(desafio)}
         </p>
