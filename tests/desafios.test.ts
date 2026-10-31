@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  acaoDePontosDoDesafio,
   agruparPorAtleta,
   desafiosDoAtleta,
   diasRestantes,
@@ -159,4 +160,36 @@ test("gestão: participação só de ativos da modalidade, concluídos primeiro"
   const r = participacaoNoDesafio({ desafio: d({ modalidade: "corrida", metas: { corrida: 40 } }), atletas, porAtleta: agruparPorAtleta(lanc), regrasTreino: undefined, hoje: "2026-10-10" });
   assert.deepEqual(r.participantes.map((p) => p.atleta.id), ["c", "b", "a"]);
   assert.equal(r.concluidos, 2);
+});
+
+test("pontos do desafio: cria, ajusta, estorna e respeita estorno do comitê", () => {
+  const ativo = { estornado: false, pontos: 20, dataTreino: "2026-10-12" };
+  // Completou: cria no dia em que completou.
+  assert.deepEqual(acaoDePontosDoDesafio({ pontos: 20, concluidoEm: "2026-10-12", existente: null }), { acao: "criar", pontos: 20, data: "2026-10-12" });
+  // Só medalha ou não completou: nada.
+  assert.equal(acaoDePontosDoDesafio({ pontos: 0, concluidoEm: "2026-10-12", existente: null }), null);
+  assert.equal(acaoDePontosDoDesafio({ pontos: 20, concluidoEm: null, existente: null }), null);
+  // Já tem e está igual: nada.
+  assert.equal(acaoDePontosDoDesafio({ pontos: 20, concluidoEm: "2026-10-12", existente: ativo }), null);
+  // Mudou o valor ou o dia em que completou: ajusta.
+  assert.deepEqual(acaoDePontosDoDesafio({ pontos: 30, concluidoEm: "2026-10-12", existente: ativo }), { acao: "atualizar", pontos: 30, data: "2026-10-12" });
+  // Deixou de completar, passou a valer 0 ou foi excluído: estorna, dizendo o motivo.
+  assert.match((acaoDePontosDoDesafio({ pontos: 20, concluidoEm: null, existente: ativo }) as { motivo: string }).motivo, /deixou de estar completo/);
+  assert.match((acaoDePontosDoDesafio({ pontos: 0, concluidoEm: "2026-10-12", existente: ativo }) as { motivo: string }).motivo, /deixou de valer pontos/);
+  assert.match((acaoDePontosDoDesafio({ pontos: null, concluidoEm: null, existente: ativo }) as { motivo: string }).motivo, /excluído/);
+  // Estorno do portal e voltou a completar: reativa. Estorno do comitê: respeita.
+  assert.equal(acaoDePontosDoDesafio({ pontos: 20, concluidoEm: "2026-10-15", existente: { ...ativo, estornado: true, estornoAutomatico: true } })?.acao, "reativar");
+  assert.equal(acaoDePontosDoDesafio({ pontos: 20, concluidoEm: "2026-10-15", existente: { ...ativo, estornado: true } }), null);
+});
+
+test("validação dos pontos do desafio e aviso de desafio novo", () => {
+  const base = { titulo: "Outubro Rosa", modalidade: "corrida", tipo: "km", metas: { corrida: 40 }, inicio: "2026-10-01", fim: "2026-10-31" };
+  const ok = validarDesafio({ ...base, pontos: "20" });
+  assert.ok("dados" in ok && ok.dados.pontos === 20);
+  const sem = validarDesafio(base);
+  assert.ok("dados" in sem && sem.dados.pontos === 0);
+  assert.ok("erro" in validarDesafio({ ...base, pontos: 2.5 }));
+  assert.ok("erro" in validarDesafio({ ...base, pontos: 501 }));
+  const d = { ...(ok as { dados: object }).dados, id: "x" } as Parameters<typeof mensagemDeDesafioNovo>[0];
+  assert.match(mensagemDeDesafioNovo(d, "corrida", "2026-10-01").corpo, /ganhe a medalha e 20 pontos\./);
 });

@@ -75,6 +75,8 @@ export function DesafioModal({
     bicicleta: String(inicial.metas.bicicleta ?? inicial.metas.corrida ?? ""),
   });
   const [avisar, setAvisar] = useState(!editando);
+  // Vazio ou 0: só a medalha.
+  const [pontos, setPontos] = useState(inicial.pontos ? String(inicial.pontos) : "");
   const [erro, setErro] = useState("");
   const [salvando, setSalvando] = useState(false);
   const caixaErro = useRef<HTMLDivElement>(null);
@@ -107,7 +109,7 @@ export function DesafioModal({
   const modalidadePrevia: Modalidade = d.modalidade === "bicicleta" ? "bicicleta" : "corrida";
 
   async function salvar() {
-    const final = { ...d, metas: metasParaSalvar() };
+    const final = { ...d, metas: metasParaSalvar(), pontos: pontos ? Number(pontos) : 0 };
     const r = validarDesafio(final);
     if ("erro" in r) {
       setErro(r.erro);
@@ -115,11 +117,13 @@ export function DesafioModal({
     }
     setSalvando(true);
     try {
-      const { avisados } = await salvarDesafio({ ...r.dados, id: d.id }, avisar && !encerrado);
-      show(
-        "success",
-        editando ? "Desafio atualizado." : avisados > 0 ? `Desafio criado. ${avisados} ${avisados === 1 ? "atleta avisado" : "atletas avisados"} no celular.` : "Desafio criado.",
-      );
+      const { avisados, pontuados = 0 } = await salvarDesafio({ ...r.dados, id: d.id }, avisar && !encerrado);
+      const partes = [
+        editando ? "Desafio atualizado." : "Desafio criado.",
+        !editando && avisados > 0 ? `${avisados} ${avisados === 1 ? "atleta avisado" : "atletas avisados"} no celular.` : "",
+        pontuados > 0 ? `${pontuados} ${pontuados === 1 ? "atleta que já tinha completado recebeu" : "atletas que já tinham completado receberam"} os pontos.` : "",
+      ];
+      show("success", partes.filter(Boolean).join(" "));
       onSalvo();
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Não foi possível salvar agora. Tente novamente.");
@@ -135,7 +139,7 @@ export function DesafioModal({
       mobileSheet
       size="md"
       title={editando ? "Editar desafio" : "Novo desafio"}
-      description="Quem cumprir a meta dentro do período ganha a medalha."
+      description="Quem cumprir a meta dentro do período ganha a medalha e, se você quiser, pontos."
       footer={
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button variant="ghost" onClick={onFechar} disabled={salvando}>
@@ -235,6 +239,36 @@ export function DesafioModal({
               );
             })}
           </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-end gap-3">
+            <div className="w-36 shrink-0">
+              <TextField
+                label="Pontos ao concluir"
+                inputMode="numeric"
+                placeholder="Só medalha"
+                value={pontos}
+                className="tabular-nums"
+                onChange={(e) => {
+                  setPontos(e.target.value.replace(/\D/g, "").slice(0, 3));
+                  setErro("");
+                }}
+              />
+            </div>
+            <p className="pb-2.5 text-xs text-text-light">
+              {Number(pontos) > 0
+                ? `Quem completar ganha a medalha e ${pontos} ${Number(pontos) === 1 ? "ponto" : "pontos"}, lançados sozinhos no dia em que completou.`
+                : "Deixe em branco para dar só a medalha."}
+            </p>
+          </div>
+          {editando && Number(pontos) !== (inicial.pontos ?? 0) ? (
+            <p className="text-xs text-text-muted">
+              {Number(pontos) > 0
+                ? "Quem já completou recebe ou tem os pontos ajustados ao salvar."
+                : "Ao salvar, os pontos já dados por este desafio são estornados. A medalha continua."}
+            </p>
+          ) : null}
         </div>
 
         <fieldset>
