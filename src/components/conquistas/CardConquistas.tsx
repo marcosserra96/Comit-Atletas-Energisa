@@ -69,7 +69,7 @@ export function CardConquistas({
         </span>
         <div className="min-w-0">
           <p className="text-text">
-            <span className="text-2xl font-black tabular-nums">{semanas}</span>{" "}
+            <span className="text-2xl font-extrabold tabular-nums">{semanas}</span>{" "}
             <span className="font-bold">{semanas === 1 ? "semana seguida" : "semanas seguidas"}</span>
           </p>
           <p className="text-xs text-text-light">{dicaSequencia}</p>
@@ -97,7 +97,7 @@ export function CardConquistas({
             <li key={m.id} className="flex min-w-0 flex-1 flex-col items-center gap-1.5 text-center">
               <Medalha icone={m.icone} nivel={m.nivel} conquistada tamanho={44} />
               <span className="line-clamp-2 text-xs font-semibold leading-tight text-text">{m.titulo}</span>
-              {m.em ? <span className="text-[11px] text-text-muted">{formatShortDate(m.em)}</span> : null}
+              {m.em ? <span className="text-xs text-text-muted">{formatShortDate(m.em)}</span> : null}
             </li>
           ))}
         </ul>

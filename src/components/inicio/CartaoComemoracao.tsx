@@ -109,7 +109,7 @@ export function CartaoComemoracao({ atleta, hoje, className, somenteLeitura }: {
         <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-on-accent shadow-sm sm:row-span-2 sm:size-14">
           <Icone className="size-5 sm:size-7" aria-hidden="true" />
         </span>
-        <h2 id="comemoracao-titulo" className="text-lg font-black leading-tight text-text [text-wrap:balance] sm:pt-1 sm:text-xl">
+        <h2 id="comemoracao-titulo" className="text-lg font-extrabold leading-tight text-text [text-wrap:balance] sm:pt-1 sm:text-xl">
           {mensagem.titulo}
         </h2>
         <p className="col-span-3 max-w-2xl text-sm text-text-secondary [text-wrap:pretty] sm:col-span-1 sm:col-start-2 sm:row-start-2">{mensagem.texto}</p>

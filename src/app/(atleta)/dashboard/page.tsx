@@ -71,7 +71,7 @@ import { CardConquistas } from "@/components/conquistas/CardConquistas";
 import { CardDesafios } from "@/components/conquistas/CardDesafios";
 import { ComemoracaoConquista } from "@/components/conquistas/ComemoracaoConquista";
 import { CompartilharMes } from "@/components/conquistas/CompartilharMes";
-import { DestaqueCompartilharMes } from "@/components/conquistas/DestaqueCompartilharMes";
+import { DestaqueCompartilharMes, useResumoDoInicio } from "@/components/conquistas/DestaqueCompartilharMes";
 import { useTrimestresDoCalendario } from "@/lib/useTrimestresDoCalendario";
 import type { IdPeriodoResumo } from "@/lib/resumoPeriodo";
 import { useConquistas } from "@/lib/useConquistas";
@@ -369,6 +369,8 @@ export default function DashboardPage() {
         : null,
     [mostrarConquistas, conquistas.modalidade, conquistas.sequencia, conquistas.recentes, meusLancamentos, meuHistoricoMensal, regrasTreino, atleta, foto, posicaoNoCartao, trimestresDoResumo],
   );
+  // Na visualização como atleta não há compartilhamento: o card não aparece.
+  const resumoDoInicio = useResumoDoInicio(isPreview ? null : paramsDoMes, dataIsoLocal());
 
   const fontesComErro = [
     erroHistorico ? "histórico" : null,
@@ -443,7 +445,7 @@ export default function DashboardPage() {
         <div className="mt-8 flex flex-col gap-4 sm:mt-0 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
             <p className="text-sm font-medium text-white/75">Olá,</p>
-            <h1 className="mt-0.5 text-3xl font-black tracking-tight sm:text-4xl">{nomeCurto}</h1>
+            <h1 className="mt-0.5 text-3xl font-extrabold tracking-tight sm:text-4xl">{nomeCurto}</h1>
             <p className="mt-2 flex items-center gap-2 text-sm text-white/80">
               <ModalidadeIcon className="size-4 shrink-0 text-secondary" aria-hidden="true" />
               <span>{nomeModalidade}</span>
@@ -482,6 +484,9 @@ export default function DashboardPage() {
 
         <CartaoComemoracao atleta={atleta} hoje={dataIsoLocal()} somenteLeitura={isPreview} className="mb-5 lg:mb-6" />
 
+        {/* Logo depois de fechar um mês, trimestre ou ano: o destaque sobe para o topo. */}
+        {resumoDoInicio?.destaque ? <DestaqueCompartilharMes resumo={resumoDoInicio} onAbrir={(p) => setCompartilhar(p)} className="mb-5 lg:mb-6" /> : null}
+
         {isPreview ? null : (
           <>
             <PendenciasNoInicio className="mb-5 lg:mb-6" />
@@ -492,10 +497,6 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-start lg:gap-6">
           {/* Coluna principal: como estou e o que vem pela frente. */}
           <div className="flex min-w-0 flex-col gap-5 lg:gap-6">
-            {/* Fixo: o mês atual (ainda aberto) ou, logo depois de fechar, o período que fechou. Na visualização como atleta não há compartilhamento. */}
-            {paramsDoMes && !isPreview ? (
-              <DestaqueCompartilharMes params={paramsDoMes} hoje={dataIsoLocal()} onAbrir={(p) => setCompartilhar(p)} />
-            ) : null}
             {trimestre !== null && modalidade && !waitlisted ? (
               <CardTrimestre
                 trimestre={trimestre}
@@ -503,20 +504,6 @@ export default function DashboardPage() {
                 hrefRanking={withPreview("/ranking")}
                 rankingFechado={rankingDesativado || rankingOcultoAtual}
                 modalidade={modalidade || null}
-              />
-            ) : null}
-            {mostrarConquistas && conquistas.modalidade ? (
-              <CardDesafios itens={conquistas.desafios} modalidade={conquistas.modalidade} hoje={dataIsoLocal()} />
-            ) : null}
-            {mostrarConquistas ? (
-              <CardConquistas
-                carregando={conquistas.carregando}
-                sequencia={conquistas.sequencia}
-                proxima={conquistas.proxima}
-                recentes={conquistas.recentes}
-                conquistadas={conquistas.conquistadas}
-                total={conquistas.total}
-                hrefTodas={withPreview("/desempenho#conquistas")}
               />
             ) : null}
             <section className="rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-[var(--shadow-card)] sm:p-5">
@@ -534,15 +521,15 @@ export default function DashboardPage() {
               {insights ? (
                 <dl className="mt-4 grid grid-cols-3 divide-x divide-border rounded-[var(--radius)] bg-bg-inset py-3 text-center">
                   <div className="px-2">
-                    <dd className="text-2xl font-black tabular-nums text-text">{insights.treinosMes}</dd>
+                    <dd className="text-2xl font-extrabold tabular-nums text-text">{insights.treinosMes}</dd>
                     <dt className="text-xs text-text-muted">{insights.treinosMes === 1 ? "treino" : "treinos"}</dt>
                   </div>
                   <div className="px-2">
-                    <dd className="text-2xl font-black tabular-nums text-text">{formatDistancia(insights.kmMes)}</dd>
+                    <dd className="text-2xl font-extrabold tabular-nums text-text">{formatDistancia(insights.kmMes)}</dd>
                     <dt className="text-xs text-text-muted">km</dt>
                   </div>
                   <div className="px-2">
-                    <dd className="text-2xl font-black tabular-nums text-text">{formatPontos(insights.pontosMes)}</dd>
+                    <dd className="text-2xl font-extrabold tabular-nums text-text">{formatPontos(insights.pontosMes)}</dd>
                     <dt className="text-xs text-text-muted">{insights.pontosMes === 1 ? "ponto" : "pontos"}</dt>
                   </div>
                 </dl>
@@ -632,8 +619,8 @@ export default function DashboardPage() {
                     className="flex min-h-20 w-full cursor-pointer items-center gap-3 rounded-[var(--radius)] bg-bg-inset p-3 text-left transition-colors hover:bg-border-subtle active:bg-border-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     <span className="flex size-14 shrink-0 flex-col items-center justify-center rounded-[var(--radius)] bg-bg-card shadow-sm">
-                      <span className="text-xs font-bold uppercase text-primary">{dataEvento?.mes}</span>
-                      <span className="text-xl font-black leading-none text-text">{dataEvento?.dia}</span>
+                      <span className="text-xs font-bold text-primary">{dataEvento?.mes}</span>
+                      <span className="text-xl font-extrabold leading-none text-text">{dataEvento?.dia}</span>
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="line-clamp-2 text-sm font-bold text-text">{evento.titulo}</span>
@@ -689,15 +676,31 @@ export default function DashboardPage() {
                 </p>
               )}
             </section>
+            {mostrarConquistas && conquistas.modalidade ? (
+              <CardDesafios itens={conquistas.desafios} modalidade={conquistas.modalidade} hoje={dataIsoLocal()} />
+            ) : null}
+            {/* Fixo, no meio da página: o convite para compartilhar o mês (que ainda está aberto). */}
+            {resumoDoInicio && !resumoDoInicio.destaque ? <DestaqueCompartilharMes resumo={resumoDoInicio} onAbrir={(p) => setCompartilhar(p)} /> : null}
+            {mostrarConquistas ? (
+              <CardConquistas
+                carregando={conquistas.carregando}
+                sequencia={conquistas.sequencia}
+                proxima={conquistas.proxima}
+                recentes={conquistas.recentes}
+                conquistadas={conquistas.conquistadas}
+                total={conquistas.total}
+                hrefTodas={withPreview("/desempenho#conquistas")}
+              />
+            ) : null}
           </div>
 
           {/* Coluna lateral: ações e contexto. */}
           <div className="flex min-w-0 flex-col gap-5 lg:gap-6">
             <Link
               href={withPreview("/justificativas")}
-              className="group flex min-h-20 items-center gap-3 rounded-[var(--radius-lg)] border border-secondary/20 bg-gradient-to-r from-secondary/10 to-bg-card p-4 shadow-[var(--shadow-card)] transition-colors hover:border-secondary/40 active:bg-secondary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="group flex min-h-20 items-center gap-3 rounded-[var(--radius-lg)] border border-border bg-bg-card p-4 shadow-[var(--shadow-card)] transition-colors hover:bg-bg-inset/60 active:bg-bg-inset focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary/15 text-secondary">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-inset text-text-light">
                 <CalendarOff className="size-5" aria-hidden="true" />
               </span>
               <span className="min-w-0 flex-1">

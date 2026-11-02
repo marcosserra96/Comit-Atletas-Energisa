@@ -70,7 +70,7 @@ function EscolhaDeAvisos({ tipos, rodape }: { tipos: TipoAviso[]; rodape?: strin
   const { prefs, alternar, erro } = usePreferenciasAviso(true);
   return (
     <div className="flex flex-col border-t border-border-subtle pt-3">
-      <p className="text-xs font-bold uppercase tracking-wide text-text-muted">O que avisar</p>
+      <p className="text-xs font-semibold text-text-light">O que avisar</p>
       <ul className="mt-1 flex flex-col divide-y divide-border-subtle">
         {tipos.map((tipo) => (
           <li key={tipo} className="flex items-center gap-3 py-1.5">
@@ -120,7 +120,7 @@ export function ConviteNotificacoes({ className }: { className?: string }) {
     return (
       <Card className={cn("flex items-center gap-3", className)} role="status">
         <CheckCircle2 className="size-6 shrink-0 text-success" aria-hidden="true" />
-        <p className="text-sm font-semibold text-text">Pronto! Os avisos vão chegar neste celular.</p>
+        <p className="text-sm font-semibold text-text">Pronto. Os avisos vão chegar neste celular.</p>
       </Card>
     );
   }
