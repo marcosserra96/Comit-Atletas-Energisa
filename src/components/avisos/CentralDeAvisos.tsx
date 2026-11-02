@@ -178,7 +178,7 @@ export function PendenciasNoInicio({ className }: { className?: string }) {
   if (avisos.length === 0) return null;
   return (
     <Card className={cn("flex flex-col gap-1 p-2 sm:p-3", className)}>
-      <p className="px-3 pt-2 text-xs font-bold uppercase tracking-wide text-text-muted">Para você agora</p>
+      <p className="px-3 pt-2 text-xs font-semibold text-text-light">Para você agora</p>
       {avisos.map((a) => (
         <LinhaAviso key={a.chave} aviso={a} />
       ))}

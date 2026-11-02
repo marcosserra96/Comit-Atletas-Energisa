@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Share2, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { formatDistancia, plural } from "@/lib/format";
@@ -18,28 +18,19 @@ function ler(chave: string) {
 }
 
 /**
- * "Compartilhe seu mês", fixo no Início, com a miniatura da imagem de verdade
- * para o atleta ver que dá para compartilhar. No dia a dia mostra o mês atual,
- * avisando que ainda não fechou. Logo depois de um fechamento (o ano de 1 a 7
- * de janeiro, o trimestre 7 dias depois do fim, o mês nos dias 1 a 7) vira o
- * destaque daquele período; fechar o destaque volta para o mês atual.
+ * O que o card "Compartilhe seu mês" mostra: no dia a dia, o mês atual (ainda
+ * aberto); logo depois de um fechamento (o ano de 1 a 7 de janeiro, o trimestre
+ * 7 dias depois do fim, o mês nos dias 1 a 7), o destaque daquele período, que o
+ * atleta pode dispensar. Fica fora do card para o Início decidir onde ele entra:
+ * o destaque sobe para o topo, o card do dia a dia fica no meio da página.
  */
-export function DestaqueCompartilharMes({
-  params,
-  hoje,
-  onAbrir,
-  className,
-}: {
-  params: ParamsCartaoDoMes;
-  hoje: string;
-  onAbrir: (periodo: IdPeriodoResumo) => void;
-  className?: string;
-}) {
-  const fechou = useMemo(() => periodoQueFechou(hoje, params.trimestres), [hoje, params.trimestres]);
-  const dadosFechou = useMemo(() => (fechou ? dadosDoCartaoDoMes(params, fechou) : null), [fechou, params]);
+export function useResumoDoInicio(params: ParamsCartaoDoMes | null, hoje: string) {
+  const trimestres = params?.trimestres;
+  const fechou = useMemo(() => (trimestres ? periodoQueFechou(hoje, trimestres) : null), [hoje, trimestres]);
+  const dadosFechou = useMemo(() => (params && fechou ? dadosDoCartaoDoMes(params, fechou) : null), [fechou, params]);
   const atual = useMemo(() => periodoDoMes(hoje, 0), [hoje]);
-  const dadosAtual = useMemo(() => dadosDoCartaoDoMes(params, atual), [atual, params]);
-  const chave = `destaque-resumo:${params.atleta.id}:${fechou?.arquivo ?? ""}`;
+  const dadosAtual = useMemo(() => (params ? dadosDoCartaoDoMes(params, atual) : null), [atual, params]);
+  const chave = `destaque-resumo:${params?.atleta.id ?? ""}:${fechou?.arquivo ?? ""}`;
 
   // Lido depois de montar: o servidor não tem o localStorage.
   const [dispensado, setDispensado] = useState<boolean | null>(null);
@@ -48,22 +39,37 @@ export function DestaqueCompartilharMes({
     return () => window.clearTimeout(id);
   }, [chave]);
 
-  const destaque = !!fechou && !!dadosFechou && dadosFechou.treinos > 0 && dispensado === false;
-  const periodo = destaque ? fechou! : atual;
-  const dados = destaque ? dadosFechou! : dadosAtual;
-  const abrir = () => onAbrir(periodo.id);
-  const km = dados.km >= 1 ? ` e ${formatDistancia(dados.km)} km` : "";
-  const nome = periodo.id === "este" || periodo.id === "passado" ? periodo.titulo.toLowerCase() : periodo.titulo;
-  const onde = periodo.id === "ano" ? "no ano" : periodo.id === "trimestre" ? "no trimestre" : "no mês";
-
-  function dispensar() {
+  const dispensar = useCallback(() => {
     try {
       window.localStorage.setItem(chave, "fechado");
     } catch {
       /* segue só nesta visita */
     }
     setDispensado(true);
-  }
+  }, [chave]);
+
+  if (!params || !dadosAtual) return null;
+  const destaque = !!fechou && !!dadosFechou && dadosFechou.treinos > 0 && dispensado === false;
+  return { destaque, periodo: destaque ? fechou! : atual, dados: destaque ? dadosFechou! : dadosAtual, dispensar };
+}
+
+export type ResumoDoInicio = NonNullable<ReturnType<typeof useResumoDoInicio>>;
+
+/** "Compartilhe seu mês" com a miniatura da imagem de verdade, para o atleta ver que dá para compartilhar. */
+export function DestaqueCompartilharMes({
+  resumo,
+  onAbrir,
+  className,
+}: {
+  resumo: ResumoDoInicio;
+  onAbrir: (periodo: IdPeriodoResumo) => void;
+  className?: string;
+}) {
+  const { destaque, periodo, dados, dispensar } = resumo;
+  const abrir = () => onAbrir(periodo.id);
+  const km = dados.km >= 1 ? ` e ${formatDistancia(dados.km)} km` : "";
+  const nome = periodo.id === "este" || periodo.id === "passado" ? periodo.titulo.toLowerCase() : periodo.titulo;
+  const onde = periodo.id === "ano" ? "no ano" : periodo.id === "trimestre" ? "no trimestre" : "no mês";
 
   return (
     <section
@@ -99,11 +105,9 @@ export function DestaqueCompartilharMes({
             <p className="mt-1 text-sm text-text-secondary [text-wrap:pretty]">
               Uma imagem com os seus treinos, pronta para mostrar sua evolução no status ou nos stories.
             </p>
-            {/* O mês ainda está aberto: os números são até hoje (a imagem também avisa). */}
-            <p className="mt-1.5 text-xs font-semibold text-text-light">
-              {dados.treinos > 0
-                ? `${periodo.titulo} até agora: ${plural(dados.treinos, "treino")}${km}`
-                : `Seu primeiro treino de ${nome} já entra nela`}
+            {/* A miniatura já mostra os números: aqui só o aviso de que o mês segue aberto. */}
+            <p className="mt-1.5 text-xs text-text-light">
+              {dados.treinos > 0 ? `${periodo.titulo} ainda está em andamento: a imagem mostra seus números até hoje` : `Seu primeiro treino de ${nome} já entra nela`}
             </p>
           </>
         )}

@@ -65,17 +65,17 @@ export function CardTrimestre({
 
       <dl className="mt-4 grid grid-cols-3 divide-x divide-border rounded-[var(--radius)] bg-bg-inset py-3 text-center">
         <div className="px-2">
-          <dd className="text-2xl font-black tabular-nums text-ranking-gold-text">
+          <dd className="text-2xl font-extrabold tabular-nums text-ranking-gold-text">
             {trimestre.posicao && !rankingFechado ? `${trimestre.posicao}º` : "—"}
           </dd>
           <dt className="text-xs text-text-muted">posição</dt>
         </div>
         <div className="px-2">
-          <dd className="text-2xl font-black tabular-nums text-text">{formatPontos(trimestre.pontos)}</dd>
+          <dd className="text-2xl font-extrabold tabular-nums text-text">{formatPontos(trimestre.pontos)}</dd>
           <dt className="text-xs text-text-muted">{trimestre.pontos === 1 ? "ponto" : "pontos"}</dt>
         </div>
         <div className="px-2">
-          <dd className="text-2xl font-black tabular-nums text-text">{trimestre.treinos}</dd>
+          <dd className="text-2xl font-extrabold tabular-nums text-text">{trimestre.treinos}</dd>
           <dt className="text-xs text-text-muted">{trimestre.treinos === 1 ? "treino" : "treinos"}</dt>
         </div>
       </dl>

@@ -154,8 +154,8 @@ function montarLeitura(params: {
 
   const treinoClause =
     treinosSemana > 0
-      ? `treinou ${treinosSemana} ${treinosSemana === 1 ? "vez" : "vezes"} essa semana`
-      : "ainda não treinou essa semana";
+      ? `treinou ${treinosSemana} ${treinosSemana === 1 ? "vez" : "vezes"} esta semana`
+      : "ainda não treinou esta semana";
 
   return rankingClause ? `${rankingClause} e ${treinoClause}.` : `Você ${treinoClause}.`;
 }
