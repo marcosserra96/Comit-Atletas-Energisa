@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { PerguntaAposLancar } from "@/components/fechamento/PerguntaAposLancar";
 import {
   collection,
   doc,
@@ -51,6 +52,7 @@ export function PresencaReuniao() {
   const { uid, atleta: autor } = useActiveSession();
   const { show } = useToast();
   const [atletas, setAtletas] = useState<AtletaDoc[] | null>(null);
+  const [perguntarFechamento, setPerguntarFechamento] = useState<string[] | null>(null);
   const [regras, setRegras] = useState<RegraPontuacaoDoc[] | null>(null);
   const [reunioes, setReunioes] = useState<EventoDoc[] | null>(null);
   const [reuniaoId, setReuniaoId] = useState("");
@@ -241,6 +243,7 @@ export function PresencaReuniao() {
           ? `${plural(novos.length, "presença registrada", "presenças registradas")}. Ranking atualizado.`
           : `${plural(novos.length, "presença registrada", "presenças registradas")}, mas o ranking não atualizou. Use "Recalcular agora".`,
       );
+      if (data) setPerguntarFechamento([data]);
       setPresentes(new Set());
       if (!reuniaoId) {
         setDescricao("");
@@ -269,6 +272,7 @@ export function PresencaReuniao() {
 
   return (
     <div className="flex flex-col gap-5">
+      <PerguntaAposLancar datas={perguntarFechamento} onFechar={() => setPerguntarFechamento(null)} />
       <Card className="flex flex-col gap-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5">

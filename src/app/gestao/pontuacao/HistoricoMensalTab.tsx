@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PerguntaAposLancar } from "@/components/fechamento/PerguntaAposLancar";
 import {
   collection,
   doc,
@@ -86,6 +87,8 @@ export function HistoricoMensalTab() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [modalidade, setModalidade] = useState<Modalidade>("corrida");
   const [competencia, setCompetencia] = useState(competenciaAnterior);
+  // Depois de salvar o histórico do mês anterior: pergunta se o mês está fechado.
+  const [perguntarFechamento, setPerguntarFechamento] = useState<string[] | null>(null);
   const [atletas, setAtletas] = useState<AtletaDoc[] | null>(null);
   const [existentes, setExistentes] = useState<Map<string, HistoricoMensalDoc>>(new Map());
   /** Lançamentos detalhados do mês por atleta (sem estornos e faltas justificadas). */
@@ -374,6 +377,7 @@ export function HistoricoMensalTab() {
           ? `Histórico de ${competencia} salvo. Ranking atualizado.`
           : `Histórico de ${competencia} salvo, mas o ranking automático não atualizou. Use "Recalcular agora".`,
       );
+      setPerguntarFechamento([`${competencia}-01`]);
     } catch {
       show("error", "Não foi possível salvar o histórico mensal.");
     } finally {
@@ -483,6 +487,7 @@ export function HistoricoMensalTab() {
 
   return (
     <div className="flex flex-col gap-5">
+      <PerguntaAposLancar datas={perguntarFechamento} onFechar={() => setPerguntarFechamento(null)} />
       <Card className="flex flex-col gap-4">
         <div className="flex items-start gap-3">
           <span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--radius)] bg-primary/10 text-primary">
