@@ -7,6 +7,9 @@ import { NotAuthorized } from "@/components/ui/NotAuthorized";
 import { SubTabs } from "@/components/ui/SubTabs";
 import { TabPanel } from "@/components/ui/TabPanel";
 import { temPermissao } from "@/lib/permissoes";
+import { PerguntaFechamento } from "@/components/fechamento/PerguntaFechamento";
+import { useMesesFechados } from "@/lib/useMesesFechados";
+import { useTrimestresDoCalendario } from "@/lib/useTrimestresDoCalendario";
 import { LancarPontosTab } from "./LancarPontosTab";
 import { ExtratoTab } from "./ExtratoTab";
 import { ConsolidadoTab } from "./ConsolidadoTab";
@@ -80,6 +83,8 @@ export default function PontuacaoPage() {
         </p>
       </div>
 
+      <FechamentoDoMes />
+
       <SubTabs
         label="Seções de pontuação"
         value={tab}
@@ -119,4 +124,11 @@ export default function PontuacaoPage() {
       </TabPanel>
     </div>
   );
+}
+
+/** Primeira semana do mês: pergunta se o mês anterior está todo lançado, para avisar os atletas. */
+function FechamentoDoMes() {
+  const { fechados, carregado } = useMesesFechados();
+  const trimestres = useTrimestresDoCalendario();
+  return <PerguntaFechamento fechados={fechados} carregado={carregado} trimestres={trimestres} />;
 }

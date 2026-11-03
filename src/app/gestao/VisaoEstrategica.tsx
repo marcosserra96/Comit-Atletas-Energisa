@@ -17,6 +17,8 @@ import { regrasDeTreino } from "@/lib/activityConsolidation";
 import { useDiasTreino } from "@/lib/useDiasTreino";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { ExportarRelatorioDropdown } from "./ExportarRelatorioDropdown";
+import { useMesesFechados } from "@/lib/useMesesFechados";
+import { useTrimestresDoCalendario } from "@/lib/useTrimestresDoCalendario";
 import { PainelAtencao, type DadosAtencao } from "./PainelAtencao";
 import { ComparativoModalidades } from "./ComparativoModalidades";
 import { temPermissao } from "@/lib/permissoes";
@@ -60,6 +62,10 @@ export function VisaoEstrategica() {
   const podeAtletas = temPermissao(usuario, "atletas");
   const [pedidosSenha, setPedidosSenha] = useState<PedidoSenha[] | null>(null);
   const [versaoPedidos, setVersaoPedidos] = useState(0);
+
+  // Fechamento do mês: pergunta a quem lança pontos se o mês anterior está todo lançado.
+  const mesesFechados = useMesesFechados();
+  const trimestresDoCalendario = useTrimestresDoCalendario();
 
   // Calendário de premiação: avisa quando está acabando sem o próximo trimestre.
   const [calendario, setCalendario] = useState<CalendarioPremiacaoDoc | null>(null);
@@ -221,6 +227,7 @@ export function VisaoEstrategica() {
   const mesAtualIdx = stats.seriesMensal.length - 1;
 
   const dadosAtencao: DadosAtencao = {
+    fechamento: { ...mesesFechados, trimestres: trimestresDoCalendario, onFechado: mesesFechados.recarregar },
     fimDoCalendario: calendario ? avisoDeFimDoCalendario(calendario, hojeBrasil()) : null,
     solicitacoes: pendentes,
     pedidosSenha: pedidosSenha ?? [],

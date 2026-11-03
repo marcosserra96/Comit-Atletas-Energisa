@@ -22,6 +22,7 @@ import {
   type TipoAviso,
 } from "@/lib/push/automaticos";
 import type { OrigemPush } from "@/lib/push/regras";
+import type { MesesFechados } from "@/lib/resumoPeriodo";
 import type { DesafioDoc } from "@/lib/desafios";
 import type { AtletaDoc, HistoricoMensalDoc, HistoricoPontoDoc, RegraPontuacaoDoc } from "@/lib/types";
 import { idDoToken, registrarEnvio, type MensagemPush, type ResultadoPush } from "@/lib/server/push";
@@ -379,21 +380,24 @@ export async function reiniciarFotografiaDoRanking(db: Firestore) {
 // ---------- resumo do mês, do trimestre e do ano ----------
 
 /**
- * Quando um período fecha (o mês no dia 1º, o trimestre do calendário no dia
- * seguinte ao fim, o ano em 1º de janeiro; a partir das 10h, com folga de 3
- * dias), cada atleta que treinou nele recebe o resumo, com o link que abre a
+ * Quando um período fecha (o mês, o trimestre do calendário ou o ano), cada
+ * atleta que treinou nele recebe o resumo. O fechamento é a confirmação do
+ * comitê de que o último mês está todo lançado ou, sem ela, o 7º dia depois do
+ * fim. Cada atleta que treinou recebe o resumo, com o link que abre a
  * imagem para compartilhar. Quem não treinou não recebe nada. Fechando mais de
  * um junto, sai só o maior. O período é marcado antes do envio, para uma
  * falha no meio não mandar duas vezes.
  */
-async function avisarResumoDoPeriodo(db: Firestore) {
+export async function avisarResumoDoPeriodo(db: Firestore) {
   const { avisoDeResumoParaEnviar, mensagemDoResumo } = await import("@/lib/resumoPeriodo");
   const { normalizarCalendario } = await import("@/lib/calendarioPremiacao");
   const calendario = normalizarCalendario((await db.collection("configuracoes").doc("calendario_premiacao").get()).data() as never);
   const ref = db.collection(CONTROLE).doc("resumo_periodo");
+  // Meses que o comitê confirmou como todo lançado (sem confirmação, o aviso espera até o dia 7).
+  const fechados = (((await db.collection(CONTROLE).doc("fechamentos").get()).data()?.meses ?? {}) as MesesFechados);
   const aviso = await db.runTransaction(async (tx) => {
     const enviados = ((await tx.get(ref)).data() ?? {}) as { mes?: string; trimestre?: string; ano?: string };
-    const a = avisoDeResumoParaEnviar(Date.now(), calendario.trimestres, enviados);
+    const a = avisoDeResumoParaEnviar(Date.now(), calendario.trimestres, enviados, fechados);
     if (a) tx.set(ref, { ...enviados, ...a.marcas, em: Date.now() });
     return a;
   });
