@@ -48,8 +48,8 @@ export interface DadosAtencao {
   inativos30d: AtletaDoc[];
   semParticipacao: AtletaDoc[];
   criteriosSemUso: RegraPontuacaoDoc[];
-  /** Primeira semana do mês: o mês anterior ainda sem a confirmação de que está todo lançado. */
-  fechamento?: { fechados: MesesFechados; carregado: boolean; trimestres: TrimestreDoResumo[]; onFechado: () => void };
+  /** Começo do mês: o mês anterior ainda sem a confirmação de que está todo lançado. */
+  fechamento?: { fechados: MesesFechados; carregado: boolean; diasSozinho: number; trimestres: TrimestreDoResumo[]; onFechado: () => void };
   /** Calendário de premiação acabando sem o próximo trimestre (só administrador). */
   fimDoCalendario?: ReturnType<typeof avisoDeFimDoCalendario>;
 }
@@ -260,7 +260,7 @@ export function PainelAtencao({
       destaque: true,
     });
   }
-  const fechar = permissoes.registrar && dados.fechamento?.carregado ? mesParaConfirmar(hojeBrasil(), dados.fechamento.fechados) : null;
+  const fechar = permissoes.registrar && dados.fechamento?.carregado ? mesParaConfirmar(hojeBrasil(), dados.fechamento.fechados, dados.fechamento.diasSozinho) : null;
   if (fechar) {
     itens.push({
       chave: "fechamento",
@@ -333,6 +333,7 @@ export function PainelAtencao({
             variante="painel"
             fechados={dados.fechamento.fechados}
             carregado={dados.fechamento.carregado}
+            diasSozinho={dados.fechamento.diasSozinho}
             trimestres={dados.fechamento.trimestres}
             onFechado={dados.fechamento.onFechado}
           />

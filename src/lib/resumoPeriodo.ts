@@ -38,12 +38,21 @@ const MESES_CURTOS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "S
 export const DIAS_TRIMESTRE_RECENTE = 15;
 /**
  * Fechamento: o resumo de um período só sai quando o comitê confirma que os
- * lançamentos do último mês dele estão completos (eles costumam entrar na
- * primeira semana do mês seguinte). Sem confirmação, sai sozinho no dia 7.
+ * lançamentos do último mês dele estão completos (eles costumam entrar nas
+ * primeiras semanas do mês seguinte). Sem confirmação, sai sozinho no dia que o
+ * administrador escolher (padrão 14, com folga para feriados).
  */
-export const DIAS_ATE_FECHAR_SOZINHO = 7;
-/** Depois disso, um período antigo não gera mais aviso nem destaque. */
-export const DIAS_LIMITE_DO_FECHAMENTO = 14;
+export const DIAS_ATE_FECHAR_SOZINHO = 14;
+export const LIMITES_DIAS_FECHAMENTO = { min: 3, max: 25 };
+/** Uma semana depois do envio automático, um período antigo não gera mais aviso nem destaque. */
+export const FOLGA_DEPOIS_DO_FECHAMENTO = 7;
+
+/** O dia configurado, dentro dos limites (sem configuração: 14). */
+export function normalizarDiasDoFechamento(valor: unknown) {
+  const n = Number(valor);
+  if (!Number.isInteger(n)) return DIAS_ATE_FECHAR_SOZINHO;
+  return Math.min(LIMITES_DIAS_FECHAMENTO.max, Math.max(LIMITES_DIAS_FECHAMENTO.min, n));
+}
 /** Hora de Brasília a partir da qual o fechamento automático sai: ninguém recebe de madrugada. */
 export const HORA_DO_AVISO = 10;
 /** Confirmado pelo comitê: o aviso sai na hora, mas só entre 8h e 21h (fora disso, na manhã seguinte). */
@@ -54,22 +63,23 @@ export type MesesFechados = Record<string, { em: string; porNome?: string | null
 
 /**
  * O período que terminou em `fim` já pode ser anunciado? Sim quando o comitê
- * confirmou o mês do fim, ou a partir do dia 7 depois do fim (às 10h, se a hora
- * for informada). Nunca antes de terminar nem depois de 14 dias.
+ * confirmou o mês do fim, ou a partir do dia configurado depois do fim (às 10h,
+ * se a hora for informada). Nunca antes de terminar nem uma semana depois do
+ * envio automático.
  */
-export function fechamentoLiberado(fim: string, hoje: string, fechados: MesesFechados, hora?: number) {
+export function fechamentoLiberado(fim: string, hoje: string, fechados: MesesFechados, hora?: number, diasSozinho = DIAS_ATE_FECHAR_SOZINHO) {
   const dias = diasEntre(fim, hoje);
-  if (dias < 1 || dias > DIAS_LIMITE_DO_FECHAMENTO) return false;
+  if (dias < 1 || dias > diasSozinho + FOLGA_DEPOIS_DO_FECHAMENTO) return false;
   if (fechados[fim.slice(0, 7)]) return hora === undefined || (hora >= HORARIO_DO_AVISO_CONFIRMADO.de && hora < HORARIO_DO_AVISO_CONFIRMADO.ate);
-  if (dias > DIAS_ATE_FECHAR_SOZINHO) return true;
-  return dias === DIAS_ATE_FECHAR_SOZINHO && (hora === undefined || hora >= HORA_DO_AVISO);
+  if (dias > diasSozinho) return true;
+  return dias === diasSozinho && (hora === undefined || hora >= HORA_DO_AVISO);
 }
 
-/** O mês que o comitê precisa confirmar agora (o anterior, na primeira semana), ou null. */
-export function mesParaConfirmar(hoje: string, fechados: MesesFechados) {
+/** O mês que o comitê precisa confirmar agora (o anterior, até o dia do envio automático), ou null. */
+export function mesParaConfirmar(hoje: string, fechados: MesesFechados, diasSozinho = DIAS_ATE_FECHAR_SOZINHO) {
   const mes = periodoDoMes(hoje, -1);
   const competencia = mes.inicio.slice(0, 7);
-  if (fechados[competencia] || Number(hoje.slice(8, 10)) >= DIAS_ATE_FECHAR_SOZINHO + 1) return null;
+  if (fechados[competencia] || Number(hoje.slice(8, 10)) >= diasSozinho + 1) return null;
   return { competencia, nome: mes.titulo.toLowerCase(), fim: mes.fim };
 }
 
@@ -199,16 +209,16 @@ export function periodosDoResumo(hoje: string, trimestres: readonly TrimestreDoR
  * O que acabou de fechar e merece destaque no Início: o ano (1 a 7 de janeiro),
  * o trimestre (até 7 dias depois do fim) ou o mês (dias 1 a 7). Um só, nessa ordem.
  */
-export function periodoQueFechou(hoje: string, trimestres: readonly TrimestreDoResumo[], fechados: MesesFechados = {}): PeriodoResumo | null {
-  // Só depois do fechamento (confirmado pelo comitê ou automático no dia 7): antes, os números ainda podem mudar.
+export function periodoQueFechou(hoje: string, trimestres: readonly TrimestreDoResumo[], fechados: MesesFechados = {}, diasSozinho = DIAS_ATE_FECHAR_SOZINHO): PeriodoResumo | null {
+  // Só depois do fechamento (confirmado pelo comitê ou automático no dia configurado): antes, os números ainda podem mudar.
   const anoAnterior = String(Number(hoje.slice(0, 4)) - 1);
-  if (fechamentoLiberado(`${anoAnterior}-12-31`, hoje, fechados)) return periodoDoAno(anoAnterior, hoje);
+  if (fechamentoLiberado(`${anoAnterior}-12-31`, hoje, fechados, undefined, diasSozinho)) return periodoDoAno(anoAnterior, hoje);
   const t = trimestres
-    .filter((x) => x.inicio && x.fim && x.nome.trim() && fechamentoLiberado(x.fim, hoje, fechados))
+    .filter((x) => x.inicio && x.fim && x.nome.trim() && fechamentoLiberado(x.fim, hoje, fechados, undefined, diasSozinho))
     .sort((a, b) => b.fim.localeCompare(a.fim))[0];
   if (t) return periodoDoTrimestre(t, hoje);
   const mes = periodoDoMes(hoje, -1);
-  if (fechamentoLiberado(mes.fim, hoje, fechados)) return mes;
+  if (fechamentoLiberado(mes.fim, hoje, fechados, undefined, diasSozinho)) return mes;
   return null;
 }
 
@@ -223,7 +233,7 @@ export interface AvisoDeResumo {
 /**
  * Qual aviso de "fechou" mandar agora, se algum. Sai quando o comitê confirma
  * que o último mês do período está todo lançado (entre 8h e 21h) ou, sem
- * confirmação, no 7º dia depois do fim, a partir das 10h de Brasília. Se mais de
+ * confirmação, no dia configurado depois do fim (padrão 14), a partir das 10h de Brasília. Se mais de
  * um fecha junto (31/12 fecha mês, trimestre e ano), sai só o maior, e os
  * outros ficam marcados como avisados: ninguém recebe dois no mesmo dia.
  * `agora` em milissegundos; Brasília é UTC−3 o ano todo.
@@ -233,12 +243,13 @@ export function avisoDeResumoParaEnviar(
   trimestres: readonly TrimestreDoResumo[],
   enviados: { mes?: string; trimestre?: string; ano?: string },
   fechados: MesesFechados = {},
+  diasSozinho = DIAS_ATE_FECHAR_SOZINHO,
 ): AvisoDeResumo | null {
   const b = new Date(agora - 3 * 60 * 60_000);
   const hoje = b.toISOString().slice(0, 10);
   const hora = b.getUTCHours();
   /** O período que terminou em `fim` já pode ser anunciado? */
-  const naJanela = (fim: string) => fechamentoLiberado(fim, hoje, fechados, hora);
+  const naJanela = (fim: string) => fechamentoLiberado(fim, hoje, fechados, hora, diasSozinho);
 
   const mes = periodoDoMes(hoje, -1);
   const mesFechou = naJanela(somarDias(`${hoje.slice(0, 7)}-01`, -1)) ? mes.inicio.slice(0, 7) : null;

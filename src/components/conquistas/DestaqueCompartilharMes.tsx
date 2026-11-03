@@ -24,11 +24,14 @@ function ler(chave: string) {
  * atleta pode dispensar. Fica fora do card para o Início decidir onde ele entra:
  * o destaque sobe para o topo, o card do dia a dia fica no meio da página.
  */
-export function useResumoDoInicio(params: ParamsCartaoDoMes | null, hoje: string, fechamento: { fechados: MesesFechados; carregado: boolean }) {
+export function useResumoDoInicio(params: ParamsCartaoDoMes | null, hoje: string, fechamento: { fechados: MesesFechados; carregado: boolean; diasSozinho: number }) {
   const trimestres = params?.trimestres;
-  // O destaque espera o fechamento do mês (confirmado pelo comitê ou automático no dia 7).
-  const { fechados, carregado } = fechamento;
-  const fechou = useMemo(() => (trimestres && carregado ? periodoQueFechou(hoje, trimestres, fechados) : null), [hoje, trimestres, carregado, fechados]);
+  // O destaque espera o fechamento do mês (confirmado pelo comitê ou automático no dia configurado).
+  const { fechados, carregado, diasSozinho } = fechamento;
+  const fechou = useMemo(
+    () => (trimestres && carregado ? periodoQueFechou(hoje, trimestres, fechados, diasSozinho) : null),
+    [hoje, trimestres, carregado, fechados, diasSozinho],
+  );
   const dadosFechou = useMemo(() => (params && fechou ? dadosDoCartaoDoMes(params, fechou) : null), [fechou, params]);
   const atual = useMemo(() => periodoDoMes(hoje, 0), [hoje]);
   const dadosAtual = useMemo(() => (params ? dadosDoCartaoDoMes(params, atual) : null), [atual, params]);

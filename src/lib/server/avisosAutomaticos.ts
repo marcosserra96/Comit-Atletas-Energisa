@@ -382,8 +382,8 @@ export async function reiniciarFotografiaDoRanking(db: Firestore) {
 /**
  * Quando um período fecha (o mês, o trimestre do calendário ou o ano), cada
  * atleta que treinou nele recebe o resumo. O fechamento é a confirmação do
- * comitê de que o último mês está todo lançado ou, sem ela, o 7º dia depois do
- * fim. Cada atleta que treinou recebe o resumo, com o link que abre a
+ * comitê de que o último mês está todo lançado ou, sem ela, o dia configurado
+ * pelo administrador (padrão 14) depois do fim. Cada atleta que treinou recebe o resumo, com o link que abre a
  * imagem para compartilhar. Quem não treinou não recebe nada. Fechando mais de
  * um junto, sai só o maior. O período é marcado antes do envio, para uma
  * falha no meio não mandar duas vezes.
@@ -393,11 +393,13 @@ export async function avisarResumoDoPeriodo(db: Firestore) {
   const { normalizarCalendario } = await import("@/lib/calendarioPremiacao");
   const calendario = normalizarCalendario((await db.collection("configuracoes").doc("calendario_premiacao").get()).data() as never);
   const ref = db.collection(CONTROLE).doc("resumo_periodo");
-  // Meses que o comitê confirmou como todo lançado (sem confirmação, o aviso espera até o dia 7).
+  // Meses que o comitê confirmou como todo lançado (sem confirmação, o aviso espera até o dia configurado).
   const fechados = (((await db.collection(CONTROLE).doc("fechamentos").get()).data()?.meses ?? {}) as MesesFechados);
+  const { normalizarDiasDoFechamento } = await import("@/lib/resumoPeriodo");
+  const diasSozinho = normalizarDiasDoFechamento((await db.collection("configuracoes").doc("fechamento_mes").get()).data()?.diasAteFecharSozinho);
   const aviso = await db.runTransaction(async (tx) => {
     const enviados = ((await tx.get(ref)).data() ?? {}) as { mes?: string; trimestre?: string; ano?: string };
-    const a = avisoDeResumoParaEnviar(Date.now(), calendario.trimestres, enviados, fechados);
+    const a = avisoDeResumoParaEnviar(Date.now(), calendario.trimestres, enviados, fechados, diasSozinho);
     if (a) tx.set(ref, { ...enviados, ...a.marcas, em: Date.now() });
     return a;
   });

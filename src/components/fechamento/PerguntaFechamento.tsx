@@ -20,13 +20,14 @@ function adiado(competencia: string) {
 }
 
 /**
- * Na primeira semana do mês, pergunta a quem lança pontos se o mês anterior
- * está todo lançado. Ao confirmar, os atletas recebem o resumo (sem
- * confirmação, ele sai sozinho no dia 7). "Ainda não" esconde até a próxima visita.
+ * No começo do mês, pergunta a quem lança pontos se o mês anterior está todo
+ * lançado. Ao confirmar, os atletas recebem o resumo (sem confirmação, ele sai
+ * sozinho no dia configurado pelo administrador). "Ainda não" esconde até a próxima visita.
  */
 export function PerguntaFechamento({
   fechados,
   carregado,
+  diasSozinho = DIAS_ATE_FECHAR_SOZINHO,
   trimestres,
   onFechado,
   variante = "faixa",
@@ -34,6 +35,8 @@ export function PerguntaFechamento({
 }: {
   fechados: MesesFechados;
   carregado: boolean;
+  /** Dia do mês em que o resumo sai sozinho, se ninguém confirmar. */
+  diasSozinho?: number;
   trimestres: readonly TrimestreDoResumo[];
   onFechado?: () => void;
   /** faixa: aviso no topo da Pontuação; painel: dentro do item do Início da gestão. */
@@ -41,7 +44,7 @@ export function PerguntaFechamento({
   className?: string;
 }) {
   const hoje = hojeBrasil();
-  const mes = carregado ? mesParaConfirmar(hoje, fechados) : null;
+  const mes = carregado ? mesParaConfirmar(hoje, fechados, diasSozinho) : null;
   const [adiouAgora, setAdiouAgora] = useState(false);
   const escondido = adiouAgora || (mes !== null && typeof window !== "undefined" && adiado(mes.competencia));
   const [enviando, setEnviando] = useState(false);
@@ -98,7 +101,7 @@ export function PerguntaFechamento({
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-text">Os lançamentos de {mes.nome} estão completos?</p>
           <p className="mt-0.5 text-sm text-text-light">
-            Quando você confirmar, os atletas recebem o resumo {doQue} no celular. Se ninguém confirmar, ele sai sozinho no dia {DIAS_ATE_FECHAR_SOZINHO}, às 10h.
+            Quando você confirmar, os atletas recebem o resumo {doQue} no celular. Se ninguém confirmar, ele sai sozinho no dia {diasSozinho}, às 10h.
           </p>
           {erro ? <p className="mt-2 text-sm font-medium text-danger">{erro}</p> : null}
           <div className="mt-3 flex flex-wrap gap-2">
