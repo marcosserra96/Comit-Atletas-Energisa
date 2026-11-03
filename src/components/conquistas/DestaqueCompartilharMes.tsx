@@ -6,7 +6,7 @@ import { cn } from "@/lib/cn";
 import { formatDistancia, plural } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { CartaoDoMes } from "./CartaoDoMes";
-import { periodoDoMes, periodoQueFechou, type IdPeriodoResumo } from "@/lib/resumoPeriodo";
+import { periodoDoMes, periodoQueFechou, type IdPeriodoResumo, type MesesFechados } from "@/lib/resumoPeriodo";
 import { dadosDoCartaoDoMes, Previa, type ParamsCartaoDoMes } from "./CompartilharMes";
 
 function ler(chave: string) {
@@ -24,9 +24,11 @@ function ler(chave: string) {
  * atleta pode dispensar. Fica fora do card para o Início decidir onde ele entra:
  * o destaque sobe para o topo, o card do dia a dia fica no meio da página.
  */
-export function useResumoDoInicio(params: ParamsCartaoDoMes | null, hoje: string) {
+export function useResumoDoInicio(params: ParamsCartaoDoMes | null, hoje: string, fechamento: { fechados: MesesFechados; carregado: boolean }) {
   const trimestres = params?.trimestres;
-  const fechou = useMemo(() => (trimestres ? periodoQueFechou(hoje, trimestres) : null), [hoje, trimestres]);
+  // O destaque espera o fechamento do mês (confirmado pelo comitê ou automático no dia 7).
+  const { fechados, carregado } = fechamento;
+  const fechou = useMemo(() => (trimestres && carregado ? periodoQueFechou(hoje, trimestres, fechados) : null), [hoje, trimestres, carregado, fechados]);
   const dadosFechou = useMemo(() => (params && fechou ? dadosDoCartaoDoMes(params, fechou) : null), [fechou, params]);
   const atual = useMemo(() => periodoDoMes(hoje, 0), [hoje]);
   const dadosAtual = useMemo(() => (params ? dadosDoCartaoDoMes(params, atual) : null), [atual, params]);

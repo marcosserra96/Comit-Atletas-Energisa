@@ -73,6 +73,7 @@ import { ComemoracaoConquista } from "@/components/conquistas/ComemoracaoConquis
 import { CompartilharMes } from "@/components/conquistas/CompartilharMes";
 import { DestaqueCompartilharMes, useResumoDoInicio } from "@/components/conquistas/DestaqueCompartilharMes";
 import { useTrimestresDoCalendario } from "@/lib/useTrimestresDoCalendario";
+import { useMesesFechados } from "@/lib/useMesesFechados";
 import type { IdPeriodoResumo } from "@/lib/resumoPeriodo";
 import { useConquistas } from "@/lib/useConquistas";
 import { useFotoAtleta } from "@/lib/fotos";
@@ -370,7 +371,8 @@ export default function DashboardPage() {
     [mostrarConquistas, conquistas.modalidade, conquistas.sequencia, conquistas.recentes, meusLancamentos, meuHistoricoMensal, regrasTreino, atleta, foto, posicaoNoCartao, trimestresDoResumo],
   );
   // Na visualização como atleta não há compartilhamento: o card não aparece.
-  const resumoDoInicio = useResumoDoInicio(isPreview ? null : paramsDoMes, dataIsoLocal());
+  const mesesFechados = useMesesFechados();
+  const resumoDoInicio = useResumoDoInicio(isPreview ? null : paramsDoMes, dataIsoLocal(), mesesFechados);
 
   const fontesComErro = [
     erroHistorico ? "histórico" : null,

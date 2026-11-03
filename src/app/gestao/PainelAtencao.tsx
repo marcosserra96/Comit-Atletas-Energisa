@@ -20,7 +20,9 @@ import { Modal } from "@/components/ui/Modal";
 import { Badge } from "@/components/ui/Badge";
 import { SportBadge } from "@/components/ui/SportBadge";
 import { formatPontos, formatShortDate, plural } from "@/lib/format";
-import type { avisoDeFimDoCalendario } from "@/lib/calendarioPremiacao";
+import { hojeBrasil, type avisoDeFimDoCalendario } from "@/lib/calendarioPremiacao";
+import { mesParaConfirmar, type MesesFechados, type TrimestreDoResumo } from "@/lib/resumoPeriodo";
+import { PerguntaFechamento } from "@/components/fechamento/PerguntaFechamento";
 import { equipeLabel } from "@/lib/labels";
 import { ehReuniao, horarioDoEvento } from "@/lib/eventos";
 import { RequestCard } from "./atletas/RequestCard";
@@ -35,7 +37,7 @@ import { useFotoAtleta } from "@/lib/fotos";
 import type { AtletaDoc, EventoDoc, RegraPontuacaoDoc, SolicitacaoAcessoDoc } from "@/lib/types";
 import { AvatarPessoa } from "@/components/atletas/AvatarAtleta";
 
-type ChaveAtencao = "calendario" | "senhas" | "solicitacoes" | "fila" | "eventos" | "inativos" | "semParticipacao" | "criterios";
+type ChaveAtencao = "fechamento" | "calendario" | "senhas" | "solicitacoes" | "fila" | "eventos" | "inativos" | "semParticipacao" | "criterios";
 
 export interface DadosAtencao {
   solicitacoes: SolicitacaoAcessoDoc[] | null;
@@ -46,6 +48,8 @@ export interface DadosAtencao {
   inativos30d: AtletaDoc[];
   semParticipacao: AtletaDoc[];
   criteriosSemUso: RegraPontuacaoDoc[];
+  /** Primeira semana do mês: o mês anterior ainda sem a confirmação de que está todo lançado. */
+  fechamento?: { fechados: MesesFechados; carregado: boolean; trimestres: TrimestreDoResumo[]; onFechado: () => void };
   /** Calendário de premiação acabando sem o próximo trimestre (só administrador). */
   fimDoCalendario?: ReturnType<typeof avisoDeFimDoCalendario>;
 }
@@ -256,6 +260,16 @@ export function PainelAtencao({
       destaque: true,
     });
   }
+  const fechar = permissoes.registrar && dados.fechamento?.carregado ? mesParaConfirmar(hojeBrasil(), dados.fechamento.fechados) : null;
+  if (fechar) {
+    itens.push({
+      chave: "fechamento",
+      icon: CalendarClock,
+      titulo: `Fechar o mês de ${fechar.nome}`,
+      dica: "Os lançamentos estão completos? Os atletas recebem o resumo",
+      destaque: true,
+    });
+  }
   const fim = permissoes.admin ? dados.fimDoCalendario : null;
   if (fim) {
     itens.push({
@@ -313,6 +327,16 @@ export function PainelAtencao({
 
   function conteudo(chave: ChaveAtencao) {
     switch (chave) {
+      case "fechamento":
+        return dados.fechamento ? (
+          <PerguntaFechamento
+            variante="painel"
+            fechados={dados.fechamento.fechados}
+            carregado={dados.fechamento.carregado}
+            trimestres={dados.fechamento.trimestres}
+            onFechado={dados.fechamento.onFechado}
+          />
+        ) : null;
       case "calendario": {
         const f = dados.fimDoCalendario;
         if (!f) return null;
