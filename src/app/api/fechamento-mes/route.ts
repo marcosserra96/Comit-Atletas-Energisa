@@ -5,8 +5,9 @@ export const maxDuration = 60;
 /**
  * Fechamento do mês: o comitê confirma que os lançamentos de um mês estão
  * completos, e só então os atletas recebem o resumo (sem confirmação, ele sai
- * sozinho no dia 7). Fica em push_controle/fechamentos, só no servidor.
- * GET → { fechados } (qualquer pessoa logada: o Início do atleta espera o fechamento).
+ * sozinho no dia que o administrador escolheu, padrão 14). Fica em
+ * push_controle/fechamentos, só no servidor; o dia, em configuracoes/fechamento_mes.
+ * GET → { fechados, diasAteFecharSozinho } (qualquer pessoa logada: o Início do atleta espera o fechamento).
  * POST { competencia } → confirma o mês anterior (permissão "registrar") e já manda o aviso.
  */
 const REF = (db: FirebaseFirestore.Firestore) => db.collection("push_controle").doc("fechamentos");
@@ -21,8 +22,10 @@ export async function GET(request: Request) {
     const { authenticatedFirebaseRequest, ApiAuthError } = await import("@/lib/server/firebaseRequest");
     const { db, decodedToken } = await authenticatedFirebaseRequest(request);
     if (!(await db.collection("usuarios").doc(decodedToken.uid).get()).exists) throw new ApiAuthError("Seu acesso ainda não foi liberado.", 403);
-    const meses = ((await REF(db).get()).data()?.meses ?? {}) as Record<string, { em?: string; porNome?: string | null }>;
-    return Response.json({ fechados: meses });
+    const { normalizarDiasDoFechamento } = await import("@/lib/resumoPeriodo");
+    const [controle, config] = await Promise.all([REF(db).get(), db.collection("configuracoes").doc("fechamento_mes").get()]);
+    const meses = (controle.data()?.meses ?? {}) as Record<string, { em?: string; porNome?: string | null }>;
+    return Response.json({ fechados: meses, diasAteFecharSozinho: normalizarDiasDoFechamento(config.data()?.diasAteFecharSozinho) });
   } catch (error) {
     const { apiErrorResponse } = await import("@/lib/server/firebaseRequest");
     return apiErrorResponse(error, "Não foi possível consultar o fechamento.");

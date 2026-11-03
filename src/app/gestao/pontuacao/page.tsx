@@ -126,9 +126,9 @@ export default function PontuacaoPage() {
   );
 }
 
-/** Primeira semana do mês: pergunta se o mês anterior está todo lançado, para avisar os atletas. */
+/** Começo do mês: pergunta se o mês anterior está todo lançado, para avisar os atletas. */
 function FechamentoDoMes() {
-  const { fechados, carregado } = useMesesFechados();
+  const { fechados, carregado, diasSozinho } = useMesesFechados();
   const trimestres = useTrimestresDoCalendario();
-  return <PerguntaFechamento fechados={fechados} carregado={carregado} trimestres={trimestres} />;
+  return <PerguntaFechamento fechados={fechados} carregado={carregado} diasSozinho={diasSozinho} trimestres={trimestres} />;
 }

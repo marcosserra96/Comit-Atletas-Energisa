@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/Card";
 import { TextField } from "@/components/ui/TextField";
 import { RankingPeriodsCard } from "./RankingPeriodsCard";
 import { CalendarioPremiacaoCard } from "./CalendarioPremiacaoCard";
+import { FechamentoMesCard } from "./FechamentoMesCard";
 import {
   RANKING_VISIBILITY_DEFAULT,
   normalizarRankingVisibility,
@@ -278,6 +279,7 @@ export function RankingVisibilityTab() {
       </Card>
 
       <CalendarioPremiacaoCard onAtivoSalvo={setCalendarioAtivo} onAplicado={() => setVersaoCalendario((v) => v + 1)} />
+      <FechamentoMesCard />
 
       {calendarioAtivo ? null : (
       <>
