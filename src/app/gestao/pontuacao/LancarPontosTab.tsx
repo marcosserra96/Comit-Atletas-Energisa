@@ -1,6 +1,7 @@
 "use client";
 
 import { useBuscaDaUrl } from "@/lib/useBuscaDaUrl";
+import { PerguntaAposLancar } from "@/components/fechamento/PerguntaAposLancar";
 import { dataIsoLocal } from "@/lib/date";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -67,6 +68,8 @@ export function LancarPontosTab({
   const [modalidade, setModalidade] = useState<Modalidade>("corrida");
   const [tipo, setTipo] = useState<TipoLancamento>("treino");
   const [dataTreino, setDataTreino] = useState(() => dataIsoLocal());
+  // Depois de salvar pontos do mês anterior: pergunta se foram os últimos (fechamento do mês).
+  const [perguntarFechamento, setPerguntarFechamento] = useState<string[] | null>(null);
   const [descricaoLote, setDescricaoLote] = useState("");
   const [kmLote, setKmLote] = useState("");
   const [eventoId, setEventoId] = useState("");
@@ -475,6 +478,7 @@ export function LancarPontosTab({
           ? `Lançamento registrado para ${plural(totalAtletasEnvolvidos, "atleta")}. Ranking atualizado.`
           : `Lançamento registrado para ${plural(totalAtletasEnvolvidos, "atleta")}, mas o ranking automático não atualizou. Use "Recalcular agora".`,
       );
+      setPerguntarFechamento([dataTreino]);
       resetFormulario();
     } catch {
       show("error", "Não foi possível salvar o lançamento agora. Tente novamente.");
@@ -485,6 +489,7 @@ export function LancarPontosTab({
 
   return (
     <div className="flex flex-col gap-5">
+      <PerguntaAposLancar datas={perguntarFechamento} onFechar={() => setPerguntarFechamento(null)} />
 
       {erroJustificativas ? (
         <div className="flex items-start gap-3 rounded-[var(--radius)] border border-warning/25 bg-warning/10 p-3 text-sm text-text-light">

@@ -11,6 +11,19 @@ import { Button } from "@/components/ui/Button";
 
 const chaveAdiado = (competencia: string) => `fechamento-adiado:${competencia}`;
 
+/** "Ainda não": a pergunta não volta (nem na faixa, nem depois de lançar) até a próxima visita. */
+export function adiarFechamento(competencia: string) {
+  try {
+    window.sessionStorage.setItem(chaveAdiado(competencia), "1");
+  } catch {
+    /* esconde só agora */
+  }
+}
+
+export function fechamentoAdiado(competencia: string) {
+  return adiado(competencia);
+}
+
 function adiado(competencia: string) {
   try {
     return window.sessionStorage.getItem(chaveAdiado(competencia)) === "1";
@@ -31,6 +44,8 @@ export function PerguntaFechamento({
   trimestres,
   onFechado,
   variante = "faixa",
+  pergunta,
+  onAdiar,
   className,
 }: {
   fechados: MesesFechados;
@@ -41,6 +56,10 @@ export function PerguntaFechamento({
   onFechado?: () => void;
   /** faixa: aviso no topo da Pontuação; painel: dentro do item do Início da gestão. */
   variante?: "faixa" | "painel";
+  /** Outra pergunta, como "Esses foram os últimos lançamentos de outubro?" (o mês entra no lugar de {mes}). */
+  pergunta?: string;
+  /** No painel: mostra "Ainda não, vou lançar mais" e avisa quem abriu. */
+  onAdiar?: () => void;
   className?: string;
 }) {
   const hoje = hojeBrasil();
@@ -84,12 +103,9 @@ export function PerguntaFechamento({
     }
   }
   function adiar() {
-    try {
-      window.sessionStorage.setItem(chaveAdiado(mes!.competencia), "1");
-    } catch {
-      /* esconde só agora */
-    }
+    adiarFechamento(mes!.competencia);
     setAdiouAgora(true);
+    onAdiar?.();
   }
 
   return (
@@ -99,7 +115,7 @@ export function PerguntaFechamento({
           <CalendarCheck2 className="size-5" aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="font-semibold text-text">Os lançamentos de {mes.nome} estão completos?</p>
+          <p className="font-semibold text-text">{pergunta ? pergunta.replace("{mes}", mes.nome) : `Os lançamentos de ${mes.nome} estão completos?`}</p>
           <p className="mt-0.5 text-sm text-text-light">
             Quando você confirmar, os atletas recebem o resumo {doQue} no celular. Se ninguém confirmar, ele sai sozinho no dia {diasSozinho}, às 10h.
           </p>
@@ -108,9 +124,9 @@ export function PerguntaFechamento({
             <Button size="sm" onClick={() => void confirmar()} loading={enviando}>
               Sim, fechar {mes.nome} e avisar
             </Button>
-            {variante === "faixa" ? (
+            {variante === "faixa" || onAdiar ? (
               <Button size="sm" variant="ghost" onClick={adiar} disabled={enviando}>
-                Ainda não
+                {onAdiar ? "Ainda não, vou lançar mais" : "Ainda não"}
               </Button>
             ) : null}
           </div>
