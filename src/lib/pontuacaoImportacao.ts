@@ -4,7 +4,8 @@ import { atletaPublicoRef } from "@/lib/publicAthletes";
 import { logAudit } from "@/lib/audit";
 import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
 import type { AtletaDoc, TipoLancamento } from "@/lib/types";
-import type { LinhaDuplicada, LinhaImportacao } from "@/app/gestao/pontuacao/RevisarImportacaoModal";
+import type { LinhaImportacao } from "@/app/gestao/pontuacao/RevisarImportacaoModal";
+export { analisarDuplicidade, chaveDuplicidade } from "@/lib/duplicidadeImportacao";
 
 // Cada atleta pode gerar duas escritas (privada + pública) no mesmo batch.
 export const TAMANHO_LOTE = 200;
@@ -16,40 +17,6 @@ export interface LinhaParaGravar extends LinhaImportacao {
   km?: number;
   /** Quando true, "data" só carrega o mês certo (dia 01 por convenção) — o dia exato não é conhecido. */
   dataAproximada?: boolean;
-}
-
-export function chaveDuplicidade(atletaId: string, data: string, regraId: string) {
-  return `${atletaId}|${data}|${regraId}`;
-}
-
-/**
- * Separa candidatas (já validadas e com numeroLinha único) em prontas pra importar
- * e possíveis duplicatas, comparando contra o histórico existente e entre si.
- */
-export function analisarDuplicidade(
-  candidatas: LinhaParaGravar[],
-  chavesExistentes: Set<string>,
-): { validas: LinhaImportacao[]; duplicadas: LinhaDuplicada[]; paraGravar: Map<number, LinhaParaGravar> } {
-  const validas: LinhaImportacao[] = [];
-  const duplicadas: LinhaDuplicada[] = [];
-  const paraGravar = new Map<number, LinhaParaGravar>();
-  const chavesVistas = new Map<string, number>();
-
-  candidatas.forEach((item) => {
-    paraGravar.set(item.numeroLinha, item);
-    const chave = chaveDuplicidade(item.atletaId, item.data, item.regraId);
-    const linhaAnterior = chavesVistas.get(chave);
-    if (chavesExistentes.has(chave)) {
-      duplicadas.push({ ...item, motivo: `Já existe um lançamento igual em ${item.data.split("-").reverse().join("/")}` });
-    } else if (linhaAnterior) {
-      duplicadas.push({ ...item, motivo: `Repetida na própria planilha (linha ${linhaAnterior})` });
-    } else {
-      validas.push(item);
-    }
-    chavesVistas.set(chave, item.numeroLinha);
-  });
-
-  return { validas, duplicadas, paraGravar };
 }
 
 /** Grava em lotes de até 500 operações (limite do Firestore), ajustando o total de pontos por atleta. */
