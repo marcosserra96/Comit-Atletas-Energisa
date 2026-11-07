@@ -142,12 +142,11 @@ export function ImportarControleAntigoModal({ open, onClose }: { open: boolean; 
         .map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc)
         .filter(perfilAtletaVisivel);
       const atletaPorNome = new Map(atletas.map((a) => [a.nome.trim().toLowerCase(), a]));
-      const chavesExistentes = new Set(
-        historicoSnap.docs
-          .map((d) => d.data() as HistoricoPontoDoc)
-          .filter((h) => !h.estornado)
-          .map((h) => `${h.atletaId}|${h.dataTreino}|${h.regraId}`),
-      );
+      // Uma chave por lançamento (repetições contam: treinos extras do mesmo mês).
+      const chavesExistentes = historicoSnap.docs
+        .map((d) => d.data() as HistoricoPontoDoc)
+        .filter((h) => !h.estornado)
+        .map((h) => `${h.atletaId}|${h.dataTreino}|${h.regraId}`);
 
       const candidatas: LinhaParaGravar[] = [];
       const erros: { numeroLinha: number; motivo: string }[] = [];
