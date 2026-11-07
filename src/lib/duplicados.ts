@@ -17,7 +17,8 @@ import { logAudit } from "@/lib/audit";
 import { TAMANHO_LOTE } from "@/lib/pontuacaoImportacao";
 import { atletaPublicoRef, dadosAtletaPublico } from "@/lib/publicAthletes";
 import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
-import type { AtletaDoc, HistoricoPontoDoc } from "@/lib/types";
+import { somaEsperada } from "@/lib/conferenciaPontos";
+import type { AtletaDoc, HistoricoMensalDoc, HistoricoPontoDoc } from "@/lib/types";
 
 /** Remove acentos, colapsa espaços e baixa a caixa — pra comparar nomes ignorando diferenças de digitação. */
 export function normalizarNome(nome: string): string {
@@ -186,6 +187,36 @@ export async function mesclarAtletas(params: {
     }
     lancamentosMigrados += lancSnap.docs.length;
 
+    // Resumos do Histórico mensal: o id é "competencia_atleta". Se o registro que
+    // fica já tem o mesmo mês, os números somam (eram a mesma pessoa).
+    const resumosSnap = await getDocs(
+      query(collection(db, "historico_mensal"), where("atletaId", "==", perdedorId)),
+    );
+    if (!resumosSnap.empty) {
+      const batch = writeBatch(db);
+      for (const d of resumosSnap.docs) {
+        const r = d.data() as HistoricoMensalDoc;
+        const destinoId = `${r.competencia}_${canonicalId}`;
+        const destinoSnap = await getDoc(doc(db, "historico_mensal", destinoId));
+        const destino = destinoSnap.exists() ? (destinoSnap.data() as HistoricoMensalDoc) : null;
+        batch.set(doc(db, "historico_mensal", destinoId), {
+          ...r,
+          ...(destino ?? {}),
+          id: destinoId,
+          atletaId: canonicalId,
+          atletaNome: canonical.nome,
+          equipe: canonical.equipe,
+          pontos: (Number(destino?.pontos) || 0) + (Number(r.pontos) || 0),
+          km: (Number(destino?.km) || 0) + (Number(r.km) || 0),
+          treinos: (Number(destino?.treinos) || 0) + (Number(r.treinos) || 0),
+          aderencia: destino?.aderencia ?? r.aderencia ?? null,
+          atualizadoEm: serverTimestamp(),
+        });
+        batch.delete(d.ref);
+      }
+      await batch.commit();
+    }
+
     const comSnap = await getDocs(
       query(collection(db, "comentarios_atletas"), where("atletaId", "==", perdedorId)),
     );
@@ -239,10 +270,14 @@ export async function mesclarAtletas(params: {
   const finalSnap = await getDocs(
     query(collection(db, "historico_pontos"), where("atletaId", "==", canonicalId)),
   );
-  const totalReal = finalSnap.docs.reduce((soma, d) => {
-    const dados = d.data() as HistoricoPontoDoc;
-    return dados.estornado ? soma : soma + dados.pontos;
-  }, 0);
+  // Mesma conta da Conferência de pontos: lançamentos válidos + resumos mensais.
+  const resumosFinais = await getDocs(
+    query(collection(db, "historico_mensal"), where("atletaId", "==", canonicalId)),
+  );
+  const totalReal = somaEsperada(
+    finalSnap.docs.map((d) => d.data() as HistoricoPontoDoc),
+    resumosFinais.docs.map((d) => d.data() as HistoricoMensalDoc),
+  );
   const batchFinal = writeBatch(db);
   batchFinal.update(doc(db, "atletas", canonicalId), {
     pontuacaoTotal: totalReal,

@@ -15,11 +15,12 @@ import { ExtratoTab } from "./ExtratoTab";
 import { ConsolidadoTab } from "./ConsolidadoTab";
 import { JustificativasTab } from "./JustificativasTab";
 import { HistoricoMensalTab } from "./HistoricoMensalTab";
+import { ConferenciaTab } from "./ConferenciaTab";
 import { carregarJustificativasGestao } from "@/lib/justificativasAusenciaClient";
 import type { JustificativaAusenciaDoc } from "@/lib/types";
 
-type Tab = "lancar" | "historico" | "justificativas" | "extrato" | "consolidado";
-const TABS_PONTUACAO: Tab[] = ["lancar", "historico", "justificativas", "extrato", "consolidado"];
+type Tab = "lancar" | "historico" | "justificativas" | "extrato" | "consolidado" | "conferencia";
+const TABS_PONTUACAO: Tab[] = ["lancar", "historico", "justificativas", "extrato", "consolidado", "conferencia"];
 
 export default function PontuacaoPage() {
   const { usuario } = useActiveSession();
@@ -98,6 +99,7 @@ export default function PontuacaoPage() {
           },
           { value: "extrato", label: "Extrato" },
           { value: "consolidado", label: "Visão consolidada" },
+          { value: "conferencia", label: "Conferência" },
         ]}
       />
 
@@ -118,6 +120,8 @@ export default function PontuacaoPage() {
           />
         ) : tab === "extrato" ? (
           <ExtratoTab />
+        ) : tab === "conferencia" ? (
+          <ConferenciaTab />
         ) : (
           <ConsolidadoTab />
         )}
