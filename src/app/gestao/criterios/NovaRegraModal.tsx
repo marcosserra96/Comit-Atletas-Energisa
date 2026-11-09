@@ -45,10 +45,11 @@ export function NovaRegraModal({
   );
   const [contaComoTreino, setContaComoTreino] = useState(regra ? regraContaComoTreino(regra) : true);
   const [loading, setLoading] = useState(false);
-  // Lançado como Treino sempre conta; a opção só decide para Avulso.
+  // Lançado como Treino sempre conta; a opção decide para Avulso e Evento.
   const valeComoTreino = tiposSelecionados.has("treino");
-  // Evento e Reunião nunca contam como treino: a opção só aparece quando faz diferença.
-  const mostrarOpcaoTreino = valeComoTreino || tiposSelecionados.has("avulso");
+  const opcaoDecide = tiposSelecionados.has("avulso") || tiposSelecionados.has("evento");
+  // Reunião nunca conta como treino: a opção só aparece quando faz diferença.
+  const mostrarOpcaoTreino = valeComoTreino || opcaoDecide;
 
   function toggleTipo(tipo: TipoLancamento) {
     setTiposSelecionados((prev) => {
@@ -79,7 +80,7 @@ export function NovaRegraModal({
     setLoading(true);
     try {
       const ref = regra ? doc(db, "regras_pontuacao", regra.id) : doc(collection(db, "regras_pontuacao"));
-      const contaAgora = valeComoTreino || (mostrarOpcaoTreino && contaComoTreino);
+      const contaAgora = opcaoDecide ? contaComoTreino : valeComoTreino;
       // Critério novo ainda não tem lançamentos; um existente que mudou muda as contagens.
       const mudouContagem = regra ? regraContaComoTreino(regra) !== contaAgora : false;
       await setDoc(ref, {
@@ -163,22 +164,22 @@ export function NovaRegraModal({
         <label
           className={
             "flex items-start gap-2.5 rounded-[var(--radius)] border border-border bg-bg p-3.5 text-sm " +
-            (valeComoTreino ? "cursor-default" : "cursor-pointer")
+            (opcaoDecide ? "cursor-pointer" : "cursor-default")
           }
         >
           <input
             type="checkbox"
-            checked={valeComoTreino || contaComoTreino}
-            disabled={valeComoTreino}
+            checked={opcaoDecide ? contaComoTreino : true}
+            disabled={!opcaoDecide}
             onChange={(e) => setContaComoTreino(e.target.checked)}
             className="mt-0.5 size-4 shrink-0 rounded border-border accent-primary disabled:opacity-60"
           />
           <span>
             <span className="font-semibold text-text">Conta como treino</span>
             <span className="mt-0.5 block text-xs text-text-light">
-              {valeComoTreino
+              {!opcaoDecide
                 ? "Lançamentos do tipo Treino sempre contam na quantidade de treinos e na aderência."
-                : "Entra na quantidade de treinos e na aderência mesmo lançado como Avulso (ex.: treino avulso, treino extra). Desmarque para ajustes e bônus."}
+                : `${valeComoTreino ? "Lançado como Treino, conta sempre. " : ""}Marcado, também conta quando lançado como ${[tiposSelecionados.has("evento") ? "Evento" : "", tiposSelecionados.has("avulso") ? "Avulso" : ""].filter(Boolean).join(" ou ")} (ex.: treino extra, treino avulso). Desmarque para bônus e ajustes.`}
             </span>
           </span>
         </label>

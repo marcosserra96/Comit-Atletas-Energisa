@@ -11,7 +11,9 @@ export type RegrasDeTreino = ReadonlySet<string>;
 export function regraContaComoTreino(
   regra: Pick<RegraPontuacaoDoc, "descricao" | "tiposLancamento" | "contaComoTreino">,
 ) {
-  if (typeof regra.contaComoTreino === "boolean") return regra.contaComoTreino || regra.tiposLancamento.includes("treino");
+  // A opção do cadastro decide os lançamentos como Avulso ou Evento; os do tipo
+  // Treino contam sempre (ver lancamentoContaComoTreino).
+  if (typeof regra.contaComoTreino === "boolean") return regra.contaComoTreino;
   return regra.tiposLancamento.includes("treino") || /treino/i.test(regra.descricao);
 }
 
@@ -21,10 +23,15 @@ export function regrasDeTreino(
   return new Set(regras.filter(regraContaComoTreino).map((r) => r.id));
 }
 
-/** O lançamento conta como treino: lançado como Treino ou de um critério que conta como treino. */
+/**
+ * O lançamento conta como treino: lançado como Treino, ou de um critério que
+ * conta como treino lançado como Avulso ou Evento (ex.: "Treino extra" dado
+ * num evento). Reunião nunca conta. A participação no evento continua contando
+ * como prova: provas são contadas pelo tipo do lançamento.
+ */
 export function lancamentoContaComoTreino(lancamento: HistoricoPontoDoc, regrasTreino?: RegrasDeTreino) {
   if (lancamento.tipoLancamento === "treino") return true;
-  if (lancamento.tipoLancamento === "evento" || lancamento.tipoLancamento === "reuniao") return false;
+  if (lancamento.tipoLancamento === "reuniao") return false;
   return Boolean(regrasTreino?.has(lancamento.regraId));
 }
 
