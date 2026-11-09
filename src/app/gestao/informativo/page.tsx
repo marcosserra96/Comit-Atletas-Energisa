@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { PreviaEscalada } from "./PreviaEscalada";
+import { ConviteEvento } from "./ConviteEvento";
 import Link from "next/link";
 import { collection, getDocs } from "firebase/firestore";
 import { Bike, CalendarCog, Download, Footprints, Loader2, Share2 } from "lucide-react";
@@ -51,33 +53,7 @@ function temConteudoCortado(arte: HTMLElement) {
   });
 }
 
-/** Mostra a arte em tamanho real reduzida para caber na largura disponível. */
-function PreviaEscalada({ largura, altura, children }: { largura: number; altura: number; children: React.ReactNode }) {
-  const caixa = useRef<HTMLDivElement>(null);
-  const [escala, setEscala] = useState(0.3);
-  useEffect(() => {
-    const el = caixa.current;
-    if (!el) return;
-    const obs = new ResizeObserver(([entrada]) => setEscala(entrada.contentRect.width / largura));
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [largura]);
-  return (
-    <div ref={caixa} className="w-full">
-      <div
-        className="relative overflow-hidden rounded-[var(--radius-lg)] shadow-[var(--shadow-elevated)]"
-        style={{ height: altura * escala }}
-      >
-        <div style={{ transform: `scale(${escala})`, transformOrigin: "top left", width: largura, height: altura }}>
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default function InformativoPage() {
-  const { usuario } = useActiveSession();
+function RankingInformativo() {
   const { show } = useToast();
   const diasTreino = useDiasTreino();
   const [atletas, setAtletas] = useState<AtletaDoc[] | null>(null);
@@ -237,17 +213,8 @@ export default function InformativoPage() {
     }
   }
 
-  if (!temPermissao(usuario, "informativo")) return <NotAuthorized />;
-
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <h1 className="text-2xl font-extrabold text-text">Informativo para divulgação</h1>
-        <p className="text-sm text-text-light">
-          Ranking de pontos com pódio, tabela e aderência. Pronto para postar ou mandar no WhatsApp.
-        </p>
-      </div>
-
       <div className="grid gap-5 lg:grid-cols-[340px_minmax(0,1fr)] lg:items-start">
         <Card className="flex flex-col gap-5 lg:sticky lg:top-[84px]">
           <div className="flex flex-col gap-2">
@@ -385,6 +352,48 @@ export default function InformativoPage() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+type Peca = "ranking" | "convite";
+
+export default function InformativoPage() {
+  const { usuario } = useActiveSession();
+  const [peca, setPeca] = useState<Peca>("ranking");
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      if (new URLSearchParams(window.location.search).get("peca") === "convite") setPeca("convite");
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, []);
+  function trocar(p: Peca) {
+    setPeca(p);
+    window.history.replaceState(window.history.state, "", p === "convite" ? "?peca=convite" : window.location.pathname);
+  }
+  if (!temPermissao(usuario, "informativo")) return <NotAuthorized />;
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-extrabold text-text">Informativo para divulgação</h1>
+          <p className="text-sm text-text-light">
+            {peca === "ranking"
+              ? "Ranking de pontos com pódio, tabela e aderência. Pronto para postar ou mandar no WhatsApp."
+              : "Convite de evento com a cara do programa: escolha o layout, ajuste os textos e compartilhe."}
+          </p>
+        </div>
+        <SegmentedControl
+          value={peca}
+          onChange={trocar}
+          className="w-full sm:w-auto [&>button]:flex-1"
+          options={[
+            { value: "ranking", label: "Ranking" },
+            { value: "convite", label: "Convite de evento" },
+          ]}
+        />
+      </div>
+      {peca === "ranking" ? <RankingInformativo /> : <ConviteEvento />}
     </div>
   );
 }
