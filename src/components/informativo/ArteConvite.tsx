@@ -10,7 +10,7 @@ import "@fontsource/barlow/600.css";
 import "@fontsource/barlow/700.css";
 import "@fontsource/kaushan-script/400.css";
 import { forwardRef, type CSSProperties, type ReactNode } from "react";
-import { DIMENSOES_CONVITE, FAIXAS, trechos, type FaixaConvite, type FormatoConvite, type LayoutConvite, type TextosConvite } from "@/lib/convite";
+import { DIMENSOES_CONVITE, FAIXAS, arquivoDoFundo, trechos, type FaixaConvite, type FundoConvite, type FormatoConvite, type LayoutConvite, type TextosConvite } from "@/lib/convite";
 
 /*
  * Convite de evento em pixels reais (1080 × 1350 ou 1080 × 1920). Cores fixas
@@ -47,8 +47,29 @@ export interface PropsConvite {
   faixa: FaixaConvite;
   /** QR code (data URL) para confirmar presença; vazio = sem QR. */
   qr: string;
-  /** Foto de fundo do layout "Sua foto" (data URL). */
+  /** Foto de fundo do layout "Sua foto" (data URL ou endereço). */
   foto: string;
+  /** Fundo fotográfico no lugar da ilustração do layout; null = ilustração. */
+  fundo?: FundoConvite | null;
+}
+
+/** Fundo fotográfico com um véu para o texto continuar legível. */
+function FundoImagem({ fundo, veu }: { fundo: FundoConvite; veu: "claro" | "escuro" }) {
+  return (
+    <div style={{ position: "absolute", inset: 0 }}>
+      <img src={arquivoDoFundo(fundo)} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: fundo.foco }} />
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            veu === "claro"
+              ? "radial-gradient(ellipse 75% 55% at 50% 45%, rgba(247,251,254,0.78) 0%, rgba(247,251,254,0.6) 55%, rgba(247,251,254,0.15) 100%)"
+              : "linear-gradient(180deg, rgba(6,24,47,0.35) 0%, rgba(6,24,47,0.55) 28%, rgba(6,24,47,0.62) 70%, rgba(6,24,47,0.4) 100%)",
+        }}
+      />
+    </div>
+  );
 }
 
 /* ---------- Peças de texto ---------- */
@@ -174,7 +195,7 @@ function Reticula({ cor, x, y, colunas, linhas, passo, estilo }: { cor: string; 
   return <g style={estilo}>{pontos}</g>;
 }
 
-function FundoCelebracao({ altura }: { altura: number }) {
+function FundoCelebracao({ altura, soOnda = false }: { altura: number; soOnda?: boolean }) {
   const W = 1080;
   const H = altura;
   // No feed a onda é mais baixa: sobra altura para o conteúdo.
@@ -197,6 +218,8 @@ function FundoCelebracao({ altura }: { altura: number }) {
           <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
         </radialGradient>
       </defs>
+      {soOnda ? null : (
+        <>
       <rect width={W} height={H} fill="url(#cel-ceu)" />
       {/* Raias de pista, bem suaves, atrás do conteúdo */}
       {Array.from({ length: 7 }, (_, i) => (
@@ -209,6 +232,8 @@ function FundoCelebracao({ altura }: { altura: number }) {
       <path d={`M -40 ${H * 0.5} C 120 ${H * 0.24}, 300 96, 640 -40`} fill="none" stroke={C.azul} strokeOpacity="0.5" strokeWidth="3" />
       {/* Retícula no canto superior direito */}
       <Reticula cor={C.azul} x={760} y={40} colunas={12} linhas={9} passo={26} estilo={{ opacity: 0.35 }} />
+        </>
+      )}
       {/* Ondas da base */}
       <path d={`M 0 ${b(210)} C 260 ${b(300)}, 640 ${b(120)}, ${W} ${b(250)} L ${W} ${H} L 0 ${H} Z`} fill="url(#cel-onda)" />
       <path d={`M 0 ${b(236)} C 280 ${b(330)}, 650 ${b(150)}, ${W} ${b(282)}`} fill="none" stroke={C.lima} strokeWidth="12" />
@@ -437,8 +462,10 @@ const raiz = (altura: number, fundo: string): CSSProperties => ({
 
 const coluna = (estilo: CSSProperties): CSSProperties => ({ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", height: "100%", boxSizing: "border-box", ...estilo });
 
-function Celebracao({ textos: t, faixa, qr, altura }: PropsConvite & { altura: number }) {
+function Celebracao({ textos: t, faixa, qr, altura, fundo }: PropsConvite & { altura: number }) {
   const story = altura > 1500;
+  // Sobre foto, um halo branco garante a leitura sem apagar a imagem.
+  const halo = fundo ? "0 0 14px rgba(255,255,255,0.95), 0 0 4px rgba(255,255,255,0.9)" : undefined;
   const [primeira, ...resto] = t.chamada.trim().split(/\s+/);
   const info = [
     { tipo: "data" as const, valor: t.data, sub: t.diaSemana, cor: C.royal },
@@ -447,7 +474,8 @@ function Celebracao({ textos: t, faixa, qr, altura }: PropsConvite & { altura: n
   ].filter((i) => i.valor);
   return (
     <div style={raiz(altura, C.ceu)}>
-      <FundoCelebracao altura={altura} />
+      {fundo ? <FundoImagem fundo={fundo} veu="claro" /> : null}
+      <FundoCelebracao altura={altura} soOnda={!!fundo} />
       <Selo faixa={faixa} estilo={{ top: story ? 90 : 60, right: 50 }} />
       <div data-conteudo style={coluna({ alignItems: "center", textAlign: "center", padding: story ? "110px 80px 300px" : "52px 70px 196px", justifyContent: "space-between" })}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: story ? 34 : 16 }}>
@@ -474,7 +502,7 @@ function Celebracao({ textos: t, faixa, qr, altura }: PropsConvite & { altura: n
           ) : null}
         </div>
 
-        {t.texto ? <p style={{ margin: 0, fontSize: story ? 40 : 32, lineHeight: 1.38, color: C.tintaSuave, maxWidth: 880, fontWeight: 500 }}><Rico texto={t.texto} cor={C.royal} /></p> : null}
+        {t.texto ? <p style={{ margin: 0, fontSize: story ? 40 : 32, lineHeight: 1.38, color: fundo ? C.tinta : C.tintaSuave, textShadow: halo, maxWidth: 880, fontWeight: 500 }}><Rico texto={t.texto} cor={C.royal} /></p> : null}
 
         {info.length ? (
           <div style={{ display: "flex", gap: 24, justifyContent: "center", width: "100%" }}>
@@ -488,11 +516,11 @@ function Celebracao({ textos: t, faixa, qr, altura }: PropsConvite & { altura: n
           </div>
         ) : null}
 
-        {t.texto2 ? <p style={{ margin: 0, fontSize: story ? 36 : 29, lineHeight: 1.38, color: C.tintaSuave, maxWidth: 820, fontWeight: 500 }}><Rico texto={t.texto2} cor={C.royal} /></p> : null}
+        {t.texto2 ? <p style={{ margin: 0, fontSize: story ? 36 : 29, lineHeight: 1.38, color: fundo ? C.tinta : C.tintaSuave, textShadow: halo, maxWidth: 820, fontWeight: 500 }}><Rico texto={t.texto2} cor={C.royal} /></p> : null}
 
         {t.assinatura ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <span style={{ fontFamily: CURSIVA, fontSize: story ? 70 : 54, color: C.tinta, lineHeight: 1.2 }}>{t.assinatura}</span>
+            <span style={{ fontFamily: CURSIVA, fontSize: story ? 70 : 54, color: C.tinta, lineHeight: 1.2, textShadow: halo }}>{t.assinatura}</span>
             <Pincelada largura={Math.min(760, t.assinatura.length * 22)} cor={C.laranja} />
           </div>
         ) : null}
@@ -506,12 +534,12 @@ function Celebracao({ textos: t, faixa, qr, altura }: PropsConvite & { altura: n
   );
 }
 
-function Largada({ textos: t, faixa, qr, altura }: PropsConvite & { altura: number }) {
+function Largada({ textos: t, faixa, qr, altura, fundo }: PropsConvite & { altura: number }) {
   const story = altura > 1500;
   const linhaQuando = [t.diaSemana, t.hora].filter(Boolean).join(", às ");
   return (
     <div style={raiz(altura, C.marinho)}>
-      <FundoLargada altura={altura} />
+      {fundo ? <FundoImagem fundo={fundo} veu="escuro" /> : <FundoLargada altura={altura} />}
       <Selo faixa={faixa} estilo={{ top: story ? 120 : 70, right: 60 }} />
       <div data-conteudo style={coluna({ padding: story ? "120px 84px 220px" : "60px 80px 170px", justifyContent: "space-between" })}>
         <div style={{ display: "flex", flexDirection: "column", gap: story ? 40 : 20 }}>
@@ -567,11 +595,11 @@ function Alfinete({ estilo }: { estilo: CSSProperties }) {
   );
 }
 
-function NumeroDePeito({ textos: t, faixa, qr, altura }: PropsConvite & { altura: number }) {
+function NumeroDePeito({ textos: t, faixa, qr, altura, fundo }: PropsConvite & { altura: number }) {
   const story = altura > 1500;
   return (
     <div style={raiz(altura, C.royal)}>
-      <FundoPercurso altura={altura} />
+      {fundo ? <FundoImagem fundo={fundo} veu="escuro" /> : <FundoPercurso altura={altura} />}
       <Selo faixa={faixa} estilo={{ top: story ? 110 : 56, right: 50 }} />
       <div data-conteudo style={coluna({ alignItems: "center", textAlign: "center", padding: story ? "120px 80px 120px" : "64px 80px 70px", justifyContent: "space-between" })}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
@@ -613,7 +641,7 @@ function NumeroDePeito({ textos: t, faixa, qr, altura }: PropsConvite & { altura
   );
 }
 
-function Podio({ textos: t, faixa, qr, altura }: PropsConvite & { altura: number }) {
+function Podio({ textos: t, faixa, qr, altura, fundo }: PropsConvite & { altura: number }) {
   const story = altura > 1500;
   const info = [
     { tipo: "data" as const, valor: t.data, sub: t.diaSemana },
@@ -622,7 +650,7 @@ function Podio({ textos: t, faixa, qr, altura }: PropsConvite & { altura: number
   ].filter((i) => i.valor);
   return (
     <div style={raiz(altura, C.marinho)}>
-      <FundoPodio altura={altura} />
+      {fundo ? <FundoImagem fundo={fundo} veu="escuro" /> : <FundoPodio altura={altura} />}
       <Selo faixa={faixa} estilo={{ top: story ? 110 : 60, right: 50, background: C.ouro }} />
       <div data-conteudo style={coluna({ alignItems: "center", textAlign: "center", padding: story ? "130px 80px 160px" : "70px 80px 100px", justifyContent: "space-between" })}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 24 }}>

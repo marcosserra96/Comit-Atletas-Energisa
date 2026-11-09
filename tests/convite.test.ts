@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { diaDaSemana, horaCurta, nomeDoArquivo, textosDoEvento, trechos } from "../src/lib/convite";
+import { FUNDOS, diaDaSemana, fundoCompativel, fundosDoLayout, horaCurta, nomeDoArquivo, textosDoEvento, trechos } from "../src/lib/convite";
 
 test("destaques entre asteriscos", () => {
   assert.deepEqual(trechos("para *celebrar* e *olhar* adiante"), [
@@ -31,4 +31,12 @@ test("textos a partir do evento da agenda", () => {
 test("nome do arquivo", () => {
   assert.equal(nomeDoArquivo("Fechamento Junho à Agosto!", "feed"), "convite-fechamento-junho-a-agosto-feed.png");
   assert.equal(nomeDoArquivo("", "story"), "convite-evento-story.png");
+});
+
+test("fundos por layout: claro com texto escuro, escuro com texto claro, foto aceita todos", () => {
+  assert.ok(fundosDoLayout("celebracao").every((f) => f.tom === "claro"));
+  assert.ok(fundosDoLayout("largada").every((f) => f.tom === "escuro"));
+  assert.equal(fundosDoLayout("foto").length, FUNDOS.length);
+  assert.equal(fundoCompativel("podio", "amanhecer-na-orla"), false);
+  assert.equal(fundoCompativel("podio", "fim-de-ano"), true);
 });
