@@ -9,12 +9,13 @@ import { temPermissao } from "@/lib/permissoes";
 import { carregarTodosLancamentos, invalidarLancamentos } from "@/lib/lancamentosCache";
 import { useRegrasDeTreino } from "@/lib/useRegrasDeTreino";
 import { hojeBrasil, nomeDoMes } from "@/lib/calendarioPremiacao";
-import { equipeLabel } from "@/lib/labels";
+import { equipeLabel, tipoLancamentoLabel } from "@/lib/labels";
 import { formatDataTreino, formatKm, formatKmTotal, formatPontos, plural } from "@/lib/format";
 import {
   conferirPontos,
   detalharAtleta,
   quantidadeDePendencias,
+  type CriterioDoMes,
   type GrupoRepetido,
   type LancamentoConferido,
   type ResumoConferido,
@@ -30,7 +31,7 @@ import { InlineAlert } from "@/components/ui/InlineAlert";
 import { PainelNumeros } from "@/components/ui/PainelNumeros";
 import { ConfirmActionModal } from "@/components/ui/ConfirmActionModal";
 import { useToast } from "@/components/ui/Toast";
-import type { AtletaDoc } from "@/lib/types";
+import type { AtletaDoc, TipoLancamento } from "@/lib/types";
 
 interface Dados {
   atletas: AtletaDoc[];
@@ -410,6 +411,30 @@ function Comparacao({ itens, destaque }: { itens: [string, string][]; destaque?:
 
 /* ---------- Conferir um atleta, mês a mês ---------- */
 
+/**
+ * Se o critério contou como treino. Quando só parte contou, diz por quê: o
+ * mesmo critério pode ter sido lançado como Treino numa vez e como Avulso ou
+ * Evento em outra, e só o tipo Treino conta sempre.
+ */
+function ContagemDeTreino({ criterio: c }: { criterio: CriterioDoMes }) {
+  if (c.contaram === 0 && !Object.keys(c.naoContaram).length) return null;
+  if (c.contaram === c.vezes) return <span className="ml-2 text-xs text-text-light">conta como treino</span>;
+  const motivos = (Object.entries(c.naoContaram) as [TipoLancamento, number][]).map(
+    ([tipo, n]) => `${n} lançado${n === 1 ? "" : "s"} como ${tipoLancamentoLabel[tipo]}`,
+  );
+  if (c.contaram === 0) {
+    // Nenhum contou: só vale apontar quando o nome sugere treino (ex.: "Treino extra").
+    return /treino/i.test(c.descricao) ? (
+      <span className="mt-0.5 block text-xs font-medium text-danger">Não contou como treino ({motivos.join(", ")})</span>
+    ) : null;
+  }
+  return (
+    <span className="mt-0.5 block text-xs font-medium text-danger">
+      Contou como treino em {c.contaram} de {c.vezes}: {motivos.join(", ")}
+    </span>
+  );
+}
+
 function ConferirAtleta({ dados, regrasTreino }: { dados: Dados; regrasTreino: NonNullable<ReturnType<typeof useRegrasDeTreino>> }) {
   const atletas = useMemo(() => [...dados.atletas].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")), [dados.atletas]);
   const [atletaId, setAtletaId] = useState("");
@@ -486,7 +511,7 @@ function ConferirAtleta({ dados, regrasTreino }: { dados: Dados; regrasTreino: N
                       <li key={c.chave} className="flex items-baseline justify-between gap-3 px-4 py-2 text-sm">
                         <span className="min-w-0 text-text">
                           {c.descricao}
-                          {c.contaComoTreino ? <span className="ml-2 text-xs text-text-light">conta como treino</span> : null}
+                          <ContagemDeTreino criterio={c} />
                         </span>
                         <span className="shrink-0 tabular-nums text-text-secondary">
                           {c.vezes}× <span className="font-semibold text-text">{formatPontos(c.pontos)} pts</span>
