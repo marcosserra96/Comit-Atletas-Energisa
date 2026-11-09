@@ -88,7 +88,7 @@ function AreaDeTexto({ label, value, onChange, linhas = 3, dica }: { label: stri
 
 function Grupo({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
-    <fieldset className="flex flex-col gap-3 border-t border-border pt-4">
+    <fieldset className="flex flex-col gap-3 border-t border-border pt-4 first-of-type:border-t-0 first-of-type:pt-0">
       <legend className="float-left mb-1 w-full text-sm font-bold text-text">{titulo}</legend>
       {children}
     </fieldset>
@@ -112,6 +112,7 @@ export function ConviteEvento() {
   const [foto, setFoto] = useState("");
   // Fundo fotográfico escolhido ("" = a ilustração do próprio layout).
   const [fundoId, setFundoId] = useState("");
+  const [aba, setAba] = useState<"visual" | "textos">("visual");
   const [carregado, setCarregado] = useState(false);
   const [exportando, setExportando] = useState<"baixar" | "compartilhar" | null>(null);
   const [cortado, setCortado] = useState(false);
@@ -272,12 +273,25 @@ export function ConviteEvento() {
               </option>
             ))}
           </Select>
-          <p className="text-xs text-text-light">Data, hora e local vêm da agenda. Dá para mudar tudo abaixo.</p>
+          <p className="text-xs text-text-light">Data, hora e local vêm da agenda. Dá para mudar tudo em Textos.</p>
         </div>
 
+        {/* Duas abas curtas no lugar de um formulário longo: o visual e os textos. */}
+        <SegmentedControl
+          value={aba}
+          onChange={setAba}
+          className="w-full [&>button]:flex-1"
+          options={[
+            { value: "visual", label: "Visual" },
+            { value: "textos", label: "Textos" },
+          ]}
+        />
+
+        {aba === "visual" ? (
+        <>
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium text-text">Layout</span>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-3">
+          <div className="grid grid-cols-5 gap-1.5">
             {miniaturas.map((l) => (
               <button
                 key={l.id}
@@ -286,7 +300,7 @@ export function ConviteEvento() {
                 aria-pressed={layout === l.id}
                 title={l.descricao}
                 className={cn(
-                  "group flex flex-col gap-1.5 rounded-[var(--radius)] p-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                  "group flex flex-col gap-1 rounded-[var(--radius)] p-1 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                   layout === l.id ? "bg-primary-subtle ring-2 ring-primary" : "hover:bg-bg-inset",
                 )}
               >
@@ -295,7 +309,7 @@ export function ConviteEvento() {
                     <ArteConvite {...props} layout={l.id} formato="feed" qr="" fundo={null} foto={l.id === "foto" ? props.foto : ""} />
                   </PreviaEscalada>
                 </span>
-                <span className={cn("text-xs font-semibold leading-tight", layout === l.id ? "text-primary" : "text-text")}>{l.nome}</span>
+                <span className={cn("text-[11px] font-semibold leading-tight", layout === l.id ? "text-primary" : "text-text")}>{l.nome}</span>
               </button>
             ))}
           </div>
@@ -303,18 +317,18 @@ export function ConviteEvento() {
 
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium text-text">Fundo</span>
-          <div className="grid grid-cols-5 gap-1.5">
+          <div className="grid grid-cols-6 gap-1.5">
             {layout !== "foto" ? (
               <button
                 type="button"
                 onClick={() => setFundoId("")}
                 aria-pressed={!fundo}
                 className={cn(
-                  "flex aspect-[2/3] items-center justify-center rounded-[6px] border border-dashed border-border p-1 text-center text-[11px] font-semibold leading-tight text-text-secondary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                  "flex aspect-[2/3] items-center justify-center rounded-[6px] border border-dashed border-border p-1 text-center text-[10px] font-semibold leading-tight text-text-secondary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                   !fundo && "border-solid border-primary bg-primary-subtle text-primary ring-2 ring-primary",
                 )}
               >
-                Ilustração do layout
+                Ilustração
               </button>
             ) : null}
             {opcoesDeFundo.map((f) => (
@@ -389,6 +403,9 @@ export function ConviteEvento() {
           </div>
         </div>
 
+        </>
+        ) : (
+        <>
         <Grupo titulo="Títulos">
           <TextField label="Título" value={textos.titulo} onChange={(e) => mudar("titulo", e.target.value)} />
           <TextField label="Nome do evento" value={textos.selo} onChange={(e) => mudar("selo", e.target.value)} />
@@ -414,6 +431,8 @@ export function ConviteEvento() {
             {eventoId ? "Voltar aos textos do evento" : "Voltar aos textos padrão"}
           </button>
         </Grupo>
+        </>
+        )}
       </Card>
 
       <div className="order-first flex min-w-0 flex-col gap-3 lg:order-none lg:sticky lg:top-[84px]">
