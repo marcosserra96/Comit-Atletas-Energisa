@@ -1,6 +1,6 @@
 import { consolidarAtividades, lancamentoContaComoTreino, type RegrasDeTreino } from "@/lib/activityConsolidation";
 import { REGRA_DESAFIO } from "@/lib/desafios";
-import type { Equipe, HistoricoMensalDoc, HistoricoPontoDoc } from "@/lib/types";
+import type { Equipe, HistoricoMensalDoc, HistoricoPontoDoc, TipoLancamento } from "@/lib/types";
 
 /**
  * Conferência dos pontos e treinos: o que pode estar errado sem ninguém ver.
@@ -221,7 +221,10 @@ export interface CriterioDoMes {
   descricao: string;
   vezes: number;
   pontos: number;
-  contaComoTreino: boolean;
+  /** Quantos destes lançamentos contaram como treino. */
+  contaram: number;
+  /** Os que não contaram, pelo tipo do lançamento (Avulso, Evento, Reunião). */
+  naoContaram: Partial<Record<TipoLancamento, number>>;
 }
 
 export interface MesDoAtleta {
@@ -266,9 +269,11 @@ export function detalharAtleta(
       for (const l of validos) {
         if (l.regraId === "falta_justificada") continue;
         const chave = l.regraId === REGRA_DESAFIO || !l.regraId ? `${l.regraId}|${l.regraDesc}` : l.regraId;
-        const atual = criterios.get(chave) ?? { chave, descricao: l.regraDesc, vezes: 0, pontos: 0, contaComoTreino: lancamentoContaComoTreino(l, regrasTreino) };
+        const atual = criterios.get(chave) ?? { chave, descricao: l.regraDesc, vezes: 0, pontos: 0, contaram: 0, naoContaram: {} };
         atual.vezes += 1;
         atual.pontos += Number(l.pontos) || 0;
+        if (lancamentoContaComoTreino(l, regrasTreino)) atual.contaram += 1;
+        else atual.naoContaram[l.tipoLancamento] = (atual.naoContaram[l.tipoLancamento] ?? 0) + 1;
         criterios.set(chave, atual);
       }
 
@@ -280,7 +285,7 @@ export function detalharAtleta(
         pontos: validos.reduce((s, l) => s + (Number(l.pontos) || 0), 0) + (resumo?.pontos ?? 0),
         treinos: treinosLancados + (resumo?.treinos ?? 0),
         km: atividades.reduce((s, a) => s + a.km, 0) + (resumo?.km ?? 0),
-        criterios: [...criterios.values()].sort((a, b) => Number(b.contaComoTreino) - Number(a.contaComoTreino) || b.vezes - a.vezes || a.descricao.localeCompare(b.descricao, "pt-BR")),
+        criterios: [...criterios.values()].sort((a, b) => b.contaram - a.contaram || b.vezes - a.vezes || a.descricao.localeCompare(b.descricao, "pt-BR")),
         juntados: Math.max(0, lancamentosDeTreino - treinosLancados),
         faltasJustificadas: validos.filter((l) => l.regraId === "falta_justificada").length,
         estornados: doMes.length - validos.length,

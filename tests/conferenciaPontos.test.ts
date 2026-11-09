@@ -109,3 +109,17 @@ test("detalhe do mês: critério a critério e treinos juntados no mesmo lançam
   assert.equal(outubro.estornados, 1);
   assert.deepEqual(outubro.criterios.map((c) => [c.descricao, c.vezes, c.pontos]), [["Treino", 2, 10], ["Treino extra", 1, 3]]);
 });
+
+test("detalhe mostra quando o mesmo critério contou como treino só às vezes", () => {
+  const lancamentos = [
+    lanc({ regraId: "extra", regraDesc: "Treino extra", tipoLancamento: "treino", dataTreino: "2026-09-02" }),
+    lanc({ regraId: "extra", regraDesc: "Treino extra", tipoLancamento: "avulso", dataTreino: "2026-09-09" }),
+  ];
+  const [setembro] = detalharAtleta("ana", lancamentos, [], "2026", new Set());
+  assert.equal(setembro.criterios[0].contaram, 1);
+  assert.deepEqual(setembro.criterios[0].naoContaram, { avulso: 1 });
+  assert.equal(setembro.treinos, 1);
+  // Marcando o critério como treino, os dois contam.
+  const [corrigido] = detalharAtleta("ana", lancamentos, [], "2026", new Set(["extra"]));
+  assert.equal(corrigido.treinos, 2);
+});
