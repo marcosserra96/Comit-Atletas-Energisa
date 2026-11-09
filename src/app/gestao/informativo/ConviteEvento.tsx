@@ -12,8 +12,13 @@ import {
   DIMENSOES_CONVITE,
   FAIXAS,
   LAYOUTS,
+  FUNDOS,
   TEXTOS_PADRAO,
+  arquivoDoFundo,
   dataCurta,
+  fundoCompativel,
+  fundosDoLayout,
+  miniaturaDoFundo,
   nomeDoArquivo,
   textosDoEvento,
   type FaixaConvite,
@@ -42,6 +47,7 @@ interface Rascunho {
   formato: FormatoConvite;
   faixa: FaixaConvite;
   comQr: boolean;
+  fundoId?: string;
 }
 
 function lerRascunho(): Rascunho | null {
@@ -104,6 +110,8 @@ export function ConviteEvento() {
   const [faixa, setFaixa] = useState<FaixaConvite>("");
   const [comQr, setComQr] = useState(true);
   const [foto, setFoto] = useState("");
+  // Fundo fotográfico escolhido ("" = a ilustração do próprio layout).
+  const [fundoId, setFundoId] = useState("");
   const [carregado, setCarregado] = useState(false);
   const [exportando, setExportando] = useState<"baixar" | "compartilhar" | null>(null);
   const [cortado, setCortado] = useState(false);
@@ -127,6 +135,7 @@ export function ConviteEvento() {
           setFormato(r.formato);
           setFaixa(r.faixa);
           setComQr(r.comQr);
+          setFundoId(r.fundoId ?? "");
         } else if (lista[0]) {
           setEventoId(lista[0].id);
           setTextos(textosDoEvento(lista[0]));
@@ -146,8 +155,8 @@ export function ConviteEvento() {
   }, []);
 
   useEffect(() => {
-    if (carregado) gravarRascunho({ eventoId, textos, layout, formato, faixa, comQr });
-  }, [carregado, eventoId, textos, layout, formato, faixa, comQr]);
+    if (carregado) gravarRascunho({ eventoId, textos, layout, formato, faixa, comQr, fundoId });
+  }, [carregado, eventoId, textos, layout, formato, faixa, comQr, fundoId]);
 
   const [fontesProntas, setFontesProntas] = useState(false);
   useEffect(() => {
@@ -191,6 +200,7 @@ export function ConviteEvento() {
     if (!arquivo) return;
     try {
       setFoto(await reduzirImagem(arquivo, { lado: 1600, qualidade: 0.86 }));
+      setFundoId("");
       setLayout("foto");
     } catch (e) {
       show("error", e instanceof Error ? e.message : "Não foi possível abrir esta imagem.");
@@ -240,7 +250,13 @@ export function ConviteEvento() {
 
   const podeCompartilhar =
     typeof navigator !== "undefined" && typeof navigator.canShare === "function" && navigator.canShare({ files: [new File([""], "teste.png", { type: "image/png" })] });
-  const props = { layout, formato, textos, faixa, qr: comQr ? qr : "", foto };
+  // Fundo que vale para o layout atual (trocar de layout não apaga a escolha).
+  const fundo = fundoId && fundoCompativel(layout, fundoId) ? (FUNDOS.find((f) => f.id === fundoId) ?? null) : null;
+  const opcoesDeFundo = fundosDoLayout(layout);
+  const props =
+    layout === "foto"
+      ? { layout, formato, textos, faixa, qr: comQr ? qr : "", foto: fundo ? arquivoDoFundo(fundo) : foto, fundo: null }
+      : { layout, formato, textos, faixa, qr: comQr ? qr : "", foto, fundo };
   const miniaturas = useMemo(() => LAYOUTS, []);
 
   return (
@@ -276,13 +292,55 @@ export function ConviteEvento() {
               >
                 <span className="pointer-events-none block overflow-hidden rounded-[6px]" aria-hidden="true">
                   <PreviaEscalada largura={1080} altura={1350}>
-                    <ArteConvite {...props} layout={l.id} formato="feed" qr="" />
+                    <ArteConvite {...props} layout={l.id} formato="feed" qr="" fundo={null} foto={l.id === "foto" ? props.foto : ""} />
                   </PreviaEscalada>
                 </span>
                 <span className={cn("text-xs font-semibold leading-tight", layout === l.id ? "text-primary" : "text-text")}>{l.nome}</span>
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-medium text-text">Fundo</span>
+          <div className="grid grid-cols-5 gap-1.5">
+            {layout !== "foto" ? (
+              <button
+                type="button"
+                onClick={() => setFundoId("")}
+                aria-pressed={!fundo}
+                className={cn(
+                  "flex aspect-[2/3] items-center justify-center rounded-[6px] border border-dashed border-border p-1 text-center text-[11px] font-semibold leading-tight text-text-secondary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                  !fundo && "border-solid border-primary bg-primary-subtle text-primary ring-2 ring-primary",
+                )}
+              >
+                Ilustração do layout
+              </button>
+            ) : null}
+            {opcoesDeFundo.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setFundoId(f.id)}
+                aria-pressed={fundo?.id === f.id}
+                title={f.nome}
+                className={cn(
+                  "relative aspect-[2/3] overflow-hidden rounded-[6px] transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                  fundo?.id === f.id ? "ring-2 ring-primary ring-offset-2 ring-offset-bg-card" : "hover:ring-2 hover:ring-border",
+                )}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- miniatura estática de 10 KB */}
+                <img src={miniaturaDoFundo(f)} alt={f.nome} loading="lazy" className="size-full object-cover" />
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-text-light">
+            {layout === "celebracao"
+              ? "Este layout tem texto escuro: aparecem os fundos claros."
+              : layout === "foto"
+                ? "Escolha uma das imagens ou envie uma foto do time."
+                : "Este layout tem texto claro: aparecem os fundos escuros."}
+          </p>
         </div>
 
         {layout === "foto" ? (
@@ -367,7 +425,7 @@ export function ConviteEvento() {
         {cortado ? (
           <InlineAlert tone="warning">Parte do texto não coube na arte. Encurte o texto ou use o formato Status, que tem mais espaço.</InlineAlert>
         ) : null}
-        {layout === "foto" && !foto ? <InlineAlert tone="info">Escolha uma foto para o fundo. Sem foto, o convite sai com o fundo azul.</InlineAlert> : null}
+        {layout === "foto" && !foto && !fundo ? <InlineAlert tone="info">Escolha uma foto para o fundo. Sem foto, o convite sai com o fundo azul.</InlineAlert> : null}
         <div className={cn("mx-auto flex w-full flex-col gap-2 sm:flex-row", formato === "story" ? "max-w-[400px]" : "max-w-[520px]")}>
           {podeCompartilhar ? (
             <Button className="flex-1" onClick={() => void compartilhar()} loading={exportando === "compartilhar"} disabled={!!exportando}>

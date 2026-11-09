@@ -36,6 +36,41 @@ export const LAYOUTS: { id: LayoutConvite; nome: string; descricao: string }[] =
   { id: "foto", nome: "Sua foto", descricao: "Uma foto do time de fundo" },
 ];
 
+/** Fundos fotográficos (gerados para o programa), em public/convites/fundos. */
+export interface FundoConvite {
+  id: string;
+  nome: string;
+  tom: "claro" | "escuro";
+  /** object-position: o que não pode sumir no recorte (feed corta em cima e embaixo, status nas laterais). */
+  foco: string;
+}
+
+export const FUNDOS: FundoConvite[] = [
+  { id: "celebracao", nome: "Celebração", tom: "claro", foco: "50% 50%" },
+  { id: "treino-em-grupo", nome: "Treino em grupo", tom: "claro", foco: "50% 85%" },
+  { id: "amanhecer-na-orla", nome: "Amanhecer na orla", tom: "claro", foco: "40% 80%" },
+  { id: "linha-de-chegada", nome: "Linha de chegada", tom: "claro", foco: "50% 70%" },
+  { id: "largada-noturna", nome: "Largada noturna", tom: "escuro", foco: "60% 70%" },
+  { id: "pedal-na-serra", nome: "Pedal na serra", tom: "escuro", foco: "40% 80%" },
+  { id: "percurso", nome: "Percurso", tom: "escuro", foco: "50% 60%" },
+  { id: "podio", nome: "Pódio", tom: "escuro", foco: "50% 75%" },
+  { id: "fim-de-ano", nome: "Fim de ano", tom: "escuro", foco: "50% 50%" },
+  { id: "ondas-da-marca", nome: "Ondas da marca", tom: "escuro", foco: "50% 50%" },
+];
+
+export const arquivoDoFundo = (f: FundoConvite) => `/convites/fundos/${f.id}.webp`;
+export const miniaturaDoFundo = (f: FundoConvite) => `/convites/fundos/${f.id}-mini.webp`;
+
+/** Celebração tem texto escuro: só fundos claros. "Sua foto" escurece a imagem: aceita todos. Os outros: escuros. */
+export function fundosDoLayout(layout: LayoutConvite) {
+  if (layout === "foto") return FUNDOS;
+  return FUNDOS.filter((f) => f.tom === (layout === "celebracao" ? "claro" : "escuro"));
+}
+
+export function fundoCompativel(layout: LayoutConvite, fundoId: string) {
+  return fundosDoLayout(layout).some((f) => f.id === fundoId);
+}
+
 export const FAIXAS: Record<Exclude<FaixaConvite, "">, string> = {
   amanha: "É amanhã!",
   hoje: "É hoje!",
