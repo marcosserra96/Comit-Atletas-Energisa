@@ -194,7 +194,8 @@ export interface RegraPontuacaoDoc {
   regrasExcludentes?: string[];
   /**
    * Lançamentos deste critério contam como treino (quantidade de treinos e
-   * aderência), mesmo lançados como Avulso. Sem valor: vale `regraContaComoTreino`.
+   * aderência) também quando lançados como Avulso ou Evento. Lançados como
+   * Treino contam sempre. Sem valor: vale `regraContaComoTreino`.
    */
   contaComoTreino?: boolean;
   criadoEm: unknown;

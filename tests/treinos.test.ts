@@ -50,3 +50,17 @@ test("presença em reunião soma pontos mas nunca conta como treino", () => {
   assert.equal(atividades.filter((a) => a.tipo === "treino").length, 0);
   assert.equal(atividades[0].pontos, 3);
 });
+
+test("critério de treino lançado num Evento conta como treino; Reunião nunca", () => {
+  const extraNoEvento = lanc("05", "extra", "evento", 3);
+  const reuniao = lanc("06", "extra", "reuniao", 1);
+  const ids = regrasDeTreino(regras);
+  const tipos = consolidarAtividades([extraNoEvento, reuniao], ids).map((a) => a.tipo);
+  assert.deepEqual(tipos, ["treino", "reuniao"]);
+  // Desmarcado no cadastro, o lançamento como Evento deixa de contar; como Treino continua.
+  const semOpcao = regrasDeTreino([{ id: "extra", descricao: "Treino extra", tiposLancamento: ["treino", "evento"], contaComoTreino: false }]);
+  assert.deepEqual(
+    consolidarAtividades([extraNoEvento, lanc("07", "extra", "treino", 3)], semOpcao).map((a) => a.tipo),
+    ["evento", "treino"],
+  );
+});
