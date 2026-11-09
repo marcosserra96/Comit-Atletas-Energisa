@@ -134,6 +134,13 @@ const CENARIOS: CenarioDef[] = [
     avaliar: (u) => temPermissao(u, "notificacoes"),
   },
   {
+    chave: "montar_analises",
+    categoria: "Pontuação",
+    label: "Montar análises de treinos, pontos e participação",
+    regra: "Requer a permissão \"Análises\".",
+    avaliar: (u) => temPermissao(u, "analises"),
+  },
+  {
     chave: "gerir_financeiro",
     categoria: "Financeiro",
     label: "Ver e registrar despesas financeiras",

@@ -24,6 +24,7 @@ import {
   BellRing,
   Presentation,
   Flag,
+  ChartColumnBig,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { RodapeDaGaveta } from "@/components/layout/RodapeDaGaveta";
@@ -40,6 +41,7 @@ const baseItems: { href: string; label: string; icon: typeof LayoutDashboard; pe
   { href: "/gestao/criterios", label: "Critérios", icon: ListChecks, permissao: "regras" },
   { href: "/gestao/desafios", label: "Desafios", icon: Flag, permissao: "regras" },
   { href: "/gestao/pontuacao", label: "Pontuação", icon: Target, permissao: "registrar" },
+  { href: "/gestao/analises", label: "Análises", icon: ChartColumnBig, permissao: "analises" },
   { href: "/gestao/eventos", label: "Eventos", icon: CalendarCheck, permissao: "eventos" },
   { href: "/gestao/noticias", label: "Notícias", icon: Newspaper, permissao: "noticias" },
   { href: "/gestao/informativo", label: "Informativo", icon: Megaphone, permissao: "informativo" },

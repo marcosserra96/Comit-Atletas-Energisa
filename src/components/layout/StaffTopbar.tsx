@@ -18,6 +18,7 @@ const titleByPath: Record<string, string> = {
   "/gestao/atletas": "Atletas",
   "/gestao/criterios": "Critérios",
   "/gestao/pontuacao": "Pontuação",
+  "/gestao/analises": "Análises",
   "/gestao/eventos": "Eventos",
   "/gestao/noticias": "Notícias",
   "/gestao/financeiro": "Financeiro",
