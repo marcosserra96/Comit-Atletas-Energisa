@@ -232,6 +232,7 @@ export function VisaoEstrategica() {
     solicitacoes: pendentes,
     pedidosSenha: pedidosSenha ?? [],
     atletasSemVinculo: (atletas ?? []).filter((a) => !a.authUid),
+    atletasComLogin: (atletas ?? []).filter((a) => !!a.authUid),
     fila: stats.filaLista,
     eventosPendentes: stats.eventosPendentesLista,
     inativos30d: [...stats.corrida.inativosList, ...stats.bike.inativosList].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),

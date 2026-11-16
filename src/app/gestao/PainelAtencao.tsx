@@ -43,6 +43,8 @@ export interface DadosAtencao {
   solicitacoes: SolicitacaoAcessoDoc[] | null;
   pedidosSenha: PedidoSenha[];
   atletasSemVinculo: AtletaDoc[];
+  /** Cadastros com login: o pedido pode trocar o e-mail de acesso deles. */
+  atletasComLogin: AtletaDoc[];
   fila: AtletaDoc[];
   eventosPendentes: EventoDoc[];
   inativos30d: AtletaDoc[];
@@ -358,7 +360,7 @@ export function PainelAtencao({
         return (
           <div className="flex flex-col gap-3">
             {(dados.solicitacoes ?? []).map((s) => (
-              <RequestCard key={s.uid} solicitacao={s} atletasSemVinculo={dados.atletasSemVinculo} />
+              <RequestCard key={s.uid} solicitacao={s} atletasSemVinculo={dados.atletasSemVinculo} atletasComLogin={dados.atletasComLogin} />
             ))}
           </div>
         );
