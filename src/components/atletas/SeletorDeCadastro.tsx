@@ -66,6 +66,11 @@ export function SeletorDeCadastro({
           {sugerido ? (
             <span className="hidden shrink-0 text-xs font-semibold text-primary sm:inline">nome parecido</span>
           ) : null}
+          {atleta.authUid ? (
+            <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent" title={atleta.email ? `Entra hoje com ${atleta.email}` : undefined}>
+              já tem login
+            </span>
+          ) : null}
           <span className="shrink-0 text-xs text-text-light">{equipeLabel[atleta.equipe] ?? atleta.equipe}</span>
         </button>
       </li>
@@ -97,7 +102,7 @@ export function SeletorDeCadastro({
             type="search"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            placeholder={`Nome do atleta (${atletas.length} sem login)`}
+            placeholder={`Nome do atleta (${atletas.length} ${atletas.some((a) => a.authUid) ? "cadastros" : "sem login"})`}
             autoComplete="off"
             className="h-10 w-full bg-transparent text-base text-text outline-none placeholder:text-text-muted sm:text-sm"
           />
@@ -105,7 +110,7 @@ export function SeletorDeCadastro({
         <ul
           className="flex max-h-60 flex-col gap-0.5 overflow-y-auto rounded-[var(--radius)] border border-border p-1"
           role="listbox"
-          aria-label="Cadastros sem login, em ordem alfabética"
+          aria-label="Cadastros em ordem alfabética"
         >
           {filtrados.length === 0 ? (
             <li className="px-3 py-4 text-center text-sm text-text-light">Nenhum cadastro com esse nome. Talvez seja o caso de criar um novo perfil.</li>
