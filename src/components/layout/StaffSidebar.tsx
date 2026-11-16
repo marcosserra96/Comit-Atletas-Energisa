@@ -35,24 +35,47 @@ import { useActiveSession } from "@/lib/session/SessionProvider";
 import { souTambemAtleta } from "@/lib/session/dualRole";
 import { useFotoAtleta } from "@/lib/fotos";
 
-const baseItems: { href: string; label: string; icon: typeof LayoutDashboard; permissao?: PermissaoChave }[] = [
-  { href: "/gestao", label: "Início", icon: LayoutDashboard, permissao: "inicio" },
-  { href: "/gestao/atletas", label: "Atletas", icon: Users, permissao: "atletas" },
-  { href: "/gestao/criterios", label: "Critérios", icon: ListChecks, permissao: "regras" },
-  { href: "/gestao/desafios", label: "Desafios", icon: Flag, permissao: "regras" },
-  { href: "/gestao/pontuacao", label: "Pontuação", icon: Target, permissao: "registrar" },
-  { href: "/gestao/analises", label: "Análises", icon: ChartColumnBig, permissao: "analises" },
-  { href: "/gestao/eventos", label: "Eventos", icon: CalendarCheck, permissao: "eventos" },
-  { href: "/gestao/noticias", label: "Notícias", icon: Newspaper, permissao: "noticias" },
-  { href: "/gestao/informativo", label: "Informativo", icon: Megaphone, permissao: "informativo" },
-  { href: "/gestao/reuniao", label: "Reunião de resultados", icon: Presentation, permissao: "informativo" },
-  { href: "/gestao/pesquisas", label: "Pesquisas", icon: ClipboardList, permissao: "pesquisas" },
-  { href: "/gestao/notificacoes", label: "Notificações", icon: BellRing, permissao: "notificacoes" },
-  { href: "/gestao/financeiro", label: "Financeiro", icon: Wallet, permissao: "financeiro" },
-];
+type ItemMenu = { href: string; label: string; icon: typeof LayoutDashboard; permissao?: PermissaoChave; soAdmin?: boolean };
 
-const adminOnlyItems = [
-  { href: "/gestao/configuracoes", label: "Configurar portal", icon: Settings },
+/**
+ * Menu em grupos pelo tipo de trabalho, para achar as telas sem ler a lista
+ * toda. Um grupo sem nenhuma tela liberada para a pessoa não aparece.
+ */
+const grupos: { titulo: string | null; itens: ItemMenu[] }[] = [
+  { titulo: null, itens: [{ href: "/gestao", label: "Início", icon: LayoutDashboard, permissao: "inicio" }] },
+  {
+    titulo: "Atletas e pontos",
+    itens: [
+      { href: "/gestao/atletas", label: "Atletas", icon: Users, permissao: "atletas" },
+      { href: "/gestao/pontuacao", label: "Pontuação", icon: Target, permissao: "registrar" },
+      { href: "/gestao/criterios", label: "Critérios", icon: ListChecks, permissao: "regras" },
+      { href: "/gestao/desafios", label: "Desafios", icon: Flag, permissao: "regras" },
+    ],
+  },
+  {
+    titulo: "Agenda e comunicação",
+    itens: [
+      { href: "/gestao/eventos", label: "Eventos", icon: CalendarCheck, permissao: "eventos" },
+      { href: "/gestao/noticias", label: "Notícias", icon: Newspaper, permissao: "noticias" },
+      { href: "/gestao/notificacoes", label: "Notificações", icon: BellRing, permissao: "notificacoes" },
+      { href: "/gestao/pesquisas", label: "Pesquisas", icon: ClipboardList, permissao: "pesquisas" },
+    ],
+  },
+  {
+    titulo: "Resultados",
+    itens: [
+      { href: "/gestao/analises", label: "Análises", icon: ChartColumnBig, permissao: "analises" },
+      { href: "/gestao/informativo", label: "Informativo", icon: Megaphone, permissao: "informativo" },
+      { href: "/gestao/reuniao", label: "Reunião de resultados", icon: Presentation, permissao: "informativo" },
+    ],
+  },
+  {
+    titulo: "Administração",
+    itens: [
+      { href: "/gestao/financeiro", label: "Financeiro", icon: Wallet, permissao: "financeiro" },
+      { href: "/gestao/configuracoes", label: "Configurar portal", icon: Settings, soAdmin: true },
+    ],
+  },
 ];
 
 const accountItem = { href: "/gestao/conta", label: "Minha conta", icon: UserCog };
@@ -76,12 +99,11 @@ export function StaffSidebar({
   const [collapsed, setCollapsed] = useState(false);
   const tambemAtleta = souTambemAtleta(usuario, atleta);
   const IconModalidade = atleta.equipe === "bicicleta" ? Bike : Footprints;
-  const items = [
-    ...baseItems.filter(
-      (item) => !item.permissao || temPermissao({ role, permissoes }, item.permissao),
-    ),
-    ...(role === "administrador" ? adminOnlyItems : []),
-    accountItem,
+  const podeVer = (item: ItemMenu) =>
+    item.soAdmin ? role === "administrador" : !item.permissao || temPermissao({ role, permissoes }, item.permissao);
+  const secoes = [
+    ...grupos.map((g) => ({ titulo: g.titulo, itens: g.itens.filter(podeVer) })).filter((g) => g.itens.length > 0),
+    { titulo: null, itens: [accountItem as ItemMenu] },
   ];
 
   return (
@@ -138,8 +160,18 @@ export function StaffSidebar({
           </span>
         )}
 
-        <nav className="mt-2 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3 pb-3" aria-label="Menu de gestão">
-          {items.map(({ href, label, icon: Icon }) => {
+        <nav className="mt-2 flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pb-3" aria-label="Menu de gestão">
+          {secoes.map((secao, i) => (
+            <div key={secao.titulo ?? `secao-${i}`} className={cn("flex flex-col gap-0.5", i > 0 && "mt-4", i === secoes.length - 1 && "border-t border-white/10 pt-3")}>
+              {secao.titulo ? (
+                collapsed ? (
+                  <span className="mx-3 mb-1 hidden h-px bg-white/10 lg:block" aria-hidden="true" />
+                ) : null
+              ) : null}
+              {secao.titulo ? (
+                <h2 className={cn("mb-1 px-3 text-xs font-semibold text-white/45", collapsed && "lg:hidden")}>{secao.titulo}</h2>
+              ) : null}
+              {secao.itens.map(({ href, label, icon: Icon }) => {
             const active = pathname === href;
             return (
               <Link
@@ -148,7 +180,7 @@ export function StaffSidebar({
                 onClick={onCloseMobile}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex min-h-11 items-center gap-3 rounded-[var(--radius)] px-3 py-2.5 text-sm font-medium text-white/70 transition-colors lg:min-h-0",
+                  "flex min-h-11 items-center gap-3 rounded-[var(--radius)] px-3 py-2.5 text-sm font-medium text-white/70 transition-colors lg:min-h-0 lg:py-2",
                   "hover:bg-white/5 hover:text-white",
                   active && "bg-white/10 text-white shadow-[inset_3px_0_0_var(--color-secondary)]",
                   collapsed && "lg:justify-center lg:px-0",
@@ -160,6 +192,8 @@ export function StaffSidebar({
               </Link>
             );
           })}
+            </div>
+          ))}
 
           {tambemAtleta && (
             <Link
