@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { collection, doc, onSnapshot, query, updateDoc, where, writeBatch } from "firebase/firestore";
-import { CloudDownload, KeyRound, Link2, Search, ShieldCheck, TestTube2, UserRound } from "lucide-react";
+import { Activity, CloudDownload, KeyRound, Link2, Search, ShieldCheck, TestTube2, UserRound } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
@@ -19,6 +19,7 @@ import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
 import { GerenciarAcessosModal } from "./GerenciarAcessosModal";
 import { TestarPermissoesModal } from "./TestarPermissoesModal";
 import { CorrigirVinculoModal } from "./CorrigirVinculoModal";
+import { UsoDoApp } from "./UsoDoApp";
 import type { AtletaDoc, Equipe, Role } from "@/lib/types";
 import { plural } from "@/lib/format";
 import { AvatarPessoa } from "@/components/atletas/AvatarAtleta";
@@ -32,7 +33,7 @@ interface ResultadoSincronizacao {
   desativadas: number;
 }
 
-type Grupo = "comite" | "atletas";
+type Grupo = "comite" | "atletas" | "uso";
 type FiltroModalidade = "todas" | "corrida" | "bicicleta" | "sem";
 
 function normalizar(texto: string) {
@@ -349,8 +350,10 @@ export function UsuariosTab() {
             options={[
               { value: "comite", label: `Comitê${staff ? ` (${equipeGestao.length})` : ""}`, icon: ShieldCheck },
               { value: "atletas", label: `Atletas${staff ? ` (${atletasComAcesso.length})` : ""}`, icon: UserRound },
+              { value: "uso", label: "Uso do app", icon: Activity },
             ]}
           />
+          {grupo === "uso" ? null : (
           <div className="w-full lg:max-w-xs">
             <TextField
               aria-label="Buscar por nome ou e-mail"
@@ -361,6 +364,7 @@ export function UsuariosTab() {
               type="search"
             />
           </div>
+          )}
         </div>
         {grupo === "atletas" ? (
           <SegmentedControl
@@ -375,12 +379,14 @@ export function UsuariosTab() {
             ]}
           />
         ) : null}
+        {grupo === "uso" ? null : (
         <p className="text-xs text-text-muted">
           {grupo === "comite"
             ? "Administradores primeiro. Em Acessos você define o que cada membro do comitê pode ver e fazer."
             : "Atletas com login no portal, em ordem alfabética."}
         </p>
-        {noOutroGrupo > 0 ? (
+        )}
+        {grupo !== "uso" && noOutroGrupo > 0 ? (
           <button
             type="button"
             onClick={() => setGrupo(grupo === "comite" ? "atletas" : "comite")}
@@ -391,7 +397,9 @@ export function UsuariosTab() {
         ) : null}
       </Card>
 
-      {staff === null ? (
+      {grupo === "uso" ? (
+        <UsoDoApp />
+      ) : staff === null ? (
         <Card className="h-40 animate-pulse" />
       ) : staff.length === 0 ? (
         <Card>
