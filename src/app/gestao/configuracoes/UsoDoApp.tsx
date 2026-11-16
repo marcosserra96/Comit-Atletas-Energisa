@@ -10,6 +10,7 @@ import { FAIXAS_USO, faixaDeUso, mensagemDeConvite, participaDoPrograma, resumoD
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { TextField } from "@/components/ui/TextField";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InlineAlert } from "@/components/ui/InlineAlert";
@@ -46,6 +47,7 @@ export function UsoDoApp() {
   const [publico, setPublico] = useState<Publico>("programa");
   const [faixa, setFaixa] = useState<FaixaUso | null>(null);
   const [busca, setBusca] = useState("");
+  const [acesso, setAcesso] = useState<"todos" | "com" | "sem">("todos");
   const [agora, setAgora] = useState(0);
 
   const carregar = useCallback(async () => {
@@ -73,6 +75,7 @@ export function UsoDoApp() {
     const termo = normalizar(busca.trim());
     return doPublico
       .filter((p) => !faixa || faixaDeUso(p, agora) === faixa)
+      .filter((p) => acesso === "todos" || (acesso === "com") === p.temConta)
       .filter((p) => !termo || normalizar(`${p.nome} ${p.email ?? ""}`).includes(termo))
       .sort((a, b) => {
         // Quem usou por último primeiro; quem nunca entrou no fim, em ordem alfabética.
@@ -80,7 +83,7 @@ export function UsoDoApp() {
         const ub = b.temConta && b.ultimoUso ? Date.parse(b.ultimoUso) : -1;
         return ub - ua || a.nome.localeCompare(b.nome, "pt-BR");
       });
-  }, [doPublico, faixa, busca, agora]);
+  }, [doPublico, faixa, busca, agora, acesso]);
 
   const sumidosComAviso = faixa === "sumido" ? lista.filter((p) => p.notificacoes).map((p) => p.atletaId) : [];
   const urlPortal = typeof window === "undefined" ? "" : window.location.origin;
@@ -188,12 +191,22 @@ export function UsoDoApp() {
       </Card>
 
       <Card padding="none" className="overflow-hidden">
-        <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+        <div className="flex flex-col gap-3 border-b border-border p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h3 className="text-base font-bold text-text">{faixa ? FAIXAS_USO[faixa].rotulo : "Todos"}</h3>
+            <h3 className="text-base font-bold text-text">{faixa ? FAIXAS_USO[faixa].rotulo : acesso === "com" ? "Com acesso" : acesso === "sem" ? "Sem acesso" : "Todos"}</h3>
             <p className="text-xs text-text-light">{plural(lista.length, "pessoa")}</p>
           </div>
-          <div className="w-full sm:max-w-xs">
+          <SegmentedControl
+            value={acesso}
+            onChange={(v) => setAcesso(v as typeof acesso)}
+            className="w-full lg:w-auto [&>button]:flex-1 [&>button]:whitespace-nowrap"
+            options={[
+              { value: "todos", label: "Todos" },
+              { value: "com", label: "Com acesso" },
+              { value: "sem", label: "Sem acesso" },
+            ]}
+          />
+          <div className="w-full lg:max-w-60">
             <TextField aria-label="Buscar por nome ou e-mail" icon={<Search className="size-[18px]" />} placeholder="Buscar por nome ou e-mail" value={busca} onChange={(e) => setBusca(e.target.value)} type="search" />
           </div>
         </div>
