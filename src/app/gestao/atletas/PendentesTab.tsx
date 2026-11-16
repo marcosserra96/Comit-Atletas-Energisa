@@ -14,6 +14,8 @@ import type { AtletaDoc, SolicitacaoAcessoDoc } from "@/lib/types";
 export function PendentesTab() {
   const [pendentes, setPendentes] = useState<SolicitacaoAcessoDoc[] | null>(null);
   const [atletasSemVinculo, setAtletasSemVinculo] = useState<AtletaDoc[]>([]);
+  // Quem já tem login: para trocar o e-mail de acesso (a pessoa quer entrar com outra conta).
+  const [atletasComLogin, setAtletasComLogin] = useState<AtletaDoc[]>([]);
   const [recusadas, setRecusadas] = useState<SolicitacaoAcessoDoc[]>([]);
 
   useEffect(() => {
@@ -57,6 +59,15 @@ export function PendentesTab() {
     return unsubscribe;
   }, []);
 
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      query(collection(db, "atletas"), where("authUid", "!=", null)),
+      (snap) => setAtletasComLogin(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AtletaDoc).filter(perfilAtletaVisivel)),
+      () => setAtletasComLogin([]),
+    );
+    return unsubscribe;
+  }, []);
+
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-text-light">
@@ -84,6 +95,7 @@ export function PendentesTab() {
               key={solicitacao.uid}
               solicitacao={solicitacao}
               atletasSemVinculo={atletasSemVinculo}
+              atletasComLogin={atletasComLogin}
             />
           ))}
         </div>

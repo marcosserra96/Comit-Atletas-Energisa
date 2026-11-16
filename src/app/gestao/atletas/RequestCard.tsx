@@ -4,10 +4,11 @@ import { useState } from "react";
 import {
   collection,
   doc,
+  getDoc,
   serverTimestamp,
   writeBatch,
 } from "firebase/firestore";
-import { Mail, Clock, Link2, UserPlus } from "lucide-react";
+import { AlertTriangle, Mail, Clock, Link2, UserPlus } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { atletaPublicoRef } from "@/lib/publicAthletes";
 import { useActiveSession } from "@/lib/session/SessionProvider";
@@ -40,9 +41,12 @@ function avisarLiberacao(uid: string) {
 export function RequestCard({
   solicitacao,
   atletasSemVinculo,
+  atletasComLogin = [],
 }: {
   solicitacao: SolicitacaoAcessoDoc;
   atletasSemVinculo: AtletaDoc[];
+  /** Cadastros que já têm login: dá para trocar o e-mail de acesso deles. */
+  atletasComLogin?: AtletaDoc[];
 }) {
   const { uid: adminUid, atleta: adminAtleta } = useActiveSession();
   const { show } = useToast();
@@ -57,8 +61,19 @@ export function RequestCard({
       ? primeira.item.id
       : "";
   });
-  const selecionado = atletasSemVinculo.find((a) => a.id === atletaSelecionado);
+  // Incluir quem já tem login: a pessoa quer passar a entrar com outro e-mail.
+  const [substituir, setSubstituir] = useState(false);
+  const opcoes = substituir ? [...atletasSemVinculo, ...atletasComLogin] : atletasSemVinculo;
+  const selecionado = opcoes.find((a) => a.id === atletaSelecionado);
+  const loginAntigo = selecionado?.authUid && selecionado.authUid !== solicitacao.uid ? selecionado : null;
   const [roleEscolhida, setRoleEscolhida] = useState<Role>("atleta");
+
+  function escolherCadastro(id: string) {
+    setAtletaSelecionado(id);
+    // Trocando o login de quem já tem acesso, o perfil continua o mesmo (comitê continua comitê).
+    const a = atletasComLogin.find((x) => x.id === id);
+    if (a?.role) setRoleEscolhida(a.role);
+  }
   const [busy, setBusy] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
 
@@ -69,9 +84,26 @@ export function RequestCard({
       show("info", "Selecione um atleta já cadastrado para vincular.");
       return;
     }
+    if (loginAntigo?.authUid === adminUid) {
+      show("info", "Para trocar o seu próprio e-mail de acesso, peça a outro administrador.");
+      return;
+    }
     setBusy(true);
     try {
+      // Só dá para marcar um pedido que já existe (as regras não deixam o comitê criar pedido em nome de outra conta).
+      const pedidoAntigo = loginAntigo?.authUid ? await getDoc(doc(db, "solicitacoes_acesso", loginAntigo.authUid)) : null;
       const batch = writeBatch(db);
+      if (loginAntigo?.authUid) {
+        // O login antigo deixa de abrir o portal: sem usuário, e com um aviso claro se tentar entrar.
+        batch.delete(doc(db, "usuarios", loginAntigo.authUid));
+        if (pedidoAntigo?.exists()) {
+          batch.update(doc(db, "solicitacoes_acesso", loginAntigo.authUid), {
+            status: "recusado",
+            motivoRecusa: "Seu acesso ao portal passou para outro e-mail. Entre com o e-mail novo.",
+            atualizadoEm: serverTimestamp(),
+          });
+        }
+      }
       batch.update(doc(db, "atletas", atletaSelecionado), {
         authUid: solicitacao.uid,
         email: solicitacao.email,
@@ -91,16 +123,25 @@ export function RequestCard({
         atualizadoEm: serverTimestamp(),
       });
       addAuditToBatch(batch, {
-        acao: "vincular_acesso",
+        acao: loginAntigo ? "substituir_login" : "vincular_acesso",
         entidade: "atletas",
         entidadeId: atletaSelecionado,
-        dados: { solicitacaoUid: solicitacao.uid, role: roleEscolhida },
+        dados: {
+          solicitacaoUid: solicitacao.uid,
+          role: roleEscolhida,
+          ...(loginAntigo ? { loginAntigoUid: loginAntigo.authUid, emailAntigo: loginAntigo.email ?? null, emailNovo: solicitacao.email } : {}),
+        },
         criadoPor: adminUid,
         criadoPorNome: adminAtleta.nome,
       });
       await batch.commit();
       avisarLiberacao(solicitacao.uid);
-      show("success", `${primeiroNome} vinculado(a) como ${roleLabel[roleEscolhida]}.`);
+      show(
+        "success",
+        loginAntigo
+          ? `${primeiroNome} agora entra com ${solicitacao.email}. O e-mail antigo não abre mais o portal.`
+          : `${primeiroNome} vinculado(a) como ${roleLabel[roleEscolhida]}.`,
+      );
     } catch {
       show("error", "Não foi possível vincular agora. Tente novamente.");
     } finally {
@@ -217,7 +258,7 @@ export function RequestCard({
         <button
           type="button"
           onClick={() => setCaminho("vincular")}
-          disabled={atletasSemVinculo.length === 0}
+          disabled={atletasSemVinculo.length === 0 && atletasComLogin.length === 0}
           className={`flex flex-1 items-center justify-center gap-1.5 rounded-[calc(var(--radius)-2px)] py-2 text-xs font-semibold transition-colors disabled:opacity-40 ${
             caminho === "vincular" ? "bg-bg-card text-primary shadow-sm" : "text-text-light"
           }`}
@@ -238,19 +279,49 @@ export function RequestCard({
       </div>
 
       {caminho === "vincular" ? (
-        atletasSemVinculo.length === 0 ? (
+        opcoes.length === 0 && atletasComLogin.length === 0 ? (
           <p className="text-xs text-text-muted">
             Nenhum atleta pré-cadastrado sem login no momento — use &ldquo;Criar novo
             perfil&rdquo;.
           </p>
         ) : (
           <div className="flex flex-col gap-2">
-            <SeletorDeCadastro
-              atletas={atletasSemVinculo}
-              valor={atletaSelecionado}
-              onChange={setAtletaSelecionado}
-              referencia={{ nome: solicitacao.nome, email: solicitacao.email }}
-            />
+            {atletasComLogin.length > 0 ? (
+              <label className="flex cursor-pointer items-start gap-2.5 rounded-[var(--radius)] bg-bg p-3 text-sm">
+                <input
+                  type="checkbox"
+                  checked={substituir}
+                  onChange={(e) => {
+                    setSubstituir(e.target.checked);
+                    if (!e.target.checked && atletasComLogin.some((a) => a.id === atletaSelecionado)) setAtletaSelecionado("");
+                  }}
+                  className="mt-0.5 size-4 shrink-0 accent-[var(--color-primary)]"
+                />
+                <span>
+                  <span className="font-semibold text-text">Mostrar também quem já tem login</span>
+                  <span className="block text-xs text-text-light">Para quando a pessoa quer passar a entrar com outro e-mail.</span>
+                </span>
+              </label>
+            ) : null}
+            {opcoes.length === 0 ? (
+              <p className="text-xs text-text-muted">Nenhum cadastro sem login. Marque a opção acima para trocar o e-mail de quem já tem acesso.</p>
+            ) : (
+              <SeletorDeCadastro
+                atletas={opcoes}
+                valor={atletaSelecionado}
+                onChange={escolherCadastro}
+                referencia={{ nome: solicitacao.nome, email: solicitacao.email }}
+              />
+            )}
+            {loginAntigo ? (
+              <div className="flex items-start gap-2.5 rounded-[var(--radius)] border border-accent/30 bg-accent/5 p-3 text-sm text-text" role="note">
+                <AlertTriangle className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden="true" />
+                <p className="[text-wrap:pretty]">
+                  {loginAntigo.nome.split(" ")[0]} hoje entra com <b>{loginAntigo.email ?? "outro login"}</b>. Ao vincular, o acesso passa para{" "}
+                  <b>{solicitacao.email}</b> e o e-mail antigo deixa de abrir o portal. Pontos, histórico e conquistas continuam no mesmo cadastro.
+                </p>
+              </div>
+            ) : null}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-text-light">Perfil de acesso</label>
               <Select
@@ -292,7 +363,9 @@ export function RequestCard({
         >
           {caminho === "vincular"
             ? selecionado
-              ? `Vincular a ${selecionado.nome.split(" ").slice(0, 2).join(" ")}`
+              ? loginAntigo
+                ? "Trocar o e-mail de acesso"
+                : `Vincular a ${selecionado.nome.split(" ").slice(0, 2).join(" ")}`
               : "Escolha o cadastro"
             : "Criar perfil"}
         </Button>
