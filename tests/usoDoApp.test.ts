@@ -28,6 +28,6 @@ test("texto do último uso", () => {
 
 test("resumo e convite", () => {
   const r = resumoDeUso([p(dias(1), true, true), p(dias(40)), p(null, false)], agora);
-  assert.deepEqual(r, { total: 3, semana: 1, mes: 0, sumido: 1, nunca: 1, notificacoes: 1 });
+  assert.deepEqual(r, { total: 3, comLogin: 2, semLogin: 1, semana: 1, mes: 0, sumido: 1, nunca: 1, notificacoes: 1 });
   assert.match(mensagemDeConvite("Ana Souza", "https://x.app"), /^Oi, Ana!/);
 });

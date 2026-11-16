@@ -62,7 +62,8 @@ export function participaDoPrograma(equipe: Equipe, incluirFila: boolean) {
 export function resumoDeUso(pessoas: readonly PessoaUso[], agora: number) {
   const contagem: Record<FaixaUso, number> = { semana: 0, mes: 0, sumido: 0, nunca: 0 };
   for (const p of pessoas) contagem[faixaDeUso(p, agora)] += 1;
-  return { total: pessoas.length, ...contagem, notificacoes: pessoas.filter((p) => p.notificacoes).length };
+  const comLogin = pessoas.filter((p) => p.temConta).length;
+  return { total: pessoas.length, comLogin, semLogin: pessoas.length - comLogin, ...contagem, notificacoes: pessoas.filter((p) => p.notificacoes).length };
 }
 
 /** Mensagem de convite para quem ainda não entrou (WhatsApp ou e-mail). */

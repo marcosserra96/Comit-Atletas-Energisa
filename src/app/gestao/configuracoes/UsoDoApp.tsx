@@ -129,6 +129,21 @@ export function UsoDoApp() {
           </div>
         </div>
 
+        {/* Totais: quantos cadastros, quantos já têm login e quantos ainda não. */}
+        <dl className="grid grid-cols-3 divide-x divide-border rounded-[var(--radius-lg)] bg-bg-inset/60 py-3">
+          {[
+            { rotulo: "Total", valor: resumo.total, detalhe: plural(resumo.total, "cadastro") },
+            { rotulo: "Com login ativo", valor: resumo.comLogin, detalhe: resumo.total ? `${Math.round((resumo.comLogin / resumo.total) * 100)}% do total` : "" },
+            { rotulo: "Sem login", valor: resumo.semLogin, detalhe: resumo.semLogin ? "ainda não entraram" : "todos já entraram" },
+          ].map((i) => (
+            <div key={i.rotulo} className="flex flex-col items-center gap-0.5 px-2 text-center">
+              <dt className="text-xs font-semibold text-text-secondary">{i.rotulo}</dt>
+              <dd className="text-2xl font-extrabold tabular-nums text-text sm:text-3xl">{i.valor}</dd>
+              <dd className="text-[11px] text-text-light">{i.detalhe}</dd>
+            </div>
+          ))}
+        </dl>
+
         {/* Proporção de cada grupo: uma barra só, na mesma ordem dos cartões. */}
         {resumo.total > 0 ? (
           <div className="flex h-2.5 gap-0.5 overflow-hidden rounded-full" role="img" aria-label={ORDEM_FAIXAS.map((f) => `${FAIXAS_USO[f].rotulo}: ${resumo[f]}`).join(", ")}>
