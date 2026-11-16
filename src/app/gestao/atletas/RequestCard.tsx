@@ -51,9 +51,10 @@ export function RequestCard({
   const { uid: adminUid, atleta: adminAtleta } = useActiveSession();
   const { show } = useToast();
 
-  const [caminho, setCaminho] = useState<Caminho>(
-    atletasSemVinculo.length > 0 ? "vincular" : "criar",
-  );
+  // Sem escolha do comitê, o caminho segue os dados: os cadastros chegam depois do pedido,
+  // e decidir só na primeira renderização deixava o cartão preso em "Criar novo perfil".
+  const [caminhoEscolhido, setCaminho] = useState<Caminho | null>(null);
+  const caminho: Caminho = caminhoEscolhido ?? (atletasSemVinculo.length > 0 ? "vincular" : "criar");
   // Nome praticamente igual e sem empate: já vem marcado (o comitê confirma ao vincular).
   const [atletaSelecionado, setAtletaSelecionado] = useState(() => {
     const [primeira, segunda] = sugerirPorNome(solicitacao, atletasSemVinculo, (a) => a.nome, 2);
@@ -338,6 +339,7 @@ export function RequestCard({
           </div>
         )
       ) : (
+        <div className="flex flex-col gap-2">
         <Select
           placeholder="Selecione o perfil"
           value={roleEscolhida}
@@ -349,6 +351,19 @@ export function RequestCard({
             </option>
           ))}
         </Select>
+        {atletasComLogin.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => {
+              setCaminho("vincular");
+              setSubstituir(true);
+            }}
+            className="self-start text-left text-sm font-semibold text-primary hover:underline"
+          >
+            A pessoa já tem cadastro e quer entrar com este e-mail? Trocar o e-mail de acesso
+          </button>
+        ) : null}
+        </div>
       )}
 
       <div className="flex flex-wrap justify-end gap-2">
