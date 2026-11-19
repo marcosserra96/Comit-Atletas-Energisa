@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PreviaEscalada } from "./PreviaEscalada";
 import { ConviteEvento } from "./ConviteEvento";
+import { Certificados } from "./Certificados";
 import Link from "next/link";
 import { collection, getDocs } from "firebase/firestore";
 import { Bike, CalendarCog, Download, Footprints, Loader2, Share2 } from "lucide-react";
@@ -356,20 +357,21 @@ function RankingInformativo() {
   );
 }
 
-type Peca = "ranking" | "convite";
+type Peca = "ranking" | "convite" | "certificados";
 
 export default function InformativoPage() {
   const { usuario } = useActiveSession();
   const [peca, setPeca] = useState<Peca>("ranking");
   useEffect(() => {
     const id = window.setTimeout(() => {
-      if (new URLSearchParams(window.location.search).get("peca") === "convite") setPeca("convite");
+      const p = new URLSearchParams(window.location.search).get("peca");
+      if (p === "convite" || p === "certificados") setPeca(p);
     }, 0);
     return () => window.clearTimeout(id);
   }, []);
   function trocar(p: Peca) {
     setPeca(p);
-    window.history.replaceState(window.history.state, "", p === "convite" ? "?peca=convite" : window.location.pathname);
+    window.history.replaceState(window.history.state, "", p === "ranking" ? window.location.pathname : `?peca=${p}`);
   }
   if (!temPermissao(usuario, "informativo")) return <NotAuthorized />;
   return (
@@ -380,7 +382,9 @@ export default function InformativoPage() {
           <p className="text-sm text-text-light">
             {peca === "ranking"
               ? "Ranking de pontos com pódio, tabela e aderência. Pronto para postar ou mandar no WhatsApp."
-              : "Convite de evento com a cara do programa: escolha o layout, ajuste os textos e compartilhe."}
+              : peca === "convite"
+                ? "Convite de evento com a cara do programa: escolha o layout, ajuste os textos e compartilhe."
+                : "Certificados para premiações, metas atingidas ou quem você escolher. Um por atleta, prontos para imprimir."}
           </p>
         </div>
         <SegmentedControl
@@ -389,11 +393,12 @@ export default function InformativoPage() {
           className="w-full sm:w-auto [&>button]:flex-1"
           options={[
             { value: "ranking", label: "Ranking" },
-            { value: "convite", label: "Convite de evento" },
+            { value: "convite", label: "Convite" },
+            { value: "certificados", label: "Certificados" },
           ]}
         />
       </div>
-      {peca === "ranking" ? <RankingInformativo /> : <ConviteEvento />}
+      {peca === "ranking" ? <RankingInformativo /> : peca === "convite" ? <ConviteEvento /> : <Certificados />}
     </div>
   );
 }

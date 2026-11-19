@@ -113,7 +113,18 @@ function LinhaCriterio({
 }
 
 /** Premiação com critérios: modelo, quem concorre, critérios com peso e a classificação ao vivo. */
-export function EditorPremio({ premio, resultado, onChange }: { premio: PremioPersonalizado; resultado?: ResultadoPremio; onChange: (p: PremioPersonalizado) => void }) {
+export function EditorPremio({
+  premio,
+  resultado,
+  onChange,
+  embutido = false,
+}: {
+  premio: PremioPersonalizado;
+  resultado?: ResultadoPremio;
+  onChange: (p: PremioPersonalizado) => void;
+  /** Fora da reunião (certificados): sem período (escolhido à parte), sem moldura e sem a classificação (a tela já lista quem recebe). */
+  embutido?: boolean;
+}) {
   const usadas = premio.criterios.map((c) => c.medida);
   const soma = premio.criterios.reduce((s, c) => s + c.peso, 0);
   const proporcao = pesosNormalizados(premio.criterios);
@@ -121,7 +132,7 @@ export function EditorPremio({ premio, resultado, onChange }: { premio: PremioPe
   const mudarCriterio = (i: number, c: CriterioPremio) => onChange({ ...premio, criterios: premio.criterios.map((x, j) => (j === i ? c : x)) });
 
   return (
-    <div className="flex flex-col gap-4 border-t border-border-subtle px-3 pb-3 pt-3">
+    <div className={cn("flex flex-col gap-4", !embutido && "border-t border-border-subtle px-3 pb-3 pt-3")}>
       <div className="flex flex-col gap-1.5">
         <span className="text-sm font-medium text-text">Começar de um modelo</span>
         <div className="flex flex-wrap gap-1.5">
@@ -141,18 +152,20 @@ export function EditorPremio({ premio, resultado, onChange }: { premio: PremioPe
 
       <TextField label="Nome do prêmio" value={premio.titulo} maxLength={60} placeholder="Ex.: Atleta do ano" onChange={(e) => onChange({ ...premio, titulo: e.target.value })} />
 
-      <div className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-text">Números de</span>
-        <SegmentedControl
-          value={premio.periodo}
-          onChange={(v) => onChange({ ...premio, periodo: v })}
-          className="w-full [&>button]:flex-1"
-          options={[
-            { value: "reuniao", label: "Período da reunião" },
-            { value: "ano", label: "Ano até agora" },
-          ]}
-        />
-      </div>
+      {embutido ? null : (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium text-text">Números de</span>
+          <SegmentedControl
+            value={premio.periodo}
+            onChange={(v) => onChange({ ...premio, periodo: v })}
+            className="w-full [&>button]:flex-1"
+            options={[
+              { value: "reuniao", label: "Período da reunião" },
+              { value: "ano", label: "Ano até agora" },
+            ]}
+          />
+        </div>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
@@ -221,7 +234,7 @@ export function EditorPremio({ premio, resultado, onChange }: { premio: PremioPe
         </p>
       </fieldset>
 
-      {resultado ? (
+      {resultado && !embutido ? (
         <div className="flex flex-col gap-3">
           {resultado.grupos.map((g) => (
             <section key={g.equipe} className="flex flex-col gap-1.5">
