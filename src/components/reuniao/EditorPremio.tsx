@@ -3,6 +3,7 @@
 import { useId } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { GRADE_EDITOR } from "@/components/reuniao/estiloEditor";
 import { MEDIDAS } from "@/lib/analises/motor";
 import {
   MAX_CRITERIOS,
@@ -132,7 +133,7 @@ export function EditorPremio({
   const mudarCriterio = (i: number, c: CriterioPremio) => onChange({ ...premio, criterios: premio.criterios.map((x, j) => (j === i ? c : x)) });
 
   return (
-    <div className={cn("flex flex-col gap-4", !embutido && "border-t border-border-subtle px-3 pb-3 pt-3")}>
+    <div className={embutido ? "flex flex-col gap-4" : GRADE_EDITOR}>
       <div className="flex flex-col gap-1.5">
         <span className="text-sm font-medium text-text">Começar de um modelo</span>
         <div className="flex flex-wrap gap-1.5">

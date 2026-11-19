@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { EyeOff, FolderOpen, Images, Music, Star } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { GRADE_EDITOR } from "@/components/reuniao/estiloEditor";
 import { duracaoLegivel, montarCenas, ordenarItens, tituloDoCapitulo, type ItemRetro } from "@/lib/retrospectiva";
 import { carregarPasta, definirMusica, limparFotos, marcarItem, tirarMusica, useRetrospectiva } from "@/lib/retrospectivaFotos";
 import { opcoesDaRetrospectiva, type SlideLivre } from "@/lib/reuniaoResultados";
@@ -141,7 +142,7 @@ export function EditorRetrospectiva({ livre, onChange }: { livre: SlideLivre; on
   }
 
   return (
-    <div className="flex flex-col gap-4 border-t border-border-subtle px-3 pb-3 pt-3">
+    <div className={GRADE_EDITOR}>
       <TextField label="Título" value={livre.titulo} maxLength={60} placeholder="Ex.: Retrospectiva 2026" onChange={(e) => onChange({ ...livre, titulo: e.target.value })} />
       <TextField label="Subtítulo" value={livre.texto} maxLength={80} placeholder="Ex.: Os momentos do nosso time" onChange={(e) => onChange({ ...livre, texto: e.target.value })} />
 
