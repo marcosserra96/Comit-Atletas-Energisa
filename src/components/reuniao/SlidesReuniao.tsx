@@ -1351,6 +1351,6 @@ function ConteudoDoSlide({
     case "fala":
       return <SlideFala nome={slide.nome} cargo={slide.cargo} frase={slide.frase} foto={slide.imagemId ? imagens[slide.imagemId] : undefined} familia={familia} />;
     case "retrospectiva":
-      return <SlideRetrospectiva livreId={slide.livreId} titulo={slide.titulo} subtitulo={slide.subtitulo} segundos={slide.segundos} aoVivo={aoVivo} familia={familia} />;
+      return <SlideRetrospectiva livreId={slide.livreId} titulo={slide.titulo} subtitulo={slide.subtitulo} opcoes={slide.opcoes} aoVivo={aoVivo} familia={familia} />;
   }
 }

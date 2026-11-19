@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, Award, BarChart3, Bold, ChevronDown, Copy, FolderOpen, ImagePlus, Images, LayoutTemplate, MessageSquareQuote, Plus, Sparkles, Trash2, TrendingUp, Trophy, Type } from "lucide-react";
+import { ArrowDown, ArrowUp, Award, BarChart3, Bold, ChevronDown, Copy, ImagePlus, Images, LayoutTemplate, MessageSquareQuote, Plus, Sparkles, Trash2, TrendingUp, Trophy, Type } from "lucide-react";
 import { FormatacaoLivre } from "@/components/reuniao/FormatacaoLivre";
 import { EditorPremio } from "@/components/reuniao/EditorPremio";
 import { novoPremio, pesosNormalizados, rotuloDoCriterio, type PremioPersonalizado, type ResultadoPremio } from "@/lib/premiacaoPersonalizada";
@@ -23,7 +23,7 @@ import {
   type SlideLivre,
   type TipoSecao,
 } from "@/lib/reuniaoResultados";
-import { definirFotos, limparFotos, useFotosRetrospectiva } from "@/lib/retrospectivaFotos";
+import { EditorRetrospectiva } from "@/components/reuniao/EditorRetrospectiva";
 import { Modal } from "@/components/ui/Modal";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { useToast } from "@/components/ui/Toast";
@@ -164,62 +164,6 @@ function tempoNovo(tempos: Record<string, number> | undefined, id: string, m: nu
   if (m && m > 0) novo[id] = Math.min(180, m);
   else delete novo[id];
   return novo;
-}
-
-/** Retrospectiva: título, tempo de cada foto e, para ensaiar, a pasta de fotos (fica só nesta aba). */
-function EditorRetrospectiva({ livre, onChange }: { livre: SlideLivre; onChange: (l: SlideLivre) => void }) {
-  const fotos = useFotosRetrospectiva(livre.id);
-  const pasta = useRef<HTMLInputElement>(null);
-  const { show } = useToast();
-  return (
-    <div className="flex flex-col gap-3 border-t border-border-subtle px-3 pb-3 pt-3">
-      <TextField label="Título" value={livre.titulo} maxLength={60} placeholder="Ex.: Retrospectiva 2026" onChange={(e) => onChange({ ...livre, titulo: e.target.value })} />
-      <TextField label="Subtítulo" value={livre.texto} maxLength={80} placeholder="Ex.: Os momentos do nosso time" onChange={(e) => onChange({ ...livre, texto: e.target.value })} />
-      <div className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-text">Tempo de cada foto</span>
-        <SegmentedControl
-          value={String(livre.segundos ?? 5)}
-          onChange={(v) => onChange({ ...livre, segundos: Number(v) })}
-          className="w-full [&>button]:flex-1"
-          options={["3", "4", "5", "7", "10"].map((v) => ({ value: v, label: `${v} s` }))}
-        />
-      </div>
-      <div className="flex flex-col gap-2 rounded-[var(--radius)] bg-bg-inset/60 p-3">
-        <p className="text-sm text-text [text-wrap:pretty]">
-          As fotos <b>não são enviadas ao portal</b>: na hora de apresentar, o slide mostra o botão para escolher a pasta no computador. Se quiser, escolha agora para ver na prévia (vale até fechar esta página).
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            ref={pasta}
-            type="file"
-            multiple
-            accept="image/*"
-            className="sr-only"
-            aria-label="Escolher a pasta de fotos"
-            onChange={(e) => {
-              if (!e.target.files?.length) return;
-              const r = definirFotos(livre.id, e.target.files);
-              show(r.aceitas ? "success" : "info", r.aceitas ? `${r.aceitas} fotos prontas para a retrospectiva.` : "Nenhuma foto em JPG, PNG ou WebP nessa pasta (HEIC do iPhone precisa ser convertido).");
-              e.target.value = "";
-            }}
-            {...({ webkitdirectory: "", directory: "" } as Record<string, string>)}
-          />
-          <Button type="button" size="sm" variant="secondary" onClick={() => pasta.current?.click()}>
-            <FolderOpen className="size-4" aria-hidden="true" />
-            {fotos.length ? "Trocar a pasta" : "Escolher a pasta agora"}
-          </Button>
-          {fotos.length ? (
-            <>
-              <span className="text-sm text-text-secondary">{fotos.length} fotos, na ordem em que foram tiradas</span>
-              <button type="button" onClick={() => limparFotos(livre.id)} className="min-h-9 text-xs font-semibold text-text-light hover:text-danger">
-                Tirar as fotos
-              </button>
-            </>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function EditorLivre({

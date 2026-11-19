@@ -11,6 +11,7 @@ import type { AtividadeConsolidada, RegrasDeTreino } from "@/lib/activityConsoli
 import { formatKmTotal, formatNumero, formatPontos, plural } from "@/lib/format";
 import { modalidadeLabel } from "@/lib/labels";
 import { opcoesDaEnquete } from "@/lib/enquete";
+import { OPCOES_PADRAO, type OpcoesRetro } from "@/lib/retrospectiva";
 import { pesosNormalizados, rotuloDoCriterio, textoDoValor, validarPremio, type PremioPersonalizado, type ResultadoPremio } from "@/lib/premiacaoPersonalizada";
 import type { AtletaDoc, EventoDoc, HistoricoMensalDoc, HistoricoPontoDoc, Modalidade, RegraPontuacaoDoc } from "@/lib/types";
 
@@ -74,6 +75,8 @@ export interface SlideLivre {
   pesquisaId?: string | null;
   /** Retrospectiva: segundos de cada foto. */
   segundos?: number;
+  /** Retrospectiva: repetir, embaralhar, legenda do mês e ajustar à música. */
+  retro?: Partial<Omit<OpcoesRetro, "segundos">>;
 }
 
 // ---------- formatação dos slides livres ----------
@@ -406,6 +409,19 @@ export function completarSecoes<T extends Pick<ReuniaoResultadosDoc, "secoes">>(
   return secoes.length === reuniao.secoes.length ? reuniao : { ...reuniao, secoes };
 }
 
+/** Opções da retrospectiva com os padrões (slides antigos não têm). */
+export function opcoesDaRetrospectiva(l: Partial<Pick<SlideLivre, "segundos" | "retro">>): OpcoesRetro {
+  const r = l.retro && typeof l.retro === "object" ? l.retro : {};
+  const sim = (v: unknown, padrao: boolean) => (typeof v === "boolean" ? v : padrao);
+  return {
+    segundos: Math.min(15, Math.max(2, Math.round(Number(l.segundos) || OPCOES_PADRAO.segundos))),
+    repetir: sim(r.repetir, OPCOES_PADRAO.repetir),
+    embaralhar: sim(r.embaralhar, OPCOES_PADRAO.embaralhar),
+    legendas: sim(r.legendas, OPCOES_PADRAO.legendas),
+    ajustarMusica: sim(r.ajustarMusica, OPCOES_PADRAO.ajustarMusica),
+  };
+}
+
 export function novoSlideLivre(layout: SlideLivre["layout"]): SlideLivre {
   if (layout === "fala") {
     return { id: novoId("l"), layout, sobretitulo: "", titulo: "", texto: "", imagemId: null };
@@ -439,7 +455,12 @@ export function validarReuniao(entrada: unknown): { erro: string } | { dados: Om
     sobretitulo: texto(l?.sobretitulo, 60),
     texto: texto(l?.texto, 1500),
     imagemId: typeof l?.imagemId === "string" && l.imagemId.length < 60 ? l.imagemId : null,
-    ...(layoutDe(l?.layout) === "retrospectiva" ? { segundos: Math.min(15, Math.max(2, Math.round(Number(l?.segundos) || 5))) } : {}),
+    ...(layoutDe(l?.layout) === "retrospectiva"
+      ? (() => {
+          const o = opcoesDaRetrospectiva(l ?? {});
+          return { segundos: o.segundos, retro: { repetir: o.repetir, embaralhar: o.embaralhar, legendas: o.legendas, ajustarMusica: o.ajustarMusica } };
+        })()
+      : {}),
     ...(() => {
       const layout = layoutDe(l?.layout);
       const estilo = estiloSalvo(layout, l?.estilo && typeof l.estilo === "object" ? l.estilo : undefined);
@@ -710,7 +731,7 @@ export type SlideDef = (
   | { chave: string; tipo: "conteudo"; titulo: string; texto: string; imagemId: string | null; estilo: EstiloLivre }
   | { chave: string; tipo: "enquete"; livreId: string; pergunta: string; opcoes: string[]; pesquisaId: string | null }
   | { chave: string; tipo: "fala"; nome: string; cargo: string; frase: string; imagemId: string | null }
-  | { chave: string; tipo: "retrospectiva"; livreId: string; titulo: string; subtitulo: string; segundos: number }
+  | { chave: string; tipo: "retrospectiva"; livreId: string; titulo: string; subtitulo: string; opcoes: OpcoesRetro }
   | { chave: string; tipo: "regras"; regras: LinhaRegra[]; periodos: PeriodoApuracao[] }
   | {
       chave: string;
@@ -1172,7 +1193,7 @@ export function montarRoteiro(params: {
         } else if (l.layout === "fala") {
           slides.push({ chave: k, tipo: "fala", nome: l.titulo, cargo: l.sobretitulo, frase: l.texto, imagemId: l.imagemId });
         } else if (l.layout === "retrospectiva") {
-          slides.push({ chave: k, tipo: "retrospectiva", livreId: l.id, titulo: l.titulo, subtitulo: l.texto, segundos: l.segundos ?? 5 });
+          slides.push({ chave: k, tipo: "retrospectiva", livreId: l.id, titulo: l.titulo, subtitulo: l.texto, opcoes: opcoesDaRetrospectiva(l) });
         } else if (l.layout === "divisoria") {
           slides.push({ chave: k, tipo: "divisoria", sobretitulo: l.sobretitulo, titulo: l.titulo, subtitulo: l.texto, fundo: "divisoria", estilo: estiloDoLivre(l) });
         } else {
