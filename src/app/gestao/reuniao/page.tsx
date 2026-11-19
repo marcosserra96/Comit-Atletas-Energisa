@@ -27,6 +27,8 @@ import { AvatarAtleta } from "@/components/atletas/AvatarAtleta";
 import { temPermissao } from "@/lib/permissoes";
 import { carregarTodosLancamentos } from "@/lib/lancamentosCache";
 import { useRegrasDeTreino } from "@/lib/useRegrasDeTreino";
+import { useDiasTreino } from "@/lib/useDiasTreino";
+import { calcularPremio, type ResultadoPremio } from "@/lib/premiacaoPersonalizada";
 import { useFotosAtletas } from "@/lib/fotos";
 import { useQrDataUrl } from "@/lib/useQrDataUrl";
 import { buscaCombina } from "@/lib/semelhancaNome";
@@ -255,6 +257,8 @@ export default function ReuniaoResultadosPage() {
   const { show } = useToast();
   const pode = temPermissao(usuario, "informativo");
   const dados = useDadosReuniao();
+  // Agenda de treinos: só a aderência das premiações com critérios usa.
+  const diasTreino = useDiasTreino();
   const hoje = hojeBrasil();
 
   const [salvas, setSalvas] = useState<ReuniaoResultadosDoc[] | null>(null);
@@ -375,6 +379,13 @@ export default function ReuniaoResultadosPage() {
         destaques: { itens: b.itensDestaque, desafios: b.desafiosDoPeriodo },
       };
     })();
+    // Premiações com critérios: mesmo motor das Análises, no período da reunião ou no ano até o fim dele.
+    const dadosAnalise = { atletas, lancamentos: dados.lancamentos!, resumos: dados.mensais!, regrasTreino: dados.regrasTreino!, diasTreino, hoje };
+    const premios: Record<string, ResultadoPremio> = {};
+    for (const p of rascunho.premios ?? []) {
+      if (!rascunho.secoes.some((x) => x.tipo === "premio" && x.id === p.id)) continue;
+      premios[p.id] = calcularPremio(p, dadosAnalise, p.periodo === "ano" ? periodoDoAnoAte(dados.calendario!.trimestres, periodo.fim) : periodo);
+    }
     const aniversariantes = aniversariantesDoPeriodo(atletas, periodo.inicio, periodo.fim);
     const pontosReuniao = Math.max(0, ...dados.regras!.filter((r) => r.tiposLancamento?.includes("reuniao")).map((r) => r.pontos)) || null;
     const slides = montarRoteiro({
@@ -400,6 +411,7 @@ export default function ReuniaoResultadosPage() {
       destaques: { itens: itensDestaque, desafios: desafiosDoPeriodo },
       aniversariantes,
       ano: blocoAno,
+      premios,
     });
     const comFoto = [
       ...novos,
@@ -407,9 +419,10 @@ export default function ReuniaoResultadosPage() {
       ...itensDestaque.map((d) => d.atleta),
       ...(blocoAno ? [...[blocoAno.corrida, blocoAno.bicicleta].flatMap((e) => e.podio.flatMap((d) => d.atletas)), ...blocoAno.destaques.itens.map((d) => d.atleta)] : []),
       ...aniversariantes,
+      ...slides.flatMap((sl) => (sl.tipo === "premio" ? sl.colocados.map((c) => c.atleta) : [])),
     ];
-    return { slides, novos, corrida, bicicleta, comFoto, itensDestaque, desafiosDoPeriodo };
-  }, [dados, rascunho, evento, hoje, desafios]);
+    return { slides, novos, corrida, bicicleta, comFoto, itensDestaque, desafiosDoPeriodo, premios };
+  }, [dados, rascunho, evento, hoje, desafios, diasTreino]);
 
   const presentes = usePresentesNaReuniao(evento?.id ?? null);
   const presentesSorteio = useMemo(() => presentes?.map((p) => ({ id: p.atletaId, nome: p.nome, equipe: p.equipe })) ?? null, [presentes]);
@@ -522,7 +535,9 @@ export default function ReuniaoResultadosPage() {
           ? sl.atletas
           : sl.tipo === "destaques"
             ? sl.itens.map((d) => d.atleta)
-            : [],
+            : sl.tipo === "premio"
+              ? sl.colocados.map((c) => c.atleta)
+              : [],
     );
     const vistos = new Set<string>();
     const semFoto = naTela.filter((a) => !a.fotoVersao && !vistos.has(a.id) && vistos.add(a.id)).map((a) => ({ id: a.id, nome: a.nome }));
@@ -587,7 +602,7 @@ export default function ReuniaoResultadosPage() {
     const secaoId = calculo?.slides[i]?.secaoId;
     const sec = secaoId ? rascunho?.secoes.find((x) => x.id === secaoId) : undefined;
     if (!sec || !rascunho) return null;
-    return { id: sec.id, nome: nomeDaSecao(sec, rascunho.livres.find((l) => l.id === sec.id)), minutos: rascunho.tempos?.[sec.id] };
+    return { id: sec.id, nome: nomeDaSecao(sec, rascunho.livres.find((l) => l.id === sec.id), rascunho.premios?.find((p) => p.id === sec.id)), minutos: rascunho.tempos?.[sec.id] };
   }
   const minutosPlanejados = rascunho
     ? rascunho.secoes.filter((x) => x.ativo).reduce((soma, x) => soma + (rascunho.tempos?.[x.id] ?? 0), 0)
@@ -855,7 +870,7 @@ export default function ReuniaoResultadosPage() {
                 <p className="text-sm font-bold text-text">Roteiro</p>
                 <p className="text-xs text-text-light">Ligue, desligue e mude a ordem. Os slides livres você escreve.</p>
               </div>
-              <EditorRoteiro roteiro={rascunho} imagens={imagens} onChange={(r) => atualizar(r)} onIrPara={irPara} />
+              <EditorRoteiro roteiro={rascunho} imagens={imagens} premios={calculo?.premios} onChange={(r) => atualizar(r)} onIrPara={irPara} />
             </Card>
           ) : null}
 
