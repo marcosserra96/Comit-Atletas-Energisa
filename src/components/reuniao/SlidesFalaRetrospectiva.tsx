@@ -116,6 +116,11 @@ const ESTILO_ANIMACOES = `
 @keyframes retro-polaroid { from { opacity: 0; transform: translateY(60px) rotate(var(--giro)) scale(.94); } to { opacity: 1; transform: translateY(0) rotate(var(--giro)) scale(1); } }
 @keyframes retro-sobe { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
 @keyframes retro-zoom { from { transform: scale(1.08); } to { transform: scale(1); } }
+@keyframes retro-cai { 0% { opacity: 0; transform: translate(-50%, -50%) translateY(-140px) rotate(calc(var(--giro) + 14deg)) scale(1.35); } 60% { opacity: 1; } 100% { opacity: 1; transform: translate(-50%, -50%) rotate(var(--giro)) scale(1); } }
+@keyframes retro-mesa { from { transform: scale(1.06); } to { transform: scale(1); } }
+@keyframes retro-surge { from { opacity: 0; transform: scale(.82); filter: brightness(1.8); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes retro-afasta { from { transform: scale(1); } to { transform: scale(1.06); } }
+@keyframes retro-filme { from { transform: translateX(var(--de)); } to { transform: translateX(var(--ate)); } }
 .retro-pausado .retro-mov { animation-play-state: paused !important; }
 @media (prefers-reduced-motion: reduce) { .retro-mov { animation: none !important; } }
 `;
@@ -203,6 +208,122 @@ function CenaMosaico({ itens }: { itens: ItemRetro[] }) {
   );
 }
 
+/** Fotos impressas caindo sobre a mesa, uma por vez, cada uma mais inclinada para um lado. */
+const MESA: Record<number, [number, number, number][]> = {
+  4: [[520, 330, -6], [1390, 320, 5], [600, 760, 4], [1330, 770, -5]],
+  5: [[430, 330, -7], [960, 300, 3], [1490, 340, -4], [690, 770, 5], [1240, 760, -3]],
+};
+
+function CenaColagem({ itens, duracao }: { itens: ItemRetro[]; duracao: number }) {
+  const lugares = MESA[itens.length] ?? MESA[5];
+  // Cada foto cai num intervalo; a última termina de cair antes da metade da cena.
+  const intervalo = Math.min(900, (duracao * 1000 * 0.45) / itens.length);
+  return (
+    <div style={{ position: "absolute", inset: 0, overflow: "hidden", animation: "retro-entra 700ms ease both" }}>
+      <FundoDesfocado url={itens[0].url} />
+      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 50%, rgba(7,29,64,.15), rgba(7,29,64,.65) 80%)" }} />
+      <div className="retro-mov" style={{ position: "absolute", inset: 0, animation: `retro-mesa ${duracao + 1}s ease-out both` }}>
+        {itens.map((f, k) => {
+          const [x, y, giro] = lugares[k] ?? [960, 540, 0];
+          const larg = f.retrato ? 400 : 560;
+          const alt = f.retrato ? 520 : 400;
+          return (
+            <div
+              key={f.id}
+              className="retro-mov"
+              style={
+                {
+                  position: "absolute",
+                  left: x,
+                  top: y,
+                  width: larg,
+                  height: alt,
+                  padding: "18px 18px 64px",
+                  background: "#fbfaf7",
+                  borderRadius: 4,
+                  boxShadow: "0 30px 60px rgba(0,0,0,.55), 0 2px 4px rgba(0,0,0,.3)",
+                  "--giro": `${giro}deg`,
+                  transform: `translate(-50%, -50%) rotate(${giro}deg)`,
+                  animation: `retro-cai 750ms cubic-bezier(.2,.75,.25,1.1) ${300 + k * intervalo}ms both`,
+                  zIndex: k,
+                } as CSSProperties
+              }
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={f.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** Grade de 6 ou 9 que acende em onda, da ponta de cima para a de baixo, e se afasta devagar. */
+function CenaGrade({ itens, duracao }: { itens: ItemRetro[]; duracao: number }) {
+  const linhas = itens.length > 6 ? 3 : 2;
+  return (
+    <div style={{ position: "absolute", inset: 0, background: COR.navyEscuro, overflow: "hidden" }}>
+      <div
+        className="retro-mov"
+        style={{ position: "absolute", inset: 0, padding: 12, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gridTemplateRows: `repeat(${linhas}, 1fr)`, gap: 12, animation: `retro-afasta ${duracao + 1}s linear both` }}
+      >
+        {itens.map((f, k) => {
+          const onda = Math.floor(k / 3) + (k % 3);
+          return (
+            <div key={f.id} className="retro-mov" style={{ overflow: "hidden", borderRadius: 10, animation: `retro-surge 650ms cubic-bezier(.2,.7,.2,1) ${200 + onda * 170}ms both` }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={f.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ position: "absolute", inset: 0, boxShadow: "inset 0 0 160px rgba(7,29,64,.55)", pointerEvents: "none" }} />
+    </div>
+  );
+}
+
+/** Tira de filme passando de lado, levemente inclinada, com os furinhos e a numeração. */
+function CenaFaixa({ itens, duracao }: { itens: ItemRetro[]; duracao: number }) {
+  const quadro = 760;
+  const vao = 36;
+  const largura = itens.length * (quadro + vao) + vao;
+  const furos = "repeating-linear-gradient(90deg, transparent 0 18px, rgba(255,255,255,.78) 18px 46px, transparent 46px 64px)";
+  return (
+    <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 40%, #1d2433, #07090f 75%)", overflow: "hidden", animation: "retro-entra 700ms ease both" }}>
+      <div style={{ position: "absolute", left: -120, right: -120, top: 210, height: 660, transform: "rotate(-3deg)" }}>
+        <div
+          className="retro-mov"
+          style={
+            {
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: largura,
+              height: 660,
+              background: "#111",
+              boxShadow: "0 40px 80px rgba(0,0,0,.6)",
+              "--de": "260px",
+              "--ate": `${-(largura - L - 120)}px`,
+              animation: `retro-filme ${duracao + 0.5}s linear both`,
+            } as CSSProperties
+          }
+        >
+          <div style={{ position: "absolute", left: 0, right: 0, top: 22, height: 30, background: furos, borderRadius: 4, opacity: 0.9 }} />
+          <div style={{ position: "absolute", left: 0, right: 0, bottom: 22, height: 30, background: furos, borderRadius: 4, opacity: 0.9 }} />
+          {itens.map((f, k) => (
+            <div key={f.id} style={{ position: "absolute", top: 80, left: vao + k * (quadro + vao), width: quadro, height: 500, overflow: "hidden", borderRadius: 6, background: "#000" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={f.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", filter: "saturate(1.08) contrast(1.04)" }} />
+              <span style={{ position: "absolute", left: 12, bottom: 8, color: COR.laranja, fontSize: 20, fontWeight: 800, letterSpacing: "0.08em", textShadow: "0 1px 4px rgba(0,0,0,.6)" }}>{`${k + 1}A`}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CenaVideo({ item, pausado, comSom }: { item: ItemRetro; pausado: boolean; comSom: boolean }) {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
@@ -212,14 +333,20 @@ function CenaVideo({ item, pausado, comSom }: { item: ItemRetro; pausado: boolea
     else void v.play().catch(() => undefined);
   }, [pausado]);
   return (
-    <div style={{ position: "absolute", inset: 0, background: "#000", animation: "retro-entra 700ms ease both" }}>
+    <div style={{ position: "absolute", inset: 0, background: item.retrato ? `radial-gradient(ellipse at 50% 40%, #164a8f, ${COR.navyEscuro} 70%)` : "#000", animation: "retro-entra 700ms ease both" }}>
       <video
         ref={ref}
         src={item.url}
         autoPlay
         playsInline
         muted={!comSom}
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: item.retrato ? "contain" : "cover" }}
+        className={item.retrato ? "retro-mov" : undefined}
+        style={
+          item.retrato
+            ? // Vídeo em pé: como um celular no meio do telão, com sombra.
+              { position: "absolute", left: "50%", top: 50, height: 980, aspectRatio: "9 / 16", transform: "translateX(-50%)", objectFit: "cover", borderRadius: 36, border: "10px solid #0b1220", boxShadow: "0 40px 90px rgba(0,0,0,.6)", animation: "retro-sobe 800ms cubic-bezier(.2,.7,.2,1) both" }
+            : { position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }
+        }
       />
     </div>
   );
@@ -436,7 +563,7 @@ export function SlideRetrospectiva({ livreId, titulo, subtitulo, opcoes, aoVivo,
   useEffect(() => {
     if (!rodando) return;
     const prox = cenas[pos + 1];
-    const urls = !prox ? [] : prox.tipo === "foto" ? [prox.item.url] : prox.tipo === "dupla" || prox.tipo === "mosaico" ? prox.itens.map((i) => i.url) : [];
+    const urls = !prox ? [] : prox.tipo === "foto" ? [prox.item.url] : "itens" in prox ? prox.itens.map((i) => i.url) : [];
     urls.forEach((u) => (new Image().src = u));
   }, [rodando, pos, cenas]);
 
@@ -471,6 +598,9 @@ export function SlideRetrospectiva({ livreId, titulo, subtitulo, opcoes, aoVivo,
           {cena.tipo === "foto" ? <CenaFoto key={`c-${pos}`} item={cena.item} indice={pos} duracao={cena.duracao} /> : null}
           {cena.tipo === "dupla" ? <CenaDupla key={`c-${pos}`} itens={cena.itens} /> : null}
           {cena.tipo === "mosaico" ? <CenaMosaico key={`c-${pos}`} itens={cena.itens} /> : null}
+          {cena.tipo === "colagem" ? <CenaColagem key={`c-${pos}`} itens={cena.itens} duracao={cena.duracao} /> : null}
+          {cena.tipo === "grade" ? <CenaGrade key={`c-${pos}`} itens={cena.itens} duracao={cena.duracao} /> : null}
+          {cena.tipo === "faixa" ? <CenaFaixa key={`c-${pos}`} itens={cena.itens} duracao={cena.duracao} /> : null}
           {cena.tipo === "video" ? <CenaVideo key={`c-${pos}`} item={cena.item} pausado={pausado} comSom={!musica} /> : null}
           {cena.tipo === "capitulo" ? <CenaCapitulo key={`c-${pos}`} titulo={cena.titulo} quantidade={cena.quantidade} fotos={cena.fotos} /> : null}
           {cena.tipo === "encerramento" ? <Encerramento titulo={titulo} total={cena.total} fotos={visiveis} /> : null}
