@@ -9,6 +9,34 @@ import { cn } from "@/lib/cn";
 import { SLIDE_A, SLIDE_L } from "@/components/reuniao/SlidesReuniao";
 
 /** Mostra um slide 1920×1080 escalado para a largura do contêiner. */
+/**
+ * Slide inteiro dentro da caixa, como no PowerPoint: cabe na largura e na
+ * altura disponíveis (a caixa precisa ter altura; no celular, use aspect-video).
+ */
+export function SlideAjustado({ children, className }: { children: ReactNode; className?: string }) {
+  const caixa = useRef<HTMLDivElement>(null);
+  const [tam, setTam] = useState({ l: 0, a: 0 });
+  useLayoutEffect(() => {
+    const el = caixa.current;
+    if (!el) return;
+    const medir = () => setTam({ l: el.clientWidth, a: el.clientHeight });
+    medir();
+    const obs = new ResizeObserver(medir);
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  const escala = Math.min(tam.l / SLIDE_L, tam.a / SLIDE_A);
+  return (
+    <div ref={caixa} className={cn("relative flex items-center justify-center overflow-hidden", className)}>
+      {escala > 0 ? (
+        <div className="relative overflow-hidden rounded-[var(--radius-lg)] border border-border shadow-[var(--shadow-elevated)]" style={{ width: SLIDE_L * escala, height: SLIDE_A * escala }}>
+          <div style={{ width: SLIDE_L, height: SLIDE_A, transform: `scale(${escala})`, transformOrigin: "top left", position: "absolute", left: 0, top: 0 }}>{children}</div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function SlideEscalado({ children, className }: { children: ReactNode; className?: string }) {
   const caixa = useRef<HTMLDivElement>(null);
   const [escala, setEscala] = useState(0);

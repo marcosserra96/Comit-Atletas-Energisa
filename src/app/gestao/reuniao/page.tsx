@@ -15,7 +15,7 @@ import { NotAuthorized } from "@/components/ui/NotAuthorized";
 import { InlineAlert } from "@/components/ui/InlineAlert";
 import { ConfirmActionModal } from "@/components/ui/ConfirmActionModal";
 import { SlideReuniao } from "@/components/reuniao/SlidesReuniao";
-import { Apresentador, SlideEscalado, gerarPdfDosSlides, type AcaoDoSlide } from "@/components/reuniao/Apresentador";
+import { Apresentador, SlideAjustado, SlideEscalado, gerarPdfDosSlides, type AcaoDoSlide } from "@/components/reuniao/Apresentador";
 import { EditorDoSlide, GaleriaDeSlides, useAcoesDoRoteiro } from "@/components/reuniao/EditorRoteiro";
 import { BotaoDaFaixa, FaixaDeOpcoes, GrupoDaFaixa, SeparadorDaFaixa } from "@/components/reuniao/FaixaDeOpcoes";
 import { PainelDeSlides } from "@/components/reuniao/PainelDeSlides";
@@ -785,10 +785,11 @@ export default function ReuniaoResultadosPage() {
   const avisos = verificacoes?.filter((v) => v.nivel === "atencao").length ?? 0;
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+    // No computador, a tela inteira cabe na janela (como o PowerPoint): o slide se ajusta ao espaço que sobra.
+    <div className="flex flex-col gap-2.5 lg:h-[calc(100dvh-108px)]">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <div className="min-w-0">
-          <h1 className="text-lg font-extrabold text-text sm:truncate sm:text-xl">{rascunho?.titulo ?? "Reunião de resultados"}</h1>
+          <h1 className="text-lg font-extrabold leading-tight text-text sm:truncate">{rascunho?.titulo ?? "Reunião de resultados"}</h1>
           <p className="flex flex-wrap items-center gap-x-2 text-sm text-text-light">
             <span>{rascunho ? `${rascunho.periodo.nome} · ${formatShortDate(rascunho.periodo.inicio)} a ${formatShortDate(rascunho.periodo.fim)}` : "Carregando…"}</span>
             {calculo ? <span>· {plural(total, "slide")}</span> : null}
@@ -814,10 +815,10 @@ export default function ReuniaoResultadosPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" className="hidden sm:inline-flex" onClick={() => setApresentando(indiceAtual)} disabled={!calculo || total === 0} title="Apresentar a partir deste slide (Shift+F5)">
+          <Button size="sm" variant="secondary" className="hidden sm:inline-flex" onClick={() => setApresentando(indiceAtual)} disabled={!calculo || total === 0} title="Apresentar a partir deste slide (Shift+F5)">
             Deste slide
           </Button>
-          <Button onClick={() => setApresentando(0)} disabled={!calculo || total === 0} title="Apresentar do início (F5)">
+          <Button size="sm" onClick={() => setApresentando(0)} disabled={!calculo || total === 0} title="Apresentar do início (F5)">
             <MonitorPlay className="size-4" aria-hidden="true" />
             Apresentar
           </Button>
@@ -865,7 +866,7 @@ export default function ReuniaoResultadosPage() {
               <BotaoDaFaixa icone={<MonitorPlay />} rotulo="Do início" onClick={() => setApresentando(0)} disabled={!calculo || total === 0} title="F5" />
               <BotaoDaFaixa icone={<Play />} rotulo="Deste slide" onClick={() => setApresentando(indiceAtual)} disabled={!calculo || total === 0} title="Shift+F5" />
             </GrupoDaFaixa>
-            <p className="ml-auto hidden max-w-56 self-center text-xs text-text-light xl:block">
+            <p className="ml-auto hidden max-w-56 self-center text-xs text-text-light 2xl:block">
               Arraste as seções no painel à esquerda para mudar a ordem. Duplo clique numa miniatura abre a edição.
             </p>
           </div>
@@ -1039,8 +1040,8 @@ export default function ReuniaoResultadosPage() {
         )}
       </FaixaDeOpcoes>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start">
-        <aside className="order-last rounded-[var(--radius-lg)] border border-border bg-bg-card p-2 lg:sticky lg:top-[84px] lg:order-none lg:max-h-[calc(100dvh-100px)] lg:overflow-y-auto">
+      <div className="grid grid-cols-1 gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[220px_minmax(0,1fr)]">
+        <aside className="order-last rounded-[var(--radius-lg)] border border-border bg-bg-card p-2 lg:order-none lg:min-h-0 lg:overflow-y-auto">
           {calculo && rascunho ? (
             <PainelDeSlides
               secoes={secoesDoPainel}
@@ -1066,8 +1067,8 @@ export default function ReuniaoResultadosPage() {
           )}
         </aside>
 
-        <div className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-[84px]">
-          <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-col gap-2 lg:min-h-0">
+          <div className="flex shrink-0 items-center justify-between gap-2">
             <p className="min-w-0 truncate text-sm text-text-light">
               {slideAtual ? (
                 <>
@@ -1089,9 +1090,9 @@ export default function ReuniaoResultadosPage() {
             </div>
           </div>
           {!calculo ? (
-            <div className="aspect-video animate-pulse rounded-[var(--radius-lg)] bg-bg-inset" />
+            <div className="aspect-video animate-pulse rounded-[var(--radius-lg)] bg-bg-inset lg:aspect-auto lg:min-h-0 lg:flex-1" />
           ) : secaoAtual && !secaoAtual.ativo ? (
-            <div className="flex aspect-video flex-col items-center justify-center gap-3 rounded-[var(--radius-lg)] border-2 border-dashed border-border bg-bg-inset/40 p-6 text-center">
+            <div className="flex aspect-video flex-col lg:aspect-auto lg:min-h-0 lg:flex-1 items-center justify-center gap-3 rounded-[var(--radius-lg)] border-2 border-dashed border-border bg-bg-inset/40 p-6 text-center">
               <EyeOff className="size-8 text-text-muted" aria-hidden="true" />
               <p className="text-sm text-text-light">Esta seção está oculta e não entra na apresentação.</p>
               <Button size="sm" variant="secondary" onClick={() => acoes.mostrar(secaoAtual.id, true)}>
@@ -1100,26 +1101,24 @@ export default function ReuniaoResultadosPage() {
               </Button>
             </div>
           ) : slideAtual ? (
-            <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border shadow-[var(--shadow-elevated)]">
-              <SlideEscalado>{renderSlide(indiceAtual)}</SlideEscalado>
-            </div>
+            <SlideAjustado className="aspect-video lg:aspect-auto lg:min-h-0 lg:flex-1">{renderSlide(indiceAtual)}</SlideAjustado>
           ) : (
-            <div className="flex aspect-video items-center justify-center rounded-[var(--radius-lg)] border-2 border-dashed border-border p-6 text-center text-sm text-text-light">
+            <div className="flex aspect-video items-center justify-center lg:aspect-auto lg:min-h-0 lg:flex-1 rounded-[var(--radius-lg)] border-2 border-dashed border-border p-6 text-center text-sm text-text-light">
               Esta seção não tem slide agora (por exemplo, ninguém fez aniversário no período).
             </div>
           )}
           {slideAtual ? (
-            <div className="flex flex-col gap-1">
+            <div className="flex shrink-0 flex-col gap-1">
               <label htmlFor="notas-slide" className="text-xs font-semibold text-text-light">
                 Anotações do apresentador <span className="font-normal text-text-muted">· só aparecem na sua tela, valem para toda a seção</span>
               </label>
               <textarea
                 id="notas-slide"
-                rows={3}
+                rows={2}
                 value={notaDoSlide(indiceAtual)}
                 onChange={(e) => mudarNota(indiceAtual, e.target.value.slice(0, 2000))}
                 placeholder="Clique para adicionar anotações"
-                className="w-full resize-y rounded-[var(--radius)] border border-border bg-bg-card px-3 py-2 text-sm text-text outline-none placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/15"
+                className="w-full resize-none rounded-[var(--radius)] border border-border bg-bg-card px-3 py-2 text-sm text-text outline-none placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/15"
               />
             </div>
           ) : null}
