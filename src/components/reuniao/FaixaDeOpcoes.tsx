@@ -31,7 +31,7 @@ export function FaixaDeOpcoes<T extends string>({
   children: ReactNode;
 }) {
   return (
-    <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-bg-card shadow-sm">
+    <div className="shrink-0 overflow-hidden rounded-[var(--radius-lg)] border border-border bg-bg-card shadow-sm">
       <div className="flex items-end gap-1 border-b border-border bg-bg-inset/50 px-2 pt-1.5">
         <div role="tablist" aria-label="Faixa de opções" className="flex min-w-0 flex-1 gap-0.5 overflow-x-auto [scrollbar-width:none]">
           {abas.map((a) => {
@@ -50,7 +50,7 @@ export function FaixaDeOpcoes<T extends string>({
                   }
                 }}
                 className={cn(
-                  "relative flex min-h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-t-[var(--radius-sm)] px-3.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary",
+                  "relative flex min-h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-t-[var(--radius-sm)] px-3.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary",
                   ativa ? "-mb-px border border-b-0 border-border bg-bg-card text-primary" : a.id === aba ? "text-primary" : "text-text-light hover:bg-bg-card/60 hover:text-text",
                 )}
               >
@@ -72,7 +72,7 @@ export function FaixaDeOpcoes<T extends string>({
         </button>
       </div>
       {recolhida ? null : (
-        <div role="tabpanel" className="max-h-[46vh] overflow-y-auto p-4">
+        <div role="tabpanel" className="max-h-[40vh] overflow-y-auto px-3 py-2">
           {children}
         </div>
       )}
@@ -83,9 +83,9 @@ export function FaixaDeOpcoes<T extends string>({
 /** Grupo de ferramentas com o nome embaixo, como no PowerPoint. */
 export function GrupoDaFaixa({ nome, children, className }: { nome: string; children: ReactNode; className?: string }) {
   return (
-    <section className={cn("flex shrink-0 flex-col justify-between gap-2", className)}>
+    <section className={cn("flex shrink-0 flex-col justify-between gap-1", className)}>
       <div className="flex items-start gap-1">{children}</div>
-      <h3 className="text-center text-[11px] font-medium text-text-muted">{nome}</h3>
+      <h3 className="text-center text-[10px] font-medium text-text-muted">{nome}</h3>
     </section>
   );
 }
@@ -113,11 +113,11 @@ export function BotaoDaFaixa({
       disabled={disabled}
       title={title}
       className={cn(
-        "flex min-h-16 w-[76px] shrink-0 flex-col sm:w-[84px] items-center justify-center gap-1 rounded-[var(--radius-sm)] px-1.5 py-1.5 text-center text-xs font-semibold leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-40",
+        "flex min-h-[50px] w-[70px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-sm)] px-1 py-1 text-center text-[11px] font-semibold sm:w-[76px] leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-40",
         destaque ? "bg-primary text-on-primary hover:bg-primary-hover" : "text-text hover:bg-bg-inset",
       )}
     >
-      <span className={cn("[&>svg]:size-6", destaque ? "" : "text-primary")}>{icone}</span>
+      <span className={cn("[&>svg]:size-5", destaque ? "" : "text-primary")}>{icone}</span>
       {rotulo}
     </button>
   );
