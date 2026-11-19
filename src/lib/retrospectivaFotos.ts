@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { capituloDoCaminho, ehMusica, tamanhoReduzido, tipoDoArquivo, type ItemRetro } from "@/lib/retrospectiva";
+import { capituloDoCaminho, ehMusica, ordenarItens, tamanhoReduzido, tipoDoArquivo, type ItemRetro } from "@/lib/retrospectiva";
 
 /**
  * Fotos, vídeos e música da retrospectiva: escolhidos no computador e
@@ -68,16 +68,16 @@ async function bitmapDa(arquivo: File, heic: boolean): Promise<ImageBitmap> {
 }
 
 async function prepararFoto(arquivo: File, heic: boolean) {
-  const [data, bmp] = await Promise.all([dataDaFoto(arquivo), bitmapDa(arquivo, heic)]);
+  const bmp = await bitmapDa(arquivo, heic);
   const { largura, altura } = tamanhoReduzido(bmp.width, bmp.height);
   const canvas = document.createElement("canvas");
   canvas.width = largura;
   canvas.height = altura;
   canvas.getContext("2d")!.drawImage(bmp, 0, 0, largura, altura);
   bmp.close();
-  const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/jpeg", 0.88));
+  const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/jpeg", 0.85));
   if (!blob) throw new Error("sem imagem");
-  return { url: URL.createObjectURL(blob), data, retrato: altura > largura * 1.05 };
+  return { url: URL.createObjectURL(blob), retrato: altura > largura * 1.05 };
 }
 
 /** Lê duração e formato de um vídeo; falha se o navegador não toca (ex.: HEVC no Chrome). */
@@ -103,11 +103,51 @@ function prepararVideo(arquivo: File) {
   });
 }
 
-/** Recebe a pasta (ou os arquivos) e prepara tudo, de 3 em 3. Uma música na pasta vira a trilha. */
+// ---------- várias fotos ao mesmo tempo ----------
+
+type Trabalhador = { worker: Worker; livre: boolean };
+let trabalhadores: Trabalhador[] | null = null;
+let pedidos = 0;
+
+/** Um "trabalhador" por núcleo (de 2 a 6), criados uma vez e reaproveitados. */
+function equipe(): Trabalhador[] {
+  if (trabalhadores) return trabalhadores;
+  trabalhadores = [];
+  if (typeof Worker === "undefined" || typeof OffscreenCanvas === "undefined") return trabalhadores;
+  const n = Math.min(6, Math.max(2, (navigator.hardwareConcurrency || 4) - 1));
+  try {
+    for (let k = 0; k < n; k++) trabalhadores.push({ worker: new Worker(new URL("./retrospectivaWorker.ts", import.meta.url), { type: "module" }), livre: true });
+  } catch {
+    trabalhadores = [];
+  }
+  return trabalhadores;
+}
+
+/** Prepara no trabalhador indicado; se ele falhar (ex.: HEIC no Chrome), cai na tela principal. */
+function prepararNoTrabalhador(t: Trabalhador, arquivo: File) {
+  const id = ++pedidos;
+  return new Promise<{ blob: Blob; retrato: boolean } | null>((ok) => {
+    const ouvir = (e: MessageEvent<{ id: number; ok: boolean; blob?: Blob; retrato?: boolean }>) => {
+      if (e.data.id !== id) return;
+      t.worker.removeEventListener("message", ouvir);
+      ok(e.data.ok && e.data.blob ? { blob: e.data.blob, retrato: !!e.data.retrato } : null);
+    };
+    t.worker.addEventListener("message", ouvir);
+    t.worker.postMessage({ id, arquivo });
+  });
+}
+
+/**
+ * Recebe a pasta (ou os arquivos) e prepara tudo. Primeiro lê só as datas
+ * (rápido) para saber a ordem; depois reduz as fotos em paralelo, uma por
+ * núcleo, e libera para a apresentação na ordem certa, conforme ficam
+ * prontas: dá para começar antes de terminar. Uma música na pasta vira a trilha.
+ */
 export async function carregarPasta(livreId: string, lista: FileList | File[]) {
   const arquivos = Array.from(lista);
   const versao = (geracao.get(livreId) ?? 0) + 1;
   geracao.set(livreId, versao);
+  const vale = () => geracao.get(livreId) === versao;
   const aceitos = arquivos.map((a) => ({ a, tipo: tipoDoArquivo(a) })).filter((x): x is { a: File; tipo: NonNullable<typeof x.tipo> } => !!x.tipo);
   const musica = arquivos.find(ehMusica);
   const antigo = estados.get(livreId);
@@ -115,30 +155,73 @@ export async function carregarPasta(livreId: string, lista: FileList | File[]) {
   mudar(livreId, { itens: [], preparando: { feitos: 0, total: aceitos.length }, ignorados: 0 });
   if (musica) await definirMusica(livreId, musica);
 
-  const itens: ItemRetro[] = [];
+  // 1) Datas (EXIF) de todas, 8 por vez: decidem a ordem.
+  const datas: number[] = new Array(aceitos.length);
+  let prox = 0;
+  await Promise.all(
+    Array.from({ length: 8 }, async () => {
+      while (prox < aceitos.length) {
+        const k = prox++;
+        const { a, tipo } = aceitos[k];
+        datas[k] = tipo === "video" ? a.lastModified : await dataDaFoto(a);
+      }
+    }),
+  );
+  if (!vale()) return null;
+  const ordem = ordenarItens(
+    aceitos.map(({ a }, k) => ({ id: String(k), nome: a.name, url: "", tipo: "foto" as const, data: datas[k], capitulo: capituloDoCaminho(a.webkitRelativePath || ""), retrato: false })),
+  ).map((i) => Number(i.id));
+
+  // 2) Fotos em paralelo; a lista publicada é sempre o começo já pronto, na ordem.
+  const prontos: (ItemRetro | null | undefined)[] = new Array(aceitos.length);
   let ignorados = arquivos.length - aceitos.length - (musica ? 1 : 0);
   let feitos = 0;
-  let proximo = 0;
-  const trabalhar = async () => {
-    while (proximo < aceitos.length) {
-      const { a, tipo } = aceitos[proximo++];
-      try {
-        const base = { id: `${a.webkitRelativePath || a.name}:${a.size}`, nome: a.name, capitulo: capituloDoCaminho(a.webkitRelativePath || "") };
-        if (tipo === "video") itens.push({ ...base, tipo: "video", ...(await prepararVideo(a)) });
-        else itens.push({ ...base, tipo: "foto", ...(await prepararFoto(a, tipo === "heic")) });
-      } catch {
-        ignorados += 1;
-      }
-      feitos += 1;
-      if (geracao.get(livreId) !== versao) return;
-      if (feitos % 4 === 0 || feitos === aceitos.length) mudar(livreId, { preparando: { feitos, total: aceitos.length } });
-    }
+  let publicados = 0;
+  const publicar = () => {
+    let n = publicados;
+    while (n < ordem.length && prontos[ordem[n]] !== undefined) n++;
+    if (n === publicados && feitos % 6 !== 0 && feitos !== aceitos.length) return;
+    publicados = n;
+    const itens = ordem.slice(0, n).flatMap((k) => (prontos[k] ? [prontos[k]!] : []));
+    mudar(livreId, { itens, preparando: feitos < aceitos.length ? { feitos, total: aceitos.length } : null });
   };
-  await Promise.all([trabalhar(), trabalhar(), trabalhar()]);
-  if (geracao.get(livreId) !== versao) {
-    liberar(itens);
+  const preparar = async (k: number, t: Trabalhador | null) => {
+    const { a, tipo } = aceitos[k];
+    const base = { id: `${a.webkitRelativePath || a.name}:${a.size}`, nome: a.name, capitulo: capituloDoCaminho(a.webkitRelativePath || ""), data: datas[k] };
+    try {
+      if (tipo === "video") {
+        const v = await prepararVideo(a);
+        prontos[k] = { ...base, tipo: "video", url: v.url, retrato: v.retrato, duracao: v.duracao };
+      } else {
+        // HEIC também tenta no trabalhador (o Safari abre direto); no Chrome, converte na tela principal.
+        const r = t ? await prepararNoTrabalhador(t, a) : null;
+        if (r) prontos[k] = { ...base, tipo: "foto", url: URL.createObjectURL(r.blob), retrato: r.retrato };
+        else {
+          const f = await prepararFoto(a, tipo === "heic");
+          prontos[k] = { ...base, tipo: "foto", url: f.url, retrato: f.retrato };
+        }
+      }
+    } catch {
+      prontos[k] = null;
+      ignorados += 1;
+    }
+    feitos += 1;
+    if (vale()) publicar();
+  };
+  const fila = [...ordem];
+  const ts = equipe();
+  // Sem trabalhadores (navegador antigo), 3 por vez na tela principal.
+  const vagas: (Trabalhador | null)[] = ts.length ? ts : [null, null, null];
+  await Promise.all(
+    vagas.map(async (t) => {
+      while (fila.length && vale()) await preparar(fila.shift()!, t);
+    }),
+  );
+  if (!vale()) {
+    liberar(prontos.filter((x): x is ItemRetro => !!x));
     return null;
   }
+  const itens = ordem.flatMap((k) => (prontos[k] ? [prontos[k]!] : []));
   mudar(livreId, { itens, preparando: null, ignorados });
   return { aceitas: itens.length, ignoradas: ignorados, musica: !!musica };
 }

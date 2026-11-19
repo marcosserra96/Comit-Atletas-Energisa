@@ -82,7 +82,7 @@ test("textos auxiliares e opções salvas", () => {
   assert.equal(rotuloDoMes(dia("2026-12-31")), "Dezembro 2026");
   assert.equal(duracaoLegivel(45), "45 s");
   assert.equal(duracaoLegivel(200), "3 min 20 s");
-  assert.deepEqual(tamanhoReduzido(4032, 3024), { largura: 2200, altura: 1650 });
+  assert.deepEqual(tamanhoReduzido(4032, 3024), { largura: 1920, altura: 1440 });
   assert.deepEqual(tamanhoReduzido(800, 600), { largura: 800, altura: 600 });
   assert.deepEqual(opcoesDaRetrospectiva({}), { segundos: 5, repetir: false, embaralhar: false, legendas: true, ajustarMusica: false });
   const r = validarReuniao({
