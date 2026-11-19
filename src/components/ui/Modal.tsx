@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useRef, useSyncExternalStore, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useDragControls, type PanInfo } from "framer-motion";
 import { X } from "lucide-react";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
@@ -44,6 +45,12 @@ function useEhCelular() {
   );
 }
 
+const nada = () => () => {};
+/** Já está no navegador (no servidor não há <body> para o portal). */
+function useNoNavegador() {
+  return useSyncExternalStore(nada, () => true, () => false);
+}
+
 interface ModalProps {
   open: boolean;
   onClose: () => void;
@@ -73,13 +80,16 @@ export function Modal({
   useDialogFocus(open, dialogRef, onClose);
   const comoSheet = useEhCelular() && mobileSheet;
   const arrasto = useDragControls();
+  const noNavegador = useNoNavegador();
 
   // Sheet: arrastar para baixo pela alça ou pelo título fecha, como nos apps nativos.
   function aoSoltar(_: unknown, info: PanInfo) {
     if (info.offset.y > 120 || info.velocity.y > 600) onClose();
   }
 
-  return (
+  // Vai direto no <body>: dentro de uma coluna fixa (sticky), o modal ficava por baixo do resto da página.
+  if (!noNavegador) return null;
+  return createPortal(
     <AnimatePresence>
       {open ? (
         <motion.div
@@ -161,6 +171,7 @@ export function Modal({
           </div>
         </motion.div>
       ) : null}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }
