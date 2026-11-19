@@ -28,6 +28,10 @@ import {
   fundoEscuro,
   temaDaReuniao,
   passosDoSlide,
+  categoriasDaSecao,
+  categoriaDoDestaque,
+  nomeDaSecao,
+  periodoDoAnoAte,
   textoDoSlide,
   duplicarReuniao,
 } from "../src/lib/reuniaoResultados";
@@ -179,6 +183,9 @@ test("período anterior: trimestre do calendário ou a mesma duração logo ante
   assert.deepEqual(periodoAnterior({ inicio: "2026-10-01", fim: "2026-10-31" }, []), { nome: "período anterior", inicio: "2026-08-31", fim: "2026-09-30" });
 });
 
+const categoriasPadrao = categoriasDaSecao({});
+const padrao = (d: { id: string }) => categoriasPadrao.has(categoriaDoDestaque(d.id));
+
 test("destaques: evolução, sequência e mais km por equipe", () => {
   const atletas = ["A", "B", "X"].map((n, i) => atleta(n, n, i < 2 ? "corrida" : "bicicleta"));
   const res = (modalidade: "corrida" | "bicicleta", linhas: [string, number, number][]) =>
@@ -189,7 +196,7 @@ test("destaques: evolução, sequência e mais km por equipe", () => {
     anterior: { nome: "2º Trimestre", corrida: res("corrida", [["A", 18, 0], ["B", 3, 0]]), bicicleta: res("bicicleta", [["X", 8, 0]]) },
     sequencias: new Map([["A", 9], ["B", 4]]),
     sequenciaAte: "2026-08-31",
-  });
+  }).filter(padrao);
   assert.deepEqual(d.map((x) => [x.id, x.atleta.id, x.valor]), [["evolucao", "B", "+9"], ["sequencia", "A", "9"], ["km-corrida", "B", "200"], ["km-bicicleta", "X", "900"]]);
   // A comparação diz com o quê.
   assert.equal(d[0].detalhe, "12 treinos, contra 3 no 2º Trimestre");
@@ -217,7 +224,7 @@ test("destaques: treino mais longo de cada equipe e divisão em dois slides", ()
     anterior: { nome: "2º Trimestre", corrida: res("corrida", "A"), bicicleta: { ...res("bicicleta", "X"), ranking: [{ ...res("bicicleta", "X").ranking[0], treinos: 5 }] } },
     sequencias: new Map([["A", 6]]),
     atividades: [ativ("A", "2026-09-12", 21.1, "evento", "Meia de Cuiabá"), ativ("A", "2026-09-20", 12, "treino"), ativ("X", "2026-10-02", 92.4, "treino"), ativ("X", "2026-10-03", 500, "avulso")],
-  });
+  }).filter(padrao);
   const longos = d.filter((x) => x.id.startsWith("longo-"));
   assert.deepEqual(longos.map((x) => [x.id, x.valor, x.detalhe]), [["longo-corrida", "21,1", "Meia de Cuiabá · 12/09"], ["longo-bicicleta", "92,4", "Num só treino, em 02/10"]]);
   const paginas = paginarDestaques(d);
@@ -371,4 +378,82 @@ test("duplicar reunião copia roteiro, textos e tempos com ids novos", () => {
   assert.ok(c.livres.some((l) => l.id === novaLivre.id));
   assert.deepEqual(c.tempos, { [novaLivre.id]: 5 });
   assert.deepEqual(c.notas, { [novaLivre.id]: "lembrar" });
+});
+
+test("destaques novos: mais treinos, mais constante, mais provas e estreante", () => {
+  const atletas = [atleta("A", "Ana", "corrida"), atleta("B", "Beto", "corrida"), atleta("N", "Nina", "corrida")];
+  const linha = (id: string, treinos: number, novo = false) => ({ id, nome: id, posicao: 1, pontos: treinos * 5, treinos, km: 0, novo });
+  const corrida = { modalidade: "corrida" as const, podio: [], totais: { atletas: 0, treinos: 0, pontos: 0, km: 0, kmPorTreino: 0 }, ranking: [linha("A", 9), linha("B", 12), linha("N", 4, true)] };
+  const bicicleta = { ...corrida, modalidade: "bicicleta" as const, ranking: [] };
+  const ativ = (atletaId: string, data: string, tipo: "treino" | "evento") => ({ chave: `${atletaId}${data}`, atletaId, data, tipo, descricao: "", pontos: 5, km: 0 });
+  const d = destaquesDoPeriodo({
+    atletas,
+    atual: { corrida, bicicleta },
+    anterior: null,
+    sequencias: new Map(),
+    atividades: [ativ("A", "2026-06-02", "treino"), ativ("A", "2026-07-02", "treino"), ativ("A", "2026-08-02", "treino"), ativ("B", "2026-06-03", "treino"), ativ("B", "2026-06-10", "treino"), ativ("B", "2026-07-15", "evento"), ativ("B", "2026-08-15", "evento")],
+  });
+  const porId = Object.fromEntries(d.map((x) => [x.id, [x.atleta.id, x.valor]]));
+  assert.deepEqual(porId["mais-treinos"], ["B", "12"]);
+  assert.deepEqual(porId.constancia, ["A", "3"]);
+  assert.deepEqual(porId.provas, ["B", "2"]);
+  assert.deepEqual(porId.estreante, ["N", "4"]);
+});
+
+test("roteiro: destaques escolhidos, período do ano e slides de fala e retrospectiva", () => {
+  const vazio = (modalidade: "corrida" | "bicicleta") => ({ modalidade, podio: [], ranking: [], totais: { atletas: 0, treinos: 0, pontos: 0, km: 0, kmPorTreino: 0 } });
+  const d = (id: string) => ({ id, titulo: id, atleta: { id: "A", nome: "Ana", modalidade: "corrida" as const }, valor: "1", unidade: "", detalhe: "" });
+  const reuniao = {
+    periodo: { nome: "3º Trimestre", inicio: "2026-06-01", fim: "2026-08-31" },
+    secoes: [
+      { id: "d1", tipo: "destaques" as const, ativo: true },
+      { id: "d2", tipo: "destaques" as const, ativo: true, periodo: "ano" as const, destaques: ["provas"] },
+      { id: "f", tipo: "livre" as const, ativo: true },
+      { id: "r", tipo: "livre" as const, ativo: true },
+    ],
+    livres: [
+      { id: "f", layout: "fala" as const, sobretitulo: "Diretora", titulo: "Maria", texto: "Bom demais", imagemId: null },
+      { id: "r", layout: "retrospectiva" as const, sobretitulo: "", titulo: "Retrospectiva", texto: "2026", imagemId: null, segundos: 4 },
+    ],
+  };
+  const slides = montarRoteiro({
+    reuniao,
+    corrida: vazio("corrida"),
+    bicicleta: vazio("bicicleta"),
+    novos: [],
+    regras: [],
+    periodos: [],
+    agenda: [],
+    evento: null,
+    pontosReuniao: null,
+    hoje: "2026-09-10",
+    destaques: { itens: [d("evolucao"), d("provas")], desafios: [] },
+    ano: { periodo: { nome: "Ano de 2026", inicio: "2026-01-01", fim: "2026-08-31" }, corrida: vazio("corrida"), bicicleta: vazio("bicicleta"), destaques: { itens: [d("evolucao"), d("provas"), d("estreante")], desafios: [] } },
+  });
+  const destaques = slides.filter((x) => x.tipo === "destaques");
+  assert.deepEqual(destaques.map((x) => (x.tipo === "destaques" ? [x.periodo.startsWith("Ano de 2026"), x.itens.map((i) => i.id)] : null)), [[false, ["evolucao"]], [true, ["provas"]]]);
+  assert.deepEqual(slides.filter((x) => x.tipo === "fala" || x.tipo === "retrospectiva").map((x) => x.tipo), ["fala", "retrospectiva"]);
+  assert.equal(nomeDaSecao(reuniao.secoes[1]), "Destaques do ano");
+  assert.deepEqual(periodoDoAnoAte([], "2026-08-31"), { nome: "Ano de 2026", inicio: "2026-01-01", fim: "2026-08-31" });
+});
+
+test("validar guarda período da seção, destaques escolhidos e os slides novos", () => {
+  const r = validarReuniao({
+    periodo: { nome: "T", inicio: "2026-06-01", fim: "2026-08-31" },
+    secoes: [
+      { id: "a", tipo: "destaques", ativo: true, periodo: "ano", destaques: ["provas", "inventada"] },
+      { id: "b", tipo: "capa", ativo: true, periodo: "ano" },
+      { id: "f", tipo: "livre", ativo: true },
+      { id: "r", tipo: "livre", ativo: true },
+    ],
+    livres: [
+      { id: "f", layout: "fala", titulo: "Maria", sobretitulo: "Diretora", texto: "Oi", imagemId: null },
+      { id: "r", layout: "retrospectiva", titulo: "Retro", sobretitulo: "", texto: "", imagemId: null, segundos: 99 },
+    ],
+  });
+  assert.ok("dados" in r);
+  if (!("dados" in r)) return;
+  assert.deepEqual(r.dados.secoes[0], { id: "a", tipo: "destaques", ativo: true, periodo: "ano", destaques: ["provas"] });
+  assert.equal(r.dados.secoes[1].periodo, undefined);
+  assert.deepEqual(r.dados.livres.map((l) => [l.layout, l.segundos]), [["fala", undefined], ["retrospectiva", 15]]);
 });

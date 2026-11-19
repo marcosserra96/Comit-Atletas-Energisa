@@ -26,6 +26,7 @@ import { formatDistancia, formatPontos } from "@/lib/format";
 import { modalidadeLabel } from "@/lib/labels";
 import { percentuais } from "@/lib/enquete";
 import { useQrDataUrl } from "@/lib/useQrDataUrl";
+import { SlideFala, SlideRetrospectiva } from "@/components/reuniao/SlidesFalaRetrospectiva";
 import { ESCALA_TAMANHO, FONTES_SLIDE, fundoEscuro, textoDoSlide, type ChaveTexto, type EstiloLivre, type TemaReuniao, type FundoDivisoria, type LinhaResultado, type SlideDef } from "@/lib/reuniaoResultados";
 
 /** Tamanho nativo de cada slide; a tela escala para caber. */
@@ -931,11 +932,11 @@ function Obrigado() {
   );
 }
 
-function Destaques({ itens, desafios, periodo, pagina, paginas, fotos }: Extract<SlideDef, { tipo: "destaques" }> & { fotos: Record<string, string> }) {
+function Destaques({ itens, desafios, periodo, pagina, paginas, fotos, titulo }: Extract<SlideDef, { tipo: "destaques" }> & { fotos: Record<string, string> }) {
   const largura = itens.length <= 2 ? 560 : itens.length === 3 ? 500 : 400;
   return (
     <Base fundo="conteudo">
-      <TituloConteudo extra={juntarExtra(periodo, paginas > 1 ? `${pagina}/${paginas}` : undefined)}><T k="destaques.titulo" /></TituloConteudo>
+      <TituloConteudo extra={juntarExtra(periodo, paginas > 1 ? `${pagina}/${paginas}` : undefined)}>{titulo ?? <T k="destaques.titulo" />}</TituloConteudo>
       <div style={{ position: "absolute", left: 72, right: 72, top: 175, bottom: desafios.length ? 250 : 130, display: "flex", gap: 32, justifyContent: "center", alignItems: "center" }}>
         {itens.map((d) => (
           <div key={d.id} style={{ ...cartao, width: largura, height: desafios.length ? 600 : 680, border: "none", overflow: "hidden", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
@@ -1198,6 +1199,7 @@ function ConteudoDoSlide({
   aoVivo: boolean;
   enquetes?: Record<string, EstadoEnquete>;
 }) {
+  const { familia } = useContext(ContextoSlide);
   switch (slide.tipo) {
     case "enquete":
       return <Enquete {...slide} estado={slide.pesquisaId ? enquetes?.[slide.pesquisaId] : undefined} />;
@@ -1233,5 +1235,9 @@ function ConteudoDoSlide({
       return <Aniversariantes {...slide} fotos={fotos} />;
     case "sorteio":
       return <Sorteio estado={sorteio} fotos={fotos} />;
+    case "fala":
+      return <SlideFala nome={slide.nome} cargo={slide.cargo} frase={slide.frase} foto={slide.imagemId ? imagens[slide.imagemId] : undefined} familia={familia} />;
+    case "retrospectiva":
+      return <SlideRetrospectiva livreId={slide.livreId} titulo={slide.titulo} subtitulo={slide.subtitulo} segundos={slide.segundos} aoVivo={aoVivo} familia={familia} />;
   }
 }
