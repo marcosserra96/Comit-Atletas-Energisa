@@ -369,7 +369,12 @@ function useTeclasDaRetrospectiva(raiz: React.RefObject<HTMLDivElement | null>, 
  */
 export function SlideRetrospectiva({ livreId, titulo, subtitulo, opcoes, aoVivo, familia }: { livreId: string; titulo: string; subtitulo: string; opcoes: OpcoesRetro; aoVivo: boolean; familia?: string }) {
   const { itens, musica, preparando } = useRetrospectiva(livreId);
-  const { cenas } = useMemo(() => montarCenas(itens, opcoes, musica?.duracao), [itens, opcoes, musica?.duracao]);
+  // Ainda preparando: começa com o que já está pronto, sem o encerramento (as próximas fotos chegam no fim da fila).
+  const chegando = !!preparando;
+  const { cenas } = useMemo(() => {
+    const r = montarCenas(itens, opcoes, musica?.duracao);
+    return chegando ? { ...r, cenas: r.cenas.filter((c) => c.tipo !== "encerramento") } : r;
+  }, [itens, opcoes, musica?.duracao, chegando]);
   const visiveis = useMemo(() => itens.filter((i) => !i.oculta && i.tipo === "foto"), [itens]);
   const [pos, setPos] = useState(-1);
   const [decorrido, setDecorrido] = useState(0);
@@ -396,10 +401,12 @@ export function SlideRetrospectiva({ livreId, titulo, subtitulo, opcoes, aoVivo,
   }, [rodando, pausado, noFim]);
   useEffect(() => {
     if (!rodando || noFim || duracaoAtual <= 0 || decorrido < duracaoAtual) return;
+    // Na última foto pronta, espera as próximas em vez de voltar ao começo.
+    if (chegando && pos + 1 >= cenas.length) return;
     const proxima = pos + 1 < cenas.length ? pos + 1 : 0;
     const id = window.setTimeout(() => irPara(proxima), 0);
     return () => window.clearTimeout(id);
-  }, [rodando, noFim, decorrido, duracaoAtual, pos, cenas.length]);
+  }, [rodando, noFim, decorrido, duracaoAtual, pos, cenas.length, chegando]);
 
   // Música: começa com a abertura, pausa junto e abaixa sozinha no encerramento.
   useEffect(() => {
@@ -499,6 +506,11 @@ export function SlideRetrospectiva({ livreId, titulo, subtitulo, opcoes, aoVivo,
           <Logo claro />
         </>
       )}
+      {rodando && preparando ? (
+        <div style={{ position: "absolute", right: 50, top: 44, padding: "10px 20px", borderRadius: 999, background: "rgba(0,0,0,.45)", color: "rgba(255,255,255,.85)", fontSize: 22, fontWeight: 700 }}>
+          Preparando fotos · {preparando.feitos} de {preparando.total}
+        </div>
+      ) : null}
       {rodando && (pausado || mouse) ? (
         <div style={{ position: "absolute", right: 50, bottom: 40, display: "flex", alignItems: "center", gap: 14 }}>
           <span style={{ marginRight: 10, color: "rgba(255,255,255,.85)", fontSize: 24, fontWeight: 700, textShadow: "0 2px 10px rgba(0,0,0,.6)" }}>

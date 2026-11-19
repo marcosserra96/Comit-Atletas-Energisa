@@ -215,8 +215,8 @@ export function duracaoLegivel(segundos: number) {
   return r ? `${m} min ${r} s` : `${m} min`;
 }
 
-/** Lado maior da foto preparada: cobre a tela com folga para o movimento lento. */
-export const LADO_MAXIMO_FOTO = 2200;
+/** Lado maior da foto preparada: o tamanho do telão (Full HD). Mais que isso só pesa. */
+export const LADO_MAXIMO_FOTO = 1920;
 
 export function tamanhoReduzido(largura: number, altura: number, lado = LADO_MAXIMO_FOTO) {
   const f = Math.min(1, lado / Math.max(largura, altura));
