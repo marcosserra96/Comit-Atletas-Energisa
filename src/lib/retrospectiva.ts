@@ -31,15 +31,27 @@ export interface OpcoesRetro {
   legendas: boolean;
   /** Ajusta o tempo das fotos para acabar junto com a música. */
   ajustarMusica: boolean;
+  /** Montagens com várias fotos (colagem, grade, filme, trio); desligado, uma ou duas por vez. */
+  montagens: boolean;
 }
 
-export const OPCOES_PADRAO: OpcoesRetro = { segundos: 5, repetir: false, embaralhar: false, legendas: true, ajustarMusica: false };
+export const OPCOES_PADRAO: OpcoesRetro = { segundos: 5, repetir: false, embaralhar: false, legendas: true, ajustarMusica: false, montagens: true };
+
+/** Cenas que mostram fotos (o tempo delas se ajusta à música). */
+export const CENAS_DE_FOTO = ["foto", "dupla", "mosaico", "colagem", "grade", "faixa"] as const;
+const ehCenaDeFoto = (c: Cena): c is Extract<Cena, { tipo: (typeof CENAS_DE_FOTO)[number] }> => (CENAS_DE_FOTO as readonly string[]).includes(c.tipo);
 
 export type Cena =
   | { tipo: "capitulo"; titulo: string; quantidade: number; fotos: ItemRetro[]; duracao: number }
   | { tipo: "foto"; item: ItemRetro; legenda: string | null; duracao: number }
   | { tipo: "dupla"; itens: [ItemRetro, ItemRetro]; legenda: string | null; duracao: number }
   | { tipo: "mosaico"; itens: ItemRetro[]; legenda: string | null; duracao: number }
+  /** Fotos impressas caindo sobre a mesa, uma a uma (4 ou 5). */
+  | { tipo: "colagem"; itens: ItemRetro[]; legenda: string | null; duracao: number }
+  /** Grade de 6 ou 9 que se revela em onda. */
+  | { tipo: "grade"; itens: ItemRetro[]; legenda: string | null; duracao: number }
+  /** Tira de filme passando de lado (4 a 6). */
+  | { tipo: "faixa"; itens: ItemRetro[]; legenda: string | null; duracao: number }
   | { tipo: "video"; item: ItemRetro; legenda: string | null; duracao: number }
   | { tipo: "encerramento"; total: number; duracao: number };
 
@@ -121,8 +133,18 @@ function embaralharLista<T>(lista: readonly T[], semente: number) {
   return out;
 }
 
-/** A cada quantas cenas simples entra um mosaico. */
-const RITMO_MOSAICO = 7;
+/**
+ * O ritmo das montagens: entre fotos sozinhas, de vez em quando uma
+ * colagem, uma grade, um trio ou uma tira de filme. Sem fotos suficientes
+ * seguidas (mesmo capítulo, sem vídeo nem estrela no meio), vira foto sozinha.
+ */
+const RITMO = ["foto", "colagem", "foto", "foto", "grade", "foto", "mosaico", "foto", "faixa", "foto"] as const;
+const QUANTAS: Record<"colagem" | "grade" | "mosaico" | "faixa", { min: number; max: number }> = {
+  colagem: { min: 4, max: 5 },
+  grade: { min: 6, max: 9 },
+  mosaico: { min: 3, max: 3 },
+  faixa: { min: 4, max: 6 },
+};
 
 /**
  * Monta as cenas, na ordem. Fotos ocultas ficam de fora; favoritas ficam
@@ -144,7 +166,7 @@ export function montarCenas(todos: readonly ItemRetro[], opcoes: OpcoesRetro, du
   const s = opcoes.segundos;
   const cenas: Cena[] = [];
   let mesAnterior = "";
-  let simples = 0;
+  let passo = 0;
   const legendaDe = (i: ItemRetro) => {
     if (!opcoes.legendas || opcoes.embaralhar) return null;
     const mes = rotuloDoMes(i.data);
@@ -165,28 +187,34 @@ export function montarCenas(todos: readonly ItemRetro[], opcoes: OpcoesRetro, du
     if (i.tipo === "video") {
       // Vídeo não tem a data em que foi gravado (só a do arquivo): não puxa legenda.
       cenas.push({ tipo: "video", item: i, legenda: null, duracao: Math.min(MAX_SEGUNDOS_VIDEO, Math.max(2, i.duracao ?? s)) });
-      simples += 1;
       k += 1;
       continue;
     }
-    // Mosaico de 3: de vez em quando, com três fotos comuns seguidas do mesmo capítulo.
-    if (simples >= RITMO_MOSAICO && livre(i, i.capitulo) && livre(itens[k + 1], i.capitulo) && livre(itens[k + 2], i.capitulo)) {
-      const grupo = itens.slice(k, k + 3);
-      cenas.push({ tipo: "mosaico", itens: grupo, legenda: legendaDe(i), duracao: s * 1.6 });
-      simples = 0;
-      k += 3;
-      continue;
+    // Montagem da vez no ritmo, se houver fotos comuns seguidas suficientes.
+    const vez = opcoes.montagens ? RITMO[passo % RITMO.length] : "foto";
+    passo += 1;
+    if (vez !== "foto") {
+      const { min, max } = QUANTAS[vez];
+      let n = 0;
+      while (n < max && livre(itens[k + n], i.capitulo)) n++;
+      // Grade: 6 ou 9 (fecha as linhas de 3).
+      if (vez === "grade") n = n >= 9 ? 9 : n >= 6 ? 6 : 0;
+      if (n >= min) {
+        const grupo = itens.slice(k, k + n);
+        const duracao = vez === "colagem" ? s + 0.9 * n : vez === "grade" ? s + 0.5 * n : vez === "faixa" ? s * 2 : s * 1.6;
+        cenas.push({ tipo: vez, itens: grupo, legenda: legendaDe(i), duracao: Math.round(duracao * 10) / 10 });
+        k += n;
+        continue;
+      }
     }
     // Duas fotos em pé seguidas viram uma dupla, lado a lado.
     const prox = itens[k + 1];
     if (i.retrato && livre(i, i.capitulo) && livre(prox, i.capitulo) && prox!.retrato) {
       cenas.push({ tipo: "dupla", itens: [i, prox!], legenda: legendaDe(i), duracao: s * 1.3 });
-      simples += 1;
       k += 2;
       continue;
     }
     cenas.push({ tipo: "foto", item: i, legenda: legendaDe(i), duracao: i.favorita ? s * 1.6 : s });
-    simples += 1;
     k += 1;
   }
   if (!opcoes.repetir && itens.length > 0) cenas.push({ tipo: "encerramento", total: itens.length, duracao: 0 });
@@ -194,11 +222,11 @@ export function montarCenas(todos: readonly ItemRetro[], opcoes: OpcoesRetro, du
   // Ajuste à música: só as cenas de foto mudam (vídeo tem o tempo dele).
   if (opcoes.ajustarMusica && duracaoMusica && duracaoMusica > 0) {
     const fixo = SEGUNDOS_ABERTURA + cenas.reduce((t, c) => t + (c.tipo === "video" || c.tipo === "capitulo" ? c.duracao : 0), 0);
-    const variavel = cenas.reduce((t, c) => t + (c.tipo === "foto" || c.tipo === "dupla" || c.tipo === "mosaico" ? c.duracao : 0), 0);
+    const variavel = cenas.reduce((t, c) => t + (ehCenaDeFoto(c) ? c.duracao : 0), 0);
     if (variavel > 0) {
       const fator = Math.max(0.4, (duracaoMusica - fixo) / variavel);
       for (const c of cenas) {
-        if (c.tipo === "foto" || c.tipo === "dupla" || c.tipo === "mosaico") c.duracao = Math.min(20, Math.max(1.5, Math.round(c.duracao * fator * 10) / 10));
+        if (ehCenaDeFoto(c)) c.duracao = Math.min(30, Math.max(1.5, Math.round(c.duracao * fator * 10) / 10));
       }
     }
   }

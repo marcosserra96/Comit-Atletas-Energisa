@@ -118,7 +118,7 @@ export function EditorRetrospectiva({ livre, onChange }: { livre: SlideLivre; on
   const opcoes = opcoesDaRetrospectiva(livre);
   const mudar = (campos: Partial<typeof opcoes>) => {
     const novo = { ...opcoes, ...campos };
-    onChange({ ...livre, segundos: novo.segundos, retro: { repetir: novo.repetir, embaralhar: novo.embaralhar, legendas: novo.legendas, ajustarMusica: novo.ajustarMusica } });
+    onChange({ ...livre, segundos: novo.segundos, retro: { repetir: novo.repetir, embaralhar: novo.embaralhar, legendas: novo.legendas, ajustarMusica: novo.ajustarMusica, montagens: novo.montagens } });
   };
   const { cenas, total } = useMemo(() => montarCenas(itens, opcoes, musica?.duracao), [itens, opcoes, musica?.duracao]);
   const entram = itens.filter((i) => !i.oculta);
@@ -158,6 +158,12 @@ export function EditorRetrospectiva({ livre, onChange }: { livre: SlideLivre; on
       </div>
 
       <div className="flex flex-col gap-3">
+        <Opcao
+          titulo="Montagens com várias fotos"
+          dica="De vez em quando, fotos caindo na mesa, grade em onda, tira de filme e trio. Desligado, uma (ou duas em pé) por vez."
+          ativo={opcoes.montagens}
+          onChange={(v) => mudar({ montagens: v })}
+        />
         <Opcao titulo="Legenda com o mês" dica="“Março 2026” aparece quando o mês das fotos muda." ativo={opcoes.legendas} onChange={(v) => mudar({ legendas: v })} />
         <Opcao titulo="Embaralhar a ordem" dica="Mistura as fotos dentro de cada capítulo (sem legenda do mês)." ativo={opcoes.embaralhar} onChange={(v) => mudar({ embaralhar: v })} />
         <Opcao

@@ -419,6 +419,7 @@ export function opcoesDaRetrospectiva(l: Partial<Pick<SlideLivre, "segundos" | "
     embaralhar: sim(r.embaralhar, OPCOES_PADRAO.embaralhar),
     legendas: sim(r.legendas, OPCOES_PADRAO.legendas),
     ajustarMusica: sim(r.ajustarMusica, OPCOES_PADRAO.ajustarMusica),
+    montagens: sim(r.montagens, OPCOES_PADRAO.montagens),
   };
 }
 
@@ -458,7 +459,7 @@ export function validarReuniao(entrada: unknown): { erro: string } | { dados: Om
     ...(layoutDe(l?.layout) === "retrospectiva"
       ? (() => {
           const o = opcoesDaRetrospectiva(l ?? {});
-          return { segundos: o.segundos, retro: { repetir: o.repetir, embaralhar: o.embaralhar, legendas: o.legendas, ajustarMusica: o.ajustarMusica } };
+          return { segundos: o.segundos, retro: { repetir: o.repetir, embaralhar: o.embaralhar, legendas: o.legendas, ajustarMusica: o.ajustarMusica, montagens: o.montagens } };
         })()
       : {}),
     ...(() => {

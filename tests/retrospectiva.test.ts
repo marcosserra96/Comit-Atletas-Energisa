@@ -57,21 +57,34 @@ test("cenas: capítulo, duplas de fotos em pé, legenda do mês, favorita, ocult
   assert.ok(r.every((c) => !("legenda" in c) || c.legenda === null));
 });
 
-test("mosaico de vez em quando e ajuste à música", () => {
-  const itens = Array.from({ length: 12 }, (_, i) => item(`f${i}`, `2026-05-${String(i + 1).padStart(2, "0")}`));
+test("montagens no ritmo: colagem, grade, trio e filme entre fotos sozinhas", () => {
+  const itens = Array.from({ length: 40 }, (_, i) => item(`f${String(i).padStart(2, "0")}`, `2026-05-${String((i % 28) + 1).padStart(2, "0")}`, { nome: `f${String(i).padStart(2, "0")}.jpg`, data: dia("2026-05-01") + i * 60000 }));
   const { cenas } = montarCenas(itens, OPCOES_PADRAO);
-  assert.deepEqual(cenas.map((c) => c.tipo).slice(0, 9), ["foto", "foto", "foto", "foto", "foto", "foto", "foto", "mosaico", "foto"]);
-  // 7 fotos (35 s) + mosaico (8 s) + 2 fotos (10 s) + abertura 4 = 57 s; música de 110 s dobra o tempo das fotos.
-  const ajustado = montarCenas(itens, { ...OPCOES_PADRAO, ajustarMusica: true }, 110);
-  assert.equal(ajustado.cenas[0].duracao, 10);
-  assert.equal(Math.round(ajustado.total), 110);
-  // Sem música, "ajustar" não muda nada.
-  assert.equal(montarCenas(itens, { ...OPCOES_PADRAO, ajustarMusica: true }, null).cenas[0].duracao, 5);
+  assert.deepEqual(
+    cenas.map((c) => ("itens" in c ? `${c.tipo}:${c.itens.length}` : c.tipo)),
+    ["foto", "colagem:5", "foto", "foto", "grade:9", "foto", "mosaico:3", "foto", "faixa:6", "foto", "foto", "colagem:5", "foto", "foto", "foto", "foto", "foto", "encerramento"],
+  );
+  // Cada foto aparece uma vez, na ordem.
+  const vistas = cenas.flatMap((c) => (c.tipo === "foto" ? [c.item.id] : "itens" in c ? c.itens.map((x) => x.id) : []));
+  assert.deepEqual(vistas, itens.map((x) => x.id));
+  // Sem montagens: uma por vez.
+  assert.ok(montarCenas(itens, { ...OPCOES_PADRAO, montagens: false }).cenas.every((c) => c.tipo === "foto" || c.tipo === "encerramento"));
+  // Estrela no meio quebra a montagem (favorita fica sozinha).
+  const comEstrela = itens.map((x, k) => (k === 3 ? { ...x, favorita: true } : x));
+  assert.deepEqual(montarCenas(comEstrela, OPCOES_PADRAO).cenas.slice(0, 3).map((c) => ("itens" in c ? `${c.tipo}:${c.itens.length}` : c.tipo)), ["foto", "foto", "foto"]);
+});
+
+test("ajuste à música estica as cenas de foto", () => {
+  const itens = Array.from({ length: 12 }, (_, i) => item(`f${i}`, `2026-05-${String(i + 1).padStart(2, "0")}`));
+  const normal = montarCenas(itens, OPCOES_PADRAO);
+  const ajustado = montarCenas(itens, { ...OPCOES_PADRAO, ajustarMusica: true }, normal.total * 2 - 4);
+  assert.equal(Math.round(ajustado.total), Math.round(normal.total * 2 - 4));
+  assert.equal(montarCenas(itens, { ...OPCOES_PADRAO, ajustarMusica: true }, null).total, normal.total);
 });
 
 test("embaralhar é repetível e não mistura capítulos", () => {
   const itens = [...Array.from({ length: 6 }, (_, i) => item(`a${i}`, `2026-01-0${i + 1}`, { capitulo: "01 A" })), ...Array.from({ length: 6 }, (_, i) => item(`b${i}`, `2026-02-0${i + 1}`, { capitulo: "02 B" }))];
-  const ordem = (o: typeof OPCOES_PADRAO) => montarCenas(itens, o).cenas.flatMap((c) => (c.tipo === "foto" ? [c.item.id] : c.tipo === "mosaico" ? c.itens.map((i) => i.id) : []));
+  const ordem = (o: typeof OPCOES_PADRAO) => montarCenas(itens, o).cenas.flatMap((c) => (c.tipo === "foto" ? [c.item.id] : "itens" in c ? c.itens.map((i) => i.id) : []));
   const um = ordem({ ...OPCOES_PADRAO, embaralhar: true });
   assert.deepEqual(um, ordem({ ...OPCOES_PADRAO, embaralhar: true }));
   assert.notDeepEqual(um, ordem(OPCOES_PADRAO));
@@ -84,7 +97,7 @@ test("textos auxiliares e opções salvas", () => {
   assert.equal(duracaoLegivel(200), "3 min 20 s");
   assert.deepEqual(tamanhoReduzido(4032, 3024), { largura: 1920, altura: 1440 });
   assert.deepEqual(tamanhoReduzido(800, 600), { largura: 800, altura: 600 });
-  assert.deepEqual(opcoesDaRetrospectiva({}), { segundos: 5, repetir: false, embaralhar: false, legendas: true, ajustarMusica: false });
+  assert.deepEqual(opcoesDaRetrospectiva({}), { segundos: 5, repetir: false, embaralhar: false, legendas: true, ajustarMusica: false, montagens: true });
   const r = validarReuniao({
     periodo: { nome: "T", inicio: "2026-06-01", fim: "2026-08-31" },
     secoes: [{ id: "r", tipo: "livre", ativo: true }],
@@ -93,6 +106,6 @@ test("textos auxiliares e opções salvas", () => {
   assert.ok("dados" in r);
   if ("dados" in r) {
     assert.equal(r.dados.livres[0].segundos, 15);
-    assert.deepEqual(r.dados.livres[0].retro, { repetir: true, embaralhar: false, legendas: true, ajustarMusica: false });
+    assert.deepEqual(r.dados.livres[0].retro, { repetir: true, embaralhar: false, legendas: true, ajustarMusica: false, montagens: true });
   }
 });
