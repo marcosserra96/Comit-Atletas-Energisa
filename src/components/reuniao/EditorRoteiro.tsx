@@ -1,13 +1,29 @@
 "use client";
 
 import { useId, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, BarChart3, Bold, ChevronDown, Copy, ImagePlus, Plus, Trash2, Type, LayoutTemplate } from "lucide-react";
+import { ArrowDown, ArrowUp, Award, BarChart3, Bold, ChevronDown, Copy, FolderOpen, ImagePlus, Images, LayoutTemplate, MessageSquareQuote, Plus, Sparkles, Trash2, TrendingUp, Type } from "lucide-react";
 import { FormatacaoLivre } from "@/components/reuniao/FormatacaoLivre";
 import { cn } from "@/lib/cn";
 import { IMAGEM_SLIDE_LADO } from "@/lib/fotoRegras";
 import { reduzirImagem } from "@/lib/fotos";
 import { enviarImagemSlide, guardarImagemNoCache } from "@/lib/reuniaoCliente";
-import { CAMPOS_DE_TEXTO, novoSlideLivre, TEXTOS_PADRAO, TITULO_SECAO, type ReuniaoResultadosDoc, type SecaoReuniao, type SlideLivre } from "@/lib/reuniaoResultados";
+import {
+  CAMPOS_DE_TEXTO,
+  CATEGORIAS_DESTAQUE,
+  categoriasDaSecao,
+  nomeDaSecao,
+  novoSlideLivre,
+  SECOES_COM_PERIODO,
+  TEXTOS_PADRAO,
+  TITULO_SECAO,
+  type ReuniaoResultadosDoc,
+  type SecaoReuniao,
+  type SlideLivre,
+  type TipoSecao,
+} from "@/lib/reuniaoResultados";
+import { definirFotos, limparFotos, useFotosRetrospectiva } from "@/lib/retrospectivaFotos";
+import { Modal } from "@/components/ui/Modal";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
@@ -58,8 +74,52 @@ function EditorSecao({
     else delete novo[chave];
     onChange({ textos: novo });
   };
+  const mudarSecao = (campos: Partial<SecaoReuniao>) => onChange({ secoes: roteiro.secoes.map((x) => (x.id === secao.id ? { ...x, ...campos } : x)) });
+  const categorias = categoriasDaSecao(secao);
   return (
     <div className="flex flex-col gap-3 border-t border-border-subtle px-3 pb-3 pt-3">
+      {SECOES_COM_PERIODO.includes(secao.tipo) ? (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium text-text">Números de</span>
+          <SegmentedControl
+            value={secao.periodo === "ano" ? "ano" : "reuniao"}
+            onChange={(v) => mudarSecao({ periodo: v === "ano" ? "ano" : undefined })}
+            className="w-full [&>button]:flex-1"
+            options={[
+              { value: "reuniao", label: "Período da reunião" },
+              { value: "ano", label: "Ano até agora" },
+            ]}
+          />
+          {secao.periodo === "ano" ? <p className="text-xs text-text-light">Do começo do ano até o fim do período da reunião, comparado com o mesmo trecho do ano anterior.</p> : null}
+        </div>
+      ) : null}
+      {secao.tipo === "destaques" ? (
+        <fieldset className="flex flex-col gap-1.5">
+          <legend className="mb-1 text-sm font-medium text-text">Quais destaques entram</legend>
+          <div className="grid gap-1.5 sm:grid-cols-2">
+            {CATEGORIAS_DESTAQUE.map((c) => (
+              <label key={c.id} className="flex cursor-pointer items-start gap-2 rounded-[var(--radius-sm)] border border-border px-2.5 py-2 text-sm hover:bg-bg-inset/60">
+                <input
+                  type="checkbox"
+                  checked={categorias.has(c.id)}
+                  onChange={(e) => {
+                    const novo = new Set(categorias);
+                    if (e.target.checked) novo.add(c.id);
+                    else novo.delete(c.id);
+                    mudarSecao({ destaques: CATEGORIAS_DESTAQUE.filter((x) => novo.has(x.id)).map((x) => x.id) });
+                  }}
+                  className="mt-0.5 size-4 shrink-0 accent-[var(--color-primary)]"
+                />
+                <span className="min-w-0">
+                  <span className="block font-semibold text-text">{c.nome}</span>
+                  <span className="block text-xs text-text-light">{c.descricao}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          <p className="text-xs text-text-light">Categoria sem ninguém no período não aparece. Até 4 cartões por slide.</p>
+        </fieldset>
+      ) : null}
       {campos.map((c) => (
         <TextField
           key={c.chave}
@@ -102,6 +162,62 @@ function tempoNovo(tempos: Record<string, number> | undefined, id: string, m: nu
   if (m && m > 0) novo[id] = Math.min(180, m);
   else delete novo[id];
   return novo;
+}
+
+/** Retrospectiva: título, tempo de cada foto e, para ensaiar, a pasta de fotos (fica só nesta aba). */
+function EditorRetrospectiva({ livre, onChange }: { livre: SlideLivre; onChange: (l: SlideLivre) => void }) {
+  const fotos = useFotosRetrospectiva(livre.id);
+  const pasta = useRef<HTMLInputElement>(null);
+  const { show } = useToast();
+  return (
+    <div className="flex flex-col gap-3 border-t border-border-subtle px-3 pb-3 pt-3">
+      <TextField label="Título" value={livre.titulo} maxLength={60} placeholder="Ex.: Retrospectiva 2026" onChange={(e) => onChange({ ...livre, titulo: e.target.value })} />
+      <TextField label="Subtítulo" value={livre.texto} maxLength={80} placeholder="Ex.: Os momentos do nosso time" onChange={(e) => onChange({ ...livre, texto: e.target.value })} />
+      <div className="flex flex-col gap-1.5">
+        <span className="text-sm font-medium text-text">Tempo de cada foto</span>
+        <SegmentedControl
+          value={String(livre.segundos ?? 5)}
+          onChange={(v) => onChange({ ...livre, segundos: Number(v) })}
+          className="w-full [&>button]:flex-1"
+          options={["3", "4", "5", "7", "10"].map((v) => ({ value: v, label: `${v} s` }))}
+        />
+      </div>
+      <div className="flex flex-col gap-2 rounded-[var(--radius)] bg-bg-inset/60 p-3">
+        <p className="text-sm text-text [text-wrap:pretty]">
+          As fotos <b>não são enviadas ao portal</b>: na hora de apresentar, o slide mostra o botão para escolher a pasta no computador. Se quiser, escolha agora para ver na prévia (vale até fechar esta página).
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            ref={pasta}
+            type="file"
+            multiple
+            accept="image/*"
+            className="sr-only"
+            aria-label="Escolher a pasta de fotos"
+            onChange={(e) => {
+              if (!e.target.files?.length) return;
+              const r = definirFotos(livre.id, e.target.files);
+              show(r.aceitas ? "success" : "info", r.aceitas ? `${r.aceitas} fotos prontas para a retrospectiva.` : "Nenhuma foto em JPG, PNG ou WebP nessa pasta (HEIC do iPhone precisa ser convertido).");
+              e.target.value = "";
+            }}
+            {...({ webkitdirectory: "", directory: "" } as Record<string, string>)}
+          />
+          <Button type="button" size="sm" variant="secondary" onClick={() => pasta.current?.click()}>
+            <FolderOpen className="size-4" aria-hidden="true" />
+            {fotos.length ? "Trocar a pasta" : "Escolher a pasta agora"}
+          </Button>
+          {fotos.length ? (
+            <>
+              <span className="text-sm text-text-secondary">{fotos.length} fotos, na ordem em que foram tiradas</span>
+              <button type="button" onClick={() => limparFotos(livre.id)} className="min-h-9 text-xs font-semibold text-text-light hover:text-danger">
+                Tirar as fotos
+              </button>
+            </>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function EditorLivre({
@@ -150,6 +266,51 @@ function EditorLivre({
       if (entrada.current) entrada.current.value = "";
     }
   }
+
+  const seletorDeFoto = (
+    <div className="flex items-center gap-3">
+      {imagem ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={imagem} alt="" className={cn("border border-border object-cover", livre.layout === "fala" ? "size-14 rounded-full" : "h-14 w-24 rounded-[var(--radius-sm)]")} />
+      ) : null}
+      <input ref={entrada} type="file" accept="image/*" className="sr-only" onChange={(e) => void escolherImagem(e.target.files?.[0])} aria-label="Escolher imagem" />
+      <Button type="button" size="sm" variant="secondary" loading={enviando} onClick={() => entrada.current?.click()}>
+        <ImagePlus className="size-4" aria-hidden="true" />
+        {livre.imagemId ? (livre.layout === "fala" ? "Trocar a foto" : "Trocar imagem") : livre.layout === "fala" ? "Adicionar a foto" : "Adicionar imagem"}
+      </Button>
+      {livre.imagemId ? (
+        <button type="button" onClick={() => onChange({ ...livre, imagemId: null })} className="min-h-9 text-xs font-semibold text-text-light hover:text-danger">
+          {livre.layout === "fala" ? "Tirar a foto" : "Tirar imagem"}
+        </button>
+      ) : null}
+    </div>
+  );
+
+  if (livre.layout === "fala") {
+    return (
+      <div className="flex flex-col gap-3 border-t border-border-subtle px-3 pb-3 pt-3">
+        <TextField label="Nome" value={livre.titulo} maxLength={60} placeholder="Ex.: Maria Souza" onChange={(e) => onChange({ ...livre, titulo: e.target.value })} />
+        <TextField label="Cargo ou papel" value={livre.sobretitulo} maxLength={60} placeholder="Ex.: Diretora de Gente e Gestão" onChange={(e) => onChange({ ...livre, sobretitulo: e.target.value })} />
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor={idTexto} className="text-sm font-medium text-text">
+            Frase <span className="font-normal text-text-muted">(opcional; sem frase, o nome aparece grande)</span>
+          </label>
+          <textarea
+            id={idTexto}
+            rows={3}
+            maxLength={300}
+            value={livre.texto}
+            placeholder="Ex.: Ver o time crescer a cada trimestre é a melhor parte do programa."
+            onChange={(e) => onChange({ ...livre, texto: e.target.value })}
+            className="w-full resize-y rounded-[var(--radius)] border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+          />
+        </div>
+        {seletorDeFoto}
+        <p className="text-xs text-text-light">Funciona melhor com uma foto do rosto, de frente. Ela é recortada em círculo.</p>
+      </div>
+    );
+  }
+  if (livre.layout === "retrospectiva") return <EditorRetrospectiva livre={livre} onChange={onChange} />;
 
   return (
     <div className="flex flex-col gap-3 border-t border-border-subtle px-3 pb-3 pt-3">
@@ -228,24 +389,7 @@ function EditorLivre({
         />
         {livre.texto.includes("**") ? <p className="text-xs text-text-muted">O que está entre ** aparece em negrito no slide.</p> : null}
       </div>
-      {conteudo ? (
-        <div className="flex items-center gap-3">
-          {imagem ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={imagem} alt="" className="h-14 w-24 rounded-[var(--radius-sm)] border border-border object-cover" />
-          ) : null}
-          <input ref={entrada} type="file" accept="image/*" className="sr-only" onChange={(e) => void escolherImagem(e.target.files?.[0])} aria-label="Escolher imagem" />
-          <Button type="button" size="sm" variant="secondary" loading={enviando} onClick={() => entrada.current?.click()}>
-            <ImagePlus className="size-4" aria-hidden="true" />
-            {livre.imagemId ? "Trocar imagem" : "Adicionar imagem"}
-          </Button>
-          {livre.imagemId ? (
-            <button type="button" onClick={() => onChange({ ...livre, imagemId: null })} className="min-h-9 text-xs font-semibold text-text-light hover:text-danger">
-              Tirar imagem
-            </button>
-          ) : null}
-        </div>
-      ) : null}
+      {conteudo ? seletorDeFoto : null}
       {enquete ? (
         <p className="text-xs text-text-light">
           Na apresentação, toque em <span className="font-semibold">Abrir votação</span>: aparece um QR code e os atletas votam pelo app, com o resultado ao vivo no telão. Precisa da permissão Pesquisas.
@@ -254,6 +398,76 @@ function EditorLivre({
         <FormatacaoLivre livre={livre} temImagem={!!livre.imagemId} onChange={onChange} />
       )}
     </div>
+  );
+}
+
+type OpcaoGaleria = { titulo: string; descricao: string; icone: typeof Type } & ({ livre: SlideLivre["layout"] } | { secao: TipoSecao; periodo?: "ano" });
+
+const GRUPOS_GALERIA: { titulo: string; opcoes: OpcaoGaleria[] }[] = [
+  {
+    titulo: "Escritos pelo comitê",
+    opcoes: [
+      { livre: "divisoria", titulo: "Divisória", descricao: "Título grande para abrir um assunto", icone: Type },
+      { livre: "conteudo", titulo: "Conteúdo", descricao: "Lista de itens e uma imagem", icone: LayoutTemplate },
+      { livre: "fala", titulo: "Fala de uma pessoa", descricao: "Foto, nome, cargo e uma frase", icone: MessageSquareQuote },
+      { livre: "retrospectiva", titulo: "Retrospectiva", descricao: "Fotos de uma pasta do computador, com efeitos", icone: Images },
+      { livre: "enquete", titulo: "Enquete", descricao: "Votação ao vivo pelo celular", icone: BarChart3 },
+    ],
+  },
+  {
+    titulo: "Números do portal",
+    opcoes: [
+      { secao: "resultados", periodo: "ano", titulo: "Resultados do ano", descricao: "Treinos, pontos e km do ano até agora", icone: TrendingUp },
+      { secao: "destaques", periodo: "ano", titulo: "Destaques do ano", descricao: "Quem se destacou no ano até agora", icone: Sparkles },
+      { secao: "premiacao", periodo: "ano", titulo: "Premiação do ano", descricao: "Pódio e classificação do ano até agora", icone: Award },
+      { secao: "destaques", titulo: "Mais destaques do período", descricao: "Outro slide com outras categorias", icone: Sparkles },
+    ],
+  },
+];
+
+/** Galeria para incluir slides: os escritos pelo comitê e os de números (inclusive do ano). */
+function GaleriaDeSlides({
+  aberta,
+  onFechar,
+  onLivre,
+  onSecao,
+}: {
+  aberta: boolean;
+  onFechar: () => void;
+  onLivre: (layout: SlideLivre["layout"]) => void;
+  onSecao: (tipo: TipoSecao, periodo?: "ano") => void;
+}) {
+  return (
+    <Modal open={aberta} onClose={onFechar} title="Adicionar slide" description="Ele entra antes do Obrigado. Use as setas da lista para mudar de lugar." size="lg" mobileSheet>
+      <div className="flex flex-col gap-5">
+        {GRUPOS_GALERIA.map((g) => (
+          <section key={g.titulo} className="flex flex-col gap-2">
+            <h3 className="text-sm font-bold text-text">{g.titulo}</h3>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {g.opcoes.map((o) => {
+                const Icone = o.icone;
+                return (
+                  <button
+                    key={o.titulo}
+                    type="button"
+                    onClick={() => ("livre" in o ? onLivre(o.livre) : onSecao(o.secao, o.periodo))}
+                    className="flex items-start gap-3 rounded-[var(--radius)] border border-border p-3 text-left transition-colors hover:border-primary/40 hover:bg-bg-inset/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-primary-subtle text-primary">
+                      <Icone className="size-5" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-text">{o.titulo}</span>
+                      <span className="block text-xs text-text-light [text-wrap:pretty]">{o.descricao}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        ))}
+      </div>
+    </Modal>
   );
 }
 
@@ -271,6 +485,7 @@ export function EditorRoteiro({
   onIrPara?: (secaoId: string) => void;
 }) {
   const [aberto, setAberto] = useState<string | null>(null);
+  const [galeria, setGaleria] = useState(false);
   const livres = new Map(roteiro.livres.map((l) => [l.id, l]));
 
   function mover(i: number, delta: number) {
@@ -289,14 +504,27 @@ export function EditorRoteiro({
     onChange({ ...roteiro, livres: roteiro.livres.map((x) => (x.id === l.id ? l : x)) });
   }
 
-  function adicionar(layout: SlideLivre["layout"]) {
-    const l = novoSlideLivre(layout);
-    // Entra antes do "Obrigado", se houver.
+  /** Novos slides entram antes do "Obrigado" (ou no fim) e já abertos para editar. */
+  function inserir(secao: SecaoReuniao, livre?: SlideLivre) {
     const fim = roteiro.secoes.findIndex((s) => s.tipo === "obrigado");
     const secoes = [...roteiro.secoes];
-    secoes.splice(fim >= 0 ? fim : secoes.length, 0, { id: l.id, tipo: "livre", ativo: true });
-    onChange({ secoes, livres: [...roteiro.livres, l] });
-    setAberto(l.id);
+    secoes.splice(fim >= 0 ? fim : secoes.length, 0, secao);
+    onChange({ secoes, ...(livre ? { livres: [...roteiro.livres, livre] } : {}) });
+    setAberto(secao.id);
+    setGaleria(false);
+    onIrPara?.(secao.id);
+  }
+
+  function adicionar(layout: SlideLivre["layout"]) {
+    const l = novoSlideLivre(layout);
+    inserir({ id: l.id, tipo: "livre", ativo: true }, l);
+  }
+
+  function adicionarSecao(tipo: TipoSecao, periodo?: "ano") {
+    // Um segundo slide de destaques do mesmo período começa com as categorias que o primeiro não mostra.
+    const jaTem = tipo === "destaques" && roteiro.secoes.some((x) => x.tipo === "destaques" && (x.periodo ?? "reuniao") === (periodo ?? "reuniao"));
+    const destaques = jaTem ? CATEGORIAS_DESTAQUE.filter((c) => !c.padrao).map((c) => c.id) : undefined;
+    inserir({ id: `s-${Math.random().toString(36).slice(2, 9)}`, tipo, ativo: true, ...(periodo ? { periodo } : {}), ...(destaques ? { destaques } : {}) });
   }
 
   /** Duplicar: a cópia entra logo abaixo, já aberta para editar. */
@@ -320,10 +548,20 @@ export function EditorRoteiro({
       <ol className="flex flex-col gap-1.5">
         {roteiro.secoes.map((s, i) => {
           const livre = s.tipo === "livre" ? livres.get(s.id) : undefined;
-          const titulo = livre
-            ? [livre.sobretitulo, livre.titulo].filter(Boolean).join(" ") || "Slide livre"
-            : TITULO_SECAO[s.tipo as Exclude<typeof s.tipo, "livre">].titulo;
-          const dica = livre ? (livre.layout === "divisoria" ? "Divisória · escrito pelo comitê" : livre.layout === "enquete" ? "Enquete ao vivo" : "Conteúdo · escrito pelo comitê") : TITULO_SECAO[s.tipo as Exclude<typeof s.tipo, "livre">].dica;
+          const titulo = nomeDaSecao(s, livre);
+          const dica = livre
+            ? {
+                divisoria: "Divisória · escrito pelo comitê",
+                enquete: "Enquete ao vivo",
+                conteudo: "Conteúdo · escrito pelo comitê",
+                fala: "Fala de uma pessoa",
+                retrospectiva: "Retrospectiva de fotos do computador",
+              }[livre.layout]
+            : s.periodo === "ano"
+              ? `${TITULO_SECAO[s.tipo as Exclude<typeof s.tipo, "livre">].dica}, do ano até agora`
+              : TITULO_SECAO[s.tipo as Exclude<typeof s.tipo, "livre">].dica;
+          // Slides de números repetidos (ex.: destaques do ano além dos do trimestre) podem sair do roteiro.
+          const removivel = !livre && roteiro.secoes.filter((x) => x.tipo === s.tipo).length > 1;
           const expandido = aberto === s.id;
           return (
             <li key={s.id} className={cn("rounded-[var(--radius)] border bg-bg-card", s.ativo ? "border-border" : "border-dashed border-border opacity-60")}>
@@ -358,7 +596,7 @@ export function EditorRoteiro({
                     <Copy className="size-4" />
                   </button>
                 ) : null}
-                {livre ? (
+                {livre || removivel ? (
                   <button type="button" onClick={() => remover(s.id)} aria-label={`Remover ${titulo}`} className="flex size-9 items-center justify-center rounded text-text-muted hover:bg-danger/10 hover:text-danger">
                     <Trash2 className="size-4" />
                   </button>
@@ -379,20 +617,11 @@ export function EditorRoteiro({
           );
         })}
       </ol>
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" size="sm" variant="secondary" onClick={() => adicionar("divisoria")}>
-          <Plus className="size-4" aria-hidden="true" />
-          Divisória
-        </Button>
-        <Button type="button" size="sm" variant="secondary" onClick={() => adicionar("conteudo")}>
-          <Plus className="size-4" aria-hidden="true" />
-          Slide de conteúdo
-        </Button>
-        <Button type="button" size="sm" variant="secondary" onClick={() => adicionar("enquete")}>
-          <Plus className="size-4" aria-hidden="true" />
-          Enquete
-        </Button>
-      </div>
+      <Button type="button" variant="secondary" className="w-full" onClick={() => setGaleria(true)}>
+        <Plus className="size-4" aria-hidden="true" />
+        Adicionar slide
+      </Button>
+      <GaleriaDeSlides aberta={galeria} onFechar={() => setGaleria(false)} onLivre={adicionar} onSecao={adicionarSecao} />
     </div>
   );
 }

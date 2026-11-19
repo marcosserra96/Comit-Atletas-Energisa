@@ -44,6 +44,7 @@ import {
   aniversariantesDoPeriodo,
   completarSecoes,
   destaquesDoPeriodo,
+  periodoDoAnoAte,
   membroAtivoDaEquipe,
   montarRoteiro,
   periodoAnterior,
@@ -321,36 +322,59 @@ export default function ReuniaoResultadosPage() {
     const atletas = dados.atletas!;
     const novos = novosAtletas({ atletas, inicio: periodo.inicio, ate: hoje, incluir: rascunho.novosIncluir, excluir: rascunho.novosExcluir });
     const idsNovos = new Set(novos.map((a) => a.id));
-    const comum = { atletas, lancamentos: dados.lancamentos!, resumosMensais: dados.mensais!, inicio: periodo.inicio, fim: periodo.fim, regrasTreino: dados.regrasTreino!, novos: idsNovos };
-    const corrida = resultadosDaEquipe({ modalidade: "corrida", ...comum });
-    const bicicleta = resultadosDaEquipe({ modalidade: "bicicleta", ...comum });
-    // Período anterior (trimestre de antes ou a mesma duração), para a variação e "quem mais evoluiu".
-    const antInteiro = periodoAnterior(periodo, dados.calendario!.trimestres);
-    // Período ainda correndo: compara com o mesmo trecho do anterior (senão a queda é falsa).
-    const ant = hoje < periodo.fim ? trechoEquivalente(antInteiro, periodo.inicio, hoje) : antInteiro;
-    const comumAnt = { ...comum, inicio: ant.inicio, fim: ant.fim, novos: undefined };
-    const anterior = { nome: ant.nome, corrida: resultadosDaEquipe({ modalidade: "corrida", ...comumAnt }), bicicleta: resultadosDaEquipe({ modalidade: "bicicleta", ...comumAnt }) };
-    const temAnterior = anterior.corrida.totais.treinos + anterior.bicicleta.totais.treinos > 0;
-    // Semanas seguidas treinando até o fim do período.
-    const ate = periodo.fim < hoje ? periodo.fim : hoje;
-    const porAtleta = agruparPorAtleta(dados.lancamentos!.filter((l) => !l.estornado && l.dataTreino <= ate));
-    const sequencias = new Map<string, number>();
-    for (const a of atletas) {
-      if (!membroAtivoDaEquipe(a, "corrida") && !membroAtivoDaEquipe(a, "bicicleta")) continue;
-      sequencias.set(a.id, calcularSequencia(porAtleta.get(a.id) ?? [], dados.regrasTreino!, ate).atual);
-    }
-    const atividades = consolidarAtividades(
-      dados.lancamentos!.filter((l) => l.dataTreino >= periodo.inicio && l.dataTreino <= ate),
-      dados.regrasTreino!,
-    );
-    const itensDestaque = destaquesDoPeriodo({ atletas, atual: { corrida, bicicleta }, anterior: temAnterior ? anterior : null, sequencias, sequenciaAte: ate, atividades });
-    const desafiosDoPeriodo = desafios
-      .filter((d) => d.inicio <= periodo.fim && d.fim >= periodo.inicio && d.inicio <= hoje)
-      .map((d) => {
-        const p = participacaoNoDesafio({ desafio: d, atletas, porAtleta, regrasTreino: dados.regrasTreino!, hoje: ate });
-        return { titulo: d.titulo, concluidos: p.concluidos, participantes: p.participantes.length };
-      })
-      .filter((d) => d.participantes > 0);
+    /**
+     * Números de um período: resultados das equipes, o anterior para comparar,
+     * destaques e desafios. Vale para o período da reunião e para o "ano até agora".
+     */
+    const calcularBloco = (p: { nome: string; inicio: string; fim: string }, antFixo?: { nome: string; inicio: string; fim: string }) => {
+      const comum = { atletas, lancamentos: dados.lancamentos!, resumosMensais: dados.mensais!, inicio: p.inicio, fim: p.fim, regrasTreino: dados.regrasTreino!, novos: idsNovos };
+      const corrida = resultadosDaEquipe({ modalidade: "corrida", ...comum });
+      const bicicleta = resultadosDaEquipe({ modalidade: "bicicleta", ...comum });
+      // Período anterior (trimestre de antes ou a mesma duração), para a variação e "quem mais evoluiu".
+      const antInteiro = antFixo ?? periodoAnterior(p, dados.calendario!.trimestres);
+      // Período ainda correndo: compara com o mesmo trecho do anterior (senão a queda é falsa).
+      const ant = hoje < p.fim ? trechoEquivalente(antInteiro, p.inicio, hoje) : antInteiro;
+      const comumAnt = { ...comum, inicio: ant.inicio, fim: ant.fim, novos: undefined };
+      const anterior = { nome: ant.nome, corrida: resultadosDaEquipe({ modalidade: "corrida", ...comumAnt }), bicicleta: resultadosDaEquipe({ modalidade: "bicicleta", ...comumAnt }) };
+      const temAnterior = anterior.corrida.totais.treinos + anterior.bicicleta.totais.treinos > 0;
+      // Semanas seguidas treinando até o fim do período.
+      const ate = p.fim < hoje ? p.fim : hoje;
+      const porAtleta = agruparPorAtleta(dados.lancamentos!.filter((l) => !l.estornado && l.dataTreino <= ate));
+      const sequencias = new Map<string, number>();
+      for (const a of atletas) {
+        if (!membroAtivoDaEquipe(a, "corrida") && !membroAtivoDaEquipe(a, "bicicleta")) continue;
+        sequencias.set(a.id, calcularSequencia(porAtleta.get(a.id) ?? [], dados.regrasTreino!, ate).atual);
+      }
+      const atividades = consolidarAtividades(
+        dados.lancamentos!.filter((l) => !l.estornado && l.dataTreino >= p.inicio && l.dataTreino <= ate),
+        dados.regrasTreino!,
+      );
+      const itensDestaque = destaquesDoPeriodo({ atletas, atual: { corrida, bicicleta }, anterior: temAnterior ? anterior : null, sequencias, sequenciaAte: ate, atividades });
+      const desafiosDoPeriodo = desafios
+        .filter((d) => d.inicio <= p.fim && d.fim >= p.inicio && d.inicio <= hoje)
+        .map((d) => {
+          const part = participacaoNoDesafio({ desafio: d, atletas, porAtleta, regrasTreino: dados.regrasTreino!, hoje: ate });
+          return { titulo: d.titulo, concluidos: part.concluidos, participantes: part.participantes.length };
+        })
+        .filter((d) => d.participantes > 0);
+      return { corrida, bicicleta, anterior, temAnterior, ant, itensDestaque, desafiosDoPeriodo };
+    };
+    const { corrida, bicicleta, anterior, temAnterior, ant, itensDestaque, desafiosDoPeriodo } = calcularBloco(periodo);
+    // "Ano até agora": só calcula se alguma seção ligada pedir.
+    const pedeAno = rascunho.secoes.some((x) => x.ativo && x.periodo === "ano");
+    const blocoAno = (() => {
+      if (!pedeAno) return null;
+      const pAno = periodoDoAnoAte(dados.calendario!.trimestres, periodo.fim);
+      const menosUmAno = (iso: string) => `${Number(iso.slice(0, 4)) - 1}${iso.slice(4)}`.replace(/-02-29$/, "-02-28");
+      const b = calcularBloco(pAno, { nome: String(Number(pAno.inicio.slice(0, 4)) - 1), inicio: menosUmAno(pAno.inicio), fim: menosUmAno(pAno.fim) });
+      return {
+        periodo: pAno,
+        corrida: b.corrida,
+        bicicleta: b.bicicleta,
+        anterior: b.temAnterior ? { nome: b.ant.nome, corrida: b.anterior.corrida.totais, bicicleta: b.anterior.bicicleta.totais } : null,
+        destaques: { itens: b.itensDestaque, desafios: b.desafiosDoPeriodo },
+      };
+    })();
     const aniversariantes = aniversariantesDoPeriodo(atletas, periodo.inicio, periodo.fim);
     const pontosReuniao = Math.max(0, ...dados.regras!.filter((r) => r.tiposLancamento?.includes("reuniao")).map((r) => r.pontos)) || null;
     const slides = montarRoteiro({
@@ -375,11 +399,13 @@ export default function ReuniaoResultadosPage() {
       anterior: temAnterior ? { nome: ant.nome, corrida: anterior.corrida.totais, bicicleta: anterior.bicicleta.totais } : null,
       destaques: { itens: itensDestaque, desafios: desafiosDoPeriodo },
       aniversariantes,
+      ano: blocoAno,
     });
     const comFoto = [
       ...novos,
       ...[corrida, bicicleta].flatMap((e) => e.podio.flatMap((d) => d.atletas)),
       ...itensDestaque.map((d) => d.atleta),
+      ...(blocoAno ? [...[blocoAno.corrida, blocoAno.bicicleta].flatMap((e) => e.podio.flatMap((d) => d.atletas)), ...blocoAno.destaques.itens.map((d) => d.atleta)] : []),
       ...aniversariantes,
     ];
     return { slides, novos, corrida, bicicleta, comFoto, itensDestaque, desafiosDoPeriodo };

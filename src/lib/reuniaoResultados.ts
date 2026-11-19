@@ -35,12 +35,31 @@ export interface SecaoReuniao {
   id: string;
   tipo: TipoSecao;
   ativo: boolean;
+  /**
+   * Resultados, destaques e premiação: de qual período são os números. Sem
+   * valor, o da reunião; "ano", do começo do ano até o fim do período da
+   * reunião (ex.: reunião do 3º trimestre com os destaques do ano).
+   */
+  periodo?: PeriodoDaSecao;
+  /** Destaques: quais categorias entram (ids de CATEGORIAS_DESTAQUE). Sem valor, as padrão. */
+  destaques?: string[];
 }
+
+export type PeriodoDaSecao = "reuniao" | "ano";
+/** Nome das seções do ano no roteiro e título do slide de destaques do ano. */
+export const TITULO_DO_ANO = { resultados: "Resultados do ano", destaques: "Destaques do ano", premiacao: "Premiação do ano" } as const;
+/** Seções que podem se repetir no roteiro, cada uma com seu período. */
+export const SECOES_COM_PERIODO: readonly TipoSecao[] = ["resultados", "destaques", "premiacao"];
 
 /** Slide escrito pelo comitê: divisória (título grande) ou conteúdo (texto e/ou imagem). */
 export interface SlideLivre {
   id: string;
-  layout: "divisoria" | "conteudo" | "enquete";
+  /**
+   * "fala": foto, nome (título), cargo (linha de cima) e uma frase (texto).
+   * "retrospectiva": fotos de uma pasta do computador, escolhidas na hora de
+   * apresentar e nunca enviadas ao portal; título e subtítulo abrem o slide.
+   */
+  layout: "divisoria" | "conteudo" | "enquete" | "fala" | "retrospectiva";
   titulo: string;
   /** Linha de cima, colorida, nas divisórias ("Fala da"). */
   sobretitulo: string;
@@ -50,6 +69,8 @@ export interface SlideLivre {
   estilo?: Partial<EstiloLivre>;
   /** Enquete: a pesquisa criada quando a votação foi aberta. */
   pesquisaId?: string | null;
+  /** Retrospectiva: segundos de cada foto. */
+  segundos?: number;
 }
 
 // ---------- formatação dos slides livres ----------
@@ -374,6 +395,12 @@ export function completarSecoes<T extends Pick<ReuniaoResultadosDoc, "secoes">>(
 }
 
 export function novoSlideLivre(layout: SlideLivre["layout"]): SlideLivre {
+  if (layout === "fala") {
+    return { id: novoId("l"), layout, sobretitulo: "", titulo: "", texto: "", imagemId: null };
+  }
+  if (layout === "retrospectiva") {
+    return { id: novoId("l"), layout, sobretitulo: "", titulo: "Retrospectiva", texto: "Os momentos do nosso time", imagemId: null, segundos: 5 };
+  }
   if (layout === "enquete") {
     return { id: novoId("l"), layout, sobretitulo: "", titulo: "Qual prova fazemos no próximo trimestre?", texto: "Opção 1\nOpção 2\nOpção 3", imagemId: null, pesquisaId: null };
   }
@@ -390,7 +417,8 @@ export function validarReuniao(entrada: unknown): { erro: string } | { dados: Om
     return { erro: "Escolha o período dos resultados." };
   }
   const tipos = new Set<TipoSecao>(["capa", "presenca", "novos", "aniversariantes", "regras", "resultados", "destaques", "premiacao", "agenda", "app", "sorteio", "obrigado", "contagem", "livre"]);
-  const layoutDe = (v: unknown) => (v === "divisoria" ? ("divisoria" as const) : v === "enquete" ? ("enquete" as const) : ("conteudo" as const));
+  const layoutDe = (v: unknown): SlideLivre["layout"] =>
+    v === "divisoria" || v === "enquete" || v === "fala" || v === "retrospectiva" ? v : "conteudo";
   const livres = (Array.isArray(e.livres) ? e.livres : []).slice(0, 30).map((l) => ({
     id: texto(l?.id, 40) || novoId("l"),
     layout: layoutDe(l?.layout),
@@ -399,6 +427,7 @@ export function validarReuniao(entrada: unknown): { erro: string } | { dados: Om
     sobretitulo: texto(l?.sobretitulo, 60),
     texto: texto(l?.texto, 1500),
     imagemId: typeof l?.imagemId === "string" && l.imagemId.length < 60 ? l.imagemId : null,
+    ...(layoutDe(l?.layout) === "retrospectiva" ? { segundos: Math.min(15, Math.max(2, Math.round(Number(l?.segundos) || 5))) } : {}),
     ...(() => {
       const layout = layoutDe(l?.layout);
       const estilo = estiloSalvo(layout, l?.estilo && typeof l.estilo === "object" ? l.estilo : undefined);
@@ -409,7 +438,15 @@ export function validarReuniao(entrada: unknown): { erro: string } | { dados: Om
   const secoes = (Array.isArray(e.secoes) ? e.secoes : [])
     .slice(0, 50)
     .filter((s) => s && tipos.has(s.tipo) && (s.tipo !== "livre" || idsLivres.has(s.id)))
-    .map((s) => ({ id: texto(s.id, 40), tipo: s.tipo, ativo: s.ativo !== false }));
+    .map((s) => ({
+      id: texto(s.id, 40),
+      tipo: s.tipo,
+      ativo: s.ativo !== false,
+      ...(SECOES_COM_PERIODO.includes(s.tipo) && s.periodo === "ano" ? { periodo: "ano" as const } : {}),
+      ...(s.tipo === "destaques" && Array.isArray(s.destaques)
+        ? { destaques: s.destaques.filter((d): d is string => typeof d === "string" && CATEGORIAS_DESTAQUE.some((c) => c.id === d)).slice(0, 20) }
+        : {}),
+    }));
   if (secoes.length === 0) return { erro: "A reunião precisa de ao menos um slide." };
   const ids = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.length < 200).slice(0, 300) : []);
   return {
@@ -653,6 +690,8 @@ export type SlideDef = (
   | { chave: string; tipo: "novos"; atletas: NovoAtletaSlide[]; pagina: number; paginas: number }
   | { chave: string; tipo: "conteudo"; titulo: string; texto: string; imagemId: string | null; estilo: EstiloLivre }
   | { chave: string; tipo: "enquete"; livreId: string; pergunta: string; opcoes: string[]; pesquisaId: string | null }
+  | { chave: string; tipo: "fala"; nome: string; cargo: string; frase: string; imagemId: string | null }
+  | { chave: string; tipo: "retrospectiva"; livreId: string; titulo: string; subtitulo: string; segundos: number }
   | { chave: string; tipo: "regras"; regras: LinhaRegra[]; periodos: PeriodoApuracao[] }
   | {
       chave: string;
@@ -664,7 +703,7 @@ export type SlideDef = (
       /** Totais do período anterior, para mostrar a variação. */
       anterior: { nome: string; treinos: number; pontos: number; km: number } | null;
     }
-  | { chave: string; tipo: "destaques"; periodo: string; itens: Destaque[]; desafios: DesafioConcluido[]; pagina: number; paginas: number }
+  | { chave: string; tipo: "destaques"; periodo: string; itens: Destaque[]; desafios: DesafioConcluido[]; pagina: number; paginas: number; titulo?: string }
   | { chave: string; tipo: "aniversariantes"; atletas: Aniversariante[]; pagina: number; paginas: number }
   | { chave: string; tipo: "podio"; modalidade: Modalidade; periodo: string; podio: ResultadoEquipe["podio"] }
   | { chave: string; tipo: "classificacao"; modalidade: Modalidade; periodo: string; colunas: LinhaResultado[][]; pagina: number; paginas: number; temNovos: boolean }
@@ -694,6 +733,24 @@ export interface Destaque {
   /** Unidade ao lado do número ("treinos a mais", "semanas seguidas", "km"). */
   unidade: string;
   detalhe: string;
+}
+
+/** Categorias de destaque que o comitê escolhe por slide. "km" e "longo" saem uma por equipe. */
+export const CATEGORIAS_DESTAQUE: readonly { id: string; nome: string; descricao: string; padrao: boolean }[] = [
+  { id: "evolucao", nome: "Quem mais evoluiu", descricao: "Mais treinos a mais que no período anterior", padrao: true },
+  { id: "sequencia", nome: "Maior sequência", descricao: "Mais semanas seguidas treinando", padrao: true },
+  { id: "km", nome: "Mais km", descricao: "Um por equipe", padrao: true },
+  { id: "longo", nome: "Treino mais longo", descricao: "Um por equipe", padrao: true },
+  { id: "mais-treinos", nome: "Mais treinos", descricao: "Quem treinou mais vezes", padrao: false },
+  { id: "constancia", nome: "Mais constante", descricao: "Treinou em mais meses do período", padrao: false },
+  { id: "provas", nome: "Mais provas", descricao: "Mais participações em eventos", padrao: false },
+  { id: "estreante", nome: "Estreante do período", descricao: "Atleta novo com mais treinos", padrao: false },
+];
+
+export const categoriaDoDestaque = (id: string) => (id.startsWith("km-") ? "km" : id.startsWith("longo-") ? "longo" : id);
+
+export function categoriasDaSecao(secao: Pick<SecaoReuniao, "destaques">) {
+  return new Set(secao.destaques ?? CATEGORIAS_DESTAQUE.filter((c) => c.padrao).map((c) => c.id));
 }
 
 export interface DesafioConcluido {
@@ -807,9 +864,72 @@ export function destaquesDoPeriodo(params: {
   sequencias: ReadonlyMap<string, number>;
   /** Dia até onde a sequência foi contada (YYYY-MM-DD). */
   sequenciaAte?: string;
-  /** Atividades do período (já consolidadas), para o treino mais longo. */
+  /** Atividades do período (já consolidadas), para o treino mais longo, constância e provas. */
   atividades?: readonly AtividadeConsolidada[];
 }): Destaque[] {
+  return [...destaquesBase(params), ...destaquesExtras(params)].sort((a, b) => ordemDoDestaque(a.id) - ordemDoDestaque(b.id));
+}
+
+function ordemDoDestaque(id: string) {
+  const i = CATEGORIAS_DESTAQUE.findIndex((c) => c.id === categoriaDoDestaque(id));
+  return (i < 0 ? 99 : i) * 10 + (id.endsWith("bicicleta") ? 1 : 0);
+}
+
+/** Mais treinos, mais constante (meses com treino), mais provas e o estreante com mais treinos. */
+function destaquesExtras(params: Parameters<typeof destaquesDoPeriodo>[0]): Destaque[] {
+  const porId = new Map(params.atletas.map((a) => [a.id, a]));
+  const linhas = (["corrida", "bicicleta"] as const).flatMap((m) => params.atual[m].ranking.map((l) => ({ ...l, modalidade: m })));
+  const pessoa = (l: (typeof linhas)[number]) => ({ id: l.id, nome: porId.get(l.id)?.nome ?? l.nome, modalidade: l.modalidade, fotoVersao: porId.get(l.id)?.fotoVersao });
+  const nomeOrdem = (a: { nome: string }, b: { nome: string }) => a.nome.localeCompare(b.nome, "pt-BR");
+  const out: Destaque[] = [];
+
+  const maisTreinos = [...linhas].filter((l) => l.treinos > 0).sort((a, b) => b.treinos - a.treinos || b.pontos - a.pontos || nomeOrdem(a, b))[0];
+  if (maisTreinos) {
+    out.push({ id: "mais-treinos", titulo: "Mais treinos", atleta: pessoa(maisTreinos), valor: String(maisTreinos.treinos), unidade: "treinos", detalhe: `${formatPontos(maisTreinos.pontos)} pontos no período` });
+  }
+
+  if (params.atividades) {
+    const meses = new Map<string, Set<string>>();
+    const provas = new Map<string, number>();
+    for (const a of params.atividades) {
+      if (a.tipo === "treino") {
+        const m = meses.get(a.atletaId) ?? new Set<string>();
+        m.add(a.data.slice(0, 7));
+        meses.set(a.atletaId, m);
+      } else if (a.tipo === "evento") provas.set(a.atletaId, (provas.get(a.atletaId) ?? 0) + 1);
+    }
+    const totalMeses = new Set(params.atividades.map((a) => a.data.slice(0, 7))).size;
+    const constante = linhas
+      .map((l) => ({ l, n: meses.get(l.id)?.size ?? 0 }))
+      .filter((x) => x.n >= 2)
+      .sort((a, b) => b.n - a.n || b.l.treinos - a.l.treinos || nomeOrdem(a.l, b.l))[0];
+    if (constante) {
+      out.push({
+        id: "constancia",
+        titulo: "Mais constante",
+        atleta: pessoa(constante.l),
+        valor: String(constante.n),
+        unidade: constante.n === totalMeses ? "meses, todos" : "meses com treino",
+        detalhe: `${plural(constante.l.treinos, "treino")}, média de ${formatNumero(constante.l.treinos / Math.max(1, totalMeses), 1)} por mês`,
+      });
+    }
+    const maisProvas = linhas
+      .map((l) => ({ l, n: provas.get(l.id) ?? 0 }))
+      .filter((x) => x.n > 0)
+      .sort((a, b) => b.n - a.n || b.l.pontos - a.l.pontos || nomeOrdem(a.l, b.l))[0];
+    if (maisProvas) {
+      out.push({ id: "provas", titulo: "Mais provas", atleta: pessoa(maisProvas.l), valor: String(maisProvas.n), unidade: maisProvas.n === 1 ? "prova" : "provas", detalhe: "Participações em eventos do programa" });
+    }
+  }
+
+  const estreante = linhas.filter((l) => l.novo && l.treinos > 0).sort((a, b) => b.treinos - a.treinos || b.pontos - a.pontos || nomeOrdem(a, b))[0];
+  if (estreante) {
+    out.push({ id: "estreante", titulo: "Estreante do período", atleta: pessoa(estreante), valor: String(estreante.treinos), unidade: "treinos", detalhe: "Chegou agora e já é presença" });
+  }
+  return out;
+}
+
+function destaquesBase(params: Parameters<typeof destaquesDoPeriodo>[0]): Destaque[] {
   const porId = new Map(params.atletas.map((a) => [a.id, a]));
   const pessoa = (id: string, modalidade: Modalidade) => {
     const a = porId.get(id);
@@ -909,9 +1029,40 @@ export function paginarDestaques(itens: readonly Destaque[]): Destaque[][] {
     const bike = equipes.filter((d) => d.id.endsWith("bicicleta"));
     return [[...gerais, ...corrida], bike].filter((p) => p.length);
   }
-  const paginas: Destaque[][] = [gerais];
-  for (let i = 0; i < equipes.length; i += DESTAQUES_POR_SLIDE) paginas.push(equipes.slice(i, i + DESTAQUES_POR_SLIDE));
+  const paginas: Destaque[][] = [];
+  for (let i = 0; i < gerais.length; i += DESTAQUES_POR_SLIDE) paginas.push(gerais.slice(i, i + DESTAQUES_POR_SLIDE));
+  // Um geral sobrando sozinho vai junto com os da equipe, se couber.
+  const ultima = paginas.at(-1)!;
+  let restoEquipes = equipes;
+  if (ultima.length < DESTAQUES_POR_SLIDE) {
+    const cabe = DESTAQUES_POR_SLIDE - ultima.length;
+    if (ultima.length === 1 || equipes.length <= cabe) {
+      ultima.push(...equipes.slice(0, cabe));
+      restoEquipes = equipes.slice(cabe);
+    }
+  }
+  for (let i = 0; i < restoEquipes.length; i += DESTAQUES_POR_SLIDE) paginas.push(restoEquipes.slice(i, i + DESTAQUES_POR_SLIDE));
   return paginas;
+}
+
+/**
+ * Números de um período para os slides de resultados, destaques e premiação.
+ * A reunião tem o seu; o "ano até agora" é calculado só se alguma seção pedir.
+ */
+export interface BlocoDoPeriodo {
+  periodo: { nome: string; inicio: string; fim: string };
+  corrida: ResultadoEquipe;
+  bicicleta: ResultadoEquipe;
+  anterior?: { nome: string; corrida: ResultadoEquipe["totais"]; bicicleta: ResultadoEquipe["totais"] } | null;
+  destaques?: { itens: Destaque[]; desafios: DesafioConcluido[] };
+}
+
+/** O ano até o fim do período da reunião: do começo do ano do calendário (ou 1º/jan) até o fim da reunião. */
+export function periodoDoAnoAte(trimestres: readonly { inicio: string; fim: string }[], fim: string) {
+  const ano = fim.slice(0, 4);
+  const inteiro = periodoDoAno(trimestres, ano);
+  if (fim >= inteiro.fim) return inteiro;
+  return { nome: `Ano de ${ano}`, inicio: inteiro.inicio, fim };
 }
 
 /** Junta a configuração da reunião com os números e devolve os slides, em ordem. */
@@ -929,6 +1080,8 @@ export function montarRoteiro(params: {
   anterior?: { nome: string; corrida: ResultadoEquipe["totais"]; bicicleta: ResultadoEquipe["totais"] } | null;
   destaques?: { itens: Destaque[]; desafios: DesafioConcluido[] };
   aniversariantes?: Aniversariante[];
+  /** Números do ano até agora, para as seções marcadas com o período "ano". */
+  ano?: BlocoDoPeriodo | null;
 }): SlideDef[] {
   const { reuniao } = params;
   const { periodo } = reuniao;
@@ -939,6 +1092,23 @@ export function montarRoteiro(params: {
   const livres = new Map(reuniao.livres.map((l) => [l.id, l]));
   const slides: SlideDef[] = [];
   const t = (chave: ChaveTexto) => textoDoSlide(reuniao.textos, chave);
+  /** Os números que a seção usa: os da reunião ou os do ano. */
+  const blocoDa = (secao: SecaoReuniao) => {
+    if (secao.periodo === "ano" && params.ano) {
+      const p = params.ano.periodo;
+      const iv = intervaloDeMeses(p.inicio, p.fim);
+      return {
+        nome: p.nome,
+        intervalo: iv,
+        rotulo: `${p.nome} · ${iv.replace(/[()]/g, "")}`,
+        corrida: params.ano.corrida,
+        bicicleta: params.ano.bicicleta,
+        anterior: params.ano.anterior ?? null,
+        destaques: params.ano.destaques,
+      };
+    }
+    return { nome: periodo.nome, intervalo, rotulo: rotuloPeriodo, corrida: params.corrida, bicicleta: params.bicicleta, anterior: params.anterior ?? null, destaques: params.destaques };
+  };
 
   for (const secao of reuniao.secoes) {
     if (!secao.ativo) continue;
@@ -965,6 +1135,10 @@ export function montarRoteiro(params: {
         if (!l) break;
         if (l.layout === "enquete") {
           slides.push({ chave: k, tipo: "enquete", livreId: l.id, pergunta: l.titulo, opcoes: opcoesDaEnquete(l.texto), pesquisaId: l.pesquisaId ?? null });
+        } else if (l.layout === "fala") {
+          slides.push({ chave: k, tipo: "fala", nome: l.titulo, cargo: l.sobretitulo, frase: l.texto, imagemId: l.imagemId });
+        } else if (l.layout === "retrospectiva") {
+          slides.push({ chave: k, tipo: "retrospectiva", livreId: l.id, titulo: l.titulo, subtitulo: l.texto, segundos: l.segundos ?? 5 });
         } else if (l.layout === "divisoria") {
           slides.push({ chave: k, tipo: "divisoria", sobretitulo: l.sobretitulo, titulo: l.titulo, subtitulo: l.texto, fundo: "divisoria", estilo: estiloDoLivre(l) });
         } else {
@@ -990,38 +1164,45 @@ export function montarRoteiro(params: {
       case "regras":
         slides.push({ chave: k, tipo: "regras", regras: params.regras, periodos: params.periodos });
         break;
-      case "resultados":
-        slides.push({ chave: `${k}-div`, tipo: "divisoria", sobretitulo: t("resultados.sobretitulo"), titulo: periodo.nome, subtitulo: intervalo, fundo: "resultados" });
+      case "resultados": {
+        const b = blocoDa(secao);
+        slides.push({ chave: `${k}-div`, tipo: "divisoria", sobretitulo: t("resultados.sobretitulo"), titulo: b.nome, subtitulo: b.intervalo, fundo: "resultados" });
         slides.push({
           chave: k,
           tipo: "totais",
           titulo: t("resultados.titulo"),
-          periodo: rotuloPeriodo,
-          corrida: params.corrida.totais,
-          bicicleta: params.bicicleta.totais,
-          anterior: params.anterior
+          periodo: b.rotulo,
+          corrida: b.corrida.totais,
+          bicicleta: b.bicicleta.totais,
+          anterior: b.anterior
             ? {
-                nome: params.anterior.nome,
-                treinos: params.anterior.corrida.treinos + params.anterior.bicicleta.treinos,
-                pontos: params.anterior.corrida.pontos + params.anterior.bicicleta.pontos,
-                km: params.anterior.corrida.km + params.anterior.bicicleta.km,
+                nome: b.anterior.nome,
+                treinos: b.anterior.corrida.treinos + b.anterior.bicicleta.treinos,
+                pontos: b.anterior.corrida.pontos + b.anterior.bicicleta.pontos,
+                km: b.anterior.corrida.km + b.anterior.bicicleta.km,
               }
             : null,
         });
         break;
-      case "destaques":
-        if (!params.destaques || (params.destaques.itens.length === 0 && params.destaques.desafios.length === 0)) break;
-      {
-        const paginas = paginarDestaques(params.destaques.itens);
+      }
+      case "destaques": {
+        const b = blocoDa(secao);
+        const categorias = categoriasDaSecao(secao);
+        const escolhidos = (b.destaques?.itens ?? []).filter((d) => categorias.has(categoriaDoDestaque(d.id)));
+        const desafiosDaSecao = b.destaques?.desafios ?? [];
+        if (escolhidos.length === 0 && desafiosDaSecao.length === 0) break;
+        const paginas = paginarDestaques(escolhidos);
         if (!paginas.length) paginas.push([]);
         paginas.forEach((itens, i) =>
           slides.push({
             chave: paginas.length > 1 ? `${k}-${i + 1}` : k,
             tipo: "destaques",
-            periodo: rotuloPeriodo,
+            periodo: b.rotulo,
             itens,
+            // Do ano: o título padrão vira "Destaques do ano" (um texto trocado pelo comitê vale para os dois).
+            ...(secao.periodo === "ano" && !reuniao.textos?.["destaques.titulo"] ? { titulo: TITULO_DO_ANO.destaques } : {}),
             // A faixa de desafios fica no primeiro slide.
-            desafios: i === 0 ? params.destaques!.desafios : [],
+            desafios: i === 0 ? desafiosDaSecao : [],
             pagina: i + 1,
             paginas: paginas.length,
           }),
@@ -1038,17 +1219,18 @@ export function montarRoteiro(params: {
         break;
       }
       case "premiacao": {
-        slides.push({ chave: `${k}-div`, tipo: "divisoria", sobretitulo: t("premiacao.sobretitulo"), titulo: periodo.nome, subtitulo: intervalo, fundo: "premiacao" });
-        for (const equipe of [params.corrida, params.bicicleta]) {
+        const b = blocoDa(secao);
+        slides.push({ chave: `${k}-div`, tipo: "divisoria", sobretitulo: t("premiacao.sobretitulo"), titulo: b.nome, subtitulo: b.intervalo, fundo: "premiacao" });
+        for (const equipe of [b.corrida, b.bicicleta]) {
           if (equipe.ranking.length === 0) continue;
-          if (equipe.podio.length > 0) slides.push({ chave: `${k}-${equipe.modalidade}-podio`, tipo: "podio", modalidade: equipe.modalidade, periodo: rotuloPeriodo, podio: equipe.podio });
+          if (equipe.podio.length > 0) slides.push({ chave: `${k}-${equipe.modalidade}-podio`, tipo: "podio", modalidade: equipe.modalidade, periodo: b.rotulo, podio: equipe.podio });
           const paginasTabela = paginarClassificacao(equipe.ranking);
           paginasTabela.forEach((colunas, p) =>
             slides.push({
               chave: `${k}-${equipe.modalidade}-tab-${p}`,
               tipo: "classificacao",
               modalidade: equipe.modalidade,
-              periodo: rotuloPeriodo,
+              periodo: b.rotulo,
               colunas,
               pagina: p + 1,
               paginas: paginasTabela.length,
@@ -1080,8 +1262,13 @@ export function montarRoteiro(params: {
 
 
 /** Nome da seção como aparece no roteiro. */
-export function nomeDaSecao(secao: Pick<SecaoReuniao, "tipo">, livre?: Pick<SlideLivre, "sobretitulo" | "titulo">) {
-  if (secao.tipo === "livre") return [livre?.sobretitulo, livre?.titulo].filter(Boolean).join(" ") || "Slide livre";
+export function nomeDaSecao(secao: Pick<SecaoReuniao, "tipo"> & Partial<Pick<SecaoReuniao, "periodo">>, livre?: Pick<SlideLivre, "sobretitulo" | "titulo" | "layout">) {
+  if (secao.tipo === "livre") {
+    if (livre?.layout === "fala") return `Fala · ${livre.titulo || "Pessoa"}`;
+    if (livre?.layout === "retrospectiva") return livre.titulo || "Retrospectiva";
+    return [livre?.sobretitulo, livre?.titulo].filter(Boolean).join(" ") || "Slide livre";
+  }
+  if (secao.periodo === "ano" && secao.tipo in TITULO_DO_ANO) return TITULO_DO_ANO[secao.tipo as keyof typeof TITULO_DO_ANO];
   return TITULO_SECAO[secao.tipo].titulo;
 }
 
@@ -1201,6 +1388,18 @@ export function verificarAntesDeApresentar(params: {
       nivel: "atencao",
       texto: vazios.length === 1 ? "1 slide de conteúdo está vazio" : `${vazios.length} slides de conteúdo estão vazios`,
       detalhe: `Escreva o texto ou adicione uma imagem: ${vazios.map((l) => l.titulo || "sem título").join(", ")}.`,
+    });
+  }
+  const falasSemNome = reuniao.livres.filter((l) => ligados.has(l.id) && l.layout === "fala" && !l.titulo.trim());
+  if (falasSemNome.length > 0) {
+    out.push({ id: "fala", nivel: "atencao", texto: "Slide de fala sem o nome da pessoa", detalhe: "Escreva o nome (e, se quiser, a foto e uma frase) no roteiro." });
+  }
+  if (reuniao.livres.some((l) => ligados.has(l.id) && l.layout === "retrospectiva")) {
+    out.push({
+      id: "retrospectiva",
+      nivel: "info",
+      texto: "Retrospectiva: deixe a pasta de fotos no computador da apresentação",
+      detalhe: "As fotos não ficam no portal. Ao chegar no slide, toque em \"Escolher a pasta de fotos\" (fotos em JPG, PNG ou WebP).",
     });
   }
   return out;
