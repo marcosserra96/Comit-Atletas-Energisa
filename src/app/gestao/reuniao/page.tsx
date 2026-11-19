@@ -3,11 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { collection, doc, getDoc, getDocs, onSnapshot, serverTimestamp, setDoc, Timestamp, updateDoc } from "firebase/firestore";
-import { AlertTriangle, CalendarRange, CheckCircle2, CloudOff, Download, Info, Loader2, MonitorPlay, Plus, Save, Copy, Search, Send, Star, Trash2, UserPlus, X } from "lucide-react";
+import { AlertTriangle, CalendarRange, CheckCircle2, ChevronLeft, ChevronRight, CloudOff, Download, Eye, EyeOff, Info, Loader2, MonitorPlay, Palette, Pencil, Play, Plus, Presentation, Save, Copy, Send, Star, Trash2, UserPlus, X } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
-import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
@@ -17,7 +16,9 @@ import { InlineAlert } from "@/components/ui/InlineAlert";
 import { ConfirmActionModal } from "@/components/ui/ConfirmActionModal";
 import { SlideReuniao } from "@/components/reuniao/SlidesReuniao";
 import { Apresentador, SlideEscalado, gerarPdfDosSlides, type AcaoDoSlide } from "@/components/reuniao/Apresentador";
-import { EditorRoteiro } from "@/components/reuniao/EditorRoteiro";
+import { EditorDoSlide, GaleriaDeSlides, useAcoesDoRoteiro } from "@/components/reuniao/EditorRoteiro";
+import { BotaoDaFaixa, FaixaDeOpcoes, GrupoDaFaixa, SeparadorDaFaixa } from "@/components/reuniao/FaixaDeOpcoes";
+import { PainelDeSlides } from "@/components/reuniao/PainelDeSlides";
 import { useSorteio } from "@/components/reuniao/useSorteio";
 import { useEnquetes } from "@/components/reuniao/useEnquetes";
 import { DURACAO_ENQUETE_MS, pesquisaDaEnquete } from "@/lib/enquete";
@@ -266,7 +267,11 @@ export default function ReuniaoResultadosPage() {
   const [rascunhoEditado, setRascunho] = useState<Rascunho | null>(null);
   const [alterado, setAlterado] = useState(false);
   const [erroSalvar, setErroSalvar] = useState<string | null>(null);
-  const [destaque, setDestaque] = useState<string | null>(null);
+  // Como no PowerPoint: a aba da faixa de opções, se ela está recolhida e o slide escolhido.
+  const [aba, setAba] = useState<"inicio" | "slide" | "design" | "reuniao" | "arquivo">("inicio");
+  const [recolhida, setRecolhida] = useState(false);
+  const [selecao, setSelecao] = useState<{ secao: string | null; chave: string | null }>({ secao: null, chave: null });
+  const [galeria, setGaleria] = useState(false);
   // Cada edição sobe a versão: um salvamento só limpa o "alterado" se nada mudou enquanto salvava.
   const versao = useRef(0);
   const [salvando, setSalvando] = useState(false);
@@ -515,14 +520,105 @@ export default function ReuniaoResultadosPage() {
     return () => window.removeEventListener("beforeunload", aviso);
   }, [alterado, salvando]);
 
-  /** Do roteiro para a prévia: rola até o primeiro slide da seção e destaca os dela. */
-  function irPara(secaoId: string) {
-    const primeiro = calculo?.slides.find((sl) => sl.secaoId === secaoId);
-    if (!primeiro) return;
-    document.getElementById(`slide-${primeiro.chave}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-    setDestaque(secaoId);
-    window.setTimeout(() => setDestaque((d) => (d === secaoId ? null : d)), 1800);
+  // A faixa recolhida fica lembrada neste aparelho.
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      try {
+        if (window.localStorage.getItem("reuniao:faixa") === "recolhida") setRecolhida(true);
+      } catch {
+        /* sem armazenamento */
+      }
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, []);
+  function mudarRecolhida(r: boolean) {
+    setRecolhida(r);
+    try {
+      window.localStorage.setItem("reuniao:faixa", r ? "recolhida" : "aberta");
+    } catch {
+      /* sem armazenamento */
+    }
   }
+
+  const acoes = useAcoesDoRoteiro(rascunho ?? { secoes: [], livres: [] }, (r) => atualizar(r), (secaoId) => {
+    // Slide novo (ou cópia): fica escolhido e a faixa abre na edição dele.
+    setSelecao({ secao: secaoId, chave: null });
+    setAba("slide");
+    mudarRecolhida(false);
+  });
+
+  // Slide escolhido: pela chave; se ela sumiu (números mudaram), o primeiro da seção; senão, o primeiro.
+  const slides = calculo?.slides;
+  const indiceAtual = useMemo(() => {
+    if (!slides?.length) return 0;
+    const porChave = selecao.chave ? slides.findIndex((x) => x.chave === selecao.chave) : -1;
+    if (porChave >= 0) return porChave;
+    const daSecao = selecao.secao ? slides.findIndex((x) => x.secaoId === selecao.secao) : -1;
+    return daSecao >= 0 ? daSecao : 0;
+  }, [slides, selecao]);
+  const secaoSelecionada = selecao.secao ?? slides?.[indiceAtual]?.secaoId ?? null;
+
+  const secoesDoPainel = useMemo(
+    () =>
+      (rascunho?.secoes ?? []).map((sec) => ({
+        id: sec.id,
+        nome: nomeDaSecao(sec, rascunho?.livres.find((l) => l.id === sec.id), rascunho?.premios?.find((p) => p.id === sec.id)),
+        ativo: sec.ativo,
+        slides: (slides ?? []).flatMap((sl, i) => (sl.secaoId === sec.id ? [{ indice: i, chave: sl.chave, rotulo: sl.rotulo ?? "" }] : [])),
+      })),
+    [rascunho, slides],
+  );
+
+  function selecionarSlide(i: number) {
+    const sl = slides?.[i];
+    if (!sl) return;
+    setSelecao({ secao: sl.secaoId ?? null, chave: sl.chave });
+    document.getElementById(`miniatura-${sl.chave}`)?.scrollIntoView({ block: "nearest" });
+  }
+  function selecionarSecao(id: string) {
+    const primeiro = slides?.find((x) => x.secaoId === id);
+    setSelecao({ secao: id, chave: primeiro?.chave ?? null });
+  }
+  function irPorSeta(d: number) {
+    if (!slides?.length) return;
+    selecionarSlide(Math.min(slides.length - 1, Math.max(0, indiceAtual + d)));
+  }
+  function excluirSecao(id: string) {
+    const i = rascunho?.secoes.findIndex((x) => x.id === id) ?? -1;
+    const vizinha = rascunho?.secoes[i + 1] ?? rascunho?.secoes[i - 1];
+    acoes.remover(id);
+    setSelecao({ secao: vizinha?.id ?? null, chave: null });
+  }
+
+  // Atalhos do PowerPoint: F5 apresenta do início, Shift+F5 deste slide, setas trocam o slide, Ctrl+D duplica.
+  const atalhos = useRef({ irPorSeta, indiceAtual, secaoSelecionada, duplicar: acoes.duplicar, podeDuplicar: acoes.podeDuplicar, total: slides?.length ?? 0 });
+  useEffect(() => {
+    atalhos.current = { irPorSeta, indiceAtual, secaoSelecionada, duplicar: acoes.duplicar, podeDuplicar: acoes.podeDuplicar, total: slides?.length ?? 0 };
+  });
+  useEffect(() => {
+    if (apresentando !== null) return;
+    const tecla = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
+      const alvo = e.target as HTMLElement | null;
+      if (alvo && (alvo.closest("input, textarea, select, [contenteditable=true], [role=dialog], [role=listbox]") || alvo.isContentEditable)) return;
+      const a = atalhos.current;
+      if (e.key === "F5" && a.total > 0) {
+        e.preventDefault();
+        setApresentando(e.shiftKey ? a.indiceAtual : 0);
+      } else if ((e.key === "ArrowDown" || e.key === "PageDown") && !e.altKey) {
+        e.preventDefault();
+        a.irPorSeta(1);
+      } else if ((e.key === "ArrowUp" || e.key === "PageUp") && !e.altKey) {
+        e.preventDefault();
+        a.irPorSeta(-1);
+      } else if ((e.key === "d" || e.key === "D") && (e.ctrlKey || e.metaKey) && a.secaoSelecionada && a.podeDuplicar(a.secaoSelecionada)) {
+        e.preventDefault();
+        a.duplicar(a.secaoSelecionada);
+      }
+    };
+    window.addEventListener("keydown", tecla);
+    return () => window.removeEventListener("keydown", tecla);
+  }, [apresentando]);
 
   const verificacoes = useMemo(() => {
     if (!calculo || !rascunho || !dados.eventos || !dados.lancamentos) return null;
@@ -683,53 +779,45 @@ export default function ReuniaoResultadosPage() {
     : "";
   const total = calculo?.slides.length ?? 0;
 
+  const secaoAtual = rascunho?.secoes.find((x) => x.id === secaoSelecionada) ?? null;
+  const nomeSecaoAtual = secaoAtual && rascunho ? nomeDaSecao(secaoAtual, acoes.livres.get(secaoAtual.id), acoes.premios.get(secaoAtual.id)) : "";
+  const slideAtual = calculo?.slides[indiceAtual];
+  const avisos = verificacoes?.filter((v) => v.nivel === "atencao").length ?? 0;
+
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div className="min-w-0 lg:flex-1">
-          <h1 className="text-2xl font-extrabold text-text">Reunião de resultados</h1>
-          <p className="text-sm text-text-light">
-            A apresentação monta sozinha com os números do período. Ajuste o roteiro, apresente no telão ou baixe em PDF.
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div className="min-w-0">
+          <h1 className="text-lg font-extrabold text-text sm:truncate sm:text-xl">{rascunho?.titulo ?? "Reunião de resultados"}</h1>
+          <p className="flex flex-wrap items-center gap-x-2 text-sm text-text-light">
+            <span>{rascunho ? `${rascunho.periodo.nome} · ${formatShortDate(rascunho.periodo.inicio)} a ${formatShortDate(rascunho.periodo.fim)}` : "Carregando…"}</span>
+            {calculo ? <span>· {plural(total, "slide")}</span> : null}
+            {/* Salva sozinho: aqui só aparece o estado (e o botão quando precisa). */}
+            {erroSalvar ? (
+              <button type="button" onClick={() => void salvar(false)} className="inline-flex items-center gap-1 font-semibold text-danger hover:underline">
+                <CloudOff className="size-3.5" aria-hidden="true" />
+                Não salvou. Tentar de novo
+              </button>
+            ) : salvando || alterado ? (
+              <span className="inline-flex items-center gap-1" role="status">
+                · <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> Salvando…
+              </span>
+            ) : pendente ? (
+              <button type="button" onClick={() => void salvar(false)} disabled={!rascunho} className="inline-flex items-center gap-1 font-semibold text-primary hover:underline">
+                · <Save className="size-3.5" aria-hidden="true" /> Salvar
+              </button>
+            ) : rascunho?.id ? (
+              <span className="inline-flex items-center gap-1" role="status">
+                · <CheckCircle2 className="size-3.5 text-success" aria-hidden="true" /> Salvo
+              </span>
+            ) : null}
           </p>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {/* Salva sozinho: aqui só aparece o estado (e o botão quando precisa). */}
-          {erroSalvar ? (
-            <Button variant="secondary" onClick={() => void salvar(false)} loading={salvando}>
-              <CloudOff className="size-4 text-danger" aria-hidden="true" />
-              Não salvou. Tentar de novo
-            </Button>
-          ) : salvando || alterado ? (
-            <span className="flex min-h-11 items-center gap-1.5 px-2 text-sm text-text-light" role="status">
-              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-              Salvando…
-            </span>
-          ) : pendente ? (
-            <Button variant="secondary" onClick={() => void salvar(false)} disabled={!rascunho}>
-              <Save className="size-4" aria-hidden="true" />
-              Salvar
-            </Button>
-          ) : rascunho?.id ? (
-            <span className="flex min-h-11 items-center gap-1.5 px-2 text-sm text-text-light" role="status">
-              <CheckCircle2 className="size-4 text-success" aria-hidden="true" />
-              Salvo
-            </span>
-          ) : null}
-          <Button variant="secondary" onClick={() => void baixarPdf()} disabled={!calculo || exportando !== null}>
-            {exportando !== null && formato === "pdf" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Download className="size-4" aria-hidden="true" />}
-            {exportando !== null && formato === "pdf" ? `PDF ${exportando}/${total}` : "PDF"}
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" className="hidden sm:inline-flex" onClick={() => setApresentando(indiceAtual)} disabled={!calculo || total === 0} title="Apresentar a partir deste slide (Shift+F5)">
+            Deste slide
           </Button>
-          <Button variant="secondary" onClick={() => void baixarPptx()} disabled={!calculo || exportando !== null} title="Baixar em PowerPoint (.pptx): slides escritos com texto editável, slides de números como imagem, anotações incluídas">
-            {exportando !== null && formato === "pptx" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Download className="size-4" aria-hidden="true" />}
-            {exportando !== null && formato === "pptx" ? `PowerPoint ${exportando}/${total}` : "PowerPoint"}
-          </Button>
-          {podeEnviar ? (
-            <Button variant="secondary" onClick={() => setEnvio((e) => ({ versao: e.versao + 1, aberto: true }))} disabled={!resumoAtletas}>
-              <Send className="size-4" aria-hidden="true" />
-              Enviar aos atletas
-            </Button>
-          ) : null}
-          <Button onClick={() => setApresentando(0)} disabled={!calculo || total === 0}>
+          <Button onClick={() => setApresentando(0)} disabled={!calculo || total === 0} title="Apresentar do início (F5)">
             <MonitorPlay className="size-4" aria-hidden="true" />
             Apresentar
           </Button>
@@ -738,198 +826,324 @@ export default function ReuniaoResultadosPage() {
 
       {dados.erro ? <InlineAlert tone="danger">Não foi possível carregar todos os dados. Atualize a página.</InlineAlert> : null}
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[380px_minmax(0,1fr)] lg:items-start">
-        <div className="flex min-w-0 flex-col gap-5 lg:sticky lg:top-[84px] lg:max-h-[calc(100dvh-100px)] lg:overflow-y-auto lg:pb-4">
-          {verificacoes ? <AntesDeApresentar itens={verificacoes} /> : null}
-          <Card className="flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-bold text-text">Reunião</p>
-              <div className="flex items-center gap-1">
-                <Button size="sm" variant="ghost" onClick={criarNova} disabled={!dados.calendario}>
-                  <Plus className="size-4" aria-hidden="true" />
-                  Nova
-                </Button>
-                {rascunho?.id ? (
-                  <Button size="sm" variant="ghost" onClick={duplicar} disabled={!dados.calendario} title="Nova reunião com o mesmo roteiro, slides escritos, textos e aparência">
-                    <Copy className="size-4" aria-hidden="true" />
-                    Duplicar
-                  </Button>
-                ) : null}
-                {rascunho?.id ? (
-                  <Button size="sm" variant="ghost" onClick={() => setApagando(true)} aria-label="Apagar esta reunião">
-                    <Trash2 className="size-4" aria-hidden="true" />
-                  </Button>
-                ) : null}
-              </div>
+      <FaixaDeOpcoes
+        abas={[
+          { id: "inicio", rotulo: "Início" },
+          { id: "slide", rotulo: "Editar slide" },
+          { id: "design", rotulo: "Design" },
+          { id: "reuniao", rotulo: "Reunião", aviso: avisos },
+          { id: "arquivo", rotulo: "Arquivo" },
+        ]}
+        aba={aba}
+        onAba={setAba}
+        recolhida={recolhida}
+        onRecolher={mudarRecolhida}
+      >
+        {!rascunho ? (
+          <div className="h-20 animate-pulse rounded-[var(--radius)] bg-bg-inset" />
+        ) : aba === "inicio" ? (
+          <div className="flex items-stretch gap-x-4 gap-y-3 overflow-x-auto pb-1">
+            <GrupoDaFaixa nome="Slides">
+              <BotaoDaFaixa icone={<Plus />} rotulo="Novo slide" onClick={() => setGaleria(true)} destaque />
+              <BotaoDaFaixa icone={<Copy />} rotulo="Duplicar" onClick={() => secaoAtual && acoes.duplicar(secaoAtual.id)} disabled={!secaoAtual || !acoes.podeDuplicar(secaoAtual.id)} title="Duplicar (Ctrl+D). Vale para slides escritos e prêmios." />
+              <BotaoDaFaixa
+                icone={secaoAtual?.ativo === false ? <Eye /> : <EyeOff />}
+                rotulo={secaoAtual?.ativo === false ? "Mostrar" : "Ocultar"}
+                onClick={() => secaoAtual && acoes.mostrar(secaoAtual.id, !secaoAtual.ativo)}
+                disabled={!secaoAtual}
+                title="Ocultar na apresentação sem apagar"
+              />
+              <BotaoDaFaixa icone={<Trash2 />} rotulo="Excluir" onClick={() => secaoAtual && excluirSecao(secaoAtual.id)} disabled={!secaoAtual || !acoes.podeRemover(secaoAtual.id)} title="Excluir. Os slides automáticos únicos só se ocultam." />
+            </GrupoDaFaixa>
+            <SeparadorDaFaixa />
+            <GrupoDaFaixa nome="Editar">
+              <BotaoDaFaixa icone={<Pencil />} rotulo="Editar este slide" onClick={() => setAba("slide")} disabled={!secaoAtual} />
+              <BotaoDaFaixa icone={<Palette />} rotulo="Aparência" onClick={() => setAba("design")} />
+            </GrupoDaFaixa>
+            <SeparadorDaFaixa />
+            <GrupoDaFaixa nome="Apresentar">
+              <BotaoDaFaixa icone={<MonitorPlay />} rotulo="Do início" onClick={() => setApresentando(0)} disabled={!calculo || total === 0} title="F5" />
+              <BotaoDaFaixa icone={<Play />} rotulo="Deste slide" onClick={() => setApresentando(indiceAtual)} disabled={!calculo || total === 0} title="Shift+F5" />
+            </GrupoDaFaixa>
+            <p className="ml-auto hidden max-w-56 self-center text-xs text-text-light xl:block">
+              Arraste as seções no painel à esquerda para mudar a ordem. Duplo clique numa miniatura abre a edição.
+            </p>
+          </div>
+        ) : aba === "slide" ? (
+          secaoAtual ? (
+            <div className="flex flex-col gap-3">
+              <p className="text-sm font-bold text-text">
+                {nomeSecaoAtual}
+                {secaoAtual.ativo ? null : <span className="font-semibold text-text-muted"> · oculto na apresentação</span>}
+              </p>
+              <EditorDoSlide key={secaoAtual.id} secao={secaoAtual} roteiro={rascunho} imagens={imagens} resultados={calculo?.premios} onChange={(r) => atualizar(r)} />
             </div>
-            {salvas && salvas.length > 0 ? (
-              <Select
-                aria-label="Reuniões salvas"
-                value={rascunho?.id ?? ""}
-                onChange={(e) => {
-                  const r = salvas.find((x) => x.id === e.target.value);
-                  if (r) {
-                    setRascunho(r);
-                    setAlterado(false);
-                  }
-                }}
-              >
-                {rascunho && !rascunho.id ? <option value="">Nova (não salva)</option> : null}
-                {salvas.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.titulo}
-                  </option>
-                ))}
-              </Select>
-            ) : null}
-
-            {rascunho ? (
-              <>
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium text-text">Período dos resultados</span>
-                  <Select
-                    aria-label="Período dos resultados"
-                    value={valorPeriodo}
-                    onChange={(e) => {
-                      const t = trimestres.find((x) => x.id === e.target.value);
-                      const a = periodosAnuais.find((x) => `ano:${x.ano}` === e.target.value);
-                      if (t) atualizar({ periodo: { nome: t.nome, inicio: t.inicio, fim: t.fim }, titulo: `Reunião de resultados · ${t.nome}` });
-                      else if (a) atualizar({ periodo: { nome: a.nome, inicio: a.inicio, fim: a.fim }, titulo: `Fechamento de ${a.ano}` });
-                      else atualizar({ periodo: { ...rascunho.periodo, nome: rascunho.periodo.nome || "Período" } });
-                    }}
-                  >
-                    <optgroup label="Trimestres">
-                      {trimestres.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.nome} · {formatShortDate(t.inicio)} a {formatShortDate(t.fim)}
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="Ano inteiro">
-                      {periodosAnuais.map((p) => (
-                        <option key={p.ano} value={`ano:${p.ano}`}>
-                          {hoje <= p.fim && hoje >= p.inicio ? `${p.ano} até agora` : `Fechamento de ${p.ano}`} · {formatShortDate(p.inicio)} a {formatShortDate(p.fim)}
-                        </option>
-                      ))}
-                    </optgroup>
-                    <option value="personalizado">Outras datas</option>
-                  </Select>
-                  {trimestres.length === 0 ? (
-                    <p className="flex items-start gap-1.5 text-xs text-text-light">
-                      <CalendarRange className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-                      <span>
-                        Cadastre os trimestres em{" "}
-                        <Link href="/gestao/configuracoes" className="font-semibold text-primary hover:underline">
-                          Configurar portal → Ranking e premiação
-                        </Link>{" "}
-                        para escolher com um toque.
-                      </span>
-                    </p>
+          ) : (
+            <p className="text-sm text-text-light">Escolha um slide no painel à esquerda para editar.</p>
+          )
+        ) : aba === "design" ? (
+          <div className="flex max-w-3xl flex-col gap-2">
+            <p className="text-xs text-text-light">Fonte, transição e animações da apresentação inteira. A formatação de cada slide escrito fica em Editar slide.</p>
+            <TemaApresentacao tema={rascunho.tema} onChange={(t) => atualizar({ tema: t })} />
+          </div>
+        ) : aba === "reuniao" ? (
+          <div className="grid items-start gap-x-6 gap-y-5 [grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr))]">
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-bold text-text">Reunião</p>
+                <div className="flex items-center gap-1">
+                  <Button size="sm" variant="ghost" onClick={criarNova} disabled={!dados.calendario}>
+                    <Plus className="size-4" aria-hidden="true" />
+                    Nova
+                  </Button>
+                  {rascunho.id ? (
+                    <Button size="sm" variant="ghost" onClick={duplicar} disabled={!dados.calendario} title="Nova reunião com o mesmo roteiro, slides escritos, textos e aparência">
+                      <Copy className="size-4" aria-hidden="true" />
+                      Duplicar
+                    </Button>
+                  ) : null}
+                  {rascunho.id ? (
+                    <Button size="sm" variant="ghost" onClick={() => setApagando(true)} aria-label="Apagar esta reunião">
+                      <Trash2 className="size-4" aria-hidden="true" />
+                    </Button>
                   ) : null}
                 </div>
-                {valorPeriodo === "personalizado" ? (
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="col-span-2">
-                      <TextField label="Nome do período" value={rascunho.periodo.nome} onChange={(e) => atualizar({ periodo: { ...rascunho.periodo, nome: e.target.value } })} />
-                    </div>
-                    <TextField label="Início" type="date" value={rascunho.periodo.inicio} onChange={(e) => atualizar({ periodo: { ...rascunho.periodo, inicio: e.target.value } })} />
-                    <TextField label="Fim" type="date" value={rascunho.periodo.fim} onChange={(e) => atualizar({ periodo: { ...rascunho.periodo, fim: e.target.value } })} />
-                  </div>
-                ) : null}
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium text-text">Reunião da agenda (QR de presença)</span>
-                  <Select aria-label="Reunião da agenda" value={rascunho.eventoId ?? ""} onChange={(e) => atualizar({ eventoId: e.target.value || null })}>
-                    <option value="">Sem QR de presença</option>
-                    {reunioesAgenda.map((e) => (
-                      <option key={e.id} value={e.id}>
-                        {formatShortDate(e.data)} · {e.titulo}
+              </div>
+              {salvas && salvas.length > 0 ? (
+                <Select
+                  aria-label="Reuniões salvas"
+                  value={rascunho.id ?? ""}
+                  onChange={(e) => {
+                    const r = salvas.find((x) => x.id === e.target.value);
+                    if (r) {
+                      setRascunho(r);
+                      setAlterado(false);
+                    }
+                  }}
+                >
+                  {!rascunho.id ? <option value="">Nova (não salva)</option> : null}
+                  {salvas.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.titulo}
+                    </option>
+                  ))}
+                </Select>
+              ) : null}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-text">Período dos resultados</span>
+                <Select
+                  aria-label="Período dos resultados"
+                  value={valorPeriodo}
+                  onChange={(e) => {
+                    const t = trimestres.find((x) => x.id === e.target.value);
+                    const a = periodosAnuais.find((x) => `ano:${x.ano}` === e.target.value);
+                    if (t) atualizar({ periodo: { nome: t.nome, inicio: t.inicio, fim: t.fim }, titulo: `Reunião de resultados · ${t.nome}` });
+                    else if (a) atualizar({ periodo: { nome: a.nome, inicio: a.inicio, fim: a.fim }, titulo: `Fechamento de ${a.ano}` });
+                    else atualizar({ periodo: { ...rascunho.periodo, nome: rascunho.periodo.nome || "Período" } });
+                  }}
+                >
+                  <optgroup label="Trimestres">
+                    {trimestres.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.nome} · {formatShortDate(t.inicio)} a {formatShortDate(t.fim)}
                       </option>
                     ))}
-                  </Select>
-                  {semPermissao && evento ? <p className="text-xs text-warning">O QR ao vivo precisa da permissão Eventos.</p> : null}
+                  </optgroup>
+                  <optgroup label="Ano inteiro">
+                    {periodosAnuais.map((p) => (
+                      <option key={p.ano} value={`ano:${p.ano}`}>
+                        {hoje <= p.fim && hoje >= p.inicio ? `${p.ano} até agora` : `Fechamento de ${p.ano}`} · {formatShortDate(p.inicio)} a {formatShortDate(p.fim)}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <option value="personalizado">Outras datas</option>
+                </Select>
+                {trimestres.length === 0 ? (
+                  <p className="flex items-start gap-1.5 text-xs text-text-light">
+                    <CalendarRange className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                    <span>
+                      Cadastre os trimestres em{" "}
+                      <Link href="/gestao/configuracoes" className="font-semibold text-primary hover:underline">
+                        Configurar portal → Ranking e premiação
+                      </Link>{" "}
+                      para escolher com um toque.
+                    </span>
+                  </p>
+                ) : null}
+              </div>
+              {valorPeriodo === "personalizado" ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="col-span-2">
+                    <TextField label="Nome do período" value={rascunho.periodo.nome} onChange={(e) => atualizar({ periodo: { ...rascunho.periodo, nome: e.target.value } })} />
+                  </div>
+                  <TextField label="Início" type="date" value={rascunho.periodo.inicio} onChange={(e) => atualizar({ periodo: { ...rascunho.periodo, inicio: e.target.value } })} />
+                  <TextField label="Fim" type="date" value={rascunho.periodo.fim} onChange={(e) => atualizar({ periodo: { ...rascunho.periodo, fim: e.target.value } })} />
                 </div>
+              ) : null}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-text">Reunião da agenda (QR de presença)</span>
+                <Select aria-label="Reunião da agenda" value={rascunho.eventoId ?? ""} onChange={(e) => atualizar({ eventoId: e.target.value || null })}>
+                  <option value="">Sem QR de presença</option>
+                  {reunioesAgenda.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {formatShortDate(e.data)} · {e.titulo}
+                    </option>
+                  ))}
+                </Select>
+                {semPermissao && evento ? <p className="text-xs text-warning">O QR ao vivo precisa da permissão Eventos.</p> : null}
+              </div>
+            </div>
+            {verificacoes ? <AntesDeApresentar itens={verificacoes} /> : null}
+            {calculo && dados.atletas ? (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <Star className="size-4 text-accent" aria-hidden="true" />
+                  <p className="text-sm font-bold text-text">Novos atletas · {calculo.novos.length}</p>
+                </div>
+                <EditorNovos atletas={dados.atletas} novos={calculo.novos} rascunho={rascunho} onChange={atualizar} />
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="flex items-stretch gap-x-4 gap-y-3 overflow-x-auto pb-1">
+            <GrupoDaFaixa nome="Baixar">
+              <BotaoDaFaixa
+                icone={exportando !== null && formato === "pdf" ? <Loader2 className="animate-spin" /> : <Download />}
+                rotulo={exportando !== null && formato === "pdf" ? `PDF ${exportando}/${total}` : "PDF"}
+                onClick={() => void baixarPdf()}
+                disabled={!calculo || exportando !== null}
+              />
+              <BotaoDaFaixa
+                icone={exportando !== null && formato === "pptx" ? <Loader2 className="animate-spin" /> : <Presentation />}
+                rotulo={exportando !== null && formato === "pptx" ? `PowerPoint ${exportando}/${total}` : "PowerPoint"}
+                onClick={() => void baixarPptx()}
+                disabled={!calculo || exportando !== null}
+                title="Slides escritos com texto editável, slides de números como imagem, anotações incluídas"
+              />
+            </GrupoDaFaixa>
+            {podeEnviar ? (
+              <>
+                <SeparadorDaFaixa />
+                <GrupoDaFaixa nome="Compartilhar">
+                  <BotaoDaFaixa icone={<Send />} rotulo="Enviar aos atletas" onClick={() => setEnvio((e) => ({ versao: e.versao + 1, aberto: true }))} disabled={!resumoAtletas} title="Publica um resumo dos resultados como notícia" />
+                </GrupoDaFaixa>
               </>
-            ) : (
-              <div className="h-40 animate-pulse rounded-[var(--radius)] bg-bg-inset" />
-            )}
-          </Card>
-
-          {rascunho ? (
-            <Card className="flex flex-col gap-3">
-              <div>
-                <p className="text-sm font-bold text-text">Aparência</p>
-                <p className="text-xs text-text-light">Fonte, transição e animações da apresentação inteira.</p>
-              </div>
-              <TemaApresentacao tema={rascunho.tema} onChange={(t) => atualizar({ tema: t })} />
-            </Card>
-          ) : null}
-
-          {rascunho ? (
-            <Card className="flex flex-col gap-3">
-              <div>
-                <p className="text-sm font-bold text-text">Roteiro</p>
-                <p className="text-xs text-text-light">Ligue, desligue e mude a ordem. Os slides livres você escreve.</p>
-              </div>
-              <EditorRoteiro roteiro={rascunho} imagens={imagens} premios={calculo?.premios} onChange={(r) => atualizar(r)} onIrPara={irPara} />
-            </Card>
-          ) : null}
-
-          {rascunho && calculo && dados.atletas ? (
-            <Card className="flex flex-col gap-3">
-              <div className="flex items-center gap-2">
-                <Star className="size-4 text-accent" aria-hidden="true" />
-                <p className="text-sm font-bold text-text">Novos atletas · {calculo.novos.length}</p>
-              </div>
-              <EditorNovos atletas={dados.atletas} novos={calculo.novos} rascunho={rascunho} onChange={atualizar} />
-            </Card>
-          ) : null}
-        </div>
-
-        <div className="flex min-w-0 flex-col gap-3">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-semibold text-text-light">
-              {calculo ? `${plural(total, "slide")} · toque para apresentar a partir dele` : "Calculando os resultados…"}
-            </p>
+            ) : null}
             {calculo ? (
-              <p className="hidden items-center gap-1.5 text-xs text-text-muted sm:flex">
-                <Search className="size-3.5" aria-hidden="true" />
+              <p className="ml-auto hidden max-w-60 self-center text-xs text-text-light sm:block">
                 {calculo.corrida.ranking.length + calculo.bicicleta.ranking.length} atletas nos resultados
+                {minutosPlanejados ? ` · ${String(minutosPlanejados).replace(".", ",")} min planejados` : ""}.
               </p>
             ) : null}
           </div>
-          {!calculo ? (
-            <div className="grid gap-3 sm:grid-cols-2">
+        )}
+      </FaixaDeOpcoes>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start">
+        <aside className="order-last rounded-[var(--radius-lg)] border border-border bg-bg-card p-2 lg:sticky lg:top-[84px] lg:order-none lg:max-h-[calc(100dvh-100px)] lg:overflow-y-auto">
+          {calculo && rascunho ? (
+            <PainelDeSlides
+              secoes={secoesDoPainel}
+              secaoSelecionada={secaoSelecionada}
+              indiceSelecionado={indiceAtual}
+              miniatura={(i) => <SlideEscalado>{renderSlide(i)}</SlideEscalado>}
+              onSelecionarSecao={selecionarSecao}
+              onSelecionarSlide={selecionarSlide}
+              onAbrir={(i) => {
+                selecionarSlide(i);
+                setAba("slide");
+                mudarRecolhida(false);
+              }}
+              onMostrar={acoes.mostrar}
+              onMover={acoes.mover}
+            />
+          ) : (
+            <div className="flex flex-col gap-2">
               {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="aspect-video animate-pulse rounded-[var(--radius-lg)] bg-bg-inset" />
+                <div key={i} className="aspect-video animate-pulse rounded-[6px] bg-bg-inset" />
               ))}
             </div>
-          ) : (
-            <ol className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
-              {calculo.slides.map((s, i) => (
-                <li key={s.chave} id={`slide-${s.chave}`} className="scroll-mt-24">
-                  <button
-                    type="button"
-                    onClick={() => setApresentando(i)}
-                    className={cn(
-                      "group block w-full overflow-hidden rounded-[var(--radius-lg)] border bg-bg-card text-left shadow-sm transition-[box-shadow,border-color] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                      destaque && s.secaoId === destaque ? "border-primary ring-2 ring-primary" : "border-border",
-                    )}
-                    aria-label={`Apresentar a partir do slide ${i + 1}: ${s.rotulo ?? ""}`}
-                  >
-                    <SlideEscalado>{renderSlide(i)}</SlideEscalado>
-                    <span className="flex items-center justify-between gap-2 px-3 py-2 text-xs">
-                      <span className="min-w-0 truncate font-semibold text-text">
-                        <span className="tabular-nums text-text-muted">{i + 1}</span> {s.rotulo}
-                      </span>
-                      <span className="shrink-0 font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">Apresentar daqui</span>
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ol>
           )}
+        </aside>
+
+        <div className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-[84px]">
+          <div className="flex items-center justify-between gap-2">
+            <p className="min-w-0 truncate text-sm text-text-light">
+              {slideAtual ? (
+                <>
+                  <span className="font-semibold text-text">Slide {indiceAtual + 1}</span> de {total} · {slideAtual.rotulo}
+                </>
+              ) : secaoAtual && !secaoAtual.ativo ? (
+                <span className="font-semibold text-text">{nomeSecaoAtual} · oculto</span>
+              ) : (
+                "Calculando os resultados…"
+              )}
+            </p>
+            <div className="flex shrink-0 items-center gap-1">
+              <Button size="sm" variant="ghost" onClick={() => irPorSeta(-1)} disabled={!calculo || indiceAtual <= 0} aria-label="Slide anterior">
+                <ChevronLeft className="size-4" aria-hidden="true" />
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => irPorSeta(1)} disabled={!calculo || indiceAtual >= total - 1} aria-label="Próximo slide">
+                <ChevronRight className="size-4" aria-hidden="true" />
+              </Button>
+            </div>
+          </div>
+          {!calculo ? (
+            <div className="aspect-video animate-pulse rounded-[var(--radius-lg)] bg-bg-inset" />
+          ) : secaoAtual && !secaoAtual.ativo ? (
+            <div className="flex aspect-video flex-col items-center justify-center gap-3 rounded-[var(--radius-lg)] border-2 border-dashed border-border bg-bg-inset/40 p-6 text-center">
+              <EyeOff className="size-8 text-text-muted" aria-hidden="true" />
+              <p className="text-sm text-text-light">Esta seção está oculta e não entra na apresentação.</p>
+              <Button size="sm" variant="secondary" onClick={() => acoes.mostrar(secaoAtual.id, true)}>
+                <Eye className="size-4" aria-hidden="true" />
+                Mostrar na apresentação
+              </Button>
+            </div>
+          ) : slideAtual ? (
+            <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border shadow-[var(--shadow-elevated)]">
+              <SlideEscalado>{renderSlide(indiceAtual)}</SlideEscalado>
+            </div>
+          ) : (
+            <div className="flex aspect-video items-center justify-center rounded-[var(--radius-lg)] border-2 border-dashed border-border p-6 text-center text-sm text-text-light">
+              Esta seção não tem slide agora (por exemplo, ninguém fez aniversário no período).
+            </div>
+          )}
+          {slideAtual ? (
+            <div className="flex flex-col gap-1">
+              <label htmlFor="notas-slide" className="text-xs font-semibold text-text-light">
+                Anotações do apresentador <span className="font-normal text-text-muted">· só aparecem na sua tela, valem para toda a seção</span>
+              </label>
+              <textarea
+                id="notas-slide"
+                rows={3}
+                value={notaDoSlide(indiceAtual)}
+                onChange={(e) => mudarNota(indiceAtual, e.target.value.slice(0, 2000))}
+                placeholder="Clique para adicionar anotações"
+                className="w-full resize-y rounded-[var(--radius)] border border-border bg-bg-card px-3 py-2 text-sm text-text outline-none placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/15"
+              />
+            </div>
+          ) : null}
         </div>
       </div>
+
+      {rascunho ? (
+        <GaleriaDeSlides
+          aberta={galeria}
+          onFechar={() => setGaleria(false)}
+          onLivre={(layout) => {
+            setGaleria(false);
+            acoes.adicionarLivre(layout, secaoSelecionada);
+          }}
+          onSecao={(tipo, periodo) => {
+            setGaleria(false);
+            acoes.adicionarSecao(tipo, periodo, secaoSelecionada);
+          }}
+          onPremio={() => {
+            setGaleria(false);
+            acoes.adicionarPremio(secaoSelecionada);
+          }}
+        />
+      ) : null}
 
       {apresentando !== null && calculo ? (
         <Apresentador

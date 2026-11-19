@@ -1,13 +1,12 @@
 "use client";
 
 import { useId, useRef, useState } from "react";
-import { Award, BarChart3, Bold, ChevronDown, Copy, ImagePlus, Images, LayoutTemplate, MessageSquareQuote, Plus, Sparkles, GripVertical, Trash2, TrendingUp, Trophy, Type } from "lucide-react";
-import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent, type Modifier } from "@dnd-kit/core";
-import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { Award, BarChart3, Bold, ImagePlus, Images, LayoutTemplate, MessageSquareQuote, Sparkles, TrendingUp, Trophy, Type } from "lucide-react";
+import { arrayMove } from "@dnd-kit/sortable";
+import { GRADE_EDITOR } from "@/components/reuniao/estiloEditor";
 import { FormatacaoLivre } from "@/components/reuniao/FormatacaoLivre";
 import { EditorPremio } from "@/components/reuniao/EditorPremio";
-import { novoPremio, pesosNormalizados, rotuloDoCriterio, type PremioPersonalizado, type ResultadoPremio } from "@/lib/premiacaoPersonalizada";
+import { novoPremio, type PremioPersonalizado, type ResultadoPremio } from "@/lib/premiacaoPersonalizada";
 import { cn } from "@/lib/cn";
 import { IMAGEM_SLIDE_LADO } from "@/lib/fotoRegras";
 import { reduzirImagem } from "@/lib/fotos";
@@ -16,11 +15,9 @@ import {
   CAMPOS_DE_TEXTO,
   CATEGORIAS_DESTAQUE,
   categoriasDaSecao,
-  nomeDaSecao,
   novoSlideLivre,
   SECOES_COM_PERIODO,
   TEXTOS_PADRAO,
-  TITULO_SECAO,
   type ReuniaoResultadosDoc,
   type SecaoReuniao,
   type SlideLivre,
@@ -32,9 +29,8 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
-import { Switch } from "@/components/ui/Switch";
 
-type Roteiro = Pick<ReuniaoResultadosDoc, "secoes" | "livres"> & Partial<Pick<ReuniaoResultadosDoc, "textos" | "tempos" | "contagem" | "premios">>;
+export type Roteiro = Pick<ReuniaoResultadosDoc, "secoes" | "livres"> & Partial<Pick<ReuniaoResultadosDoc, "textos" | "tempos" | "contagem" | "premios">>;
 
 /** Minutos planejados para a seção (a tela do apresentador avisa quando passa). */
 function TempoPlanejado({ minutos, onChange }: { minutos?: number; onChange: (m: number | null) => void }) {
@@ -82,7 +78,7 @@ function EditorSecao({
   const mudarSecao = (campos: Partial<SecaoReuniao>) => onChange({ secoes: roteiro.secoes.map((x) => (x.id === secao.id ? { ...x, ...campos } : x)) });
   const categorias = categoriasDaSecao(secao);
   return (
-    <div className="flex flex-col gap-3 border-t border-border-subtle px-3 pb-3 pt-3">
+    <div className={GRADE_EDITOR}>
       {SECOES_COM_PERIODO.includes(secao.tipo) ? (
         <div className="flex flex-col gap-1.5">
           <span className="text-sm font-medium text-text">Números de</span>
@@ -99,9 +95,9 @@ function EditorSecao({
         </div>
       ) : null}
       {secao.tipo === "destaques" ? (
-        <fieldset className="flex flex-col gap-1.5">
+        <fieldset className="col-span-full flex flex-col gap-1.5">
           <legend className="mb-1 text-sm font-medium text-text">Quais destaques entram</legend>
-          <div className="grid gap-1.5 sm:grid-cols-2">
+          <div className="grid gap-1.5 sm:grid-cols-2 xl:grid-cols-4">
             {CATEGORIAS_DESTAQUE.map((c) => (
               <label key={c.id} className="flex cursor-pointer items-start gap-2 rounded-[var(--radius-sm)] border border-border px-2.5 py-2 text-sm hover:bg-bg-inset/60">
                 <input
@@ -237,7 +233,7 @@ function EditorLivre({
 
   if (livre.layout === "fala") {
     return (
-      <div className="flex flex-col gap-3 border-t border-border-subtle px-3 pb-3 pt-3">
+      <div className={GRADE_EDITOR}>
         <TextField label="Nome" value={livre.titulo} maxLength={60} placeholder="Ex.: Maria Souza" onChange={(e) => onChange({ ...livre, titulo: e.target.value })} />
         <TextField label="Cargo ou papel" value={livre.sobretitulo} maxLength={60} placeholder="Ex.: Diretora de Gente e Gestão" onChange={(e) => onChange({ ...livre, sobretitulo: e.target.value })} />
         <div className="flex flex-col gap-1.5">
@@ -262,7 +258,7 @@ function EditorLivre({
   if (livre.layout === "retrospectiva") return <EditorRetrospectiva livre={livre} onChange={onChange} />;
 
   return (
-    <div className="flex flex-col gap-3 border-t border-border-subtle px-3 pb-3 pt-3">
+    <div className={GRADE_EDITOR}>
       <div className="flex gap-1 rounded-[var(--radius)] bg-bg-inset p-1" role="radiogroup" aria-label="Tipo do slide">
         {(
           [
@@ -376,7 +372,7 @@ const GRUPOS_GALERIA: { titulo: string; opcoes: OpcaoGaleria[] }[] = [
 ];
 
 /** Galeria para incluir slides: os escritos pelo comitê e os de números (inclusive do ano). */
-function GaleriaDeSlides({
+export function GaleriaDeSlides({
   aberta,
   onFechar,
   onLivre,
@@ -423,250 +419,109 @@ function GaleriaDeSlides({
   );
 }
 
-/** Só sobe e desce: a lista é uma coluna. */
-const soNaVertical: Modifier = ({ transform }) => ({ ...transform, x: 0 });
-
-/** Textos que o leitor de tela fala enquanto arrasta. */
-function anuncios(nome: (id: string | number) => string, posicao: (id: string | number) => number) {
-  return {
-    onDragStart: ({ active }: { active: { id: string | number } }) => `${nome(active.id)} pego, na posição ${posicao(active.id)}. Use as setas para mover e espaço para soltar.`,
-    onDragOver: ({ active, over }: { active: { id: string | number }; over: { id: string | number } | null }) => (over ? `${nome(active.id)} na posição ${posicao(over.id)}.` : undefined),
-    onDragEnd: ({ active, over }: { active: { id: string | number }; over: { id: string | number } | null }) => (over ? `${nome(active.id)} solto na posição ${posicao(over.id)}.` : `${nome(active.id)} solto.`),
-    onDragCancel: ({ active }: { active: { id: string | number } }) => `Cancelado: ${nome(active.id)} voltou ao lugar.`,
-  };
-}
-
-/** Item da lista que se arrasta pela alça (mouse, toque ou teclado). */
-function ItemArrastavel({ id, titulo, className, children }: { id: string; titulo: string; className: string; children: (alca: React.ReactNode) => React.ReactNode }) {
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id });
-  const alca = (
-    <button
-      ref={setActivatorNodeRef}
-      type="button"
-      {...attributes}
-      {...listeners}
-      aria-roledescription="item arrastável"
-      aria-label={`Mudar ${titulo} de lugar`}
-      title="Arraste para mudar de lugar"
-      className="flex h-12 w-7 shrink-0 cursor-grab touch-none items-center justify-center rounded text-text-muted hover:bg-bg-inset hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:cursor-grabbing"
-    >
-      <GripVertical className="size-4" aria-hidden="true" />
-    </button>
-  );
-  return (
-    <li
-      ref={setNodeRef}
-      style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={cn(className, isDragging && "relative z-10 opacity-100 shadow-[var(--shadow-elevated)] ring-2 ring-primary/40")}
-    >
-      {children(alca)}
-    </li>
-  );
-}
-
-/** Lista das seções: ligar/desligar, arrastar para mudar a ordem, editar e incluir slides livres. */
-export function EditorRoteiro({
-  roteiro,
-  imagens,
-  premios: resultados,
-  onChange,
-  onIrPara,
-}: {
-  roteiro: Roteiro;
-  imagens: Record<string, string>;
-  /** Premiações com critérios já calculadas, para a classificação ao vivo no editor. */
-  premios?: Record<string, ResultadoPremio>;
-  onChange: (r: Partial<Roteiro>) => void;
-  /** Tocar numa seção mostra os slides dela na prévia. */
-  onIrPara?: (secaoId: string) => void;
-}) {
-  const [aberto, setAberto] = useState<string | null>(null);
-  const [galeria, setGaleria] = useState(false);
+/** Ações sobre o roteiro: incluir, duplicar, remover, mudar de lugar e editar um slide. */
+export function useAcoesDoRoteiro(roteiro: Roteiro, onChange: (r: Partial<Roteiro>) => void, aoCriar?: (secaoId: string) => void) {
   const livres = new Map(roteiro.livres.map((l) => [l.id, l]));
   const premios = new Map((roteiro.premios ?? []).map((p) => [p.id, p]));
 
-  const sensores = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
-  const ids = roteiro.secoes.map((s) => s.id);
-  const nomeDe = (id: string | number) => {
-    const s = roteiro.secoes.find((x) => x.id === id);
-    return s ? nomeDaSecao(s, livres.get(s.id), premios.get(s.id)) : "Slide";
-  };
-  const posicaoDe = (id: string | number) => ids.indexOf(String(id)) + 1;
-
-  function soltar({ active, over }: DragEndEvent) {
-    if (!over || active.id === over.id) return;
-    const de = ids.indexOf(String(active.id));
-    const para = ids.indexOf(String(over.id));
-    if (de < 0 || para < 0) return;
-    onChange({ ...roteiro, secoes: arrayMove(roteiro.secoes, de, para) });
-  }
-
-  function atualizarSecao(id: string, campos: Partial<SecaoReuniao>) {
-    onChange({ ...roteiro, secoes: roteiro.secoes.map((s) => (s.id === id ? { ...s, ...campos } : s)) });
-  }
-
-  function atualizarLivre(l: SlideLivre) {
-    onChange({ ...roteiro, livres: roteiro.livres.map((x) => (x.id === l.id ? l : x)) });
-  }
-
-  /** Novos slides entram antes do "Obrigado" (ou no fim) e já abertos para editar. */
-  function inserir(secao: SecaoReuniao, extra: Partial<Roteiro> = {}) {
-    const fim = roteiro.secoes.findIndex((s) => s.tipo === "obrigado");
+  /** Novos slides entram logo depois do selecionado (ou antes do "Obrigado"). */
+  function inserir(secao: SecaoReuniao, extra: Partial<Roteiro> = {}, depoisDe?: string | null) {
     const secoes = [...roteiro.secoes];
-    secoes.splice(fim >= 0 ? fim : secoes.length, 0, secao);
+    const i = depoisDe ? secoes.findIndex((s) => s.id === depoisDe) : -1;
+    const fim = secoes.findIndex((s) => s.tipo === "obrigado");
+    secoes.splice(i >= 0 ? i + 1 : fim >= 0 ? fim : secoes.length, 0, secao);
     onChange({ secoes, ...extra });
-    setAberto(secao.id);
-    setGaleria(false);
-    onIrPara?.(secao.id);
+    aoCriar?.(secao.id);
   }
 
-  function adicionar(layout: SlideLivre["layout"]) {
-    const l = novoSlideLivre(layout);
-    inserir({ id: l.id, tipo: "livre", ativo: true }, { livres: [...roteiro.livres, l] });
-  }
-
-  function adicionarPremio() {
-    const p = novoPremio();
-    inserir({ id: p.id, tipo: "premio", ativo: true }, { premios: [...(roteiro.premios ?? []), p] });
-  }
-
-  function atualizarPremio(p: PremioPersonalizado) {
-    onChange({ premios: (roteiro.premios ?? []).map((x) => (x.id === p.id ? p : x)) });
-  }
-
-  function adicionarSecao(tipo: TipoSecao, periodo?: "ano") {
-    // Um segundo slide de destaques do mesmo período começa com as categorias que o primeiro não mostra.
-    const jaTem = tipo === "destaques" && roteiro.secoes.some((x) => x.tipo === "destaques" && (x.periodo ?? "reuniao") === (periodo ?? "reuniao"));
-    const destaques = jaTem ? CATEGORIAS_DESTAQUE.filter((c) => !c.padrao).map((c) => c.id) : undefined;
-    inserir({ id: `s-${Math.random().toString(36).slice(2, 9)}`, tipo, ativo: true, ...(periodo ? { periodo } : {}), ...(destaques ? { destaques } : {}) });
-  }
-
-  /** Duplicar: a cópia entra logo abaixo, já aberta para editar. */
-  function duplicar(id: string) {
-    const premio = premios.get(id);
-    if (premio) {
+  return {
+    livres,
+    premios,
+    adicionarLivre(layout: SlideLivre["layout"], depoisDe?: string | null) {
+      const l = novoSlideLivre(layout);
+      inserir({ id: l.id, tipo: "livre", ativo: true }, { livres: [...roteiro.livres, l] }, depoisDe);
+    },
+    adicionarPremio(depoisDe?: string | null) {
+      const p = novoPremio();
+      inserir({ id: p.id, tipo: "premio", ativo: true }, { premios: [...(roteiro.premios ?? []), p] }, depoisDe);
+    },
+    adicionarSecao(tipo: TipoSecao, periodo?: "ano", depoisDe?: string | null) {
+      // Um segundo slide de destaques do mesmo período começa com as categorias que o primeiro não mostra.
+      const jaTem = tipo === "destaques" && roteiro.secoes.some((x) => x.tipo === "destaques" && (x.periodo ?? "reuniao") === (periodo ?? "reuniao"));
+      const destaques = jaTem ? CATEGORIAS_DESTAQUE.filter((c) => !c.padrao).map((c) => c.id) : undefined;
+      inserir({ id: `s-${Math.random().toString(36).slice(2, 9)}`, tipo, ativo: true, ...(periodo ? { periodo } : {}), ...(destaques ? { destaques } : {}) }, {}, depoisDe);
+    },
+    /** Só slides escritos e prêmios se duplicam; a cópia entra logo abaixo. */
+    podeDuplicar: (id: string) => livres.has(id) || premios.has(id),
+    duplicar(id: string) {
       const i = roteiro.secoes.findIndex((s) => s.id === id);
-      const copia: PremioPersonalizado = { ...premio, id: novoPremio().id, titulo: `${premio.titulo} (cópia)`.slice(0, 60) };
+      if (i < 0) return;
+      const premio = premios.get(id);
+      const original = livres.get(id);
       const secoes = [...roteiro.secoes];
-      secoes.splice(i + 1, 0, { id: copia.id, tipo: "premio", ativo: true });
-      onChange({ secoes, premios: [...(roteiro.premios ?? []), copia] });
-      setAberto(copia.id);
-      return;
-    }
-    const original = livres.get(id);
-    const i = roteiro.secoes.findIndex((s) => s.id === id);
-    if (!original || i < 0) return;
-    const copia: SlideLivre = { ...original, id: novoSlideLivre(original.layout).id };
-    const secoes = [...roteiro.secoes];
-    secoes.splice(i + 1, 0, { id: copia.id, tipo: "livre", ativo: true });
-    onChange({ secoes, livres: [...roteiro.livres, copia] });
-    setAberto(copia.id);
-  }
+      if (premio) {
+        const copia: PremioPersonalizado = { ...premio, id: novoPremio().id, titulo: `${premio.titulo} (cópia)`.slice(0, 60) };
+        secoes.splice(i + 1, 0, { id: copia.id, tipo: "premio", ativo: true });
+        onChange({ secoes, premios: [...(roteiro.premios ?? []), copia] });
+        aoCriar?.(copia.id);
+      } else if (original) {
+        const copia: SlideLivre = { ...original, id: novoSlideLivre(original.layout).id };
+        secoes.splice(i + 1, 0, { id: copia.id, tipo: "livre", ativo: true });
+        onChange({ secoes, livres: [...roteiro.livres, copia] });
+        aoCriar?.(copia.id);
+      }
+    },
+    /** Slides escritos, prêmios e números repetidos saem; os automáticos únicos só se escondem. */
+    podeRemover(id: string) {
+      const s = roteiro.secoes.find((x) => x.id === id);
+      if (!s) return false;
+      return s.tipo === "livre" || s.tipo === "premio" || roteiro.secoes.filter((x) => x.tipo === s.tipo).length > 1;
+    },
+    remover(id: string) {
+      onChange({ secoes: roteiro.secoes.filter((s) => s.id !== id), livres: roteiro.livres.filter((l) => l.id !== id), premios: (roteiro.premios ?? []).filter((p) => p.id !== id) });
+    },
+    mostrar(id: string, ativo: boolean) {
+      onChange({ secoes: roteiro.secoes.map((s) => (s.id === id ? { ...s, ativo } : s)) });
+    },
+    mover(de: number, para: number) {
+      if (de === para || de < 0 || para < 0) return;
+      onChange({ secoes: arrayMove(roteiro.secoes, de, para) });
+    },
+  };
+}
 
-  function remover(id: string) {
-    onChange({ secoes: roteiro.secoes.filter((s) => s.id !== id), livres: roteiro.livres.filter((l) => l.id !== id), premios: (roteiro.premios ?? []).filter((p) => p.id !== id) });
+/** Os campos do slide escolhido: escrito pelo comitê, prêmio ou slide de números. */
+export function EditorDoSlide({
+  secao,
+  roteiro,
+  imagens,
+  resultados,
+  onChange,
+}: {
+  secao: SecaoReuniao;
+  roteiro: Roteiro;
+  imagens: Record<string, string>;
+  resultados?: Record<string, ResultadoPremio>;
+  onChange: (r: Partial<Roteiro>) => void;
+}) {
+  const livre = secao.tipo === "livre" ? roteiro.livres.find((l) => l.id === secao.id) : undefined;
+  const premio = secao.tipo === "premio" ? roteiro.premios?.find((p) => p.id === secao.id) : undefined;
+  const tempo = <TempoPlanejado minutos={roteiro.tempos?.[secao.id]} onChange={(m) => onChange({ tempos: tempoNovo(roteiro.tempos, secao.id, m) })} />;
+  if (livre) {
+    return (
+      <div className="flex flex-col gap-4">
+        <EditorLivre livre={livre} imagem={livre.imagemId ? imagens[livre.imagemId] : undefined} onChange={(l) => onChange({ livres: roteiro.livres.map((x) => (x.id === l.id ? l : x)) })} />
+        {tempo}
+      </div>
+    );
   }
-
-  return (
-    <div className="flex flex-col gap-2">
-      <DndContext
-        sensors={sensores}
-        collisionDetection={closestCenter}
-        modifiers={[soNaVertical]}
-        onDragEnd={soltar}
-        accessibility={{
-          announcements: anuncios(nomeDe, posicaoDe),
-          screenReaderInstructions: { draggable: "Para mudar de lugar, aperte espaço, use as setas para cima e para baixo e aperte espaço de novo para soltar. Esc cancela." },
-        }}
-      >
-        <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-          <ol className="flex flex-col gap-1.5">
-            {roteiro.secoes.map((s) => {
-              const livre = s.tipo === "livre" ? livres.get(s.id) : undefined;
-              const premio = s.tipo === "premio" ? premios.get(s.id) : undefined;
-              const titulo = nomeDaSecao(s, livre, premio);
-              const pesos = premio ? pesosNormalizados(premio.criterios) : [];
-              const dica = premio
-                ? premio.criterios.map((c, j) => `${rotuloDoCriterio(c)} ${Math.round(pesos[j])}%`).join(" · ")
-                : livre
-                ? {
-                    divisoria: "Divisória · escrito pelo comitê",
-                    enquete: "Enquete ao vivo",
-                    conteudo: "Conteúdo · escrito pelo comitê",
-                    fala: "Fala de uma pessoa",
-                    retrospectiva: "Retrospectiva de fotos do computador",
-                  }[livre.layout]
-                : s.periodo === "ano"
-                  ? `${TITULO_SECAO[s.tipo as Exclude<typeof s.tipo, "livre">].dica}, do ano até agora`
-                  : TITULO_SECAO[s.tipo as Exclude<typeof s.tipo, "livre">].dica;
-              // Slides de números repetidos (ex.: destaques do ano além dos do trimestre) podem sair do roteiro.
-              const removivel = !livre && (!!premio || roteiro.secoes.filter((x) => x.tipo === s.tipo).length > 1);
-              const expandido = aberto === s.id;
-              return (
-                <ItemArrastavel key={s.id} id={s.id} titulo={titulo} className={cn("rounded-[var(--radius)] border bg-bg-card", s.ativo ? "border-border" : "border-dashed border-border opacity-60")}>
-                  {(alca) => (
-                    <>
-                      <div className="flex items-center gap-1 pl-1">
-                        {alca}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAberto(expandido ? null : s.id);
-                            if (s.ativo) onIrPara?.(s.id);
-                          }}
-                          className="flex min-h-14 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] px-2 text-left hover:bg-bg-inset/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                          aria-expanded={expandido}
-                          title={s.ativo ? "Mostrar na prévia" : undefined}
-                        >
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-sm font-semibold text-text">{titulo}</span>
-                            <span className="block truncate text-xs text-text-light">{dica}</span>
-                          </span>
-                          {roteiro.tempos?.[s.id] ? <span className="shrink-0 text-xs tabular-nums text-text-muted">{String(roteiro.tempos[s.id]).replace(".", ",")} min</span> : null}
-                          <ChevronDown className={cn("size-4 shrink-0 text-text-muted transition-transform", expandido && "rotate-180")} aria-hidden="true" />
-                        </button>
-                        {livre || premio ? (
-                          <button type="button" onClick={() => duplicar(s.id)} aria-label={`Duplicar ${titulo}`} title="Duplicar" className="flex size-9 items-center justify-center rounded text-text-muted hover:bg-bg-inset hover:text-text">
-                            <Copy className="size-4" />
-                          </button>
-                        ) : null}
-                        {livre || removivel ? (
-                          <button type="button" onClick={() => remover(s.id)} aria-label={`Remover ${titulo}`} className="flex size-9 items-center justify-center rounded text-text-muted hover:bg-danger/10 hover:text-danger">
-                            <Trash2 className="size-4" />
-                          </button>
-                        ) : null}
-                        <Switch ativo={s.ativo} onChange={(ativo) => atualizarSecao(s.id, { ativo })} rotulo={`Mostrar ${titulo}`} />
-                      </div>
-                      {expandido && livre ? (
-                        <>
-                          <EditorLivre livre={livre} imagem={livre.imagemId ? imagens[livre.imagemId] : undefined} onChange={atualizarLivre} />
-                          <div className="px-3 pb-3">
-                            <TempoPlanejado minutos={roteiro.tempos?.[s.id]} onChange={(m) => onChange({ tempos: tempoNovo(roteiro.tempos, s.id, m) })} />
-                          </div>
-                        </>
-                      ) : expandido && premio ? (
-                        <>
-                          <EditorPremio premio={premio} resultado={resultados?.[premio.id]} onChange={atualizarPremio} />
-                          <div className="px-3 pb-3">
-                            <TempoPlanejado minutos={roteiro.tempos?.[s.id]} onChange={(m) => onChange({ tempos: tempoNovo(roteiro.tempos, s.id, m) })} />
-                          </div>
-                        </>
-                      ) : expandido ? (
-                        <EditorSecao secao={s} roteiro={roteiro} onChange={onChange} />
-                      ) : null}
-                    </>
-                  )}
-                </ItemArrastavel>
-              );
-            })}
-          </ol>
-        </SortableContext>
-      </DndContext>
-      <Button type="button" variant="secondary" className="w-full" onClick={() => setGaleria(true)}>
-        <Plus className="size-4" aria-hidden="true" />
-        Adicionar slide
-      </Button>
-      <GaleriaDeSlides aberta={galeria} onFechar={() => setGaleria(false)} onLivre={adicionar} onSecao={adicionarSecao} onPremio={adicionarPremio} />
-    </div>
-  );
+  if (premio) {
+    return (
+      <div className="flex flex-col gap-4">
+        <EditorPremio premio={premio} resultado={resultados?.[premio.id]} onChange={(p) => onChange({ premios: (roteiro.premios ?? []).map((x) => (x.id === p.id ? p : x)) })} />
+        {tempo}
+      </div>
+    );
+  }
+  return <EditorSecao secao={secao} roteiro={roteiro} onChange={onChange} />;
 }
