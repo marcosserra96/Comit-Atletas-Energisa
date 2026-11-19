@@ -1,8 +1,10 @@
 "use client";
 
 import { useId, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, Award, BarChart3, Bold, ChevronDown, Copy, FolderOpen, ImagePlus, Images, LayoutTemplate, MessageSquareQuote, Plus, Sparkles, Trash2, TrendingUp, Type } from "lucide-react";
+import { ArrowDown, ArrowUp, Award, BarChart3, Bold, ChevronDown, Copy, FolderOpen, ImagePlus, Images, LayoutTemplate, MessageSquareQuote, Plus, Sparkles, Trash2, TrendingUp, Trophy, Type } from "lucide-react";
 import { FormatacaoLivre } from "@/components/reuniao/FormatacaoLivre";
+import { EditorPremio } from "@/components/reuniao/EditorPremio";
+import { novoPremio, pesosNormalizados, rotuloDoCriterio, type PremioPersonalizado, type ResultadoPremio } from "@/lib/premiacaoPersonalizada";
 import { cn } from "@/lib/cn";
 import { IMAGEM_SLIDE_LADO } from "@/lib/fotoRegras";
 import { reduzirImagem } from "@/lib/fotos";
@@ -29,7 +31,7 @@ import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
 import { Switch } from "@/components/ui/Switch";
 
-type Roteiro = Pick<ReuniaoResultadosDoc, "secoes" | "livres"> & Partial<Pick<ReuniaoResultadosDoc, "textos" | "tempos" | "contagem">>;
+type Roteiro = Pick<ReuniaoResultadosDoc, "secoes" | "livres"> & Partial<Pick<ReuniaoResultadosDoc, "textos" | "tempos" | "contagem" | "premios">>;
 
 /** Minutos planejados para a seção (a tela do apresentador avisa quando passa). */
 function TempoPlanejado({ minutos, onChange }: { minutos?: number; onChange: (m: number | null) => void }) {
@@ -401,7 +403,7 @@ function EditorLivre({
   );
 }
 
-type OpcaoGaleria = { titulo: string; descricao: string; icone: typeof Type } & ({ livre: SlideLivre["layout"] } | { secao: TipoSecao; periodo?: "ano" });
+type OpcaoGaleria = { titulo: string; descricao: string; icone: typeof Type } & ({ livre: SlideLivre["layout"] } | { secao: TipoSecao; periodo?: "ano" } | { premio: true });
 
 const GRUPOS_GALERIA: { titulo: string; opcoes: OpcaoGaleria[] }[] = [
   {
@@ -419,6 +421,7 @@ const GRUPOS_GALERIA: { titulo: string; opcoes: OpcaoGaleria[] }[] = [
     opcoes: [
       { secao: "resultados", periodo: "ano", titulo: "Resultados do ano", descricao: "Treinos, pontos e km do ano até agora", icone: TrendingUp },
       { secao: "destaques", periodo: "ano", titulo: "Destaques do ano", descricao: "Quem se destacou no ano até agora", icone: Sparkles },
+      { premio: true, titulo: "Premiação com critérios", descricao: "Atleta do ano e outros prêmios, com os pesos que você define", icone: Trophy },
       { secao: "premiacao", periodo: "ano", titulo: "Premiação do ano", descricao: "Pódio e classificação do ano até agora", icone: Award },
       { secao: "destaques", titulo: "Mais destaques do período", descricao: "Outro slide com outras categorias", icone: Sparkles },
     ],
@@ -431,11 +434,13 @@ function GaleriaDeSlides({
   onFechar,
   onLivre,
   onSecao,
+  onPremio,
 }: {
   aberta: boolean;
   onFechar: () => void;
   onLivre: (layout: SlideLivre["layout"]) => void;
   onSecao: (tipo: TipoSecao, periodo?: "ano") => void;
+  onPremio: () => void;
 }) {
   return (
     <Modal open={aberta} onClose={onFechar} title="Adicionar slide" description="Ele entra antes do Obrigado. Use as setas da lista para mudar de lugar." size="lg" mobileSheet>
@@ -450,7 +455,7 @@ function GaleriaDeSlides({
                   <button
                     key={o.titulo}
                     type="button"
-                    onClick={() => ("livre" in o ? onLivre(o.livre) : onSecao(o.secao, o.periodo))}
+                    onClick={() => ("livre" in o ? onLivre(o.livre) : "premio" in o ? onPremio() : onSecao(o.secao, o.periodo))}
                     className="flex items-start gap-3 rounded-[var(--radius)] border border-border p-3 text-left transition-colors hover:border-primary/40 hover:bg-bg-inset/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     <span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-primary-subtle text-primary">
@@ -475,11 +480,14 @@ function GaleriaDeSlides({
 export function EditorRoteiro({
   roteiro,
   imagens,
+  premios: resultados,
   onChange,
   onIrPara,
 }: {
   roteiro: Roteiro;
   imagens: Record<string, string>;
+  /** Premiações com critérios já calculadas, para a classificação ao vivo no editor. */
+  premios?: Record<string, ResultadoPremio>;
   onChange: (r: Partial<Roteiro>) => void;
   /** Tocar numa seção mostra os slides dela na prévia. */
   onIrPara?: (secaoId: string) => void;
@@ -487,6 +495,7 @@ export function EditorRoteiro({
   const [aberto, setAberto] = useState<string | null>(null);
   const [galeria, setGaleria] = useState(false);
   const livres = new Map(roteiro.livres.map((l) => [l.id, l]));
+  const premios = new Map((roteiro.premios ?? []).map((p) => [p.id, p]));
 
   function mover(i: number, delta: number) {
     const secoes = [...roteiro.secoes];
@@ -505,11 +514,11 @@ export function EditorRoteiro({
   }
 
   /** Novos slides entram antes do "Obrigado" (ou no fim) e já abertos para editar. */
-  function inserir(secao: SecaoReuniao, livre?: SlideLivre) {
+  function inserir(secao: SecaoReuniao, extra: Partial<Roteiro> = {}) {
     const fim = roteiro.secoes.findIndex((s) => s.tipo === "obrigado");
     const secoes = [...roteiro.secoes];
     secoes.splice(fim >= 0 ? fim : secoes.length, 0, secao);
-    onChange({ secoes, ...(livre ? { livres: [...roteiro.livres, livre] } : {}) });
+    onChange({ secoes, ...extra });
     setAberto(secao.id);
     setGaleria(false);
     onIrPara?.(secao.id);
@@ -517,7 +526,16 @@ export function EditorRoteiro({
 
   function adicionar(layout: SlideLivre["layout"]) {
     const l = novoSlideLivre(layout);
-    inserir({ id: l.id, tipo: "livre", ativo: true }, l);
+    inserir({ id: l.id, tipo: "livre", ativo: true }, { livres: [...roteiro.livres, l] });
+  }
+
+  function adicionarPremio() {
+    const p = novoPremio();
+    inserir({ id: p.id, tipo: "premio", ativo: true }, { premios: [...(roteiro.premios ?? []), p] });
+  }
+
+  function atualizarPremio(p: PremioPersonalizado) {
+    onChange({ premios: (roteiro.premios ?? []).map((x) => (x.id === p.id ? p : x)) });
   }
 
   function adicionarSecao(tipo: TipoSecao, periodo?: "ano") {
@@ -529,6 +547,16 @@ export function EditorRoteiro({
 
   /** Duplicar: a cópia entra logo abaixo, já aberta para editar. */
   function duplicar(id: string) {
+    const premio = premios.get(id);
+    if (premio) {
+      const i = roteiro.secoes.findIndex((s) => s.id === id);
+      const copia: PremioPersonalizado = { ...premio, id: novoPremio().id, titulo: `${premio.titulo} (cópia)`.slice(0, 60) };
+      const secoes = [...roteiro.secoes];
+      secoes.splice(i + 1, 0, { id: copia.id, tipo: "premio", ativo: true });
+      onChange({ secoes, premios: [...(roteiro.premios ?? []), copia] });
+      setAberto(copia.id);
+      return;
+    }
     const original = livres.get(id);
     const i = roteiro.secoes.findIndex((s) => s.id === id);
     if (!original || i < 0) return;
@@ -540,7 +568,7 @@ export function EditorRoteiro({
   }
 
   function remover(id: string) {
-    onChange({ secoes: roteiro.secoes.filter((s) => s.id !== id), livres: roteiro.livres.filter((l) => l.id !== id) });
+    onChange({ secoes: roteiro.secoes.filter((s) => s.id !== id), livres: roteiro.livres.filter((l) => l.id !== id), premios: (roteiro.premios ?? []).filter((p) => p.id !== id) });
   }
 
   return (
@@ -548,8 +576,12 @@ export function EditorRoteiro({
       <ol className="flex flex-col gap-1.5">
         {roteiro.secoes.map((s, i) => {
           const livre = s.tipo === "livre" ? livres.get(s.id) : undefined;
-          const titulo = nomeDaSecao(s, livre);
-          const dica = livre
+          const premio = s.tipo === "premio" ? premios.get(s.id) : undefined;
+          const titulo = nomeDaSecao(s, livre, premio);
+          const pesos = premio ? pesosNormalizados(premio.criterios) : [];
+          const dica = premio
+            ? premio.criterios.map((c, j) => `${rotuloDoCriterio(c)} ${Math.round(pesos[j])}%`).join(" · ")
+            : livre
             ? {
                 divisoria: "Divisória · escrito pelo comitê",
                 enquete: "Enquete ao vivo",
@@ -561,7 +593,7 @@ export function EditorRoteiro({
               ? `${TITULO_SECAO[s.tipo as Exclude<typeof s.tipo, "livre">].dica}, do ano até agora`
               : TITULO_SECAO[s.tipo as Exclude<typeof s.tipo, "livre">].dica;
           // Slides de números repetidos (ex.: destaques do ano além dos do trimestre) podem sair do roteiro.
-          const removivel = !livre && roteiro.secoes.filter((x) => x.tipo === s.tipo).length > 1;
+          const removivel = !livre && (!!premio || roteiro.secoes.filter((x) => x.tipo === s.tipo).length > 1);
           const expandido = aberto === s.id;
           return (
             <li key={s.id} className={cn("rounded-[var(--radius)] border bg-bg-card", s.ativo ? "border-border" : "border-dashed border-border opacity-60")}>
@@ -591,7 +623,7 @@ export function EditorRoteiro({
                   {roteiro.tempos?.[s.id] ? <span className="shrink-0 text-xs tabular-nums text-text-muted">{String(roteiro.tempos[s.id]).replace(".", ",")} min</span> : null}
                   <ChevronDown className={cn("size-4 shrink-0 text-text-muted transition-transform", expandido && "rotate-180")} aria-hidden="true" />
                 </button>
-                {livre ? (
+                {livre || premio ? (
                   <button type="button" onClick={() => duplicar(s.id)} aria-label={`Duplicar ${titulo}`} title="Duplicar" className="flex size-9 items-center justify-center rounded text-text-muted hover:bg-bg-inset hover:text-text">
                     <Copy className="size-4" />
                   </button>
@@ -610,6 +642,13 @@ export function EditorRoteiro({
                     <TempoPlanejado minutos={roteiro.tempos?.[s.id]} onChange={(m) => onChange({ tempos: tempoNovo(roteiro.tempos, s.id, m) })} />
                   </div>
                 </>
+              ) : expandido && premio ? (
+                <>
+                  <EditorPremio premio={premio} resultado={resultados?.[premio.id]} onChange={atualizarPremio} />
+                  <div className="px-3 pb-3">
+                    <TempoPlanejado minutos={roteiro.tempos?.[s.id]} onChange={(m) => onChange({ tempos: tempoNovo(roteiro.tempos, s.id, m) })} />
+                  </div>
+                </>
               ) : expandido ? (
                 <EditorSecao secao={s} roteiro={roteiro} onChange={onChange} />
               ) : null}
@@ -621,7 +660,7 @@ export function EditorRoteiro({
         <Plus className="size-4" aria-hidden="true" />
         Adicionar slide
       </Button>
-      <GaleriaDeSlides aberta={galeria} onFechar={() => setGaleria(false)} onLivre={adicionar} onSecao={adicionarSecao} />
+      <GaleriaDeSlides aberta={galeria} onFechar={() => setGaleria(false)} onLivre={adicionar} onSecao={adicionarSecao} onPremio={adicionarPremio} />
     </div>
   );
 }

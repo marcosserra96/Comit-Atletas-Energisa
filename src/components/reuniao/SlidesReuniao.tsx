@@ -22,7 +22,7 @@ import "@fontsource/merriweather/latin-700.css";
 import "@fontsource/merriweather/latin-900.css";
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { iniciais } from "@/lib/fotoRegras";
-import { formatDistancia, formatPontos } from "@/lib/format";
+import { formatDistancia, formatNumero, formatPontos } from "@/lib/format";
 import { modalidadeLabel } from "@/lib/labels";
 import { percentuais } from "@/lib/enquete";
 import { useQrDataUrl } from "@/lib/useQrDataUrl";
@@ -799,6 +799,117 @@ function Podio({ modalidade, podio, fotos, periodo, revelados }: Extract<SlideDe
   );
 }
 
+/** Premiação com critérios do comitê: pódio pela nota, com a conta à vista (critérios e pesos). */
+function Premio({ titulo, periodo, equipe, sexo, criterios, colocados, fotos, revelados }: Extract<SlideDef, { tipo: "premio" }> & { fotos: Record<string, string>; revelados?: number }) {
+  const ordemDeRevelar = [...colocados].sort((a, b) => b.posicao - a.posicao).map((c) => c.posicao);
+  const aparece = (posicao: number) => revelados === undefined || ordemDeRevelar.indexOf(posicao) < revelados;
+  const ordem = (colocados.length === 1 ? [1] : colocados.length === 2 ? [2, 1] : [2, 1, 3]).map((p) => colocados.find((c) => c.posicao === p)).filter((c): c is NonNullable<typeof c> => !!c);
+  const nomeEquipe = equipe === "todas" ? "Corrida e bike" : equipe === "corrida" ? "Corrida" : "Bike";
+  const grupo = sexo === "F" ? " · Feminino" : sexo === "M" ? " · Masculino" : "";
+  const varios = criterios.length > 1;
+  // Cada critério a mais é uma linha a mais no degrau.
+  const extra = (criterios.length - 2) * 38;
+  const altura: Record<number, number> = { 1: 330 + extra, 2: 285 + extra, 3: 255 + extra };
+  const sozinho = colocados.length === 1;
+  return (
+    <Base fundo="claro">
+      <div style={{ position: "absolute", left: 72, top: 50, right: varios ? 700 : 72 }}>
+        <Linha style={{ fontSize: 84, fontWeight: 900, lineHeight: 1, ...laranja }}>{titulo}</Linha>
+        <Linha style={{ fontSize: 120, fontWeight: 900, lineHeight: 1, ...marinho }}>{nomeEquipe}</Linha>
+        <div style={{ marginTop: 18, display: "inline-block", padding: "10px 22px", borderRadius: 999, background: "rgba(255,255,255,.9)", border: "2px solid #d6e3f3", fontSize: 24, fontWeight: 700, color: COR.navy }}>
+          {periodo}
+          {grupo}
+        </div>
+      </div>
+      {varios ? (
+        // A conta do prêmio, para ninguém perguntar "como chegaram nisso?".
+        <div style={{ position: "absolute", right: 72, top: 60, width: 580, padding: "26px 30px", borderRadius: 28, background: "rgba(255,255,255,.92)", border: "2px solid #d6e3f3", boxShadow: "0 12px 30px rgba(7,29,64,.10)", color: COR.navy }}>
+          <div style={{ fontSize: 24, fontWeight: 800, color: COR.cinza }}>Como a nota é calculada</div>
+          <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+            {criterios.map((c) => (
+              <div key={c.rotulo}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 16 }}>
+                  <Linha minimo={0.7} style={{ fontSize: 30, fontWeight: 800, width: "auto", flex: 1, minWidth: 0 }}>{c.rotulo}</Linha>
+                  <span style={{ fontSize: 34, fontWeight: 900, color: COR.laranja }}>{c.peso}%</span>
+                </div>
+                <div style={{ marginTop: 6, height: 10, borderRadius: 5, background: COR.azulClaro, overflow: "hidden" }}>
+                  <div style={{ width: `${c.peso}%`, height: "100%", borderRadius: 5, background: `linear-gradient(90deg, ${COR.laranja}, ${COR.laranjaEscuro})` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {colocados.length === 0 ? (
+        <div style={{ position: "absolute", left: 0, right: 0, top: 460, textAlign: "center", fontSize: 44, fontWeight: 800, color: COR.cinza }}>Ninguém pontuou nesses critérios no período.</div>
+      ) : (
+        <div style={{ position: "absolute", left: 80, right: 80, bottom: 0, top: 120, display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 28 }}>
+          {ordem.map((c) => {
+            const cor = MEDALHA[c.posicao] ?? COR.bronze;
+            const primeiro = c.posicao === 1;
+            // Degrau mais alto (muitos critérios): a foto diminui para não encostar no quadro da conta.
+            const foto = (primeiro ? 330 : 260) - Math.max(0, extra) * 0.6;
+            const largura = sozinho ? 720 : primeiro ? 560 : 460;
+            const medalha = (
+              <span style={{ position: "absolute", left: "50%", bottom: -30, transform: "translateX(-50%)", width: 76, height: 76, borderRadius: "50%", background: `radial-gradient(circle at 35% 30%, #ffffff99, ${cor} 62%)`, border: "5px solid #fff", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 42, fontWeight: 900, textShadow: "0 2px 3px rgba(0,0,0,.3)", boxShadow: "0 6px 14px rgba(0,0,0,.25)" }}>
+                {c.posicao}
+              </span>
+            );
+            const degrau: CSSProperties = {
+              position: "relative",
+              overflow: "hidden",
+              width: "100%",
+              height: altura[c.posicao] ?? 240,
+              borderRadius: "26px 26px 0 0",
+              background: `linear-gradient(180deg, ${COR.navy}, ${COR.navyEscuro})`,
+              borderTop: `12px solid ${cor}`,
+              boxShadow: "0 -10px 30px rgba(7,29,64,.25)",
+            };
+            if (!aparece(c.posicao)) {
+              return (
+                <div key={c.posicao} style={{ flex: `0 1 ${largura}px`, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
+                  <div style={{ position: "relative", marginBottom: 40 }}>
+                    <div style={{ width: foto, height: foto, borderRadius: "50%", background: "rgba(255,255,255,.55)", border: `8px dashed ${cor}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: foto * 0.42, fontWeight: 900, color: cor }}>?</div>
+                    {medalha}
+                  </div>
+                  <div style={{ ...degrau, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,.35)", fontSize: 120, fontWeight: 900 }}>{c.posicao}º</div>
+                </div>
+              );
+            }
+            const [principal, ...outros] = c.valores;
+            return (
+              <div key={c.posicao} style={{ flex: `0 1 ${largura}px`, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
+                <div className={revelados !== undefined ? "podio-revela" : undefined} style={{ position: "relative", marginBottom: 40 }}>
+                  <Avatar nome={c.atleta.nome} foto={fotos[c.atleta.id]} tamanho={foto} anel={cor} />
+                  {medalha}
+                </div>
+                <div className={revelados !== undefined ? "podio-revela-texto" : undefined} style={{ ...degrau, padding: "24px 26px 0", textAlign: "center", color: "#fff" }}>
+                  <Linha minimo={0.7} style={{ fontSize: primeiro ? 40 : 34, fontWeight: 900, lineHeight: 1.1 }}>
+                    {nomeCurto(c.atleta.nome, 22)}
+                  </Linha>
+                  <Linha minimo={0.6} style={{ marginTop: 12, fontSize: primeiro ? 50 : 42, fontWeight: 900, lineHeight: 1, color: MEDALHA_TEXTO[c.posicao] ?? cor }}>
+                    {principal}
+                  </Linha>
+                  {outros.map((v) => (
+                    <Linha key={v} minimo={0.7} style={{ marginTop: 8, fontSize: primeiro ? 28 : 25, fontWeight: 700, color: "rgba(255,255,255,.82)" }}>
+                      {v}
+                    </Linha>
+                  ))}
+                  {varios ? (
+                    <div style={{ marginTop: 10, fontSize: 22, fontWeight: 700, color: "rgba(255,255,255,.55)" }}>
+                      nota {formatNumero(c.nota, 1)} de 100
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Base>
+  );
+}
+
 function Classificacao({ modalidade, colunas, pagina, paginas, temNovos, periodo }: Extract<SlideDef, { tipo: "classificacao" }>) {
   const nome = modalidade === "corrida" ? "Corrida" : "Bike";
   const linhasMax = Math.max(...colunas.map((c) => c.length));
@@ -1223,6 +1334,8 @@ function ConteudoDoSlide({
       return <Podio {...slide} fotos={fotos} revelados={passo} />;
     case "classificacao":
       return <Classificacao {...slide} />;
+    case "premio":
+      return <Premio {...slide} fotos={fotos} revelados={passo} />;
     case "agenda":
       return <Agenda {...slide} />;
     case "app":

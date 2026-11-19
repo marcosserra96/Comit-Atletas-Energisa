@@ -11,6 +11,7 @@ import type { AtividadeConsolidada, RegrasDeTreino } from "@/lib/activityConsoli
 import { formatKmTotal, formatNumero, formatPontos, plural } from "@/lib/format";
 import { modalidadeLabel } from "@/lib/labels";
 import { opcoesDaEnquete } from "@/lib/enquete";
+import { pesosNormalizados, rotuloDoCriterio, textoDoValor, validarPremio, type PremioPersonalizado, type ResultadoPremio } from "@/lib/premiacaoPersonalizada";
 import type { AtletaDoc, EventoDoc, HistoricoMensalDoc, HistoricoPontoDoc, Modalidade, RegraPontuacaoDoc } from "@/lib/types";
 
 // ---------- configuração salva da reunião ----------
@@ -29,7 +30,9 @@ export type TipoSecao =
   | "sorteio"
   | "obrigado"
   | "contagem"
-  | "livre";
+  | "livre"
+  /** Premiação com critérios e pesos do comitê (id da seção = id do prêmio em `premios`). */
+  | "premio";
 
 export interface SecaoReuniao {
   id: string;
@@ -172,7 +175,10 @@ export function temaDaReuniao(tema: Partial<TemaReuniao> | undefined): TemaReuni
 
 /** Quantos cliques um slide tem antes de passar para o próximo (pódio revelado aos poucos). */
 export function passosDoSlide(slide: SlideDef | undefined, tema: TemaReuniao) {
-  return slide?.tipo === "podio" && tema.revelarPodio ? slide.podio.length : 0;
+  if (!tema.revelarPodio) return 0;
+  if (slide?.tipo === "podio") return slide.podio.length;
+  if (slide?.tipo === "premio") return slide.colocados.length;
+  return 0;
 }
 
 /** Fundo escuro pede texto claro: luminância relativa abaixo de ~0,35. */
@@ -191,6 +197,8 @@ export interface ReuniaoResultadosDoc {
   eventoId: string | null;
   secoes: SecaoReuniao[];
   livres: SlideLivre[];
+  /** Premiações com critérios do comitê ("Atleta do ano"), cada uma ligada a uma seção do roteiro. */
+  premios?: PremioPersonalizado[];
   /** Ajustes manuais na lista de novos atletas. */
   novosIncluir: string[];
   novosExcluir: string[];
@@ -222,6 +230,7 @@ export const TITULO_SECAO: Record<Exclude<TipoSecao, "livre">, { titulo: string;
   sorteio: { titulo: "Sorteio", dica: "Sorteio ao vivo entre quem registrou presença" },
   obrigado: { titulo: "Obrigado", dica: "Encerramento" },
   contagem: { titulo: "Contagem regressiva", dica: "“Começamos em 5:00” no telão, com o QR de presença" },
+  premio: { titulo: "Premiação com critérios", dica: "Pódio pela nota dos critérios e pesos do comitê" },
 };
 
 /** Textos fixos dos slides automáticos que o comitê pode trocar. */
@@ -307,7 +316,9 @@ export function duplicarReuniao(
 ): Omit<ReuniaoResultadosDoc, "id"> {
   // Ids novos para os slides livres: a cópia é independente da original.
   const mapa = new Map(origem.livres.map((l) => [l.id, novoId("l")]));
-  const novoIdSecao = (s: SecaoReuniao) => (s.tipo === "livre" ? mapa.get(s.id) ?? novoId("l") : novoId("s"));
+  const mapaPremios = new Map((origem.premios ?? []).map((p) => [p.id, novoId("p")]));
+  const novoIdSecao = (s: SecaoReuniao) =>
+    s.tipo === "livre" ? (mapa.get(s.id) ?? novoId("l")) : s.tipo === "premio" ? (mapaPremios.get(s.id) ?? novoId("p")) : novoId("s");
   const secoes = origem.secoes.map((s) => ({ ...s, id: novoIdSecao(s) }));
   const deParaSecao = new Map(origem.secoes.map((s, i) => [s.id, secoes[i].id]));
   const remapear = <T,>(r: Record<string, T> | undefined) =>
@@ -318,6 +329,7 @@ export function duplicarReuniao(
     eventoId,
     secoes,
     livres: origem.livres.map((l) => ({ ...l, id: mapa.get(l.id)! })),
+    premios: (origem.premios ?? []).map((p) => ({ ...p, id: mapaPremios.get(p.id)! })),
     novosIncluir: [],
     novosExcluir: [],
     tema: origem.tema,
@@ -416,7 +428,7 @@ export function validarReuniao(entrada: unknown): { erro: string } | { dados: Om
   if (!data.test(periodo.inicio ?? "") || !data.test(periodo.fim ?? "") || periodo.fim < periodo.inicio) {
     return { erro: "Escolha o período dos resultados." };
   }
-  const tipos = new Set<TipoSecao>(["capa", "presenca", "novos", "aniversariantes", "regras", "resultados", "destaques", "premiacao", "agenda", "app", "sorteio", "obrigado", "contagem", "livre"]);
+  const tipos = new Set<TipoSecao>(["capa", "presenca", "novos", "aniversariantes", "regras", "resultados", "destaques", "premiacao", "agenda", "app", "sorteio", "obrigado", "contagem", "livre", "premio"]);
   const layoutDe = (v: unknown): SlideLivre["layout"] =>
     v === "divisoria" || v === "enquete" || v === "fala" || v === "retrospectiva" ? v : "conteudo";
   const livres = (Array.isArray(e.livres) ? e.livres : []).slice(0, 30).map((l) => ({
@@ -435,9 +447,14 @@ export function validarReuniao(entrada: unknown): { erro: string } | { dados: Om
     })(),
   }));
   const idsLivres = new Set(livres.map((l) => l.id));
+  const premios = (Array.isArray(e.premios) ? e.premios : [])
+    .slice(0, 20)
+    .map(validarPremio)
+    .filter((p): p is PremioPersonalizado => !!p);
+  const idsPremios = new Set(premios.map((p) => p.id));
   const secoes = (Array.isArray(e.secoes) ? e.secoes : [])
     .slice(0, 50)
-    .filter((s) => s && tipos.has(s.tipo) && (s.tipo !== "livre" || idsLivres.has(s.id)))
+    .filter((s) => s && tipos.has(s.tipo) && (s.tipo !== "livre" || idsLivres.has(s.id)) && (s.tipo !== "premio" || idsPremios.has(s.id)))
     .map((s) => ({
       id: texto(s.id, 40),
       tipo: s.tipo,
@@ -456,6 +473,8 @@ export function validarReuniao(entrada: unknown): { erro: string } | { dados: Om
       eventoId: typeof e.eventoId === "string" && e.eventoId ? e.eventoId.slice(0, 200) : null,
       secoes,
       livres,
+      // Só os prêmios que estão no roteiro (um prêmio removido da lista sai junto).
+      premios: premios.filter((p) => secoes.some((s) => s.tipo === "premio" && s.id === p.id)),
       novosIncluir: ids(e.novosIncluir),
       novosExcluir: ids(e.novosExcluir),
       tema: temaDaReuniao(e.tema && typeof e.tema === "object" ? e.tema : undefined),
@@ -706,6 +725,18 @@ export type SlideDef = (
   | { chave: string; tipo: "destaques"; periodo: string; itens: Destaque[]; desafios: DesafioConcluido[]; pagina: number; paginas: number; titulo?: string }
   | { chave: string; tipo: "aniversariantes"; atletas: Aniversariante[]; pagina: number; paginas: number }
   | { chave: string; tipo: "podio"; modalidade: Modalidade; periodo: string; podio: ResultadoEquipe["podio"] }
+  | {
+      chave: string;
+      tipo: "premio";
+      titulo: string;
+      periodo: string;
+      /** "todas" = corrida e bike concorrendo juntas. */
+      equipe: "todas" | Modalidade;
+      sexo: "todos" | "F" | "M";
+      criterios: { rotulo: string; peso: number }[];
+      /** Do 1º ao último do pódio; `valores` já escritos ("1.240 pontos"). */
+      colocados: { posicao: number; atleta: { id: string; nome: string; modalidade: Modalidade; fotoVersao?: number }; nota: number; valores: string[] }[];
+    }
   | { chave: string; tipo: "classificacao"; modalidade: Modalidade; periodo: string; colunas: LinhaResultado[][]; pagina: number; paginas: number; temNovos: boolean }
   | { chave: string; tipo: "agenda"; ano: string; colunas: ColunaAgenda[] }
   | { chave: string; tipo: "app" }
@@ -1067,7 +1098,7 @@ export function periodoDoAnoAte(trimestres: readonly { inicio: string; fim: stri
 
 /** Junta a configuração da reunião com os números e devolve os slides, em ordem. */
 export function montarRoteiro(params: {
-  reuniao: Pick<ReuniaoResultadosDoc, "periodo" | "secoes" | "livres"> & Partial<Pick<ReuniaoResultadosDoc, "textos" | "contagem">>;
+  reuniao: Pick<ReuniaoResultadosDoc, "periodo" | "secoes" | "livres"> & Partial<Pick<ReuniaoResultadosDoc, "textos" | "contagem" | "premios">>;
   corrida: ResultadoEquipe;
   bicicleta: ResultadoEquipe;
   novos: NovoAtletaSlide[];
@@ -1082,6 +1113,8 @@ export function montarRoteiro(params: {
   aniversariantes?: Aniversariante[];
   /** Números do ano até agora, para as seções marcadas com o período "ano". */
   ano?: BlocoDoPeriodo | null;
+  /** Premiações com critérios já calculadas (id do prêmio → resultado). */
+  premios?: Record<string, ResultadoPremio>;
 }): SlideDef[] {
   const { reuniao } = params;
   const { periodo } = reuniao;
@@ -1090,6 +1123,7 @@ export function montarRoteiro(params: {
   /** "2º Trimestre · Junho a Agosto 2026": contexto no canto dos slides de números. */
   const rotuloPeriodo = `${periodo.nome} · ${intervalo.replace(/[()]/g, "")} ${ano}`;
   const livres = new Map(reuniao.livres.map((l) => [l.id, l]));
+  const premios = new Map((reuniao.premios ?? []).map((p) => [p.id, p]));
   const slides: SlideDef[] = [];
   const t = (chave: ChaveTexto) => textoDoSlide(reuniao.textos, chave);
   /** Os números que a seção usa: os da reunião ou os do ano. */
@@ -1240,6 +1274,32 @@ export function montarRoteiro(params: {
         }
         break;
       }
+      case "premio": {
+        const p = premios.get(secao.id);
+        const r = params.premios?.[secao.id];
+        if (!p || !r) break;
+        const iv = intervaloDeMeses(r.periodo.inicio, r.periodo.fim).replace(/[()]/g, "");
+        const pesos = pesosNormalizados(p.criterios);
+        const criterios = p.criterios.map((c, i) => ({ rotulo: rotuloDoCriterio(c), peso: Math.round(pesos[i]) }));
+        for (const g of r.grupos) {
+          slides.push({
+            chave: `${k}-${g.equipe}`,
+            tipo: "premio",
+            titulo: p.titulo,
+            periodo: `${r.periodo.nome} · ${iv}`,
+            equipe: g.equipe,
+            sexo: p.sexo,
+            criterios,
+            colocados: g.classificacao.slice(0, p.quantidade).map((c) => ({
+              posicao: c.posicao,
+              atleta: { id: c.id, nome: c.nome, modalidade: c.equipe, fotoVersao: c.fotoVersao },
+              nota: c.nota,
+              valores: p.criterios.map((cr, i) => textoDoValor(cr, c.valores[i])),
+            })),
+          });
+        }
+        break;
+      }
       case "agenda":
         slides.push({ chave: `${k}-div`, tipo: "divisoria", sobretitulo: t("agenda.sobretitulo"), titulo: ano, subtitulo: "", fundo: "agenda" });
         if (params.agenda.length > 0) slides.push({ chave: k, tipo: "agenda", ano, colunas: params.agenda });
@@ -1254,7 +1314,7 @@ export function montarRoteiro(params: {
         slides.push({ chave: k, tipo: "obrigado" });
         break;
     }
-    const base = nomeDaSecao(secao, livres.get(secao.id));
+    const base = nomeDaSecao(secao, livres.get(secao.id), premios.get(secao.id));
     for (let j = inicio; j < slides.length; j++) slides[j] = { ...slides[j], secaoId: k, rotulo: rotuloDoSlide(slides[j], base) };
   }
   return slides;
@@ -1262,7 +1322,12 @@ export function montarRoteiro(params: {
 
 
 /** Nome da seção como aparece no roteiro. */
-export function nomeDaSecao(secao: Pick<SecaoReuniao, "tipo"> & Partial<Pick<SecaoReuniao, "periodo">>, livre?: Pick<SlideLivre, "sobretitulo" | "titulo" | "layout">) {
+export function nomeDaSecao(
+  secao: Pick<SecaoReuniao, "tipo"> & Partial<Pick<SecaoReuniao, "periodo">>,
+  livre?: Pick<SlideLivre, "sobretitulo" | "titulo" | "layout">,
+  premio?: Pick<PremioPersonalizado, "titulo">,
+) {
+  if (secao.tipo === "premio") return premio?.titulo || "Premiação";
   if (secao.tipo === "livre") {
     if (livre?.layout === "fala") return `Fala · ${livre.titulo || "Pessoa"}`;
     if (livre?.layout === "retrospectiva") return livre.titulo || "Retrospectiva";
@@ -1279,6 +1344,8 @@ function rotuloDoSlide(slide: SlideDef, base: string) {
       return `Pódio · ${modalidadeLabel[slide.modalidade]}`;
     case "classificacao":
       return `Classificação · ${modalidadeLabel[slide.modalidade]}${pag(slide.pagina, slide.paginas)}`;
+    case "premio":
+      return slide.equipe === "todas" ? base : `${base} · ${modalidadeLabel[slide.equipe]}`;
     case "novos":
     case "aniversariantes":
       return `${base}${pag(slide.pagina, slide.paginas)}`;
