@@ -352,7 +352,7 @@ function CenaVideo({ item, pausado, comSom }: { item: ItemRetro; pausado: boolea
   );
 }
 
-function CenaCapitulo({ titulo, quantidade, fotos }: { titulo: string; quantidade: number; fotos: ItemRetro[] }) {
+function CenaCapitulo({ titulo, fotos }: { titulo: string; fotos: ItemRetro[] }) {
   return (
     <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse at 75% 40%, #164a8f, ${COR.navyEscuro} 65%)`, animation: "retro-entra 700ms ease both" }}>
       <div style={{ position: "absolute", right: 120, top: 150, width: 760, height: 780 }}>
@@ -365,13 +365,12 @@ function CenaCapitulo({ titulo, quantidade, fotos }: { titulo: string; quantidad
       <div className="retro-mov" style={{ position: "absolute", left: 140, top: 0, bottom: 0, width: 860, display: "flex", flexDirection: "column", justifyContent: "center", color: "#fff", animation: "retro-sobe 900ms cubic-bezier(.2,.7,.2,1) both" }}>
         <div style={{ width: 120, height: 10, borderRadius: 5, marginBottom: 34, background: `linear-gradient(90deg, ${COR.laranja}, ${COR.lima})` }} />
         <div style={{ fontSize: titulo.length > 28 ? 92 : 124, fontWeight: 900, lineHeight: 0.95 }}>{titulo}</div>
-        <div style={{ marginTop: 26, fontSize: 40, fontWeight: 700, color: "rgba(255,255,255,.72)" }}>{quantidade === 1 ? "1 momento" : `${quantidade} momentos`}</div>
       </div>
     </div>
   );
 }
 
-function Encerramento({ titulo, total, fotos }: { titulo: string; total: number; fotos: ItemRetro[] }) {
+function Encerramento({ titulo, fotos }: { titulo: string; fotos: ItemRetro[] }) {
   return (
     <div style={{ position: "absolute", inset: 0, background: COR.navyEscuro, animation: "retro-entra 1200ms ease both" }}>
       <div style={{ position: "absolute", inset: 0, display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gridTemplateRows: "repeat(3, 1fr)", gap: 8, padding: 8, opacity: 0.28 }}>
@@ -384,7 +383,6 @@ function Encerramento({ titulo, total, fotos }: { titulo: string; total: number;
         <div style={{ fontSize: 40, fontWeight: 800, color: "rgba(255,255,255,.75)" }}>{titulo || "Retrospectiva"}</div>
         <div style={{ marginTop: 18, fontSize: 112, fontWeight: 900, lineHeight: 0.95 }}>Obrigado por cada momento</div>
         <div style={{ marginTop: 36, width: 160, height: 10, borderRadius: 5, background: `linear-gradient(90deg, ${COR.laranja}, ${COR.lima})` }} />
-        <div style={{ marginTop: 30, fontSize: 38, fontWeight: 700, color: "rgba(255,255,255,.7)" }}>{total === 1 ? "1 momento juntos" : `${total} momentos juntos`}</div>
       </div>
       <Logo claro />
     </div>
@@ -602,8 +600,8 @@ export function SlideRetrospectiva({ livreId, titulo, subtitulo, opcoes, aoVivo,
           {cena.tipo === "grade" ? <CenaGrade key={`c-${pos}`} itens={cena.itens} duracao={cena.duracao} /> : null}
           {cena.tipo === "faixa" ? <CenaFaixa key={`c-${pos}`} itens={cena.itens} duracao={cena.duracao} /> : null}
           {cena.tipo === "video" ? <CenaVideo key={`c-${pos}`} item={cena.item} pausado={pausado} comSom={!musica} /> : null}
-          {cena.tipo === "capitulo" ? <CenaCapitulo key={`c-${pos}`} titulo={cena.titulo} quantidade={cena.quantidade} fotos={cena.fotos} /> : null}
-          {cena.tipo === "encerramento" ? <Encerramento titulo={titulo} total={cena.total} fotos={visiveis} /> : null}
+          {cena.tipo === "capitulo" ? <CenaCapitulo key={`c-${pos}`} titulo={cena.titulo} fotos={cena.fotos} /> : null}
+          {cena.tipo === "encerramento" ? <Encerramento titulo={titulo} fotos={visiveis} /> : null}
           {cena.tipo !== "capitulo" && cena.tipo !== "encerramento" ? (
             <div style={{ position: "absolute", left: 60, top: 48, display: "flex", alignItems: "center", gap: 16, color: "#fff", fontSize: 30, fontWeight: 800, textShadow: "0 2px 12px rgba(0,0,0,.5)" }}>
               <span style={{ width: 54, height: 7, borderRadius: 4, background: `linear-gradient(90deg, ${COR.laranja}, ${COR.lima})` }} />
