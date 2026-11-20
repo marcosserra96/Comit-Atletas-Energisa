@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { collection, doc, getDoc, getDocs, onSnapshot, serverTimestamp, setDoc, Timestamp, updateDoc } from "firebase/firestore";
-import { AlertTriangle, CalendarRange, CheckCircle2, ChevronLeft, ChevronRight, CloudOff, Download, Eye, EyeOff, Info, Loader2, MonitorPlay, Palette, Pencil, Play, Plus, Presentation, Save, Copy, Send, Star, Trash2, UserPlus, X } from "lucide-react";
+import { AlertTriangle, CalendarRange, FilePlus2, Redo2, Undo2, CheckCircle2, ChevronLeft, ChevronRight, CloudOff, Download, Eye, EyeOff, Info, Loader2, MonitorPlay, Palette, Pencil, Play, Plus, Presentation, Save, Copy, Send, Star, Trash2, UserPlus, X } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
@@ -58,6 +59,7 @@ import {
   regrasParaSlide,
   resultadosDaEquipe,
   reuniaoPadrao,
+  reuniaoDoModelo,
   verificarAntesDeApresentar,
   resumoParaAtletas,
   temaDaReuniao,
@@ -65,8 +67,10 @@ import {
   duplicarReuniao,
   FATOR_VELOCIDADE,
   passosDoSlide,
+  type ModeloDeReuniao,
   type ReuniaoResultadosDoc,
 } from "@/lib/reuniaoResultados";
+import { AssistenteNovaReuniao } from "@/components/reuniao/AssistenteNovaReuniao";
 import type { AtletaDoc, EventoDoc, HistoricoMensalDoc, HistoricoPontoDoc, RegraPontuacaoDoc } from "@/lib/types";
 
 type Rascunho = Omit<ReuniaoResultadosDoc, "id"> & { id?: string };
@@ -228,6 +232,13 @@ function AntesDeApresentar({ itens }: { itens: ReturnType<typeof verificarAntesD
         Antes de apresentar{" "}
         {atencao > 0 ? <span className="font-semibold text-accent">· {atencao === 1 ? "1 ponto para ver" : `${atencao} pontos para ver`}</span> : null}
       </p>
+      <ListaDeVerificacoes itens={itens} />
+    </Card>
+  );
+}
+
+function ListaDeVerificacoes({ itens }: { itens: ReturnType<typeof verificarAntesDeApresentar> }) {
+  return (
       <ul className="flex flex-col gap-3">
         {itens.map((v) => (
           <li key={v.id} className="flex gap-2.5">
@@ -248,7 +259,6 @@ function AntesDeApresentar({ itens }: { itens: ReturnType<typeof verificarAntesD
           </li>
         ))}
       </ul>
-    </Card>
   );
 }
 
@@ -272,6 +282,13 @@ export default function ReuniaoResultadosPage() {
   const [recolhida, setRecolhida] = useState(false);
   const [selecao, setSelecao] = useState<{ secao: string | null; chave: string | null }>({ secao: null, chave: null });
   const [galeria, setGaleria] = useState(false);
+  const [assistente, setAssistente] = useState({ aberto: false, versao: 0 });
+  // Antes de apresentar com pontos de atenção: pergunta uma vez por reunião aberta.
+  const [revisao, setRevisao] = useState<number | null>(null);
+  const jaRevisou = useRef(new Set<string>());
+  // Desfazer/Refazer: fotos do roteiro antes de cada mudança (digitação seguida conta como uma).
+  const historico = useRef<{ passado: Rascunho[]; futuro: Rascunho[]; ultimo: number }>({ passado: [], futuro: [], ultimo: 0 });
+  const [pilhas, setPilhas] = useState({ desfazer: 0, refazer: 0 });
   // Cada edição sobe a versão: um salvamento só limpa o "alterado" se nada mudou enquanto salvava.
   const versao = useRef(0);
   const [salvando, setSalvando] = useState(false);
@@ -289,17 +306,30 @@ export default function ReuniaoResultadosPage() {
     listarDesafios().then(setDesafios, () => setDesafios([]));
   }, [pode]);
 
-  const criarNova = useCallback(() => {
-    if (!dados.calendario || !dados.eventos) return;
-    setRascunho(reuniaoPadrao(periodoPadrao(dados.calendario, hoje), reuniaoDaAgenda(dados.eventos, hoje)?.id ?? null));
+  function limparHistorico() {
+    historico.current = { passado: [], futuro: [], ultimo: 0 };
+    setPilhas({ desfazer: 0, refazer: 0 });
+  }
+
+  // "Nova" abre o assistente (tipo, período e reunião da agenda).
+  const criarNova = useCallback(() => setAssistente((a) => ({ aberto: true, versao: a.versao + 1 })), []);
+
+  function criarDoModelo(modelo: ModeloDeReuniao, periodo: { nome: string; inicio: string; fim: string }, eventoId: string | null) {
+    setRascunho(reuniaoDoModelo(modelo, { nome: periodo.nome, inicio: periodo.inicio, fim: periodo.fim }, eventoId));
+    limparHistorico();
+    setSelecao({ secao: null, chave: null });
     versao.current += 1;
     setAlterado(true);
-  }, [dados.calendario, dados.eventos, hoje]);
+    setAssistente((a) => ({ ...a, aberto: false }));
+    setAba("inicio");
+    show("success", "Apresentação criada. Ela salva sozinha; clique num slide para ajustar.");
+  }
 
   // Próxima reunião a partir desta: roteiro, slides escritos, textos e aparência iguais.
   function duplicar() {
     if (!rascunho || !dados.calendario || !dados.eventos) return;
     setRascunho(duplicarReuniao(rascunho, periodoPadrao(dados.calendario, hoje), reuniaoDaAgenda(dados.eventos, hoje)?.id ?? null));
+    limparHistorico();
     versao.current += 1;
     setAlterado(true);
     show("success", "Cópia criada com o período e a reunião da agenda atuais. Ela salva sozinha.");
@@ -314,12 +344,51 @@ export default function ReuniaoResultadosPage() {
   const pendente = alterado || (!rascunhoEditado && !!inicial && !inicial.id);
 
   function atualizar(campos: Partial<Rascunho>) {
+    // Guarda como estava para o Desfazer (mudanças em menos de 0,8 s se juntam numa só).
+    if (rascunho) {
+      const h = historico.current;
+      const agora = Date.now();
+      if (agora - h.ultimo > 800) {
+        h.passado.push(rascunho);
+        if (h.passado.length > 60) h.passado.shift();
+      }
+      h.ultimo = agora;
+      h.futuro = [];
+      setPilhas({ desfazer: h.passado.length, refazer: 0 });
+    }
     setRascunho((r) => {
       const base = r ?? inicial;
       return base ? { ...base, ...campos } : r;
     });
     versao.current += 1;
     setAlterado(true);
+  }
+
+  /** Volta (ou refaz) uma mudança. Mantém o id: a reunião continua a mesma, só o conteúdo volta. */
+  function desfazer(refazer = false) {
+    const h = historico.current;
+    const de = refazer ? h.futuro : h.passado;
+    const para = refazer ? h.passado : h.futuro;
+    const alvo = de.pop();
+    if (!alvo || !rascunho) return;
+    para.push(rascunho);
+    h.ultimo = 0;
+    setRascunho({ ...alvo, id: rascunho.id });
+    setPilhas({ desfazer: h.passado.length, refazer: h.futuro.length });
+    versao.current += 1;
+    setAlterado(true);
+  }
+
+  /** Apresentar: se há pontos de atenção, mostra antes (uma vez por reunião aberta). */
+  function pedirApresentacao(i: number) {
+    const chave = rascunho?.id ?? "nova";
+    const atencao = verificacoes?.some((v) => v.nivel === "atencao");
+    if (atencao && !jaRevisou.current.has(chave)) {
+      jaRevisou.current.add(chave);
+      setRevisao(i);
+      return;
+    }
+    setApresentando(i);
   }
 
   const eventoId = rascunho?.eventoId;
@@ -583,17 +652,22 @@ export default function ReuniaoResultadosPage() {
     if (!slides?.length) return;
     selecionarSlide(Math.min(slides.length - 1, Math.max(0, indiceAtual + d)));
   }
+  function abrirEdicao() {
+    setAba("slide");
+    mudarRecolhida(false);
+  }
   function excluirSecao(id: string) {
     const i = rascunho?.secoes.findIndex((x) => x.id === id) ?? -1;
     const vizinha = rascunho?.secoes[i + 1] ?? rascunho?.secoes[i - 1];
     acoes.remover(id);
     setSelecao({ secao: vizinha?.id ?? null, chave: null });
+    show("info", "Slide excluído. Para voltar, use Desfazer (Ctrl+Z).");
   }
 
   // Atalhos do PowerPoint: F5 apresenta do início, Shift+F5 deste slide, setas trocam o slide, Ctrl+D duplica.
-  const atalhos = useRef({ irPorSeta, indiceAtual, secaoSelecionada, duplicar: acoes.duplicar, podeDuplicar: acoes.podeDuplicar, total: slides?.length ?? 0 });
+  const atalhos = useRef({ irPorSeta, indiceAtual, secaoSelecionada, duplicar: acoes.duplicar, podeDuplicar: acoes.podeDuplicar, total: slides?.length ?? 0, desfazer, apresentar: (i: number) => setApresentando(i) });
   useEffect(() => {
-    atalhos.current = { irPorSeta, indiceAtual, secaoSelecionada, duplicar: acoes.duplicar, podeDuplicar: acoes.podeDuplicar, total: slides?.length ?? 0 };
+    atalhos.current = { irPorSeta, indiceAtual, secaoSelecionada, duplicar: acoes.duplicar, podeDuplicar: acoes.podeDuplicar, total: slides?.length ?? 0, desfazer, apresentar: pedirApresentacao };
   });
   useEffect(() => {
     if (apresentando !== null) return;
@@ -604,13 +678,19 @@ export default function ReuniaoResultadosPage() {
       const a = atalhos.current;
       if (e.key === "F5" && a.total > 0) {
         e.preventDefault();
-        setApresentando(e.shiftKey ? a.indiceAtual : 0);
+        a.apresentar(e.shiftKey ? a.indiceAtual : 0);
       } else if ((e.key === "ArrowDown" || e.key === "PageDown") && !e.altKey) {
         e.preventDefault();
         a.irPorSeta(1);
       } else if ((e.key === "ArrowUp" || e.key === "PageUp") && !e.altKey) {
         e.preventDefault();
         a.irPorSeta(-1);
+      } else if ((e.key === "z" || e.key === "Z") && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        a.desfazer(e.shiftKey);
+      } else if ((e.key === "y" || e.key === "Y") && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        a.desfazer(true);
       } else if ((e.key === "d" || e.key === "D") && (e.ctrlKey || e.metaKey) && a.secaoSelecionada && a.podeDuplicar(a.secaoSelecionada)) {
         e.preventDefault();
         a.duplicar(a.secaoSelecionada);
@@ -778,6 +858,9 @@ export default function ReuniaoResultadosPage() {
     ? trimestres.find((t) => t.inicio === rascunho.periodo.inicio && t.fim === rascunho.periodo.fim)?.id ?? (anoEscolhido ? `ano:${anoEscolhido.ano}` : "personalizado")
     : "";
   const total = calculo?.slides.length ?? 0;
+  // Sugestão do assistente: o último trimestre fechado (ou o ano, sem calendário).
+  const inicioSugerido = dados.calendario ? periodoPadrao(dados.calendario, hoje).inicio : "";
+  const trimestreSugerido = trimestres.find((t) => t.inicio === inicioSugerido)?.id ?? `ano:${hoje.slice(0, 4)}`;
 
   const secaoAtual = rascunho?.secoes.find((x) => x.id === secaoSelecionada) ?? null;
   const nomeSecaoAtual = secaoAtual && rascunho ? nomeDaSecao(secaoAtual, acoes.livres.get(secaoAtual.id), acoes.premios.get(secaoAtual.id)) : "";
@@ -815,10 +898,18 @@ export default function ReuniaoResultadosPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="secondary" className="hidden sm:inline-flex" onClick={() => setApresentando(indiceAtual)} disabled={!calculo || total === 0} title="Apresentar a partir deste slide (Shift+F5)">
+          <div className="flex items-center rounded-[var(--radius)] border border-border">
+            <Button size="sm" variant="ghost" onClick={() => desfazer()} disabled={pilhas.desfazer === 0} aria-label="Desfazer" title="Desfazer (Ctrl+Z)" className="rounded-r-none">
+              <Undo2 className="size-4" aria-hidden="true" />
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => desfazer(true)} disabled={pilhas.refazer === 0} aria-label="Refazer" title="Refazer (Ctrl+Y)" className="rounded-l-none">
+              <Redo2 className="size-4" aria-hidden="true" />
+            </Button>
+          </div>
+          <Button size="sm" variant="secondary" className="hidden sm:inline-flex" onClick={() => pedirApresentacao(indiceAtual)} disabled={!calculo || total === 0} title="Apresentar a partir deste slide (Shift+F5)">
             Deste slide
           </Button>
-          <Button size="sm" onClick={() => setApresentando(0)} disabled={!calculo || total === 0} title="Apresentar do início (F5)">
+          <Button size="sm" onClick={() => pedirApresentacao(0)} disabled={!calculo || total === 0} title="Apresentar do início (F5)">
             <MonitorPlay className="size-4" aria-hidden="true" />
             Apresentar
           </Button>
@@ -862,9 +953,13 @@ export default function ReuniaoResultadosPage() {
               <BotaoDaFaixa icone={<Palette />} rotulo="Aparência" onClick={() => setAba("design")} />
             </GrupoDaFaixa>
             <SeparadorDaFaixa />
+            <GrupoDaFaixa nome="Reunião">
+              <BotaoDaFaixa icone={<FilePlus2 />} rotulo="Nova apresentação" onClick={criarNova} disabled={!dados.calendario} title="Assistente: tipo, período e reunião da agenda" />
+            </GrupoDaFaixa>
+            <SeparadorDaFaixa />
             <GrupoDaFaixa nome="Apresentar">
-              <BotaoDaFaixa icone={<MonitorPlay />} rotulo="Do início" onClick={() => setApresentando(0)} disabled={!calculo || total === 0} title="F5" />
-              <BotaoDaFaixa icone={<Play />} rotulo="Deste slide" onClick={() => setApresentando(indiceAtual)} disabled={!calculo || total === 0} title="Shift+F5" />
+              <BotaoDaFaixa icone={<MonitorPlay />} rotulo="Do início" onClick={() => pedirApresentacao(0)} disabled={!calculo || total === 0} title="F5" />
+              <BotaoDaFaixa icone={<Play />} rotulo="Deste slide" onClick={() => pedirApresentacao(indiceAtual)} disabled={!calculo || total === 0} title="Shift+F5" />
             </GrupoDaFaixa>
             <p className="ml-auto hidden max-w-56 self-center text-xs text-text-light 2xl:block">
               Arraste as seções no painel à esquerda para mudar a ordem. Duplo clique numa miniatura abre a edição.
@@ -919,6 +1014,7 @@ export default function ReuniaoResultadosPage() {
                     if (r) {
                       setRascunho(r);
                       setAlterado(false);
+                      limparHistorico();
                     }
                   }}
                 >
@@ -1101,7 +1197,23 @@ export default function ReuniaoResultadosPage() {
               </Button>
             </div>
           ) : slideAtual ? (
-            <SlideAjustado className="aspect-video lg:aspect-auto lg:min-h-0 lg:flex-1">{renderSlide(indiceAtual)}</SlideAjustado>
+            // Clicar no slide abre a edição dele, como no PowerPoint.
+            <div
+              role="button"
+              tabIndex={0}
+              aria-label={`Editar o slide ${indiceAtual + 1}`}
+              onClick={abrirEdicao}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") abrirEdicao();
+              }}
+              className="group relative flex cursor-pointer flex-col rounded-[var(--radius-lg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:min-h-0 lg:flex-1"
+            >
+              <SlideAjustado className="aspect-video lg:aspect-auto lg:min-h-0 lg:flex-1">{renderSlide(indiceAtual)}</SlideAjustado>
+              <span className="pointer-events-none absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full bg-navy/85 px-3 py-1.5 text-xs font-semibold text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                <Pencil className="size-3.5" aria-hidden="true" />
+                Clique para editar
+              </span>
+            </div>
           ) : (
             <div className="flex aspect-video items-center justify-center lg:aspect-auto lg:min-h-0 lg:flex-1 rounded-[var(--radius-lg)] border-2 border-dashed border-border p-6 text-center text-sm text-text-light">
               Esta seção não tem slide agora (por exemplo, ninguém fez aniversário no período).
@@ -1162,6 +1274,58 @@ export default function ReuniaoResultadosPage() {
         />
       ) : null}
 
+      {dados.calendario ? (
+        <AssistenteNovaReuniao
+          key={assistente.versao}
+          aberto={assistente.aberto}
+          onFechar={() => setAssistente((a) => ({ ...a, aberto: false }))}
+          periodos={[
+            ...trimestres.map((t) => ({ id: t.id, nome: t.nome, inicio: t.inicio, fim: t.fim, anual: false })),
+            ...periodosAnuais.map((p) => ({ id: `ano:${p.ano}`, nome: hoje <= p.fim && hoje >= p.inicio ? `${p.ano} até agora` : `Fechamento de ${p.ano}`, inicio: p.inicio, fim: p.fim, anual: true })),
+          ]}
+          periodoTrimestre={trimestreSugerido}
+          periodoAno={`ano:${hoje.slice(0, 4)}`}
+          reunioes={reunioesAgenda.map((e) => ({ id: e.id, titulo: e.titulo, data: e.data }))}
+          reuniaoPadrao={dados.eventos ? (reuniaoDaAgenda(dados.eventos, hoje)?.id ?? null) : null}
+          onCriar={(modelo, periodo, evento) => criarDoModelo(modelo, periodo, evento)}
+        />
+      ) : null}
+
+      <Modal
+        open={revisao !== null}
+        onClose={() => setRevisao(null)}
+        title="Antes de apresentar"
+        description="Alguns pontos podem aparecer errados no telão. Dá para apresentar assim mesmo."
+        size="md"
+        mobileSheet
+        footer={
+          <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setRevisao(null);
+                setAba("reuniao");
+                mudarRecolhida(false);
+              }}
+            >
+              Ajustar primeiro
+            </Button>
+            <Button
+              onClick={() => {
+                const i = revisao;
+                setRevisao(null);
+                if (i !== null) setApresentando(i);
+              }}
+            >
+              <MonitorPlay className="size-4" aria-hidden="true" />
+              Apresentar assim mesmo
+            </Button>
+          </div>
+        }
+      >
+        {verificacoes ? <ListaDeVerificacoes itens={verificacoes.filter((v) => v.nivel === "atencao")} /> : null}
+      </Modal>
+
       {podeEnviar && resumoAtletas ? (
         <NoticiaModal
           key={envio.versao}
@@ -1194,6 +1358,7 @@ export default function ReuniaoResultadosPage() {
           const lista = await listarReunioes();
           setSalvas(lista);
           setRascunho(null);
+          limparHistorico();
           setApagando(false);
           show("success", "Reunião apagada.");
         }}

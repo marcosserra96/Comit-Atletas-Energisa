@@ -12,7 +12,7 @@ import { formatKmTotal, formatNumero, formatPontos, plural } from "@/lib/format"
 import { modalidadeLabel } from "@/lib/labels";
 import { opcoesDaEnquete } from "@/lib/enquete";
 import { OPCOES_PADRAO, type OpcoesRetro } from "@/lib/retrospectiva";
-import { pesosNormalizados, rotuloDoCriterio, textoDoValor, validarPremio, type PremioPersonalizado, type ResultadoPremio } from "@/lib/premiacaoPersonalizada";
+import { novoPremio, pesosNormalizados, rotuloDoCriterio, textoDoValor, validarPremio, type PremioPersonalizado, type ResultadoPremio } from "@/lib/premiacaoPersonalizada";
 import type { AtletaDoc, EventoDoc, HistoricoMensalDoc, HistoricoPontoDoc, Modalidade, RegraPontuacaoDoc } from "@/lib/types";
 
 // ---------- configuração salva da reunião ----------
@@ -387,6 +387,33 @@ export function reuniaoPadrao(periodo: { nome: string; inicio: string; fim: stri
     novosIncluir: [],
     novosExcluir: [],
   };
+}
+
+export type ModeloDeReuniao = "trimestre" | "fechamento" | "rapida";
+
+export const MODELOS_DE_REUNIAO: { id: ModeloDeReuniao; titulo: string; descricao: string }[] = [
+  { id: "trimestre", titulo: "Reunião do trimestre", descricao: "O roteiro completo: abertura, novos atletas, resultados, destaques, premiação, agenda e avisos." },
+  { id: "fechamento", titulo: "Fechamento do ano", descricao: "O roteiro completo do ano, com o prêmio Atleta do ano (pontos e constância) e uma retrospectiva de fotos." },
+  { id: "rapida", titulo: "Reunião rápida", descricao: "Só o essencial: capa, presença, resultados, destaques, premiação e agenda." },
+];
+
+/** Uma reunião nova já montada pelo modelo escolhido no assistente. */
+export function reuniaoDoModelo(modelo: ModeloDeReuniao, periodo: { nome: string; inicio: string; fim: string }, eventoId: string | null): Omit<ReuniaoResultadosDoc, "id"> {
+  const base = reuniaoPadrao(periodo, eventoId);
+  if (modelo === "rapida") {
+    const essenciais = new Set<TipoSecao>(["capa", "presenca", "resultados", "destaques", "premiacao", "agenda", "obrigado"]);
+    return { ...base, secoes: base.secoes.map((x) => ({ ...x, ativo: essenciais.has(x.tipo) })) };
+  }
+  if (modelo === "fechamento") {
+    // O período já é o ano: o prêmio usa os números da própria reunião.
+    const premio = { ...novoPremio("atleta-do-ano"), periodo: "reuniao" as const };
+    const retro: SlideLivre = { ...novoSlideLivre("retrospectiva"), titulo: `Retrospectiva ${periodo.fim.slice(0, 4)}`, texto: "Os momentos do nosso time" };
+    const secoes = [...base.secoes];
+    secoes.splice(secoes.findIndex((x) => x.tipo === "premiacao") + 1, 0, { id: premio.id, tipo: "premio", ativo: true });
+    secoes.splice(secoes.findIndex((x) => x.tipo === "obrigado"), 0, { id: retro.id, tipo: "livre", ativo: true });
+    return { ...base, titulo: `Fechamento de ${periodo.fim.slice(0, 4)}`, secoes, livres: [...base.livres, retro], premios: [premio] };
+  }
+  return base;
 }
 
 /**
