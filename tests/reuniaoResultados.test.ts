@@ -457,3 +457,21 @@ test("validar guarda período da seção, destaques escolhidos e os slides novos
   assert.equal(r.dados.secoes[1].periodo, undefined);
   assert.deepEqual(r.dados.livres.map((l) => [l.layout, l.segundos]), [["fala", undefined], ["retrospectiva", 15]]);
 });
+
+test("modelos de reunião do assistente", async () => {
+  const { reuniaoDoModelo } = await import("../src/lib/reuniaoResultados");
+  const ano = { nome: "Ano de 2026", inicio: "2026-03-01", fim: "2026-11-30" };
+  const fechamento = reuniaoDoModelo("fechamento", ano, "ev1");
+  assert.equal(fechamento.titulo, "Fechamento de 2026");
+  const tipos = fechamento.secoes.map((x) => x.tipo);
+  assert.equal(tipos[tipos.indexOf("premiacao") + 1], "premio");
+  assert.equal(tipos.at(-2), "livre");
+  assert.equal(fechamento.premios?.[0].titulo, "Atleta do ano");
+  assert.equal(fechamento.livres.at(-1)?.layout, "retrospectiva");
+  assert.equal(fechamento.eventoId, "ev1");
+  const rapida = reuniaoDoModelo("rapida", ano, null);
+  assert.deepEqual(rapida.secoes.filter((x) => x.ativo).map((x) => x.tipo), ["capa", "presenca", "resultados", "destaques", "premiacao", "agenda", "obrigado"]);
+  // O fechamento passa pela validação do servidor sem perder o prêmio nem a retrospectiva.
+  const v = validarReuniao(fechamento);
+  assert.ok("dados" in v && v.dados.premios?.length === 1 && v.dados.secoes.length === fechamento.secoes.length);
+});
