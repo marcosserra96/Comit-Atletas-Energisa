@@ -475,3 +475,23 @@ test("modelos de reunião do assistente", async () => {
   const v = validarReuniao(fechamento);
   assert.ok("dados" in v && v.dados.premios?.length === 1 && v.dados.secoes.length === fechamento.secoes.length);
 });
+
+test("destaques revelados aos poucos: um passo por cartão, independente do pódio", () => {
+  const item = (id: string) => ({ id, titulo: "Maior sequência", atleta: { id, nome: id, modalidade: "corrida" as const }, valor: "5", unidade: "semanas", detalhe: "" });
+  const slide = { chave: "d", tipo: "destaques" as const, periodo: "T", itens: [item("a"), item("b"), item("c")], desafios: [], pagina: 1, paginas: 1 };
+  const semPodio = temaDaReuniao({ revelarPodio: false });
+  assert.equal(passosDoSlide(slide, semPodio), 0);
+  assert.equal(passosDoSlide({ ...slide, revelar: "um" }, semPodio), 3);
+  assert.equal(passosDoSlide({ ...slide, revelar: "suspense" }, semPodio), 3);
+  const v = validarReuniao({
+    periodo: { nome: "T", inicio: "2026-07-01", fim: "2026-09-30" },
+    secoes: [
+      { id: "d1", tipo: "destaques", ativo: true, revelar: "suspense" },
+      { id: "d2", tipo: "destaques", ativo: true, revelar: "inventado" },
+      { id: "c", tipo: "capa", ativo: true, revelar: "um" },
+    ],
+    livres: [],
+  });
+  assert.ok("dados" in v);
+  if ("dados" in v) assert.deepEqual(v.dados.secoes.map((x) => x.revelar), ["suspense", undefined, undefined]);
+});
