@@ -8,6 +8,7 @@ import { db } from "@/lib/firebase";
 import { useActiveSession } from "@/lib/session/SessionProvider";
 import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
 import { Modal } from "@/components/ui/Modal";
 import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
@@ -23,7 +24,7 @@ import { PainelDeSlides } from "@/components/reuniao/PainelDeSlides";
 import { useSorteio } from "@/components/reuniao/useSorteio";
 import { useEnquetes } from "@/components/reuniao/useEnquetes";
 import { DURACAO_ENQUETE_MS, pesquisaDaEnquete } from "@/lib/enquete";
-import { TemaApresentacao } from "@/components/reuniao/TemaApresentacao";
+import { TemaNaFaixa } from "@/components/reuniao/TemaApresentacao";
 import { NoticiaModal } from "@/app/gestao/noticias/NoticiaModal";
 import { AvatarAtleta } from "@/components/atletas/AvatarAtleta";
 import { temPermissao } from "@/lib/permissoes";
@@ -278,10 +279,13 @@ export default function ReuniaoResultadosPage() {
   const [alterado, setAlterado] = useState(false);
   const [erroSalvar, setErroSalvar] = useState<string | null>(null);
   // Como no PowerPoint: a aba da faixa de opções, se ela está recolhida e o slide escolhido.
-  const [aba, setAba] = useState<"inicio" | "slide" | "design" | "reuniao" | "arquivo">("inicio");
+  const [aba, setAba] = useState<"inicio" | "design" | "reuniao" | "arquivo">("inicio");
   const [recolhida, setRecolhida] = useState(false);
   const [selecao, setSelecao] = useState<{ secao: string | null; chave: string | null }>({ secao: null, chave: null });
   const [galeria, setGaleria] = useState(false);
+  // Janelas da aba Reunião e o painel de edição do slide (à direita, como o "Formatar" do PowerPoint).
+  const [janela, setJanela] = useState<null | "periodo" | "novos" | "revisar">(null);
+  const [editando, setEditando] = useState(false);
   const [assistente, setAssistente] = useState({ aberto: false, versao: 0 });
   // Antes de apresentar com pontos de atenção: pergunta uma vez por reunião aberta.
   const [revisao, setRevisao] = useState<number | null>(null);
@@ -610,10 +614,9 @@ export default function ReuniaoResultadosPage() {
   }
 
   const acoes = useAcoesDoRoteiro(rascunho ?? { secoes: [], livres: [] }, (r) => atualizar(r), (secaoId) => {
-    // Slide novo (ou cópia): fica escolhido e a faixa abre na edição dele.
+    // Slide novo (ou cópia): fica escolhido e o painel de edição abre.
     setSelecao({ secao: secaoId, chave: null });
-    setAba("slide");
-    mudarRecolhida(false);
+    setEditando(true);
   });
 
   // Slide escolhido: pela chave; se ela sumiu (números mudaram), o primeiro da seção; senão, o primeiro.
@@ -653,8 +656,7 @@ export default function ReuniaoResultadosPage() {
     selecionarSlide(Math.min(slides.length - 1, Math.max(0, indiceAtual + d)));
   }
   function abrirEdicao() {
-    setAba("slide");
-    mudarRecolhida(false);
+    setEditando(true);
   }
   function excluirSecao(id: string) {
     const i = rascunho?.secoes.findIndex((x) => x.id === id) ?? -1;
@@ -676,7 +678,9 @@ export default function ReuniaoResultadosPage() {
       const alvo = e.target as HTMLElement | null;
       if (alvo && (alvo.closest("input, textarea, select, [contenteditable=true], [role=dialog], [role=listbox]") || alvo.isContentEditable)) return;
       const a = atalhos.current;
-      if (e.key === "F5" && a.total > 0) {
+      if (e.key === "Escape") {
+        setEditando(false);
+      } else if (e.key === "F5" && a.total > 0) {
         e.preventDefault();
         a.apresentar(e.shiftKey ? a.indiceAtual : 0);
       } else if ((e.key === "ArrowDown" || e.key === "PageDown") && !e.altKey) {
@@ -921,7 +925,6 @@ export default function ReuniaoResultadosPage() {
       <FaixaDeOpcoes
         abas={[
           { id: "inicio", rotulo: "Início" },
-          { id: "slide", rotulo: "Editar slide" },
           { id: "design", rotulo: "Design" },
           { id: "reuniao", rotulo: "Reunião", aviso: avisos },
           { id: "arquivo", rotulo: "Arquivo" },
@@ -949,7 +952,7 @@ export default function ReuniaoResultadosPage() {
             </GrupoDaFaixa>
             <SeparadorDaFaixa />
             <GrupoDaFaixa nome="Editar">
-              <BotaoDaFaixa icone={<Pencil />} rotulo="Editar este slide" onClick={() => setAba("slide")} disabled={!secaoAtual} />
+              <BotaoDaFaixa icone={<Pencil />} rotulo={editando ? "Fechar edição" : "Editar slide"} onClick={() => setEditando((e) => !e)} disabled={!secaoAtual} />
               <BotaoDaFaixa icone={<Palette />} rotulo="Aparência" onClick={() => setAba("design")} />
             </GrupoDaFaixa>
             <SeparadorDaFaixa />
@@ -961,144 +964,53 @@ export default function ReuniaoResultadosPage() {
               <BotaoDaFaixa icone={<MonitorPlay />} rotulo="Do início" onClick={() => pedirApresentacao(0)} disabled={!calculo || total === 0} title="F5" />
               <BotaoDaFaixa icone={<Play />} rotulo="Deste slide" onClick={() => pedirApresentacao(indiceAtual)} disabled={!calculo || total === 0} title="Shift+F5" />
             </GrupoDaFaixa>
-            <p className="ml-auto hidden max-w-56 self-center text-xs text-text-light 2xl:block">
-              Arraste as seções no painel à esquerda para mudar a ordem. Duplo clique numa miniatura abre a edição.
-            </p>
           </div>
-        ) : aba === "slide" ? (
-          secaoAtual ? (
-            <div className="flex flex-col gap-3">
-              <p className="text-sm font-bold text-text">
-                {nomeSecaoAtual}
-                {secaoAtual.ativo ? null : <span className="font-semibold text-text-muted"> · oculto na apresentação</span>}
-              </p>
-              <EditorDoSlide key={secaoAtual.id} secao={secaoAtual} roteiro={rascunho} imagens={imagens} resultados={calculo?.premios} onChange={(r) => atualizar(r)} />
-            </div>
-          ) : (
-            <p className="text-sm text-text-light">Escolha um slide no painel à esquerda para editar.</p>
-          )
         ) : aba === "design" ? (
-          <div className="flex max-w-3xl flex-col gap-2">
-            <p className="text-xs text-text-light">Fonte, transição e animações da apresentação inteira. A formatação de cada slide escrito fica em Editar slide.</p>
-            <TemaApresentacao tema={rascunho.tema} onChange={(t) => atualizar({ tema: t })} />
-          </div>
+          <TemaNaFaixa tema={rascunho.tema} onChange={(t) => atualizar({ tema: t })} />
         ) : aba === "reuniao" ? (
-          <div className="grid items-start gap-x-6 gap-y-5 [grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr))]">
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-bold text-text">Reunião</p>
-                <div className="flex items-center gap-1">
-                  <Button size="sm" variant="ghost" onClick={criarNova} disabled={!dados.calendario}>
-                    <Plus className="size-4" aria-hidden="true" />
-                    Nova
-                  </Button>
-                  {rascunho.id ? (
-                    <Button size="sm" variant="ghost" onClick={duplicar} disabled={!dados.calendario} title="Nova reunião com o mesmo roteiro, slides escritos, textos e aparência">
-                      <Copy className="size-4" aria-hidden="true" />
-                      Duplicar
-                    </Button>
-                  ) : null}
-                  {rascunho.id ? (
-                    <Button size="sm" variant="ghost" onClick={() => setApagando(true)} aria-label="Apagar esta reunião">
-                      <Trash2 className="size-4" aria-hidden="true" />
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
-              {salvas && salvas.length > 0 ? (
-                <Select
-                  aria-label="Reuniões salvas"
-                  value={rascunho.id ?? ""}
-                  onChange={(e) => {
-                    const r = salvas.find((x) => x.id === e.target.value);
-                    if (r) {
-                      setRascunho(r);
-                      setAlterado(false);
-                      limparHistorico();
-                    }
-                  }}
-                >
-                  {!rascunho.id ? <option value="">Nova (não salva)</option> : null}
-                  {salvas.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.titulo}
-                    </option>
-                  ))}
-                </Select>
-              ) : null}
-              <div className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-text">Período dos resultados</span>
-                <Select
-                  aria-label="Período dos resultados"
-                  value={valorPeriodo}
-                  onChange={(e) => {
-                    const t = trimestres.find((x) => x.id === e.target.value);
-                    const a = periodosAnuais.find((x) => `ano:${x.ano}` === e.target.value);
-                    if (t) atualizar({ periodo: { nome: t.nome, inicio: t.inicio, fim: t.fim }, titulo: `Reunião de resultados · ${t.nome}` });
-                    else if (a) atualizar({ periodo: { nome: a.nome, inicio: a.inicio, fim: a.fim }, titulo: `Fechamento de ${a.ano}` });
-                    else atualizar({ periodo: { ...rascunho.periodo, nome: rascunho.periodo.nome || "Período" } });
-                  }}
-                >
-                  <optgroup label="Trimestres">
-                    {trimestres.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.nome} · {formatShortDate(t.inicio)} a {formatShortDate(t.fim)}
-                      </option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="Ano inteiro">
-                    {periodosAnuais.map((p) => (
-                      <option key={p.ano} value={`ano:${p.ano}`}>
-                        {hoje <= p.fim && hoje >= p.inicio ? `${p.ano} até agora` : `Fechamento de ${p.ano}`} · {formatShortDate(p.inicio)} a {formatShortDate(p.fim)}
-                      </option>
-                    ))}
-                  </optgroup>
-                  <option value="personalizado">Outras datas</option>
-                </Select>
-                {trimestres.length === 0 ? (
-                  <p className="flex items-start gap-1.5 text-xs text-text-light">
-                    <CalendarRange className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-                    <span>
-                      Cadastre os trimestres em{" "}
-                      <Link href="/gestao/configuracoes" className="font-semibold text-primary hover:underline">
-                        Configurar portal → Ranking e premiação
-                      </Link>{" "}
-                      para escolher com um toque.
-                    </span>
-                  </p>
-                ) : null}
-              </div>
-              {valorPeriodo === "personalizado" ? (
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="col-span-2">
-                    <TextField label="Nome do período" value={rascunho.periodo.nome} onChange={(e) => atualizar({ periodo: { ...rascunho.periodo, nome: e.target.value } })} />
+          <div className="flex items-stretch gap-x-4 gap-y-3 overflow-x-auto pb-1">
+            <GrupoDaFaixa nome="Apresentação">
+              <BotaoDaFaixa icone={<FilePlus2 />} rotulo="Nova" onClick={criarNova} disabled={!dados.calendario} title="Assistente: tipo, período e reunião da agenda" />
+              <BotaoDaFaixa icone={<Copy />} rotulo="Duplicar" onClick={duplicar} disabled={!dados.calendario || !rascunho.id} title="Nova reunião com o mesmo roteiro, slides escritos, textos e aparência" />
+              <BotaoDaFaixa icone={<Trash2 />} rotulo="Apagar" onClick={() => setApagando(true)} disabled={!rascunho.id} />
+            </GrupoDaFaixa>
+            <SeparadorDaFaixa />
+            <GrupoDaFaixa nome="Dados da reunião">
+              <BotaoDaFaixa icone={<CalendarRange />} rotulo="Período e agenda" onClick={() => setJanela("periodo")} title={`${rascunho.periodo.nome} · ${formatShortDate(rascunho.periodo.inicio)} a ${formatShortDate(rascunho.periodo.fim)}`} />
+              <BotaoDaFaixa icone={<Star />} rotulo={calculo ? `Novos atletas · ${calculo.novos.length}` : "Novos atletas"} onClick={() => setJanela("novos")} disabled={!calculo || !dados.atletas} />
+            </GrupoDaFaixa>
+            <SeparadorDaFaixa />
+            <GrupoDaFaixa nome="Conferir">
+              <BotaoDaFaixa icone={avisos > 0 ? <AlertTriangle /> : <CheckCircle2 />} rotulo={avisos > 0 ? `Revisar · ${avisos}` : "Tudo certo"} onClick={() => setJanela("revisar")} disabled={!verificacoes} />
+            </GrupoDaFaixa>
+            {salvas && salvas.length > 1 ? (
+              <>
+                <SeparadorDaFaixa />
+                <GrupoDaFaixa nome="Abrir outra reunião">
+                  <div className="w-64 pt-1.5">
+                    <Select
+                      aria-label="Abrir outra reunião"
+                      value={rascunho.id ?? ""}
+                      onChange={(e) => {
+                        const r = salvas.find((x) => x.id === e.target.value);
+                        if (r) {
+                          setRascunho(r);
+                          setAlterado(false);
+                          limparHistorico();
+                          setSelecao({ secao: null, chave: null });
+                        }
+                      }}
+                    >
+                      {!rascunho.id ? <option value="">Nova (não salva)</option> : null}
+                      {salvas.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.titulo}
+                        </option>
+                      ))}
+                    </Select>
                   </div>
-                  <TextField label="Início" type="date" value={rascunho.periodo.inicio} onChange={(e) => atualizar({ periodo: { ...rascunho.periodo, inicio: e.target.value } })} />
-                  <TextField label="Fim" type="date" value={rascunho.periodo.fim} onChange={(e) => atualizar({ periodo: { ...rascunho.periodo, fim: e.target.value } })} />
-                </div>
-              ) : null}
-              <div className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-text">Reunião da agenda (QR de presença)</span>
-                <Select aria-label="Reunião da agenda" value={rascunho.eventoId ?? ""} onChange={(e) => atualizar({ eventoId: e.target.value || null })}>
-                  <option value="">Sem QR de presença</option>
-                  {reunioesAgenda.map((e) => (
-                    <option key={e.id} value={e.id}>
-                      {formatShortDate(e.data)} · {e.titulo}
-                    </option>
-                  ))}
-                </Select>
-                {semPermissao && evento ? <p className="text-xs text-warning">O QR ao vivo precisa da permissão Eventos.</p> : null}
-              </div>
-            </div>
-            {verificacoes ? <AntesDeApresentar itens={verificacoes} /> : null}
-            {calculo && dados.atletas ? (
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <Star className="size-4 text-accent" aria-hidden="true" />
-                  <p className="text-sm font-bold text-text">Novos atletas · {calculo.novos.length}</p>
-                </div>
-                <EditorNovos atletas={dados.atletas} novos={calculo.novos} rascunho={rascunho} onChange={atualizar} />
-              </div>
+                </GrupoDaFaixa>
+              </>
             ) : null}
           </div>
         ) : (
@@ -1136,8 +1048,8 @@ export default function ReuniaoResultadosPage() {
         )}
       </FaixaDeOpcoes>
 
-      <div className="grid grid-cols-1 gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[220px_minmax(0,1fr)]">
-        <aside className="order-last rounded-[var(--radius-lg)] border border-border bg-bg-card p-2 lg:order-none lg:min-h-0 lg:overflow-y-auto">
+      <div className={cn("grid grid-cols-1 gap-3 lg:min-h-0 lg:flex-1", editando && secaoAtual ? "lg:grid-cols-[196px_minmax(0,1fr)_minmax(320px,380px)]" : "lg:grid-cols-[196px_minmax(0,1fr)]")}>
+        <aside aria-label="Slides" className="order-last -mx-1 px-1 py-1 lg:order-none lg:min-h-0 lg:overflow-y-auto">
           {calculo && rascunho ? (
             <PainelDeSlides
               secoes={secoesDoPainel}
@@ -1148,8 +1060,7 @@ export default function ReuniaoResultadosPage() {
               onSelecionarSlide={selecionarSlide}
               onAbrir={(i) => {
                 selecionarSlide(i);
-                setAba("slide");
-                mudarRecolhida(false);
+                setEditando(true);
               }}
               onMostrar={acoes.mostrar}
               onMover={acoes.mover}
@@ -1235,6 +1146,23 @@ export default function ReuniaoResultadosPage() {
             </div>
           ) : null}
         </div>
+
+        {editando && secaoAtual && rascunho ? (
+          // Painel de edição do slide escolhido, à direita (no celular, embaixo do slide).
+          <section aria-label={`Editar ${nomeSecaoAtual}`} className="flex flex-col overflow-hidden rounded-[var(--radius-lg)] border border-border bg-bg-card lg:min-h-0">
+            <header className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
+              <Pencil className="size-4 shrink-0 text-primary" aria-hidden="true" />
+              <h2 className="min-w-0 flex-1 truncate text-sm font-bold text-text">{nomeSecaoAtual}</h2>
+              <button type="button" onClick={() => setEditando(false)} aria-label="Fechar a edição" className="flex size-8 items-center justify-center rounded-[var(--radius-sm)] text-text-light hover:bg-bg-inset hover:text-text">
+                <X className="size-4" aria-hidden="true" />
+              </button>
+            </header>
+            <div className="min-h-0 flex-1 overflow-y-auto p-3">
+              {!secaoAtual.ativo ? <p className="mb-3 rounded-[var(--radius-sm)] bg-bg-inset px-2.5 py-2 text-xs text-text-light">Oculto na apresentação. Use Início → Mostrar para incluir.</p> : null}
+              <EditorDoSlide key={secaoAtual.id} secao={secaoAtual} roteiro={rascunho} imagens={imagens} resultados={calculo?.premios} onChange={(r) => atualizar(r)} />
+            </div>
+          </section>
+        ) : null}
       </div>
 
       {rascunho ? (
@@ -1273,6 +1201,82 @@ export default function ReuniaoResultadosPage() {
           acao={acaoDoSlide}
         />
       ) : null}
+
+      <Modal open={janela === "periodo"} onClose={() => setJanela(null)} title="Período e reunião da agenda" description="De qual período são os números e qual reunião libera o QR de presença." size="md" mobileSheet footer={<Button onClick={() => setJanela(null)}>Pronto</Button>}>
+        {rascunho ? (
+          <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-text">Período dos resultados</span>
+                <Select
+                  aria-label="Período dos resultados"
+                  value={valorPeriodo}
+                  onChange={(e) => {
+                    const t = trimestres.find((x) => x.id === e.target.value);
+                    const a = periodosAnuais.find((x) => `ano:${x.ano}` === e.target.value);
+                    if (t) atualizar({ periodo: { nome: t.nome, inicio: t.inicio, fim: t.fim }, titulo: `Reunião de resultados · ${t.nome}` });
+                    else if (a) atualizar({ periodo: { nome: a.nome, inicio: a.inicio, fim: a.fim }, titulo: `Fechamento de ${a.ano}` });
+                    else atualizar({ periodo: { ...rascunho.periodo, nome: rascunho.periodo.nome || "Período" } });
+                  }}
+                >
+                  <optgroup label="Trimestres">
+                    {trimestres.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.nome} · {formatShortDate(t.inicio)} a {formatShortDate(t.fim)}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Ano inteiro">
+                    {periodosAnuais.map((p) => (
+                      <option key={p.ano} value={`ano:${p.ano}`}>
+                        {hoje <= p.fim && hoje >= p.inicio ? `${p.ano} até agora` : `Fechamento de ${p.ano}`} · {formatShortDate(p.inicio)} a {formatShortDate(p.fim)}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <option value="personalizado">Outras datas</option>
+                </Select>
+                {trimestres.length === 0 ? (
+                  <p className="flex items-start gap-1.5 text-xs text-text-light">
+                    <CalendarRange className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                    <span>
+                      Cadastre os trimestres em{" "}
+                      <Link href="/gestao/configuracoes" className="font-semibold text-primary hover:underline">
+                        Configurar portal → Ranking e premiação
+                      </Link>{" "}
+                      para escolher com um toque.
+                    </span>
+                  </p>
+                ) : null}
+              </div>
+              {valorPeriodo === "personalizado" ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="col-span-2">
+                    <TextField label="Nome do período" value={rascunho.periodo.nome} onChange={(e) => atualizar({ periodo: { ...rascunho.periodo, nome: e.target.value } })} />
+                  </div>
+                  <TextField label="Início" type="date" value={rascunho.periodo.inicio} onChange={(e) => atualizar({ periodo: { ...rascunho.periodo, inicio: e.target.value } })} />
+                  <TextField label="Fim" type="date" value={rascunho.periodo.fim} onChange={(e) => atualizar({ periodo: { ...rascunho.periodo, fim: e.target.value } })} />
+                </div>
+              ) : null}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-text">Reunião da agenda (QR de presença)</span>
+                <Select aria-label="Reunião da agenda" value={rascunho.eventoId ?? ""} onChange={(e) => atualizar({ eventoId: e.target.value || null })}>
+                  <option value="">Sem QR de presença</option>
+                  {reunioesAgenda.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {formatShortDate(e.data)} · {e.titulo}
+                    </option>
+                  ))}
+                </Select>
+                {semPermissao && evento ? <p className="text-xs text-warning">O QR ao vivo precisa da permissão Eventos.</p> : null}
+              </div>
+          </div>
+        ) : null}
+      </Modal>
+      <Modal open={janela === "novos"} onClose={() => setJanela(null)} title={`Novos atletas${calculo ? ` · ${calculo.novos.length}` : ""}`} description="Quem aparece no slide de boas-vindas. Inclua ou tire alguém se precisar." size="md" mobileSheet footer={<Button onClick={() => setJanela(null)}>Pronto</Button>}>
+        {calculo && dados.atletas && rascunho ? <EditorNovos atletas={dados.atletas} novos={calculo.novos} rascunho={rascunho} onChange={atualizar} /> : null}
+      </Modal>
+      <Modal open={janela === "revisar"} onClose={() => setJanela(null)} title="Antes de apresentar" description="O que pode sair errado no telão." size="md" mobileSheet footer={<Button onClick={() => setJanela(null)}>Fechar</Button>}>
+        {verificacoes ? <AntesDeApresentar itens={verificacoes} /> : null}
+      </Modal>
 
       {dados.calendario ? (
         <AssistenteNovaReuniao
