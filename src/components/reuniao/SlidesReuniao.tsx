@@ -1043,21 +1043,46 @@ function Obrigado() {
   );
 }
 
-function Destaques({ itens, desafios, periodo, pagina, paginas, fotos, titulo }: Extract<SlideDef, { tipo: "destaques" }> & { fotos: Record<string, string> }) {
+function Destaques({ itens, desafios, periodo, pagina, paginas, fotos, titulo, revelar = "junto", revelados }: Extract<SlideDef, { tipo: "destaques" }> & { fotos: Record<string, string>; revelados?: number }) {
   const largura = itens.length <= 2 ? 560 : itens.length === 3 ? 500 : 400;
+  // Ao vivo (revelados definido) e com modo: cartões da esquerda para a direita, um por clique.
+  const aoVivo = revelados !== undefined && revelar !== "junto";
+  const visivel = (k: number) => !aoVivo || k < revelados!;
   return (
     <Base fundo="conteudo">
       <TituloConteudo extra={juntarExtra(periodo, paginas > 1 ? `${pagina}/${paginas}` : undefined)}>{titulo ?? <T k="destaques.titulo" />}</TituloConteudo>
       <div style={{ position: "absolute", left: 72, right: 72, top: 175, bottom: desafios.length ? 250 : 130, display: "flex", gap: 32, justifyContent: "center", alignItems: "center" }}>
-        {itens.map((d) => (
-          <div key={d.id} style={{ ...cartao, width: largura, height: desafios.length ? 600 : 680, border: "none", overflow: "hidden", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-            <div style={{ alignSelf: "stretch", padding: "18px 24px", background: `linear-gradient(180deg, ${COR.navy}, ${COR.navyEscuro})`, color: "#ffb37a", fontSize: 28, fontWeight: 900, letterSpacing: "0.04em", textTransform: "uppercase" }}>{d.titulo}</div>
-            <div style={{ marginTop: 34 }}>
+        {itens.map((d, k) => {
+          const mostra = visivel(k);
+          const estiloCartao: CSSProperties = { ...cartao, width: largura, height: desafios.length ? 600 : 680, border: "none", overflow: "hidden", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" };
+          const cabecalho = <div style={{ alignSelf: "stretch", padding: "18px 24px", background: `linear-gradient(180deg, ${COR.navy}, ${COR.navyEscuro})`, color: "#ffb37a", fontSize: 28, fontWeight: 900, letterSpacing: "0.04em", textTransform: "uppercase" }}>{d.titulo}</div>;
+          if (!mostra && revelar === "um") {
+            // Ainda não chegou a vez: o lugar fica reservado (o layout não pula).
+            return <div key={d.id} style={{ ...estiloCartao, visibility: "hidden" }} aria-hidden="true" />;
+          }
+          if (!mostra) {
+            // Suspense: a categoria aparece; quem ganhou, só no clique.
+            return (
+              <div key={d.id} style={estiloCartao}>
+                {cabecalho}
+                <div style={{ marginTop: 34, width: 190, height: 190, borderRadius: "50%", border: `8px dashed ${COR.laranja}`, background: "#eef4fb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 96, fontWeight: 900, color: COR.laranja }}>?</div>
+                <div style={{ marginTop: 26, padding: "0 24px", fontSize: 40, fontWeight: 900, color: "#c3d2e6", lineHeight: 1.05 }}>Quem será?</div>
+                <div style={{ marginTop: "auto", paddingBottom: 40, fontSize: 104, fontWeight: 900, lineHeight: 1, color: "#dbe6f3" }}>?</div>
+              </div>
+            );
+          }
+          const anima = aoVivo ? (revelar === "um" ? "podio-revela" : undefined) : undefined;
+          return (
+          <div key={d.id} className={anima} style={estiloCartao}>
+            {cabecalho}
+            <div className={aoVivo && revelar === "suspense" ? "podio-revela" : undefined} style={{ marginTop: 34 }}>
               <Avatar nome={d.atleta.nome} foto={fotos[d.atleta.id]} tamanho={190} anel={COR.laranja} />
             </div>
+            <div className={aoVivo && revelar === "suspense" ? "podio-revela-texto" : undefined} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
             <div style={{ marginTop: 26, padding: "0 24px", fontSize: 40, fontWeight: 900, color: COR.navy, lineHeight: 1.05 }}>{nomeCurto(d.atleta.nome, 20)}</div>
             <div style={{ marginTop: 6, fontSize: 22, fontWeight: 800, letterSpacing: "0.12em", color: COR.cinza }}>{modalidadeLabel[d.atleta.modalidade].toUpperCase()}</div>
-            <div style={{ marginTop: "auto", paddingBottom: 30, display: "flex", flexDirection: "column", alignItems: "center" }}>
+            </div>
+            <div className={aoVivo && revelar === "suspense" ? "podio-revela-texto" : undefined} style={{ marginTop: "auto", paddingBottom: 30, display: "flex", flexDirection: "column", alignItems: "center" }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 10, color: COR.laranja }}>
                 <span style={{ fontSize: 104, fontWeight: 900, lineHeight: 1 }}>{d.valor}</span>
                 <span style={{ fontSize: 30, fontWeight: 800, color: COR.navy }}>{d.unidade}</span>
@@ -1065,7 +1090,8 @@ function Destaques({ itens, desafios, periodo, pagina, paginas, fotos, titulo }:
               <div style={{ marginTop: 8, padding: "0 22px", fontSize: d.detalhe.length > 30 ? 24 : 26, lineHeight: 1.25, fontWeight: 700, color: COR.cinza, textWrap: "balance" }}>{d.detalhe}</div>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
       {desafios.length ? (
         <div style={{ position: "absolute", left: 72, right: 72, bottom: 120, height: 104, display: "flex", alignItems: "center", gap: 28, padding: "0 36px", borderRadius: 24, background: "#fff", border: "2px solid #dbe6f3", boxShadow: "0 14px 32px rgba(7,29,64,.12)" }}>
@@ -1343,7 +1369,7 @@ function ConteudoDoSlide({
     case "obrigado":
       return <Obrigado />;
     case "destaques":
-      return <Destaques {...slide} fotos={fotos} />;
+      return <Destaques {...slide} fotos={fotos} revelados={passo} />;
     case "aniversariantes":
       return <Aniversariantes {...slide} fotos={fotos} />;
     case "sorteio":

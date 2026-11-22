@@ -47,7 +47,20 @@ export interface SecaoReuniao {
   periodo?: PeriodoDaSecao;
   /** Destaques: quais categorias entram (ids de CATEGORIAS_DESTAQUE). Sem valor, as padrão. */
   destaques?: string[];
+  /** Destaques: como os cartões aparecem ao apresentar. */
+  revelar?: RevelarDestaques;
 }
+
+/**
+ * Destaques ao vivo: todos de uma vez; um cartão por clique; ou as
+ * categorias primeiro (com "?") e, a cada clique, quem ganhou e os números.
+ */
+export type RevelarDestaques = "junto" | "um" | "suspense";
+export const MODOS_REVELAR_DESTAQUES: { id: RevelarDestaques; nome: string; dica: string }[] = [
+  { id: "junto", nome: "Todos juntos", dica: "Os cartões aparecem de uma vez." },
+  { id: "um", nome: "Um por clique", dica: "Cada clique mostra o próximo cartão." },
+  { id: "suspense", nome: "Suspense", dica: "Primeiro as categorias; cada clique revela quem ganhou e os números." },
+];
 
 export type PeriodoDaSecao = "reuniao" | "ano";
 /** Nome das seções do ano no roteiro e título do slide de destaques do ano. */
@@ -178,6 +191,8 @@ export function temaDaReuniao(tema: Partial<TemaReuniao> | undefined): TemaReuni
 
 /** Quantos cliques um slide tem antes de passar para o próximo (pódio revelado aos poucos). */
 export function passosDoSlide(slide: SlideDef | undefined, tema: TemaReuniao) {
+  // Destaques têm o modo na própria seção (independe do "revelar o pódio").
+  if (slide?.tipo === "destaques") return slide.revelar && slide.revelar !== "junto" ? slide.itens.length : 0;
   if (!tema.revelarPodio) return 0;
   if (slide?.tipo === "podio") return slide.podio.length;
   if (slide?.tipo === "premio") return slide.colocados.length;
@@ -512,6 +527,9 @@ export function validarReuniao(entrada: unknown): { erro: string } | { dados: Om
       ...(s.tipo === "destaques" && Array.isArray(s.destaques)
         ? { destaques: s.destaques.filter((d): d is string => typeof d === "string" && CATEGORIAS_DESTAQUE.some((c) => c.id === d)).slice(0, 20) }
         : {}),
+      ...(s.tipo === "destaques" && (s.revelar === "um" || s.revelar === "suspense")
+        ? { revelar: s.revelar }
+        : {}),
     }));
   if (secoes.length === 0) return { erro: "A reunião precisa de ao menos um slide." };
   const ids = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.length < 200).slice(0, 300) : []);
@@ -771,7 +789,7 @@ export type SlideDef = (
       /** Totais do período anterior, para mostrar a variação. */
       anterior: { nome: string; treinos: number; pontos: number; km: number } | null;
     }
-  | { chave: string; tipo: "destaques"; periodo: string; itens: Destaque[]; desafios: DesafioConcluido[]; pagina: number; paginas: number; titulo?: string }
+  | { chave: string; tipo: "destaques"; periodo: string; itens: Destaque[]; desafios: DesafioConcluido[]; pagina: number; paginas: number; titulo?: string; revelar?: RevelarDestaques }
   | { chave: string; tipo: "aniversariantes"; atletas: Aniversariante[]; pagina: number; paginas: number }
   | { chave: string; tipo: "podio"; modalidade: Modalidade; periodo: string; podio: ResultadoEquipe["podio"] }
   | {
@@ -1288,6 +1306,7 @@ export function montarRoteiro(params: {
             desafios: i === 0 ? desafiosDaSecao : [],
             pagina: i + 1,
             paginas: paginas.length,
+            ...(secao.revelar && secao.revelar !== "junto" ? { revelar: secao.revelar } : {}),
           }),
         );
         break;

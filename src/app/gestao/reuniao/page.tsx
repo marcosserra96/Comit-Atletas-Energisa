@@ -537,7 +537,7 @@ export default function ReuniaoResultadosPage() {
           presentes={paraPdf ? null : (presentes?.length ?? null)}
           sorteio={paraPdf ? undefined : sorteio.estado}
           tema={tema}
-          passo={aoVivo && tema.revelarPodio ? aoVivo.passo : undefined}
+          passo={aoVivo && (tema.revelarPodio || calculo.slides[i].tipo === "destaques") ? aoVivo.passo : undefined}
           animar={!!aoVivo?.aoVivo && tema.animacoes}
           aoVivo={!!aoVivo?.aoVivo}
           textos={textos}

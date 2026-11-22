@@ -15,6 +15,7 @@ import {
   CAMPOS_DE_TEXTO,
   CATEGORIAS_DESTAQUE,
   categoriasDaSecao,
+  MODOS_REVELAR_DESTAQUES,
   novoSlideLivre,
   SECOES_COM_PERIODO,
   TEXTOS_PADRAO,
@@ -120,6 +121,18 @@ function EditorSecao({
           </div>
           <p className="text-xs text-text-light">Categoria sem ninguém no período não aparece. Até 4 cartões por slide.</p>
         </fieldset>
+      ) : null}
+      {secao.tipo === "destaques" ? (
+        <div className="col-span-full flex flex-col gap-1.5">
+          <span className="text-sm font-medium text-text">Como aparecem ao apresentar</span>
+          <SegmentedControl
+            value={secao.revelar ?? "junto"}
+            onChange={(v) => mudarSecao({ revelar: v === "junto" ? undefined : v })}
+            className="w-full [&>button]:flex-1"
+            options={MODOS_REVELAR_DESTAQUES.map((m) => ({ value: m.id, label: m.nome }))}
+          />
+          <p className="text-xs text-text-light">{MODOS_REVELAR_DESTAQUES.find((m) => m.id === (secao.revelar ?? "junto"))?.dica} Nas miniaturas e no PDF, tudo aparece.</p>
+        </div>
       ) : null}
       {campos.map((c) => (
         <TextField
