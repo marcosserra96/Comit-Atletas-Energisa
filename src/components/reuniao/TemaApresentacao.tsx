@@ -111,3 +111,72 @@ export function TemaApresentacao({ tema: salvo, onChange }: { tema: Partial<Tema
     </div>
   );
 }
+
+/** A mesma aparência numa linha só, para a faixa de opções (aba Design). */
+export function TemaNaFaixa({ tema: salvo, onChange }: { tema: Partial<TemaReuniao> | undefined; onChange: (tema: TemaReuniao) => void }) {
+  const tema = temaDaReuniao(salvo);
+  const mudar = (campos: Partial<TemaReuniao>) => onChange({ ...tema, ...campos });
+  const rotulo = "text-center text-[10px] font-medium text-text-muted";
+  return (
+    <div className="flex items-stretch gap-x-5 gap-y-3 overflow-x-auto pb-1">
+      <section className="flex shrink-0 flex-col justify-between gap-1">
+        <div className="flex gap-1" role="radiogroup" aria-label="Fonte dos slides">
+          {(Object.keys(FONTES_SLIDE) as FonteSlide[]).map((f) => (
+            <button
+              key={f}
+              type="button"
+              role="radio"
+              aria-checked={tema.fonte === f}
+              onClick={() => mudar({ fonte: f })}
+              title={FONTES_SLIDE[f].nome}
+              className={cn(
+                "flex min-h-[50px] w-[64px] flex-col items-center justify-center gap-0.5 rounded-[var(--radius-sm)] px-1 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                tema.fonte === f ? "bg-primary-subtle text-primary ring-1 ring-primary" : "text-text-light hover:bg-bg-inset hover:text-text",
+              )}
+            >
+              <span className="text-lg font-extrabold leading-none text-text" style={{ fontFamily: FONTES_SLIDE[f].familia }} aria-hidden="true">
+                Aa
+              </span>
+              <span className="w-full truncate text-center">{FONTES_SLIDE[f].nome}</span>
+            </button>
+          ))}
+        </div>
+        <h3 className={rotulo}>Fonte</h3>
+      </section>
+      <div className="w-px shrink-0 self-stretch bg-border" aria-hidden="true" />
+      <section className="flex shrink-0 flex-col justify-between gap-1">
+        <div className="flex flex-col gap-1.5">
+          <div className={cn(grupo, "grid-cols-4")} role="radiogroup" aria-label="Transição entre slides">
+            {TRANSICOES.map((t) => (
+              <button key={t.valor} type="button" role="radio" aria-checked={tema.transicao === t.valor} onClick={() => mudar({ transicao: t.valor })} className={cn(opcao(tema.transicao === t.valor), "min-h-7 px-2.5")}>
+                {t.nome}
+              </button>
+            ))}
+          </div>
+          <div className={cn(grupo, "grid-cols-3")} role="radiogroup" aria-label="Velocidade das animações">
+            {VELOCIDADES.map((v) => (
+              <button key={v.valor} type="button" role="radio" aria-checked={tema.velocidade === v.valor} onClick={() => mudar({ velocidade: v.valor })} className={cn(opcao(tema.velocidade === v.valor), "min-h-7")}>
+                {v.nome}
+              </button>
+            ))}
+          </div>
+        </div>
+        <h3 className={rotulo}>Transição e velocidade</h3>
+      </section>
+      <div className="w-px shrink-0 self-stretch bg-border" aria-hidden="true" />
+      <section className="flex shrink-0 flex-col justify-between gap-1">
+        <div className="flex flex-col gap-1.5 [&_button[role=switch]]:-my-2">
+          <label className="flex items-center gap-2 text-xs font-semibold text-text" title="Título, números e fotos entram um a um">
+            <Switch ativo={tema.animacoes} onChange={(animacoes) => mudar({ animacoes })} rotulo="Animar a entrada" />
+            Animar a entrada
+          </label>
+          <label className="flex items-center gap-2 text-xs font-semibold text-text" title="Cada clique mostra um lugar: 3º, 2º e por fim o 1º">
+            <Switch ativo={tema.revelarPodio} onChange={(revelarPodio) => mudar({ revelarPodio })} rotulo="Revelar o pódio no clique" />
+            Revelar o pódio no clique
+          </label>
+        </div>
+        <h3 className={rotulo}>Animações</h3>
+      </section>
+    </div>
+  );
+}
