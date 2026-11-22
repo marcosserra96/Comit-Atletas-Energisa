@@ -84,7 +84,7 @@ export interface DadosCertificados {
 }
 
 /** Atletas, lançamentos, resumos mensais e calendário: o mesmo que as Análises usam. */
-function useDadosCertificados() {
+export function useDadosCertificados() {
   const [dados, setDados] = useState<DadosCertificados | null>(null);
   const [erro, setErro] = useState(false);
   const regrasTreino = useRegrasDeTreino();
@@ -666,7 +666,7 @@ export function PainelCertificados({ dados, regrasTreino, diasTreino }: { dados:
   );
 }
 
-function baixarArquivo(blob: Blob, nome: string) {
+export function baixarArquivo(blob: Blob, nome: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

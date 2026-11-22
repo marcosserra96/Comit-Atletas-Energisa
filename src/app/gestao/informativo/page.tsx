@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { PreviaEscalada } from "./PreviaEscalada";
 import { ConviteEvento } from "./ConviteEvento";
 import { Certificados } from "./Certificados";
+import { Trofeus } from "./Trofeus";
 import Link from "next/link";
 import { collection, getDocs } from "firebase/firestore";
 import { Bike, CalendarCog, Download, Footprints, Loader2, Share2 } from "lucide-react";
@@ -357,7 +358,7 @@ function RankingInformativo() {
   );
 }
 
-type Peca = "ranking" | "convite" | "certificados";
+type Peca = "ranking" | "convite" | "certificados" | "trofeus";
 
 export default function InformativoPage() {
   const { usuario } = useActiveSession();
@@ -365,7 +366,7 @@ export default function InformativoPage() {
   useEffect(() => {
     const id = window.setTimeout(() => {
       const p = new URLSearchParams(window.location.search).get("peca");
-      if (p === "convite" || p === "certificados") setPeca(p);
+      if (p === "convite" || p === "certificados" || p === "trofeus") setPeca(p);
     }, 0);
     return () => window.clearTimeout(id);
   }, []);
@@ -384,7 +385,9 @@ export default function InformativoPage() {
               ? "Ranking de pontos com pódio, tabela e aderência. Pronto para postar ou mandar no WhatsApp."
               : peca === "convite"
                 ? "Convite de evento com a cara do programa: escolha o layout, ajuste os textos e compartilhe."
-                : "Certificados para premiações, metas atingidas ou quem você escolher. Um por atleta, prontos para imprimir."}
+                : peca === "certificados"
+                  ? "Certificados para premiações, metas atingidas ou quem você escolher. Um por atleta, prontos para imprimir."
+                  : "Troféus e lembranças em acrílico: escolha o formato e o estilo e baixe o PDF em alta qualidade para a gráfica."}
           </p>
         </div>
         <SegmentedControl
@@ -395,10 +398,11 @@ export default function InformativoPage() {
             { value: "ranking", label: "Ranking" },
             { value: "convite", label: "Convite" },
             { value: "certificados", label: "Certificados" },
+            { value: "trofeus", label: "Troféus" },
           ]}
         />
       </div>
-      {peca === "ranking" ? <RankingInformativo /> : peca === "convite" ? <ConviteEvento /> : <Certificados />}
+      {peca === "ranking" ? <RankingInformativo /> : peca === "convite" ? <ConviteEvento /> : peca === "certificados" ? <Certificados /> : <Trofeus />}
     </div>
   );
 }
