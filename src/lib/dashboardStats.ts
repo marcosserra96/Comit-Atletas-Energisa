@@ -2,6 +2,7 @@ import { ateTerceiroLugar } from "@/lib/rankingPosition";
 import { dataIsoLocal } from "@/lib/date";
 import { ehMembroDoElenco } from "@/lib/labels";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
+import { separarPorModalidade } from "@/lib/modalidade";
 import { consolidarAtividades, regrasDeTreino, type AtividadeConsolidada } from "@/lib/activityConsolidation";
 import type {
   AtletaDoc,
@@ -132,6 +133,27 @@ export function calcularEstatisticasDashboard(params: {
       (pontosPorAtleta.get(resumo.atletaId) ?? 0) + (resumo.pontos || 0),
     );
   }
+  // Por modalidade: quem trocou conta cada ponto onde estava no dia (a parte
+  // da modalidade anterior é uma "fatia" com id próprio).
+  const sep = separarPorModalidade({ atletas: ativos, lancamentos: validos, resumos: resumosValidos });
+  const fatiaPontos = new Map<string, number>();
+  const fatiaKm = new Map<string, number>();
+  const fatiaParticipacoes = new Map<string, number>();
+  const somar = (m: Map<string, number>, id: string, v: number) => m.set(id, (m.get(id) ?? 0) + v);
+  for (const a of consolidarAtividades(sep.lancamentos, regrasTreino)) {
+    somar(fatiaPontos, a.atletaId, a.pontos);
+    somar(fatiaKm, a.atletaId, a.km);
+    somar(fatiaParticipacoes, a.atletaId, 1);
+  }
+  for (const r of sep.resumos) {
+    somar(fatiaPontos, r.atletaId, r.pontos || 0);
+    somar(fatiaKm, r.atletaId, r.km || 0);
+    somar(fatiaParticipacoes, r.atletaId, r.treinos || 0);
+  }
+  const pontosNaModalidade = (fatia: AtletaDoc) => fatiaPontos.get(fatia.id) ?? 0;
+  const porPontosNaModalidade = (a: AtletaDoc, b: AtletaDoc) => pontosNaModalidade(b) - pontosNaModalidade(a) || a.nome.localeCompare(b.nome, "pt-BR");
+  const comPontosNaModalidade = (fatia: AtletaDoc): AtletaDoc => ({ ...fatia, pontuacaoTotal: pontosNaModalidade(fatia) });
+
   const pontosDe = (atleta: AtletaDoc) => pontosPorAtleta.get(atleta.id) ?? 0;
   /** Cópia do atleta com a pontuação calculada, para pódio e relatórios. */
   const comPontos = (atleta: AtletaDoc): AtletaDoc => ({ ...atleta, pontuacaoTotal: pontosDe(atleta) });
@@ -154,11 +176,12 @@ export function calcularEstatisticasDashboard(params: {
       const ultimo = ultimoPorAtleta.get(a.id);
       return ultimo && ultimo >= iso30;
     });
-    const participacoes = grupo.reduce((s, a) => s + (participacoesPorAtleta.get(a.id) ?? 0), 0);
-    const pontos = grupo.reduce((s, a) => s + pontosDe(a), 0);
-    const km = grupo.reduce((s, a) => s + (kmPorAtleta.get(a.id) ?? 0), 0);
-    const primeiro = [...grupo].sort(porPontos).find((a) => pontosDe(a) > 0);
-    const top = primeiro ? comPontos(primeiro) : undefined;
+    const fatias = sep.atletas.filter((a) => a.equipe === mod);
+    const participacoes = fatias.reduce((s, a) => s + (fatiaParticipacoes.get(a.id) ?? 0), 0);
+    const pontos = fatias.reduce((s, a) => s + pontosNaModalidade(a), 0);
+    const km = fatias.reduce((s, a) => s + (fatiaKm.get(a.id) ?? 0), 0);
+    const primeiro = [...fatias].sort(porPontosNaModalidade).find((a) => pontosNaModalidade(a) > 0);
+    const top = primeiro ? comPontosNaModalidade(primeiro) : undefined;
     const inativos = grupo.filter((a) => {
       const ultimo = ultimoPorAtleta.get(a.id);
       return !ultimo || ultimo < iso30;
@@ -183,9 +206,9 @@ export function calcularEstatisticasDashboard(params: {
   // Do 1º ao 3º lugar (com empate, podem ser mais de 3 nomes).
   const podio = (mod: Modalidade) =>
     ateTerceiroLugar(
-      ativos.filter((a) => a.equipe === mod && pontosDe(a) > 0).sort(porPontos),
-      pontosDe,
-    ).map(comPontos);
+      sep.atletas.filter((a) => a.equipe === mod && pontosNaModalidade(a) > 0).sort(porPontosNaModalidade),
+      pontosNaModalidade,
+    ).map(comPontosNaModalidade);
 
   const custoParticipacao = participacoesTotal > 0 ? investimentoTotal / participacoesTotal : 0;
   const custoKm = kmTotal > 0 ? investimentoTotal / kmTotal : 0;

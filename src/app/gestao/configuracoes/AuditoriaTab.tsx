@@ -17,6 +17,7 @@ const acaoLabel: Record<string, string> = {
   recusar_acesso: "Recusa de acesso",
   cadastrar_atleta: "Cadastro de atleta",
   editar_atleta: "Edição de atleta",
+  trocas_modalidade: "Troca de modalidade",
   estornar_lancamento: "Estorno de lançamento",
   alterar_perfil_usuario: "Alteração de perfil",
   solicitar_justificativa_ausencia: "Solicitação de ausência",

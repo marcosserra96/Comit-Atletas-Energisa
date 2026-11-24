@@ -1,3 +1,5 @@
+import type { TrocaDeModalidade } from "@/lib/modalidade";
+
 export type Role = "atleta" | "comite" | "administrador";
 
 export type Modalidade = "corrida" | "bicicleta";
@@ -45,6 +47,11 @@ export interface AtletaDoc {
   fotoVersao?: number;
   /** Dia (YYYY-MM-DD) em que entrou na equipe de Corrida ou Bike: alimenta "Novos atletas". */
   entrouNaEquipeEm?: string;
+  /**
+   * Trocas entre Corrida e Bike, com a data de cada uma. Nas apurações, cada
+   * registro conta na modalidade em que o atleta estava no dia (ver lib/modalidade).
+   */
+  trocasModalidade?: TrocaDeModalidade[];
 }
 
 export type AtletaPublicoDoc = Pick<
@@ -381,6 +388,8 @@ export interface RankingResultadoDoc extends AtletaPublicoDoc {
   km: number;
   /** Só no período "mes": competência "YYYY-MM" do resultado. */
   competencia?: string;
+  /** Pontos de uma modalidade que o atleta já deixou (trocou de Bike para Corrida ou o contrário). */
+  outraModalidade?: boolean;
   geradoEm: unknown;
 }
 

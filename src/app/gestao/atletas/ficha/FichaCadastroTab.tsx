@@ -14,6 +14,10 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmarPerigoModal } from "@/components/ui/ConfirmarPerigoModal";
 import { logAudit } from "@/lib/audit";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
+import { ehModalidade, trocasDoAtleta } from "@/lib/modalidade";
+import { modalidadeLabel } from "@/lib/labels";
+import { atualizarRankingAutomaticamente } from "@/lib/rankingAutoUpdate";
+import { TrocasModalidade } from "./TrocasModalidade";
 import type { AtletaDoc, Equipe } from "@/lib/types";
 
 const equipeOptions: Equipe[] = ["corrida", "bicicleta", "fila_corrida", "fila_bicicleta"];
@@ -28,11 +32,19 @@ export function FichaCadastroTab({ atleta, onSaved }: { atleta: AtletaDoc; onSav
   const [localidade, setLocalidade] = useState(atleta.localidade ?? "");
   const [anoEntrada, setAnoEntrada] = useState(atleta.anoEntrada ? String(atleta.anoEntrada) : "");
   const [equipe, setEquipe] = useState<Equipe>(atleta.equipe);
+  const [dataTroca, setDataTroca] = useState(dataIsoLocal());
   const [loading, setLoading] = useState(false);
+  // Corrida ↔ Bike: a troca fica registrada com a data, e os pontos de antes ficam na modalidade antiga.
+  const trocandoModalidade = ehModalidade(equipe) && ehModalidade(atleta.equipe) && equipe !== atleta.equipe;
+  const ultimaTroca = trocasDoAtleta(atleta).at(-1);
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (trocandoModalidade && (!dataTroca || dataTroca > dataIsoLocal() || (ultimaTroca && dataTroca <= ultimaTroca.data))) {
+      show("error", ultimaTroca && dataTroca && dataTroca <= ultimaTroca.data ? "A troca precisa ser depois da última, registrada no Trocas de modalidade." : "Informe o dia em que a troca de modalidade começou (até hoje).");
+      return;
+    }
     setLoading(true);
     try {
       const entrouNaFilaAgora = equipe.startsWith("fila_") && !atleta.equipe.startsWith("fila_");
@@ -57,7 +69,15 @@ export function FichaCadastroTab({ atleta, onSaved }: { atleta: AtletaDoc; onSav
         // Só ganha uma nova posição (vai pro fim) se está entrando na fila agora;
         // se já estava nessa mesma fila, mantém a ordem definida por drag-and-drop.
         ...(entrouNaFilaAgora ? { ordemFila: Date.now() } : {}),
-        ...(entrouNaEquipeAgora ? { entrouNaEquipeEm: dataIsoLocal() } : {}),
+        ...(entrouNaEquipeAgora ? { entrouNaEquipeEm: trocandoModalidade ? dataTroca : dataIsoLocal() } : {}),
+        ...(trocandoModalidade && ehModalidade(atleta.equipe) && ehModalidade(equipe)
+          ? {
+              trocasModalidade: [
+                ...trocasDoAtleta(atleta),
+                { de: atleta.equipe, para: equipe, data: dataTroca, registradoPor: uid, registradoPorNome: autor.nome, registradoEm: new Date().toISOString() },
+              ],
+            }
+          : {}),
         atualizadoEm: serverTimestamp(),
       });
       batch.set(
@@ -75,11 +95,13 @@ export function FichaCadastroTab({ atleta, onSaved }: { atleta: AtletaDoc; onSav
         acao: "editar_atleta",
         entidade: "atletas",
         entidadeId: atleta.id,
-        dados: { nome, equipe },
+        dados: { nome, equipe, ...(trocandoModalidade ? { trocaModalidade: `${atleta.equipe}→${equipe} em ${dataTroca}` } : {}) },
         criadoPor: uid,
         criadoPorNome: autor.nome,
       });
-      show("success", "Cadastro atualizado.");
+      // A equipe define em que ranking a pessoa aparece.
+      if (equipe !== atleta.equipe) await atualizarRankingAutomaticamente([atleta.id], trocandoModalidade ? "troca_modalidade" : "equipe_alterada");
+      show("success", trocandoModalidade ? "Cadastro atualizado e troca de modalidade registrada." : "Cadastro atualizado.");
       onSaved();
     } catch {
       show("error", "Não foi possível salvar agora. Tente novamente.");
@@ -161,11 +183,31 @@ export function FichaCadastroTab({ atleta, onSaved }: { atleta: AtletaDoc; onSav
               ))}
             </Select>
           </div>
+          {trocandoModalidade ? (
+            <div className="flex flex-col gap-2 rounded-[var(--radius)] bg-[var(--color-info-subtle)] p-3 sm:col-span-2">
+              <div className="w-48">
+                <TextField
+                  label={`Primeiro dia na ${modalidadeLabel[equipe as "corrida" | "bicicleta"]}`}
+                  type="date"
+                  value={dataTroca}
+                  min={ultimaTroca ? ultimaTroca.data : undefined}
+                  max={dataIsoLocal()}
+                  onChange={(e) => setDataTroca(e.target.value)}
+                  required
+                />
+              </div>
+              <p className="text-xs text-text-secondary [text-wrap:pretty]">
+                Os pontos, treinos e km de antes dessa data continuam na {modalidadeLabel[atleta.equipe as "corrida" | "bicicleta"]}: não entram na apuração da {modalidadeLabel[equipe as "corrida" | "bicicleta"]}.
+              </p>
+            </div>
+          ) : null}
         </div>
         <Button type="submit" loading={loading} className="w-fit">
           Salvar cadastro
         </Button>
       </form>
+
+      <TrocasModalidade key={(atleta.trocasModalidade ?? []).length} atleta={atleta} />
 
       {usuario.role === "administrador" && (
         <div className="mt-4 rounded-[var(--radius-lg)] border border-danger/30 bg-danger/5 p-4">

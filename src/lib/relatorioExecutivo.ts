@@ -5,6 +5,7 @@
 import { consolidarAtividades, type RegrasDeTreino } from "@/lib/activityConsolidation";
 import { formatKmTotal, formatNumero, plural } from "@/lib/format";
 import { membroAtivoDaEquipe, novosAtletas, resultadosDaEquipe } from "@/lib/reuniaoResultados";
+import { separarPorModalidade } from "@/lib/modalidade";
 import type { AtletaDoc, DespesaDoc, EventoDoc, HistoricoMensalDoc, HistoricoPontoDoc, Modalidade } from "@/lib/types";
 
 export type OpcaoPeriodo = "trimestre_atual" | "trimestre_anterior" | "mes_atual" | "mes_anterior" | "ano";
@@ -139,8 +140,10 @@ export function montarRelatorio(params: {
 }): DadosRelatorio {
   const { periodo, atletas, lancamentos, resumosMensais, regrasTreino, hoje } = params;
   const validos = lancamentos.filter((l) => !l.estornado);
+  // Por equipe: quem trocou de modalidade conta cada ponto onde estava no dia.
+  const sep = separarPorModalidade({ atletas, lancamentos: validos, resumos: resumosMensais });
   const resultados = (iv: Intervalo, modalidade: Modalidade) =>
-    resultadosDaEquipe({ modalidade, atletas, lancamentos: validos, resumosMensais, inicio: iv.inicio, fim: iv.fim, regrasTreino });
+    resultadosDaEquipe({ modalidade, atletas: sep.atletas, lancamentos: sep.lancamentos, resumosMensais: sep.resumos, inicio: iv.inicio, fim: iv.fim, regrasTreino });
 
   const atual = { inicio: periodo.inicio, fim: periodo.ate };
   const equipesAtuais = MODALIDADES.map((m) => resultados(atual, m));

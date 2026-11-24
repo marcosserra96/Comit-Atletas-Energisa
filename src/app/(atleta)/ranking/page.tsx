@@ -746,6 +746,11 @@ export default function RankingPage() {
                             {atleta.nome}
                             {isMe ? <span className="ml-1 text-xs font-normal">(você)</span> : null}
                           </span>
+                          {"outraModalidade" in atleta && atleta.outraModalidade ? (
+                            <span className="block truncate text-xs text-text-light">
+                              Hoje na {modalidade === "corrida" ? "Bike" : "Corrida"} · pontos de quando estava aqui
+                            </span>
+                          ) : null}
                           {atleta.treinos !== undefined ? (
                             <span className="block truncate text-xs text-text-light sm:hidden">
                               {plural(atleta.treinos, "treino")} · {formatKm(atleta.km ?? 0)}

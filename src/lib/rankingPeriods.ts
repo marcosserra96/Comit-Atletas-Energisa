@@ -1,5 +1,6 @@
 import { consolidarAtividades, type RegrasDeTreino } from "@/lib/activityConsolidation";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
+import { valeNoPeriodo, type AtletaNaModalidade } from "@/lib/modalidade";
 import type {
   AtletaDoc,
   HistoricoMensalDoc,
@@ -140,7 +141,9 @@ export function calcularResultadosRanking(
     if (
       !perfilAtletaVisivel(atleta) ||
       !atleta.ativo ||
-      (atleta.equipe !== "corrida" && atleta.equipe !== "bicicleta")
+      (atleta.equipe !== "corrida" && atleta.equipe !== "bicicleta") ||
+      // Quem trocou de modalidade só aparece onde estava no período.
+      !valeNoPeriodo(atleta as AtletaNaModalidade, inicio, fim)
     ) {
       return [];
     }

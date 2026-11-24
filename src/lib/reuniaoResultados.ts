@@ -6,6 +6,7 @@
  * Tudo aqui é puro: a tela carrega os dados e chama estas funções.
  */
 import { calcularResultadosRanking } from "@/lib/rankingPeriods";
+import { valeNoPeriodo, type AtletaNaModalidade } from "@/lib/modalidade";
 import { calcularPosicoesRanking, montarPodio, type DegrauDoPodio } from "@/lib/rankingPosition";
 import type { AtividadeConsolidada, RegrasDeTreino } from "@/lib/activityConsolidation";
 import { formatKmTotal, formatNumero, formatPontos, plural } from "@/lib/format";
@@ -623,7 +624,8 @@ export function resultadosDaEquipe(params: {
   novos?: ReadonlySet<string>;
 }): ResultadoEquipe {
   const { modalidade } = params;
-  const daEquipe = params.atletas.filter((a) => membroAtivoDaEquipe(a, modalidade));
+  // Quem trocou de modalidade só conta na equipe em que estava no período.
+  const daEquipe = params.atletas.filter((a) => membroAtivoDaEquipe(a, modalidade) && valeNoPeriodo(a as AtletaNaModalidade, params.inicio, params.fim));
   const porId = new Map(daEquipe.map((a) => [a.id, a]));
   const calculados = calcularResultadosRanking(
     daEquipe,

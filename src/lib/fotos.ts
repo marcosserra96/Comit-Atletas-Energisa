@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { auth } from "@/lib/firebase";
 import { FOTO_LADO } from "@/lib/fotoRegras";
+import { idDoAtleta } from "@/lib/modalidade";
 
 /**
  * Reduz a imagem no próprio aparelho antes de enviar: corrige a rotação da
@@ -114,9 +115,11 @@ function useAvisos() {
  */
 export type PessoaComFoto = { id: string; fotoVersao?: number | null; porId?: boolean };
 
+// Quem trocou de modalidade aparece também como `id~modalidade`: a foto é a mesma.
 const precisa = (p: PessoaComFoto) => {
-  if (p.porId) return !cache.has(p.id);
-  return !!p.fotoVersao && (cache.get(p.id)?.versao ?? 0) < p.fotoVersao;
+  const id = idDoAtleta(p.id);
+  if (p.porId) return !cache.has(id);
+  return !!p.fotoVersao && (cache.get(id)?.versao ?? 0) < p.fotoVersao;
 };
 
 /** Fotos de uma lista de pessoas: id → data URL (só de quem tem foto). */
@@ -129,7 +132,7 @@ export function useFotosAtletas(pessoas: readonly PessoaComFoto[]) {
     .join(",");
   useEffect(() => {
     if (!chave) return;
-    for (const p of pessoas) if (precisa(p)) pedir(p.id, p.porId ? 0 : (p.fotoVersao ?? 0));
+    for (const p of pessoas) if (precisa(p)) pedir(idDoAtleta(p.id), p.porId ? 0 : (p.fotoVersao ?? 0));
     // `pessoas` muda de identidade a cada render; a chave resume o que importa.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chave]);
@@ -137,7 +140,7 @@ export function useFotosAtletas(pessoas: readonly PessoaComFoto[]) {
   // Calculado a cada render (barato): o cache muda fora do React e `avisar` re-renderiza.
   const out: Record<string, string> = {};
   for (const p of pessoas) {
-    const c = cache.get(p.id);
+    const c = cache.get(idDoAtleta(p.id));
     if (c?.url && (p.porId || p.fotoVersao)) out[p.id] = c.url;
   }
   return out;

@@ -27,6 +27,7 @@ import { DURACAO_ENQUETE_MS, pesquisaDaEnquete } from "@/lib/enquete";
 import { TemaNaFaixa } from "@/components/reuniao/TemaApresentacao";
 import { NoticiaModal } from "@/app/gestao/noticias/NoticiaModal";
 import { AvatarAtleta } from "@/components/atletas/AvatarAtleta";
+import { separarPorModalidade } from "@/lib/modalidade";
 import { temPermissao } from "@/lib/permissoes";
 import { carregarTodosLancamentos } from "@/lib/lancamentosCache";
 import { useRegrasDeTreino } from "@/lib/useRegrasDeTreino";
@@ -404,12 +405,14 @@ export default function ReuniaoResultadosPage() {
     const atletas = dados.atletas!;
     const novos = novosAtletas({ atletas, inicio: periodo.inicio, ate: hoje, incluir: rascunho.novosIncluir, excluir: rascunho.novosExcluir });
     const idsNovos = new Set(novos.map((a) => a.id));
+    // Números por equipe: quem trocou de modalidade conta cada ponto onde estava no dia.
+    const sep = separarPorModalidade({ atletas, lancamentos: dados.lancamentos!, resumos: dados.mensais! });
     /**
      * Números de um período: resultados das equipes, o anterior para comparar,
      * destaques e desafios. Vale para o período da reunião e para o "ano até agora".
      */
     const calcularBloco = (p: { nome: string; inicio: string; fim: string }, antFixo?: { nome: string; inicio: string; fim: string }) => {
-      const comum = { atletas, lancamentos: dados.lancamentos!, resumosMensais: dados.mensais!, inicio: p.inicio, fim: p.fim, regrasTreino: dados.regrasTreino!, novos: idsNovos };
+      const comum = { atletas: sep.atletas, lancamentos: sep.lancamentos, resumosMensais: sep.resumos, inicio: p.inicio, fim: p.fim, regrasTreino: dados.regrasTreino!, novos: idsNovos };
       const corrida = resultadosDaEquipe({ modalidade: "corrida", ...comum });
       const bicicleta = resultadosDaEquipe({ modalidade: "bicicleta", ...comum });
       // Período anterior (trimestre de antes ou a mesma duração), para a variação e "quem mais evoluiu".
@@ -422,16 +425,17 @@ export default function ReuniaoResultadosPage() {
       // Semanas seguidas treinando até o fim do período.
       const ate = p.fim < hoje ? p.fim : hoje;
       const porAtleta = agruparPorAtleta(dados.lancamentos!.filter((l) => !l.estornado && l.dataTreino <= ate));
+      const porFatia = agruparPorAtleta(sep.lancamentos.filter((l) => !l.estornado && l.dataTreino <= ate));
       const sequencias = new Map<string, number>();
-      for (const a of atletas) {
+      for (const a of sep.atletas) {
         if (!membroAtivoDaEquipe(a, "corrida") && !membroAtivoDaEquipe(a, "bicicleta")) continue;
-        sequencias.set(a.id, calcularSequencia(porAtleta.get(a.id) ?? [], dados.regrasTreino!, ate).atual);
+        sequencias.set(a.id, calcularSequencia(porFatia.get(a.id) ?? [], dados.regrasTreino!, ate).atual);
       }
       const atividades = consolidarAtividades(
-        dados.lancamentos!.filter((l) => !l.estornado && l.dataTreino >= p.inicio && l.dataTreino <= ate),
+        sep.lancamentos.filter((l) => !l.estornado && l.dataTreino >= p.inicio && l.dataTreino <= ate),
         dados.regrasTreino!,
       );
-      const itensDestaque = destaquesDoPeriodo({ atletas, atual: { corrida, bicicleta }, anterior: temAnterior ? anterior : null, sequencias, sequenciaAte: ate, atividades });
+      const itensDestaque = destaquesDoPeriodo({ atletas: sep.atletas, atual: { corrida, bicicleta }, anterior: temAnterior ? anterior : null, sequencias, sequenciaAte: ate, atividades });
       const desafiosDoPeriodo = desafios
         .filter((d) => d.inicio <= p.fim && d.fim >= p.inicio && d.inicio <= hoje)
         .map((d) => {

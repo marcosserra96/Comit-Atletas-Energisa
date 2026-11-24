@@ -337,10 +337,11 @@ async function avisarUltrapassagens(db: Firestore, silencioso = false) {
       .where("equipe", "==", equipe)
       .get();
     const linhas: LinhaRankingAviso[] = snap.docs
-      .map((d) => d.data() as { atletaId?: string; nome?: string; pontuacaoTotal?: number; visivelNasListas?: boolean; ativo?: boolean })
+      .map((d) => d.data() as { atletaId?: string; nome?: string; pontuacaoTotal?: number; visivelNasListas?: boolean; ativo?: boolean; outraModalidade?: boolean })
       // Perfis ocultos (testes e manutenção) não aparecem no ranking dos atletas:
       // fora daqui também, senão tiram alguém do pódio e geram avisos de ultrapassagem.
-      .filter((d) => d.atletaId && d.ativo !== false && d.visivelNasListas !== false)
+      // Quem trocou de modalidade não recebe aviso da equipe que deixou.
+      .filter((d) => d.atletaId && d.ativo !== false && d.visivelNasListas !== false && !d.outraModalidade)
       .map((d) => ({ atletaId: String(d.atletaId), nome: String(d.nome ?? ""), pontos: Number(d.pontuacaoTotal ?? 0), visivel: d.visivelNasListas !== false }));
 
     const ref = db.collection(CONTROLE).doc(`ranking_${equipe}`);

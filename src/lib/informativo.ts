@@ -1,5 +1,6 @@
 import { aderenciaPorAtleta, limitesDasCompetencias, mediaAderencia, type DiasTreinoConfigDoc } from "@/lib/aderencia";
 import { calcularResumoRankingPeriodo } from "@/lib/rankingMensal";
+import { separarPorModalidade, type AtletaNaModalidade } from "@/lib/modalidade";
 import type { RegrasDeTreino } from "@/lib/activityConsolidation";
 import { calcularPosicoesRanking, montarPodio } from "@/lib/rankingPosition";
 import type { AtletaDoc, HistoricoMensalDoc, HistoricoPontoDoc, Modalidade } from "@/lib/types";
@@ -108,21 +109,24 @@ export function montarInformativo(params: {
   regrasTreino?: RegrasDeTreino;
 }): DadosInformativo {
   const { modalidade, periodo } = params;
+  // Quem trocou de modalidade: cada registro conta na modalidade do dia.
+  const sep = separarPorModalidade({ atletas: params.atletas, lancamentos: params.lancamentos, resumos: params.resumosMensais });
   const resumo = calcularResumoRankingPeriodo({
-    atletas: params.atletas,
-    lancamentos: params.lancamentos,
-    resumosMensais: params.resumosMensais,
+    atletas: sep.atletas,
+    lancamentos: sep.lancamentos,
+    resumosMensais: sep.resumos,
     de: periodo.de,
     ate: periodo.ate,
     regrasTreino: params.regrasTreino,
   }).filter((r) => r.equipe === modalidade);
 
   const { inicio, fim } = limitesDasCompetencias(periodo.de, periodo.ate);
+  const janelas = new Map(sep.atletas.map((a) => [a.id, (a as AtletaNaModalidade).janelas]));
   const aderencias = aderenciaPorAtleta({
-    atletas: resumo.map((r) => ({ id: r.id, equipe: r.equipe })),
+    atletas: resumo.map((r) => ({ id: r.id, equipe: r.equipe, janelas: janelas.get(r.id) })),
     config: params.diasTreino,
-    lancamentos: params.lancamentos,
-    resumosMensais: params.resumosMensais,
+    lancamentos: sep.lancamentos,
+    resumosMensais: sep.resumos,
     de: inicio,
     ate: fim,
     hoje: params.hoje,

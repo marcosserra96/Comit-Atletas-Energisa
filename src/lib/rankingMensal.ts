@@ -1,5 +1,6 @@
 import { consolidarAtividades, type RegrasDeTreino } from "@/lib/activityConsolidation";
 import { perfilAtletaVisivel } from "@/lib/athleteVisibility";
+import { valeNoPeriodo, type AtletaNaModalidade } from "@/lib/modalidade";
 import type { AlertaCriterio, AtletaDoc, Equipe, HistoricoMensalDoc, HistoricoPontoDoc } from "@/lib/types";
 
 export interface ResumoAtletaMensal {
@@ -46,7 +47,7 @@ export function calcularResumoRankingPeriodo(params: {
 
   const porAtleta = new Map<string, ResumoAtletaMensal>();
   for (const a of atletas) {
-    if (!a.ativo || !perfilAtletaVisivel(a)) continue;
+    if (!a.ativo || !perfilAtletaVisivel(a) || !valeNoPeriodo(a as AtletaNaModalidade, de, ate)) continue;
     porAtleta.set(a.id, { id: a.id, nome: a.nome, equipe: a.equipe, pontosMes: 0, kmMes: 0, treinosMes: 0, ultimaData: "" });
   }
 
