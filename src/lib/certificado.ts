@@ -1,6 +1,7 @@
 import { executarAnalise, MEDIDAS, type DadosAnalise } from "@/lib/analises/motor";
 import { textoDoValor, type MedidaDoPremio, type PremioPersonalizado, type ResultadoPremio } from "@/lib/premiacaoPersonalizada";
 import { equipeLabel } from "@/lib/labels";
+import { idDoAtleta } from "@/lib/modalidade";
 
 /**
  * Certificados: uma página por atleta, em A4 deitado. Quem recebe vem de uma
@@ -142,11 +143,11 @@ export function destinatariosDaMeta(meta: MetaCertificado, dados: DadosAnalise, 
   );
   const porId = new Map(dados.atletas.map((a) => [a.id, a]));
   return r.linhas.map((l) => {
-    const a = porId.get(l.chave);
+    const a = porId.get(idDoAtleta(l.chave));
     return {
       id: l.chave,
       nome: l.rotulo,
-      equipe: a?.equipe === "bicicleta" ? "bicicleta" : "corrida",
+      equipe: meta.equipe !== "todas" ? meta.equipe : a?.equipe === "bicicleta" ? "bicicleta" : "corrida",
       valores: [textoDoValor({ medida: meta.medida, exibir: "total" }, l.valor ?? 0)],
     };
   });

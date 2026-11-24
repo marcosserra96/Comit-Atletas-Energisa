@@ -1,5 +1,6 @@
 import { consolidarAtividades, type RegrasDeTreino } from "@/lib/activityConsolidation";
-import { aderenciaDoAtleta, type DiasTreinoConfigDoc } from "@/lib/aderencia";
+import { aderenciaNasJanelas, type DiasTreinoConfigDoc } from "@/lib/aderencia";
+import { separarPorModalidade, valeNoPeriodo, type AtletaNaModalidade } from "@/lib/modalidade";
 import { equipeLabel, tipoLancamentoLabel } from "@/lib/labels";
 import type { AtletaDoc, HistoricoMensalDoc, HistoricoPontoDoc, TipoLancamento } from "@/lib/types";
 
@@ -289,7 +290,8 @@ function valorDoAtleta(medida: Medida, bloco: Bloco, ctx: { atleta: AtletaDoc; d
     case "aderencia": {
       const { atleta, dados, periodo } = ctx;
       if (!dados.diasTreino || (atleta.equipe !== "corrida" && atleta.equipe !== "bicicleta")) return null;
-      return aderenciaDoAtleta({
+      return aderenciaNasJanelas({
+        janelas: (atleta as AtletaNaModalidade).janelas,
         modalidade: atleta.equipe,
         config: dados.diasTreino,
         lancamentos: ctx.todosDoAtleta,
@@ -328,7 +330,9 @@ interface Calculo {
   total: number | null;
 }
 
-function calcular(cfg: ConfigAnalise, dados: DadosAnalise, periodo: Periodo, atletas: AtletaDoc[]): Calculo & { semResumoMensal: boolean } {
+function calcular(cfg: ConfigAnalise, dados: DadosAnalise, periodo: Periodo, todos: AtletaDoc[]): Calculo & { semResumoMensal: boolean } {
+  // Quem trocou de modalidade só entra onde estava no período (senão aparece com zero).
+  const atletas = todos.filter((a) => valeNoPeriodo(a as AtletaNaModalidade, periodo.de, periodo.ate));
   const ids = new Set(atletas.map((a) => a.id));
   const porId = new Map(atletas.map((a) => [a.id, a]));
   const criterios = new Set(cfg.criterios);
@@ -462,7 +466,12 @@ export function temOrdemNatural(dim: Dimensao) {
   return dim === "mes" || dim === "diaSemana" || dim === "faixaEtaria" || dim === "entrada";
 }
 
-export function executarAnalise(cfg: ConfigAnalise, dados: DadosAnalise): ResultadoAnalise {
+export function executarAnalise(cfg: ConfigAnalise, entrada: DadosAnalise): ResultadoAnalise {
+  // Recorte por modalidade: cada registro conta na modalidade do dia (quem
+  // trocou vira duas linhas, uma por modalidade, ids `id` e `id~modalidade`).
+  // Sem recorte ("todas", sem agrupar por equipe), o atleta segue inteiro.
+  const porModalidade = cfg.equipe !== "todas" || cfg.linhas === "equipe" || cfg.colunas === "equipe";
+  const dados = porModalidade ? { ...entrada, ...separarPorModalidade(entrada) } : entrada;
   const atletas = atletasDaAnalise(dados.atletas, cfg);
   const atual = calcular(cfg, dados, cfg.periodo, atletas);
   const anterior = cfg.anterior && !cfg.colunas ? calcular(cfg, dados, cfg.anterior, atletas) : null;

@@ -10,6 +10,7 @@ import {
   normalizarRankingPeriods,
 } from "@/lib/rankingPeriods";
 import { regrasDeTreino, type RegrasDeTreino } from "@/lib/activityConsolidation";
+import { idDaFatia, idDoAtleta, separarPorModalidade } from "@/lib/modalidade";
 import type {
   AtletaDoc,
   HistoricoMensalDoc,
@@ -58,26 +59,38 @@ function resultadosDoPeriodo(
   regrasTreino: RegrasDeTreino,
   competencias: readonly string[],
 ) {
-  const geral = calcularResultadosRanking(atletas, historico, "geral", undefined, undefined, resumosMensais, regrasTreino);
+  // Quem trocou de modalidade: cada ponto fica na modalidade em que foi feito.
+  // A parte da modalidade anterior vira uma linha à parte no ranking dela.
+  const sep = separarPorModalidade({ atletas, lancamentos: historico, resumos: resumosMensais });
+  const geral = calcularResultadosRanking(sep.atletas, sep.lancamentos, "geral", undefined, undefined, sep.resumos, regrasTreino);
   const trimestral = config.trimestre.ativo
     ? calcularResultadosRanking(
-        atletas,
-        historico,
+        sep.atletas,
+        sep.lancamentos,
         "trimestre",
         config.trimestre.inicio,
         config.trimestre.fim,
-        resumosMensais,
+        sep.resumos,
         regrasTreino,
       )
     : [];
   // Um ranking por mês (só quem pontuou no mês), para o atleta navegar entre meses.
-  const mensal = calcularResultadosMensais(atletas, historico, resumosMensais, competencias, regrasTreino);
-  const resultados: RankingResultadoDoc[] = [...geral, ...trimestral, ...mensal].map((resultado) => ({
-    ...resultado,
-    geracaoId,
-    geradoEm,
-  }));
-  return { geral, resultados };
+  const mensal = calcularResultadosMensais(sep.atletas, sep.lancamentos, sep.resumos, competencias, regrasTreino);
+  const resultados = [...geral, ...trimestral, ...mensal].map((resultado) => {
+    // O documento da outra modalidade tem id próprio; dentro dele, o id do atleta de verdade.
+    const docId = idResultadoRanking(geracaoId, resultado);
+    const atletaId = idDoAtleta(resultado.atletaId);
+    const dados: RankingResultadoDoc = {
+      ...resultado,
+      id: atletaId,
+      atletaId,
+      ...(atletaId !== resultado.atletaId ? { outraModalidade: true } : {}),
+      geracaoId,
+      geradoEm,
+    };
+    return { docId, dados };
+  });
+  return { atletasNoGeral: new Set(geral.map((r) => idDoAtleta(r.atletaId))).size, resultados };
 }
 
 export async function publicarRankingCompleto(params: {
@@ -114,7 +127,7 @@ export async function publicarRankingCompleto(params: {
   );
   const geracaoId = db.collection("ranking_resultados").doc().id;
   const competencias = competenciasDoRanking(historico, resumosMensais, competenciaAtualBrasil());
-  const { geral, resultados } = resultadosDoPeriodo(
+  const { atletasNoGeral, resultados } = resultadosDoPeriodo(
     atletas,
     historico,
     resumosMensais,
@@ -128,8 +141,8 @@ export async function publicarRankingCompleto(params: {
   await gravarEmLotes(
     db,
     resultados.map(
-      (resultado) => (batch) =>
-        batch.set(db.collection("ranking_resultados").doc(idResultadoRanking(geracaoId, resultado)), resultado),
+      ({ docId, dados }) => (batch) =>
+        batch.set(db.collection("ranking_resultados").doc(docId), dados),
     ),
   );
 
@@ -149,7 +162,7 @@ export async function publicarRankingCompleto(params: {
     entidadeId: "ranking_periodos",
     dados: {
       trimestre: config.trimestre,
-      atletas: geral.length,
+      atletas: atletasNoGeral,
       resultados: resultados.length,
       geracaoId,
     },
@@ -164,7 +177,7 @@ export async function publicarRankingCompleto(params: {
     resultadosAntigosSnap.docs.map((item) => (batch) => batch.delete(item.ref)),
   );
 
-  return { geracaoId, atletas: geral.length, resultados: resultados.length };
+  return { geracaoId, atletas: atletasNoGeral, resultados: resultados.length };
 }
 
 async function carregarDadosDosAtletas(db: Firestore, atletaIds: string[]) {
@@ -251,17 +264,17 @@ export async function atualizarRankingDosAtletas(params: {
     regrasTreino,
     competencias,
   );
-  const resultadoPorId = new Map(
-    resultados.map((resultado) => [idResultadoRanking(geracaoId, resultado), resultado]),
-  );
+  const resultadoPorId = new Map(resultados.map(({ docId, dados }) => [docId, dados]));
   const periodos: RankingPeriodKey[] = ["geral", ...(config.trimestre.ativo ? (["trimestre"] as const) : [])];
   /** Todos os documentos de um atleta nesta geração (os sem resultado são apagados). */
-  const idsDoAtleta = (atletaId: string) => [
-    ...periodos.map((periodoId) => idResultadoRanking(geracaoId, { periodoId, atletaId })),
-    ...competencias.map((competencia) => idResultadoRanking(geracaoId, { periodoId: "mes", atletaId, competencia })),
-  ];
+  // Mais as linhas de modalidade anterior (quem trocou de Bike para Corrida ou o contrário).
+  const idsDoAtleta = (id: string) =>
+    [id, idDaFatia(id, "corrida"), idDaFatia(id, "bicicleta")].flatMap((atletaId) => [
+      ...periodos.map((periodoId) => idResultadoRanking(geracaoId, { periodoId, atletaId })),
+      ...competencias.map((competencia) => idResultadoRanking(geracaoId, { periodoId: "mes", atletaId, competencia })),
+    ]);
   // Transação aceita até 500 escritas: ajusta o grupo ao número de meses.
-  const escritasPorAtleta = periodos.length + competencias.length + 2;
+  const escritasPorAtleta = (periodos.length + competencias.length) * 3 + 2;
   const tamanhoGrupo = Math.max(1, Math.min(100, Math.floor(450 / escritasPorAtleta)));
   let atletasAtualizados = 0;
   for (const grupo of gruposDe(atletaIds, tamanhoGrupo)) {

@@ -1,5 +1,6 @@
 import { consolidarAtividades, type RegrasDeTreino } from "@/lib/activityConsolidation";
 import { dataIsoLocal } from "@/lib/date";
+import { recortarNasJanelas, type Janela } from "@/lib/modalidade";
 import type { HistoricoMensalDoc, HistoricoPontoDoc, Modalidade } from "@/lib/types";
 
 /** 0 = domingo … 6 = sábado (igual a `Date.getDay()`). */
@@ -230,9 +231,23 @@ export function aderenciaDoAtleta(params: {
   };
 }
 
+/**
+ * Aderência só nos dias em que o atleta estava na modalidade (quem trocou de
+ * Bike para Corrida não é cobrado pela agenda da Corrida antes da troca).
+ */
+export function aderenciaNasJanelas(params: Parameters<typeof aderenciaDoAtleta>[0] & { janelas?: readonly Janela[] }): ResultadoAderencia {
+  const trechos = recortarNasJanelas(params, params.de, params.ate);
+  if (trechos.length === 0) return { feitos: 0, previstos: 0, percentual: null };
+  if (trechos.length === 1) return aderenciaDoAtleta({ ...params, ...trechos[0] });
+  const partes = trechos.map((t) => aderenciaDoAtleta({ ...params, ...t }));
+  const feitos = partes.reduce((s, p) => s + p.feitos, 0);
+  const previstos = partes.reduce((s, p) => s + p.previstos, 0);
+  return { feitos, previstos, percentual: previstos > 0 ? Math.round((feitos / previstos) * 100) : null, ...(partes.some((p) => p.informada) ? { informada: true } : {}) };
+}
+
 /** Aderência de vários atletas de uma vez (agrupa os lançamentos uma só vez). */
 export function aderenciaPorAtleta(params: {
-  atletas: readonly { id: string; equipe: string }[];
+  atletas: readonly { id: string; equipe: string; janelas?: readonly Janela[] }[];
   config: DiasTreinoConfigDoc;
   lancamentos: readonly HistoricoPontoDoc[];
   resumosMensais?: readonly HistoricoMensalDoc[];
@@ -258,7 +273,8 @@ export function aderenciaPorAtleta(params: {
     if (atleta.equipe !== "corrida" && atleta.equipe !== "bicicleta") continue;
     resultado.set(
       atleta.id,
-      aderenciaDoAtleta({
+      aderenciaNasJanelas({
+        janelas: atleta.janelas,
         modalidade: atleta.equipe,
         config: params.config,
         lancamentos: lancPorAtleta.get(atleta.id) ?? [],

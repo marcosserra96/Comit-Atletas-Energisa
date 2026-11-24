@@ -17,6 +17,7 @@ const acaoLabel: Record<string, string> = {
   cadastrar_atleta: "Cadastro de atleta",
   importar_atletas: "Importação em lote",
   editar_atleta: "Edição de atleta",
+  trocas_modalidade: "Troca de modalidade",
   desativar_atleta: "Desativação",
   reativar_atleta: "Reativação",
   estornar_lancamento: "Estorno de lançamento",

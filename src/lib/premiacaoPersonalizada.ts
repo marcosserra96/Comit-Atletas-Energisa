@@ -1,5 +1,6 @@
 import { executarAnalise, mesesDoPeriodo, MEDIDAS, type ConfigAnalise, type DadosAnalise } from "@/lib/analises/motor";
 import { formatNumero, formatPontos } from "@/lib/format";
+import { idDoAtleta } from "@/lib/modalidade";
 
 /**
  * Premiação com critérios do comitê: "Atleta do ano = 60% pontos + 40%
@@ -242,8 +243,10 @@ export function calcularPremio(premio: PremioPersonalizado, dados: DadosAnalise,
     const lista = [...valores.entries()]
       .map(([id, v]) => {
         const nota = v.reduce((s, x, i) => s + (maximos[i] > 0 ? (x / maximos[i]) * pesos[i] : 0), 0);
-        const a = porId.get(id);
-        return { id, nome: a?.nome ?? "Atleta", equipe: a?.equipe === "bicicleta" ? ("bicicleta" as const) : ("corrida" as const), fotoVersao: a?.fotoVersao, nota: Math.round(nota * 10) / 10, notaExata: nota, valores: v };
+        // Quem trocou de modalidade aparece como `id~modalidade` no recorte da outra.
+        const a = porId.get(idDoAtleta(id));
+        const daEquipe = equipe === "todas" ? (a?.equipe === "bicicleta" ? ("bicicleta" as const) : ("corrida" as const)) : equipe;
+        return { id, nome: a?.nome ?? "Atleta", equipe: daEquipe, fotoVersao: a?.fotoVersao, nota: Math.round(nota * 10) / 10, notaExata: nota, valores: v };
       })
       .filter((x) => x.notaExata > 0)
       .sort((a, b) => b.notaExata - a.notaExata || ordemDesempate.reduce((r, i) => r || b.valores[i] - a.valores[i], 0) || a.nome.localeCompare(b.nome, "pt-BR"));
